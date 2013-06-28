@@ -1,33 +1,38 @@
 /*
- * Copyright (C) 2008 Patrick Ohly
+ * Copyright (C) 2008-2009 Patrick Ohly <patrick.ohly@gmx.de>
+ * Copyright (C) 2009 Intel Corporation
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) version 3.
  *
- * This program is distributed in the hope that it will be useful,
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301  USA
  */
 
 #ifndef INCL_SYNCEVOLUTION_UTIL
 # define INCL_SYNCEVOLUTION_UTIL
 
-#include <base/test.h>
+#include "SyncML.h"
 
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string/predicate.hpp>
+
+#include <stdarg.h>
 
 #include <vector>
 #include <sstream>
 #include <string>
 #include <utility>
+#include <exception>
 using namespace std;
 
 /** case-insensitive less than for assoziative containers */
@@ -59,6 +64,20 @@ void rm_r(const string &path);
 
 /** true if the path refers to a directory */
 bool isDir(const string &path);
+
+/**
+ * try to read a file into the given string, throw exception if fails
+ *
+ * @param filename     absolute or relative file name
+ * @retval content     filled with file content
+ * @return true if file could be read
+ */
+bool ReadFile(const string &filename, string &content);
+
+/**
+ * Simple string hash function, derived from Dan Bernstein's algorithm.
+ */
+unsigned long Hash(const char *str);
 
 /**
  * This is a simplified implementation of a class representing and calculating
@@ -102,10 +121,72 @@ class ReadDir {
  * object files which are not normally linked into the test
  * binary, are included in the test suite under the group
  * "SyncEvolution".
+ *
+ * Use it like this:
+ * @verbatim
+   #include <config.h>
+   #ifdef ENABLE_UNIT_TESTS
+   # include <cppunit/extensions/HelperMacros.h>
+   class Foo : public CppUnit::TestFixture {
+       CPPUNIT_TEST_SUITE(foo);
+       CPPUNIT_TEST(testBar);
+       CPPUNIT_TEST_SUITE_END();
+
+     public:
+       void testBar();
+   };
+   # SYNCEVOLUTION_TEST_SUITE_REGISTRATION(classname)
+   #endif
+   @endverbatim
  */
 #define SYNCEVOLUTION_TEST_SUITE_REGISTRATION( ATestFixtureType ) \
     CPPUNIT_TEST_SUITE_NAMED_REGISTRATION( ATestFixtureType, "SyncEvolution" ); \
     extern "C" { int funambolAutoRegisterRegistry ## ATestFixtureType = 12345; }
 
+std::string StringPrintf(const char *format, ...)
+#ifdef __GNUC__
+        __attribute__((format(printf, 1, 2)))
+#endif
+;
+std::string StringPrintfV(const char *format, va_list ap);
+
+/**
+ * an exception which records the source file and line
+ * where it was thrown
+ *
+ * @TODO add function name
+ */
+class SyncEvolutionException : public std::runtime_error
+{
+ public:
+    SyncEvolutionException(const std::string &file,
+                           int line,
+                           const std::string &what) :
+    std::runtime_error(what),
+        m_file(file),
+        m_line(line)
+        {}
+    ~SyncEvolutionException() throw() {}
+    const std::string m_file;
+    const int m_line;
+
+    /**
+     * Convenience function, to be called inside a catch(..) block.
+     *
+     * Rethrows the exception to determine what it is, then logs it as
+     * an error. Turns certain known exceptions into the corresponding
+     * status code if status still was STATUS_OK when called.
+     * Returns updated status code.
+     */
+    static SyncMLStatus handle(SyncMLStatus *status = NULL);
+};
+
+/** throw a SyncEvolutionException */
+#define SE_THROW(_what) \
+    SE_THROW_EXCEPTION(SyncEvolutionException, _what)
+
+/** throw a class which accepts file, line, what parameters */
+#define SE_THROW_EXCEPTION(_class,  _what) \
+    throw _class(__FILE__, __LINE__, _what)
 
 #endif // INCL_SYNCEVOLUTION_UTIL

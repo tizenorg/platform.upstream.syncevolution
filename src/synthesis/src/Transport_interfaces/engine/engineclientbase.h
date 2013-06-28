@@ -1,0 +1,77 @@
+/*
+ *  TEngineClientBase
+ *    client library specific descendant of TSyncClientBase
+ *		Global object, manages starting of client sessions.
+ *
+ *  Copyright (c) 2002-2009 by Synthesis AG (www.synthesis.ch)
+ *
+ *  2002-05-03 : luz : Created
+ *
+ */
+
+#ifndef ENGINECLIENTBASE_H
+#define ENGINECLIENTBASE_H
+
+// required headers
+#include "syncappbase.h"
+#include "syncclientbase.h"
+#include "syncclient.h"
+
+
+namespace sysync {
+
+
+// engine client root config
+class TEngineClientRootConfig : public TRootConfig
+{
+  typedef TRootConfig inherited;
+public:
+  TEngineClientRootConfig(TSyncAppBase *aSyncAppBaseP) : inherited(aSyncAppBaseP) {};
+  // factory methods
+  virtual void installCommConfig(void);
+  // Config parsing
+  #ifndef HARDCODED_CONFIG
+  virtual bool parseCommConfig(const char **aAttributes, sInt32 aLine);
+  #endif
+}; // TEngineClientRootConfig
+
+
+// engine client transport config
+class TEngineCommConfig: public TCommConfig
+{
+  typedef TCommConfig inherited;
+public:
+  TEngineCommConfig(TConfigElement *aParentElementP);
+  virtual ~TEngineCommConfig();
+protected:
+  // check config elements
+  #ifndef HARDCODED_CONFIG
+  virtual bool localStartElement(const char *aElementName, const char **aAttributes, sInt32 aLine);
+  #endif
+  virtual void clear();
+  virtual void localResolve(bool aLastPass);
+}; // TXPTCommConfig
+
+
+// forward declarations
+class TSyncSession;
+class TEngineClientBase;
+
+
+
+// AppBase class for all client engines (libararies with API to build custom clients)
+class TEngineClientBase : public TSyncClientBase {
+  typedef TSyncClientBase inherited;
+public:
+  // constructors/destructors
+  TEngineClientBase();
+  virtual ~TEngineClientBase();
+private:
+}; // TEngineClientBase
+
+} // namespace sysync
+
+#endif // ENGINECLIENTBASE_H
+
+
+// eof

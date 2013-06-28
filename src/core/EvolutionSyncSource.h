@@ -1,19 +1,21 @@
 /*
- * Copyright (C) 2005-2008 Patrick Ohly
+ * Copyright (C) 2005-2009 Patrick Ohly <patrick.ohly@gmx.de>
+ * Copyright (C) 2009 Intel Corporation
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) version 3.
  *
- * This program is distributed in the hope that it will be useful,
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301  USA
  */
 
 #ifndef INCL_EVOLUTIONSYNCSOURCE
@@ -22,6 +24,10 @@
 #include "config.h"
 #include "SyncEvolutionConfig.h"
 #include "EvolutionSmartPtr.h"
+#include "Logging.h"
+#include "eds_abi_wrapper.h"
+#include "SyncML.h"
+using namespace SyncEvolution;
 
 #include <boost/shared_ptr.hpp>
 #include <string>
@@ -33,13 +39,9 @@ using namespace std;
 
 #include <time.h>
 
-#include <spds/SyncSource.h>
-#include <spdm/ManagementNode.h>
-#include <base/Log.h>
-
-#include "eds_abi_wrapper.h"
 
 class EvolutionSyncSource;
+#include <synthesis/sync_declarations.h>
 
 /**
  * This set of parameters always has to be passed when constructing
@@ -253,7 +255,7 @@ class RegisterSyncSourceTest
      * sources which normally use one format internally, but also
      * support another one (EvolutionContactSource).
      */
-    static int dump(ClientTest &client, SyncSource &source, const char *file);
+    static int dump(ClientTest &client, EvolutionSyncSource &source, const char *file);
 
     const string m_configName;
     const string m_testCaseName;
@@ -273,7 +275,6 @@ class TestRegistry : public vector<const RegisterSyncSourceTest *>
         return NULL;
     }
 };
-
 
 /**
  * SyncEvolution accesses all sources through this interface.  This
@@ -295,25 +296,23 @@ class TestRegistry : public vector<const RegisterSyncSourceTest *>
  *
  * It also adds Evolution specific interfaces and utility functions.
  */
-class EvolutionSyncSource : public SyncSource, public EvolutionSyncSourceConfig
+class EvolutionSyncSource : public EvolutionSyncSourceConfig, public LoggerBase, public SyncSourceReport
 {
  public:
     /**
      * Creates a new Evolution sync source.
      */
     EvolutionSyncSource(const EvolutionSyncSourceParams &params) :
-        SyncSource(params.m_name.c_str(), NULL),
         EvolutionSyncSourceConfig(params.m_name, params.m_nodes),
         m_changeId( params.m_changeId ),
-        m_allItems( *this, "existing", SYNC_STATE_NONE ),
-        m_newItems( *this, "new", SYNC_STATE_NEW ),
-        m_updatedItems( *this, "updated", SYNC_STATE_UPDATED ),
-        m_deletedItems( *this, "deleted", SYNC_STATE_DELETED ),
+        m_allItems( *this, "existing", SyncItem::NONE ),
+        m_newItems( *this, "new", SyncItem::NEW ),
+        m_updatedItems( *this, "updated", SyncItem::UPDATED ),
+        m_deletedItems( *this, "deleted", SyncItem::DELETED ),
         m_isModified( false ),
         m_modTimeStamp(0),
         m_hasFailed( false )
         {
-            setConfig(this);
         }
     virtual ~EvolutionSyncSource() {}
 
@@ -418,6 +417,31 @@ class EvolutionSyncSource : public SyncSource, public EvolutionSyncSourceConfig
     void setFailed(bool failed) { m_hasFailed = failed; }
 
     /**
+     * return Synthesis API pointer, if one currently is available
+     * (between SyncEvolution_Module_CreateContext() and
+     * SyncEvolution_Module_DeleteContext())
+     */
+    sysync::SDK_InterfaceType *getSynthesisAPI() {
+        return m_synthesisAPI.empty() ?
+            NULL :
+            m_synthesisAPI[m_synthesisAPI.size() - 1];
+    }
+
+    /**
+     * change the Synthesis API that is used by the source
+     */
+    void pushSynthesisAPI(sysync::SDK_InterfaceType *synthesisAPI) {
+        m_synthesisAPI.push_back(synthesisAPI);
+    }
+
+    /**
+     * remove latest Synthesis API and return to previous one (if any)
+     */
+    void popSynthesisAPI() {
+        m_synthesisAPI.pop_back();
+    }
+
+    /**
      * Convenience function, to be called inside a catch() block of
      * the sync source.
      * Rethrows the exception to determine what it is, then logs it
@@ -482,12 +506,40 @@ class EvolutionSyncSource : public SyncSource, public EvolutionSyncSourceConfig
                                                     const char *prefix = getenv("CLIENT_TEST_EVOLUTION_PREFIX"));
 
     /**
-     * @name default implementation of SyncSource iterators
+     * Return Synthesis <datastore> XML fragment for this sync source.
+     * Must *not* include the <datastore> element; it is created by
+     * the caller.
      *
-     * @todo getFirstItemKey() and getNextItemKey() are marked for removal
-     * and will be replaced by removeAllItems(). Remove the calls when
-     * they are no longer needed. In the meantime implement them with
-     * m_allItems.
+     * The default implementation returns a configuration for the
+     * SynthesisDBPlugin. Items are exchanged with the
+     * EvolutionSyncsSource in the format defined by getMimeType() and
+     * with the SyncML side negotiated via the peer's capabilities,
+     * with the type defined in the configuration being the preferred
+     * one of the data store.
+     *
+     * See EvolutionSyncClient::getConfigXML() for details about
+     * predefined <datatype> entries that can be referenced here.
+     *
+     * @retval xml    put content of <datastore>...</datastore> here
+     */
+    virtual void getDatastoreXML(string &xml);
+
+    /**
+     * Synthesis <datatype> name which matches the format used
+     * for importing and exporting items (exportData()).
+     * This is not necessarily the same format that is given
+     * to the Synthesis engine. If this internal format doesn't
+     * have a <datatype> in the engine, then an empty string is
+     * returned.
+     */
+    virtual string getNativeDatatypeName() {
+        string profile, datatypes, native;
+        getSynthesisInfo(profile, datatypes, native);
+        return native;
+    }
+
+    /**
+     * @name default implementation of SyncSource iterators
      */
     /**@{*/
     virtual SyncItem* getFirstItem() throw() { return m_allItems.start(); }
@@ -498,21 +550,32 @@ class EvolutionSyncSource : public SyncSource, public EvolutionSyncSourceConfig
     virtual SyncItem* getNextUpdatedItem() throw() { return m_updatedItems.iterate(); }
     virtual SyncItem* getFirstDeletedItem() throw() { return m_deletedItems.start(); }
     virtual SyncItem* getNextDeletedItem() throw() { return m_deletedItems.iterate(); }
-    virtual SyncItem* getFirstItemKey() throw() { return m_allItems.start(); }
-    virtual SyncItem* getNextItemKey() throw() { return m_allItems.iterate(); }
     /**@}*/
+
+    /**
+     * get information about next item
+     *
+     * @retval data       optional: item data in default format
+     * @retval luid       local ID of item
+     * @return status of item or error
+     */
+    virtual SyncItem::State nextItem(string *data, string &luid) throw();
+
+    /**
+     * restart reading all items, automatically called at end of beginSync()
+     */
+    virtual void rewindItems() throw();
 
     /**
      * @name SyncSource methods that are provided by EvolutionSyncSource
      * and implemented via the corresponding *Throw() calls
      */
     /**@{*/
-    virtual int beginSync() throw();
-    virtual int endSync() throw();
-    virtual void setItemStatus(const char *key, int status) throw();
-    virtual int addItem(SyncItem& item) throw();
-    virtual int updateItem(SyncItem& item) throw();
-    virtual int deleteItem(SyncItem& item) throw();
+    virtual SyncMLStatus beginSync(SyncMode mode) throw();
+    virtual SyncMLStatus endSync() throw();
+    virtual SyncMLStatus addItem(SyncItem& item) throw();
+    virtual SyncMLStatus updateItem(SyncItem& item) throw();
+    virtual SyncMLStatus deleteItem(SyncItem& item) throw();
     /**@}*/
 
     /**
@@ -526,13 +589,7 @@ class EvolutionSyncSource : public SyncSource, public EvolutionSyncSourceConfig
      *
      * @return 0 for success, non-zero for failure
      */
-    virtual int removeAllItems() throw();
-
-    /**
-     * Disambiguate getName(): we have inherited it from both SyncSource and
-     * AbstractSyncSourceConfig. Both must return the same string.
-     */
-    const char *getName()  throw() { return SyncSource::getName(); }
+    virtual SyncMLStatus removeAllItems() throw();
 
     /**
      * source specific part of beginSync() - throws exceptions in case of error
@@ -551,10 +608,9 @@ class EvolutionSyncSource : public SyncSource, public EvolutionSyncSourceConfig
      */
     /**@{*/
     virtual void endSyncThrow() = 0;
-    virtual void setItemStatusThrow(const char *key, int status);
-    virtual int addItemThrow(SyncItem& item) = 0;
-    virtual int updateItemThrow(SyncItem& item) = 0;
-    virtual int deleteItemThrow(SyncItem& item) = 0;
+    virtual SyncMLStatus addItemThrow(SyncItem& item) = 0;
+    virtual SyncMLStatus updateItemThrow(SyncItem& item) = 0;
+    virtual SyncMLStatus deleteItemThrow(SyncItem& item) = 0;
     /**@}*/
 
     /**
@@ -576,6 +632,27 @@ class EvolutionSyncSource : public SyncSource, public EvolutionSyncSourceConfig
                              const string &uid, const string &info, bool debug = false);
     /**@}*/
 
+
+    /**
+     * Logging utility code.
+     *
+     * Every sync source adds "<name>" as prefix to its output.
+     * All calls are redirected into EvolutionSyncClient logger.
+     *
+     * @TODO call EvolutionSyncClient instead of logger singleton
+     */
+    /**@{*/
+    virtual void setLevel(Level level);
+    virtual Level getLevel();
+    virtual void messagev(Level level,
+                          const char *prefix,
+                          const char *file,
+                          int line,
+                          const char *function,
+                          const char *format,
+                          va_list args);
+    /**@}*/
+
   protected:
 #ifdef HAVE_EDS
     /**
@@ -588,6 +665,18 @@ class EvolutionSyncSource : public SyncSource, public EvolutionSyncSourceConfig
     ESource *findSource( ESourceList *list, const string &id );
 #endif
 
+    /**
+     * helper function: checks getMimeType() and getSourceType() to determine XML config elements
+     *
+     * @retval profile     profile name to use for MAKE/PARSETEXTWITHPROFILE
+     * @retval datatypes   list of supported datatypes in "<use .../>" format
+     * @retval native      native datatype (see getNativeDatatypeName())
+     */
+    virtual void getSynthesisInfo(string &profile,
+                                  string &datatypes,
+                                  string &native);
+
+ public:
 #ifdef HAVE_EDS
     /**
      * throw an exception after an operation failed and
@@ -624,20 +713,26 @@ class EvolutionSyncSource : public SyncSource, public EvolutionSyncSourceConfig
      */
     void throwError(const string &failure);
 
+ protected:
     const string m_changeId;
 
     class Items : public set<string> {
         const_iterator m_it;
         EvolutionSyncSource &m_source;
         const string m_type;
-        const SyncState m_state;
+        const SyncItem::State m_state;
 
       public:
-        Items( EvolutionSyncSource &source, const string &type, SyncState state ) :
+        Items( EvolutionSyncSource &source, const string &type, SyncItem::State state ) :
             m_source( source ),
             m_type( type ),
             m_state( state )
         {}
+
+        /**
+         * start at with beginning, without returning first item yet
+         */
+        void rewind() { m_it = begin(); }
 
         /**
          * start iterating, return first item if available
@@ -679,16 +774,25 @@ class EvolutionSyncSource : public SyncSource, public EvolutionSyncSourceConfig
     /**
      * private wrapper function for add/delete/updateItemThrow()
      */
-    int processItem(const char *action,
-                    int (EvolutionSyncSource::*func)(SyncItem& item),
-                    SyncItem& item,
-                    bool needData) throw();
+    SyncMLStatus processItem(const char *action,
+                             SyncMLStatus (EvolutionSyncSource::*func)(SyncItem& item),
+                             SyncItem& item,
+                             bool needData) throw();
 
     /** time stamp of latest database modification, for sleepSinceModification() */
     time_t m_modTimeStamp;
 
     /** keeps track of failure state */
     bool m_hasFailed;
+
+    /**
+     * Interface pointer for this sync source, allocated for us by the
+     * Synthesis engine and registered here by
+     * SyncEvolution_Module_CreateContext(). Only valid until
+     * SyncEvolution_Module_DeleteContext(), in other words, while
+     * the engine is running.
+     */
+    std::vector<sysync::SDK_InterfaceType *> m_synthesisAPI;
 };
 
 #endif // INCL_EVOLUTIONSYNCSOURCE

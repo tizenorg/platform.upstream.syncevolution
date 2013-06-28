@@ -1,0 +1,32 @@
+# ignore generated files
+*.o
+src/sysync_SDK/bin
+src/Makefile.am
+Makefile.in
+configure
+m4
+aclocal.m4
+autom4te.cache
+config.guess
+config.log
+config.status
+config.sub
+config.h.in
+depcomp
+install-sh
+libtool
+ltmain.sh
+missing
+compile
+Makefile
+# ignore Mac OS X finder metadata files
+.DS_Store
+# ignore Mac OS X ressource dir created by zip
+__MACOSX/
+# ignore all sorts of backup files
+*.orig
+*~
+*.BAK
+*.bak
+# no CVS
+CVS/

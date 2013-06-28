@@ -1,19 +1,20 @@
 /*
- * Copyright (C) 2008 Patrick Ohly
+ * Copyright (C) 2008-2009 Patrick Ohly <patrick.ohly@gmx.de>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) version 3.
  *
- * This program is distributed in the hope that it will be useful,
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301  USA
  */
 
 #define EDS_ABI_WRAPPER_NO_REDEFINE 1
@@ -30,6 +31,8 @@ namespace {
 std::string lookupDebug, lookupInfo;
 
 }
+
+int EDSAbiHaveEbook, EDSAbiHaveEcal, EDSAbiHaveEdataserver;
 
 #ifdef EVOLUTION_COMPATIBILITY
 
@@ -143,8 +146,18 @@ void *findSymbols(const char *libname, int minver, int maxver, ... /* function p
 
 #endif // EVOLUTION_COMPATIBILITY
 
+extern "C" int EDSAbiHaveEbook, EDSAbiHaveEcal, EDSAbiHaveEdataserver;
+
 extern "C" void EDSAbiWrapperInit()
 {
+    static bool initialized;
+
+    if (initialized) {
+        return;
+    } else {
+        initialized = true;
+    }
+
 #ifdef EVOLUTION_COMPATIBILITY
 # ifdef HAVE_EDS
     edshandle =
@@ -156,6 +169,7 @@ extern "C" void EDSAbiWrapperInit()
                 &EDSAbiWrapperSingleton.e_source_list_peek_groups, "e_source_list_peek_groups",
                 &EDSAbiWrapperSingleton.e_source_peek_name, "e_source_peek_name",
                 (void *)0);
+    EDSAbiHaveEdataserver = EDSAbiWrapperSingleton.e_source_group_peek_sources != 0;
 # endif // HAVE_EDS
 
 # ifdef ENABLE_EBOOK
@@ -186,6 +200,7 @@ extern "C" void EDSAbiWrapperInit()
                 &EDSAbiWrapperSingleton.e_book_remove_contact, "e_book_remove_contact",
                 &EDSAbiWrapperSingleton.e_vcard_to_string, "e_vcard_to_string",
                 (void *)0);
+    EDSAbiHaveEbook = EDSAbiWrapperSingleton.e_book_new != 0;
 # endif // ENABLE_EBOOK
 
 # ifdef ENABLE_ECAL
@@ -246,7 +261,18 @@ extern "C" void EDSAbiWrapperInit()
                 &EDSAbiWrapperSingleton.icaltimezone_new, "icaltimezone_new",
                 &EDSAbiWrapperSingleton.icaltimezone_set_component, "icaltimezone_set_component",
                 (void *)0);
+    EDSAbiHaveEcal = EDSAbiWrapperSingleton.e_cal_new != 0;
 # endif // ENABLE_ECAL
+#else // EVOLUTION_COMPATIBILITY
+# ifdef HAVE_EDS
+    EDSAbiHaveEdataserver = true;
+# endif
+# ifdef ENABLE_EBOOK
+    EDSAbiHaveEbook = true;
+# endif
+# ifdef ENABLE_ECAL
+    EDSAbiHaveEcal = true;
+# endif
 #endif // EVOLUTION_COMPATIBILITY
 }
 

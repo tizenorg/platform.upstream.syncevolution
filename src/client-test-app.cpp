@@ -1,24 +1,25 @@
 /*
- * Copyright (C) 2005-2008 Patrick Ohly
+ * Copyright (C) 2005-2009 Patrick Ohly <patrick.ohly@gmx.de>
+ * Copyright (C) 2009 Intel Corporation
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) version 3.
  *
- * This program is distributed in the hope that it will be useful,
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301  USA
  */
 
 #include <config.h>
 
-#include <base/test.h>
 #include <ClientTest.h>
 
 #include <cppunit/extensions/HelperMacros.h>
@@ -60,17 +61,16 @@ public:
         config.setSourceType(type);
         m_source.reset(EvolutionSyncSource::createSource(params));
         CPPUNIT_ASSERT(m_source.get());
-        m_source->setSyncMode(SYNC_NONE);
     }
 
-    virtual int beginSync() throw () {
+    virtual SyncMLStatus beginSync(SyncMode mode) throw () {
         CPPUNIT_ASSERT_NO_THROW(m_source->open());
         CPPUNIT_ASSERT(!m_source->hasFailed());
-        return m_source->beginSync();
+        return m_source->beginSync(mode);
     }
 
-    virtual int endSync() throw () {
-        int res = m_source->endSync();
+    virtual SyncMLStatus endSync() throw () {
+        SyncMLStatus res = m_source->endSync();
         CPPUNIT_ASSERT_NO_THROW(m_source->close());
         CPPUNIT_ASSERT(!m_source->hasFailed());
         return res;
@@ -84,13 +84,11 @@ public:
     virtual SyncItem* getNextUpdatedItem() throw () { return m_source->getNextUpdatedItem(); }
     virtual SyncItem* getFirstDeletedItem() throw () { return m_source->getFirstDeletedItem(); }
     virtual SyncItem* getNextDeletedItem() throw () { return m_source->getNextDeletedItem(); }
-    virtual SyncItem* getFirstItemKey() throw () { return m_source->getFirstItemKey(); }
-    virtual SyncItem* getNextItemKey() throw () { return m_source->getNextItemKey(); }
-    virtual void setItemStatus(const char *key, int status) throw () { m_source->setItemStatus(key, status); }
-    virtual int addItem(SyncItem& item) throw () { return m_source->addItem(item); }
-    virtual int updateItem(SyncItem& item) throw () { return m_source->updateItem(item); }
-    virtual int deleteItem(SyncItem& item) throw () { return m_source->deleteItem(item); }
-    virtual int removeAllItems() throw () { return m_source->removeAllItems(); }
+
+    virtual SyncMLStatus addItem(SyncItem& item) throw () { return m_source->addItem(item); }
+    virtual SyncMLStatus updateItem(SyncItem& item) throw () { return m_source->updateItem(item); }
+    virtual SyncMLStatus deleteItem(SyncItem& item) throw () { return m_source->deleteItem(item); }
+    virtual SyncMLStatus removeAllItems() throw () { return m_source->removeAllItems(); }
     const char *getName() throw () { return m_source->getName(); }
 
     virtual Databases getDatabases() { return m_source->getDatabases(); }
@@ -106,9 +104,9 @@ public:
                                 bool needPartial,
                                 bool deleteLocal) { m_source->beginSyncThrow(needAll, needPartial, deleteLocal); }
     virtual void endSyncThrow() { m_source->endSyncThrow(); }
-    virtual int addItemThrow(SyncItem& item) { return m_source->addItemThrow(item); }
-    virtual int updateItemThrow(SyncItem& item) { return m_source->updateItemThrow(item); }
-    virtual int deleteItemThrow(SyncItem& item) { return m_source->deleteItemThrow(item); }
+    virtual SyncMLStatus addItemThrow(SyncItem& item) { return m_source->addItemThrow(item); }
+    virtual SyncMLStatus updateItemThrow(SyncItem& item) { return m_source->updateItemThrow(item); }
+    virtual SyncMLStatus deleteItemThrow(SyncItem& item) { return m_source->deleteItemThrow(item); }
     virtual void logItem(const string &uid, const string &info, bool debug = false) { m_source->logItem(uid, info, debug); }
     virtual void logItem(const SyncItem &item, const string &info, bool debug = false) { m_source->logItem(item, info, debug); }
 
@@ -143,7 +141,7 @@ private:
     void testOssoDelete() {
         // get into clean state with one template item added
         deleteAll(createSourceA);
-        insert(createSourceA, config.templateItem);
+        insert(createSourceA, config.templateItem, config.itemType);
 
         // add X-OSSO-CONTACT-STATE:DELETED
         string item = config.templateItem;
@@ -157,7 +155,7 @@ private:
         // opening and preparing the source should delete the item
         std::auto_ptr<SyncSource> source;
         SOURCE_ASSERT_NO_FAILURE(source.get(), source.reset(createSourceA()));
-        SOURCE_ASSERT(source.get(), source->beginSync() == 0 );
+        SOURCE_ASSERT(source.get(), source->beginSync(SYNC_NONE) == 0 );
         CPPUNIT_ASSERT_EQUAL(0, countItemsOfType(source.get(), TOTAL_ITEMS));
         CPPUNIT_ASSERT_EQUAL(0, countItemsOfType(source.get(), NEW_ITEMS));
         CPPUNIT_ASSERT_EQUAL(0, countItemsOfType(source.get(), UPDATED_ITEMS));
@@ -254,7 +252,7 @@ public:
         }
 
         // get configuration and set obligatory fields
-        LOG.setLevel(LOG_LEVEL_DEBUG);
+        LoggerBase::instance().setLevel(Logger::DEBUG);
         std::string root = std::string("evolution/") + server + "_" + id;
         EvolutionSyncConfig config(string(server) + "_" + id);
         if (!config.exists()) {
@@ -303,7 +301,6 @@ public:
         ClientTest::getTestData(test->m_testCaseName.c_str(), config);
         config.createSourceA = createSource;
         config.createSourceB = createSource;
-        config.compare = compare;
         config.sourceName = test->m_configName.c_str();
 
         test->updateConfig(config);
@@ -317,14 +314,10 @@ public:
         return false;
     }
 
-    virtual int sync(
-        const int *sources,
-        SyncMode syncMode,
-        const CheckSyncReport &checkReport,
-        long maxMsgSize = 0,
-        long maxObjSize = 0,
-        bool loSupport = false,
-        const char *encoding = NULL) {
+    virtual SyncMLStatus doSync(const int *sources,
+                                const std::string &logbase,
+                                const SyncOptions &options)
+    {
         set<string> activeSources;
         for(int i = 0; sources[i] >= 0; i++) {
             activeSources.insert(m_source2Config[sources[i]]);
@@ -337,53 +330,58 @@ public:
         class ClientTest : public EvolutionSyncClient {
         public:
             ClientTest(const string &server,
-                           const set<string> &activeSources,
-                           SyncMode syncMode,
-                           long maxMsgSize,
-                           long maxObjSize,
-                           bool loSupport,
-                           const char *encoding) :
+                       const set<string> &activeSources,
+                       const string &logbase,
+                       const SyncOptions &options) :
                 EvolutionSyncClient(server, false, activeSources),
-                m_syncMode(syncMode),
-                m_maxMsgSize(maxMsgSize),
-                m_maxObjSize(maxObjSize),
-                m_loSupport(loSupport),
-                m_encoding(encoding)
+                m_logbase(logbase),
+                m_options(options),
+                m_started(false),
+                m_aborted(false)
                 {}
 
         protected:
-            virtual void prepare(SyncSource **sources) {
-                for (SyncSource **source = sources;
-                     *source;
-                     source++) {
-                    ((EvolutionSyncSource *)*source)->setEncoding(m_encoding ? m_encoding : "", true);
-                    (*source)->setPreferredSyncMode(m_syncMode);
-                }
-                setLoSupport(m_loSupport, true);
-                setMaxObjSize(m_maxObjSize, true);
-                setMaxMsgSize(m_maxMsgSize, true);
+            virtual void prepare() {
+                setLogDir(m_logbase, true);
+                setMaxLogDirs(0, true);
+                setLoSupport(m_options.m_loSupport, true);
+                setMaxObjSize(m_options.m_maxObjSize, true);
+                setMaxMsgSize(m_options.m_maxMsgSize, true);
+                setWBXML(m_options.m_isWBXML, true);
+                EvolutionSyncClient::prepare();
+            }
+            virtual void prepare(const std::vector<EvolutionSyncSource *> &sources) {
+                SyncModes modes(m_options.m_syncMode);
+                setSyncModes(sources, modes);
                 EvolutionSyncClient::prepare(sources);
             }
 
+            virtual void displaySyncProgress(sysync::TProgressEventEnum type,
+                                             int32_t extra1, int32_t extra2, int32_t extra3)
+            {
+                if (!m_started) {
+                    m_started = true;
+                    if (m_options.m_startCallback(*this, m_options)) {
+                        m_aborted = true;
+                    }
+                }
+            }
+
+            virtual bool checkForAbort() { return m_aborted; }
+
         private:
-            const SyncMode m_syncMode;
-            const long m_maxMsgSize;
-            const long m_maxObjSize;
-            const bool m_loSupport;
-            const char *m_encoding;
-        } client(server, activeSources, syncMode, maxMsgSize, maxObjSize, loSupport, encoding);
+            const string m_logbase;
+            SyncOptions m_options;
+            bool m_started;
+            bool m_aborted;
+        } client(server, activeSources, logbase, options);
 
-        int res = client.sync();
-        CPPUNIT_ASSERT(client.getSyncReport());
-        checkReport.check(res, *client.getSyncReport());
-        return res;
+        SyncReport report;
+        SyncMLStatus status = client.sync(&report);
+        options.m_checkReport.check(status, report);
+        return status;
     }
-
-    static bool compare(ClientTest &client, const char *fileA, const char *fileB) {
-        std::string cmdstr = std::string("./synccompare ") + fileA + " " + fileB;
-        return system(cmdstr.c_str()) == 0;
-    }
-    
+  
 private:
     string m_clientID;
     std::auto_ptr<TestEvolution> m_clientB;
@@ -468,10 +466,10 @@ public:
         sigaction(SIGSEGV, &act, NULL);
         sigaction(SIGILL, &act, NULL);
 
-#if defined(HAVE_GLIB) && defined(HAVE_EDS)
-        // this is required on Maemo and does not harm either on a normal
-        // desktop system with Evolution
+#if defined(HAVE_GLIB)
+        // this is required when using glib directly or indirectly
         g_type_init();
+        g_thread_init(NULL);
 #endif
         EDSAbiWrapperInit();
         testClient.registerTests();

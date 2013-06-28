@@ -1,25 +1,27 @@
 /*
- * Copyright (C) 2005-2008 Patrick Ohly
+ * Copyright (C) 2005-2009 Patrick Ohly <patrick.ohly@gmx.de>
+ * Copyright (C) 2009 Intel Corporation
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) version 3.
  *
- * This program is distributed in the hope that it will be useful,
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301  USA
  */
 
 #include "EvolutionSyncSource.h"
 #include "EvolutionSyncClient.h"
 #include "SyncEvolutionUtil.h"
-#include <common/base/Log.h>
+#include "Logging.h"
 
 #include <boost/algorithm/string.hpp>
 #include <boost/foreach.hpp>
@@ -88,14 +90,8 @@ void EvolutionSyncSource::resetItems()
 
 void EvolutionSyncSource::handleException()
 {
-    try {
-        throw;
-    } catch (std::exception &ex) {
-        setErrorF(getLastErrorCode() == ERR_NONE ? ERR_UNSPECIFIED : getLastErrorCode(),
-                  "%s", ex.what());
-        LOG.error("%s", getLastErrorMsg());
-        setFailed(true);
-    }
+    SyncEvolutionException::handle();
+    setFailed(true);
 }
 
 SourceRegistry &EvolutionSyncSource::getSourceRegistry()
@@ -162,6 +158,7 @@ public:
             "syncebook.so.0",
             "syncecal.so.0",
             "syncsqlite.so.0",
+            "syncfile.so.0",
             "addressbook.so.0",
             NULL
         };
@@ -232,32 +229,151 @@ EvolutionSyncSource *EvolutionSyncSource::createTestingSource(const string &name
     return createSource(params, error);
 }
 
-int EvolutionSyncSource::beginSync() throw()
+void EvolutionSyncSource::getSynthesisInfo(string &profile,
+                                           string &datatypes,
+                                           string &native)
 {
-    string buffer;
-    buffer += getName();
-    buffer += ": sync mode is ";
-    SyncMode mode = getSyncMode();
-    buffer += mode == SYNC_SLOW ? "'slow'" :
-        mode == SYNC_TWO_WAY ? "'two-way'" :
-        mode == SYNC_REFRESH_FROM_SERVER ? "'refresh from server'" :
-        mode == SYNC_REFRESH_FROM_CLIENT ? "'refresh from client'" :
-        mode == SYNC_ONE_WAY_FROM_SERVER ? "'one-way from server'" :
-        mode == SYNC_ONE_WAY_FROM_CLIENT ? "'one-way from client'" :
-        mode == SYNC_NONE ? "'none' (for debugging)" :
-        "???";
-    LOG.info( buffer.c_str() );
+    string type = getMimeType();
 
+    if (type == "text/x-vcard") {
+        native = "vCard21";
+        profile = "\"vCard\", 1";
+        datatypes =
+            "        <use datatype='vCard21' mode='rw' preferred='yes'/>\n"
+            "        <use datatype='vCard30' mode='rw'/>\n";
+    } else if (type == "text/vcard") {
+        native = "vCard30";
+        profile = "\"vCard\", 2";
+        datatypes =
+            "        <use datatype='vCard21' mode='rw'/>\n"
+            "        <use datatype='vCard30' mode='rw' preferred='yes'/>\n";
+    } else if (type == "text/x-calendar") {
+        native = "vCalendar10";
+        profile = "\"vCalendar\", 1";
+        datatypes =
+            "        <use datatype='vCalendar10' mode='rw' preferred='yes'/>\n"
+            "        <use datatype='iCalendar20' mode='rw'/>\n";
+    } else if (type == "text/calendar") {
+        native = "iCalendar20";
+        profile = "\"vCalendar\", 2";
+        datatypes =
+            "        <use datatype='vCalendar10' mode='rw'/>\n"
+            "        <use datatype='iCalendar20' mode='rw' preferred='yes'/>\n";
+    } else if (type == "text/plain") {
+        profile = "\"Note\", 2";
+    } else {
+        throwError(string("default MIME type not supported: ") + type);
+    }
+
+    pair <string, string> sourceType = getSourceType();
+    if (!sourceType.second.empty()) {
+        type = sourceType.second;
+    }
+
+    if (type == "text/x-vcard:2.1" || type == "text/x-vcard") {
+        datatypes =
+            "        <use datatype='vCard21' mode='rw' preferred='yes'/>\n"
+            "        <use datatype='vCard30' mode='rw'/>\n";
+    } else if (type == "text/vcard:3.0" || type == "text/vcard") {
+        datatypes =
+            "        <use datatype='vCard21' mode='rw'/>\n"
+            "        <use datatype='vCard30' mode='rw' preferred='yes'/>\n";
+    } else if (type == "text/x-vcalendar:2.0" || type == "text/x-vcalendar") {
+        datatypes =
+            "        <use datatype='vcalendar10' mode='rw' preferred='yes'/>\n"
+            "        <use datatype='icalendar20' mode='rw'/>\n";
+    } else if (type == "text/calendar:2.0" || type == "text/calendar") {
+        datatypes =
+            "        <use datatype='vcalendar10' mode='rw'/>\n"
+            "        <use datatype='icalendar20' mode='rw' preferred='yes'/>\n";
+    } else if (type == "text/plain:1.0" || type == "text/plain") {
+        datatypes =
+            "        <use datatype='note10' mode='rw' preferred='yes'/>\n"
+            "        <use datatype='note11' mode='rw'/>\n";
+    } else {
+        throwError(string("configured MIME type not supported: ") + type);
+    }
+}
+
+void EvolutionSyncSource::getDatastoreXML(string &xml)
+{
+    stringstream xmlstream;
+    string profile;
+    string datatypes;
+    string native;
+
+    getSynthesisInfo(profile, datatypes, native);
+
+    xmlstream <<
+        "      <plugin_module>SyncEvolution</plugin_module>\n"
+        "      <plugin_datastoreadmin>no</plugin_datastoreadmin>\n"
+        "\n"
+        "      <!-- General datastore settings for all DB types -->\n"
+        "\n"
+        "      <!-- if this is set to 'yes', SyncML clients can only read\n"
+        "           from the database, but make no modifications -->\n"
+        "      <readonly>no</readonly>\n"
+        "\n"
+        "      <!-- conflict strategy: Newer item wins\n"
+        "           You can set 'server-wins' or 'client-wins' as well\n"
+        "           if you want to give one side precedence\n"
+        "      -->\n"
+        "      <conflictstrategy>newer-wins</conflictstrategy>\n"
+        "\n"
+        "      <!-- on slowsync: duplicate items that are not fully equal\n"
+        "           You can set this to 'newer-wins' as well to avoid\n"
+        "           duplicates as much as possible\n"
+        "      -->\n"
+        "      <slowsyncstrategy>duplicate</slowsyncstrategy>\n"
+        "\n"
+        "      <!-- text db plugin is designed for UTF-8, make sure data is passed as UTF-8 (and not the ISO-8859-1 default) -->\n"
+        "      <datacharset>UTF-8</datacharset>\n"
+        "      <!-- use C-language (unix style) linefeeds (\n, 0x0A) -->\n"
+        "      <datalineends>unix</datalineends>\n"
+        "\n"
+        "      <!-- set this to 'UTC' if time values should be stored in UTC into the database\n"
+        "           rather than local time. 'SYSTEM' denotes local server time zone. -->\n"
+        "      <datatimezone>SYSTEM</datatimezone>\n"
+        "\n"
+        "      <!-- plugin DB may have its own identifiers to determine the point in time of changes, so\n"
+        "           we must make sure this identifier is stored (and not only the sync time) -->\n"
+        "      <storesyncidentifiers>yes</storesyncidentifiers>\n"
+        "\n"
+        "      <!-- Mapping of the fields to the fieldlist 'contacts' -->\n"
+        "      <fieldmap fieldlist='contacts'>\n"
+        "        <initscript><![CDATA[\n"
+        "           string itemdata;\n"
+        "        ]]></initscript>\n"
+        "        <beforewritescript><![CDATA[\n"
+        "           itemdata = MAKETEXTWITHPROFILE(" << profile << ");\n"
+        "        ]]></beforewritescript>\n"
+        "        <afterreadscript><![CDATA[\n"
+        "           PARSETEXTWITHPROFILE(itemdata, " << profile << ");\n"
+        "        ]]></afterreadscript>\n"
+        "        <map name='data' references='itemdata' type='string'/>\n"
+        "      </fieldmap>\n"
+        "\n"
+        "      <!-- datatypes supported by this datastore -->\n"
+        "      <typesupport>\n" <<
+        datatypes <<
+        "      </typesupport>\n";
+
+    xml = xmlstream.str();
+}
+
+SyncMLStatus EvolutionSyncSource::beginSync(SyncMode mode) throw()
+{
     // start background thread if not running yet:
     // necessary to catch problems with Evolution backend
     EvolutionSyncClient::startLoopThread();
 
     try {
+        // @TODO: force slow sync if something goes wrong
+        //
         // reset anchors now, once we proceed there is no going back
         // (because the change marker is about to be moved)
         // and the sync must either complete or result in a slow sync
         // the next time
-        getConfig().setLast(0);
         
         const char *error = getenv("SYNCEVOLUTION_BEGIN_SYNC_ERROR");
         if (error && strstr(error, getName())) {
@@ -305,14 +421,45 @@ int EvolutionSyncSource::beginSync() throw()
         }
 
         beginSyncThrow(needAll, needPartial, deleteLocal);
+
+        // This code here puts iterators in a state
+        // where iterating with nextItem() is possible.
+        rewindItems();
     } catch( ... ) {
         handleException();
-        return 1;
+        return STATUS_FATAL;
     }
-    return 0;
+    return STATUS_OK;
 }
 
-int EvolutionSyncSource::endSync() throw()
+void EvolutionSyncSource::rewindItems() throw()
+{
+    m_allItems.rewind();
+}
+
+SyncItem::State EvolutionSyncSource::nextItem(string *data, string &luid) throw()
+{
+    /** @TODO: avoid reading data if not necessary */
+    SyncItem *item = m_allItems.iterate();
+    SyncItem::State state = SyncItem::NO_MORE_ITEMS;
+
+    if (item) {
+        if (m_newItems.find(item->getKey()) != m_newItems.end()) {
+            state = SyncItem::NEW;
+        } else if (m_updatedItems.find(item->getKey()) != m_updatedItems.end()) {
+            state = SyncItem::UPDATED;
+        } else {
+            state = SyncItem::UNCHANGED;
+        }
+        if (data) {
+            data->assign((const char *)item->getData(), item->getDataSize());
+        }
+        luid = item->getKey();
+    }
+    return state;
+}
+
+SyncMLStatus EvolutionSyncSource::endSync() throw()
 {
     try {
         endSyncThrow();
@@ -320,41 +467,31 @@ int EvolutionSyncSource::endSync() throw()
         handleException();
     }
 
-    // Do _not_ tell the caller (SyncManager) if an error occurred
+    // @TODO: Do _not_ tell the caller (SyncManager) if an error occurred
     // because that causes Sync4jClient to abort processing for all
     // sync sources. Instead deal with failed sync sources in
     // EvolutionSyncClient::sync().
-    return 0;
+    return STATUS_OK;
 }
 
-void EvolutionSyncSource::setItemStatus(const char *key, int status) throw()
-{
-    try {
-        // TODO: logging
-        setItemStatusThrow(key, status);
-    } catch (...) {
-        handleException();
-    }
-}
-
-int EvolutionSyncSource::addItem(SyncItem& item) throw()
+SyncMLStatus EvolutionSyncSource::addItem(SyncItem& item) throw()
 {
     return processItem("add", &EvolutionSyncSource::addItemThrow, item, true);
 }
 
-int EvolutionSyncSource::updateItem(SyncItem& item) throw()
+SyncMLStatus EvolutionSyncSource::updateItem(SyncItem& item) throw()
 {
     return processItem("update", &EvolutionSyncSource::updateItemThrow, item, true);
 }
 
-int EvolutionSyncSource::deleteItem(SyncItem& item) throw()
+SyncMLStatus EvolutionSyncSource::deleteItem(SyncItem& item) throw()
 {
     return processItem("delete", &EvolutionSyncSource::deleteItemThrow, item, false);
 }
 
-int EvolutionSyncSource::removeAllItems() throw()
+SyncMLStatus EvolutionSyncSource::removeAllItems() throw()
 {
-    int status = 0;
+    SyncMLStatus status = STATUS_OK;
     
     try {
         BOOST_FOREACH(const string &key, m_allItems) {
@@ -366,17 +503,17 @@ int EvolutionSyncSource::removeAllItems() throw()
         }
     } catch (...) {
         handleException();
-        status = 1;
+        status = STATUS_FATAL;
     }
     return status;
 }
 
-int EvolutionSyncSource::processItem(const char *action,
-                                     int (EvolutionSyncSource::*func)(SyncItem& item),
-                                     SyncItem& item,
-                                     bool needData) throw()
+SyncMLStatus EvolutionSyncSource::processItem(const char *action,
+                                              SyncMLStatus (EvolutionSyncSource::*func)(SyncItem& item),
+                                              SyncItem& item,
+                                              bool needData) throw()
 {
-    int status = STC_COMMAND_FAILED;
+    SyncMLStatus status = STATUS_FATAL;
     
     try {
         logItem(item, action);
@@ -385,7 +522,7 @@ int EvolutionSyncSource::processItem(const char *action,
             // Shouldn't happen, but it did with one server and thus this
             // security check was added to prevent segfaults.
             logItem(item, "ignored due to missing data");
-            status = STC_OK;
+            status = STATUS_OK;
         } else {
             status = (this->*func)(item);
         }
@@ -395,21 +532,6 @@ int EvolutionSyncSource::processItem(const char *action,
     }
     databaseModified();
     return status;
-}
-
-void EvolutionSyncSource::setItemStatusThrow(const char *key, int status)
-{
-    switch (status) {
-     case STC_ALREADY_EXISTS:
-        // found pair during slow sync, that's okay
-        break;
-     default:
-        if (status < 200 || status > 300) {
-            LOG.error("%s: unexpected SyncML status response %d for item %.80s\n",
-                      getName(), status, key);
-            setFailed(true);
-        }
-    }
 }
 
 void EvolutionSyncSource::sleepSinceModification(int seconds)
@@ -429,7 +551,7 @@ void EvolutionSyncSource::databaseModified()
 void EvolutionSyncSource::logItemUtil(const string data, const string &mimeType, const string &mimeVersion,
                                       const string &uid, const string &info, bool debug)
 {
-    if (LOG.getLevel() >= (debug ? LOG_LEVEL_DEBUG : LOG_LEVEL_INFO)) {
+    if (getLevel() >= (debug ? Logger::DEBUG : Logger::INFO)) {
         string name;
 
         if (mimeType == "text/plain") {
@@ -484,23 +606,51 @@ void EvolutionSyncSource::logItemUtil(const string data, const string &mimeType,
         }
 
         if (name.size()) {
-            (LOG.*(debug ? &Log::debug : &Log::info))("%s: %s %s",
-                                                      getName(),
-                                                      name.c_str(),
-                                                      info.c_str());
+            SE_LOG(debug ? Logger::DEBUG : Logger::INFO, this, NULL,
+                   "%s %s",
+                   name.c_str(),
+                   info.c_str());
         } else {
-            (LOG.*(debug ? &Log::debug : &Log::info))("%s: LUID %s %s",
-                                                      getName(),
-                                                      uid.c_str(),
-                                                      info.c_str());
+            SE_LOG(debug ? Logger::DEBUG : Logger::INFO, this, NULL,
+                   "LUID %s %s",
+                   uid.c_str(),
+                   info.c_str());
         }
     }
+}
+
+void EvolutionSyncSource::setLevel(Level level)
+{
+    LoggerBase::instance().setLevel(level);
+}
+
+Logger::Level EvolutionSyncSource::getLevel()
+{
+    return LoggerBase::instance().getLevel();
+}
+
+void EvolutionSyncSource::messagev(Level level,
+                                   const char *prefix,
+                                   const char *file,
+                                   int line,
+                                   const char *function,
+                                   const char *format,
+                                   va_list args)
+{
+    string newprefix = getName();
+    if (prefix) {
+        newprefix += ": ";
+        newprefix += prefix;
+    }
+    LoggerBase::instance().messagev(level, newprefix.c_str(),
+                                    file, line, function,
+                                    format, args);
 }
 
 SyncItem *EvolutionSyncSource::Items::start()
 {
     m_it = begin();
-    LOG.debug("start scanning %s items", m_type.c_str());
+    SE_LOG_DEBUG(&m_source, NULL, "start scanning %s items", m_type.c_str());
     return iterate();
 }
 
@@ -508,21 +658,18 @@ SyncItem *EvolutionSyncSource::Items::iterate()
 {
     if (m_it != end()) {
         const string &uid( *m_it );
-        LOG.debug("next %s item: %s", m_type.c_str(), uid.c_str());
+        SE_LOG_DEBUG(&m_source, NULL, "next %s item: %s", m_type.c_str(), uid.c_str());
         ++m_it;
         if (&m_source.m_deletedItems == this) {
             // just tell caller the uid of the deleted item
             // and the type that it probably had
-            SyncItem *item = new SyncItem( uid.c_str() );
-            item->setDataType(m_source.getMimeType());
-            return item;
+            cxxptr<SyncItem> item(new SyncItem());
+            item->setKey(uid);
+            return item.release();
         } else {
             // retrieve item with all its data
             try {
                 cxxptr<SyncItem> item(m_source.createItem(uid));
-                if (item) {
-                    item->setState(m_state);
-                }
                 return item.release();
             } catch(...) {
                 m_source.handleException();

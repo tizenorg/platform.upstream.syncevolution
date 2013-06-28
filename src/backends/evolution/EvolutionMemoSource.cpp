@@ -1,19 +1,21 @@
 /*
- * Copyright (C) 2005-2008 Patrick Ohly
+ * Copyright (C) 2005-2009 Patrick Ohly <patrick.ohly@gmx.de>
+ * Copyright (C) 2009 Intel Corporation
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) version 3.
  *
- * This program is distributed in the hope that it will be useful,
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301  USA
  */
 
 #include <memory>
@@ -26,7 +28,7 @@ using namespace std;
 #include "EvolutionMemoSource.h"
 #include "EvolutionSmartPtr.h"
 
-#include <common/base/Log.h>
+#include "Logging.h"
 
 SyncItem *EvolutionMemoSource::createItem(const string &luid)
 {
@@ -34,9 +36,8 @@ SyncItem *EvolutionMemoSource::createItem(const string &luid)
 
     ItemID id(luid);
     eptr<icalcomponent> comp(retrieveItem(id));
-    auto_ptr<SyncItem> item(new SyncItem(luid.c_str()));
-
-    item->setData("", 0);
+    cxxptr<SyncItem> item(new SyncItem(), "SyncItem");
+    item->setKey(luid);
     icalcomponent *cal = icalcomponent_get_first_component(comp, ICAL_VCALENDAR_COMPONENT);
     if (!cal) {
         cal = comp;
@@ -104,23 +105,25 @@ SyncItem *EvolutionMemoSource::createItem(const string &luid)
             item->setData(dostext, strlen(dostext));
         }
     }
-    item->setDataType("text/plain");
-    item->setModificationTime(0);
+
+    if (!item->getDataSize()) {
+        // no description, use summary
+        item->setData(summary.c_str(), summary.size());
+    }
 
     return item.release();
 }
 
 EvolutionCalendarSource::InsertItemResult EvolutionMemoSource::insertItem(const string &luid, const SyncItem &item)
 {
-    const char *type = item.getDataType();
+    string type = item.getDataType();
 
     // fall back to inserting iCalendar 2.0 if
     // real SyncML server has sent vCalendar 1.0 or iCalendar 2.0
     // or the test system inserts such an item
-    if (!type[0] ||
-        !strcasecmp(type, "raw") ||
-        !strcasecmp(type, "text/x-vcalendar") ||
-        !strcasecmp(type, "text/calendar")) {
+    if (!strcasecmp(type.c_str(), "raw") ||
+        !strcasecmp(type.c_str(), "text/x-vcalendar") ||
+        !strcasecmp(type.c_str(), "text/calendar")) {
         return EvolutionCalendarSource::insertItem(luid, item);
     }
     

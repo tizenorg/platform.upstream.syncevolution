@@ -1,4 +1,4 @@
-AM_CPPFLAGS = @BACKEND_CPPFLAGS@ @GLIB_CFLAGS@ @FUNAMBOL_CFLAGS@
+AM_CPPFLAGS = @BACKEND_CPPFLAGS@ @GLIB_CFLAGS@
 
 # applies to sources in SyncEvolution repository, but not
 # the Funambol C++ client library
@@ -7,21 +7,16 @@ SYNCEVOLUTION_CXXFLAGS = @SYNCEVOLUTION_CXXFLAGS@
 SYNCEVOLUTION_LDADD = @SYNCEVOLUTION_LDADD@
 MAINTAINERCLEANFILES = Makefile.in
 
+if ENABLE_UNIT_TESTS
+SYNCEVOLUTION_CXXFLAGS += $(CPPUNIT_CXXFLAGS)
+SYNCEVOLUTION_LDADD += $(CPPUNIT_LDFLAGS)
+endif
+
 if ENABLE_MODULES
 pkglib_LTLIBRARIES = libsyncevolution.la
 else
 noinst_LTLIBRARIES = libsyncevolution.la
 endif
-
-VOCL_SOURCES = \
-	vocl/VObject.h \
-	vocl/VProperty.h \
-	vocl/VConverter.h \
-	vocl/posixadapter.h \
-	\
-	vocl/VObject.cpp \
-	vocl/VProperty.cpp \
-	vocl/VConverter.cpp
 
 CORE_SOURCES  = \
 	ConfigTree.h \
@@ -32,6 +27,24 @@ CORE_SOURCES  = \
 	eds_abi_wrapper.h \
 	eds_abi_wrapper.cpp \
 	\
+	SyncML.h \
+	SyncML.cpp \
+	\
+	SynthesisEngine.h \
+	SynthesisEngine.cpp \
+	\
+	Logging.h \
+	Logging.cpp \
+	LogStdout.h \
+	LogStdout.cpp \
+	\
+	TransportAgent.h \
+	CurlTransportAgent.h \
+	CurlTransportAgent.cpp \
+	\
+	SoupTransportAgent.h \
+	SoupTransportAgent.cpp \
+	\
 	SyncEvolutionUtil.cpp \
 	SyncEvolutionUtil.h \
         \
@@ -41,6 +54,9 @@ CORE_SOURCES  = \
         EvolutionSyncSource.h \
         EvolutionSyncSource.cpp \
 	\
+	SynthesisDBPlugin.cpp \
+	\
+	SyncEvolutionXML.c \
         EvolutionSyncClient.h \
 	EvolutionSyncClient.cpp \
 	\
@@ -63,15 +79,19 @@ CORE_SOURCES  = \
 	FileConfigTree.cpp \
 	\
 	TrackingSyncSource.h \
-	TrackingSyncSource.cpp \
-	\
-	$(VOCL_SOURCES)
+	TrackingSyncSource.cpp
+
 
 libsyncevolution_la_SOURCES = $(CORE_SOURCES)
-libsyncevolution_la_LIBADD = @EPACKAGE_LIBS@ @GLIB_LIBS@ @FUNAMBOL_LIBS@ @TRANSPORT_LDFLAGS@ @LIBS@ 
-libsyncevolution_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS)
+libsyncevolution_la_LIBADD = @EPACKAGE_LIBS@ @GLIB_LIBS@ $(TRANSPORT_LIBS) @LIBS@ $(SYNTHESIS_LIBS) $(SYNCEVOLUTION_LDADD)
+libsyncevolution_la_CXXFLAGS = $(TRANSPORT_CFLAGS) $(SYNCEVOLUTION_CXXFLAGS) $(SYNTHESIS_CFLAGS)
+
+SyncEvolutionXML.c: $(srcdir)/../syncevolution.xml
+	echo "const char *SyncEvolutionXML =" > $@
+	sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\(.*\)/"\1\\n"/' $< >>$@
+	echo ";" >>$@
 
 # include boost in distribution
-dist-hook:
-	cp -r $(srcdir)/boost $(distdir)
-	find $(distdir) -name .libs -o -name "*~" -o -name ".*" -o -name "*.o" -o -name "*.lo" -o -name CVS -o -name autom4te.cache | xargs rm -rf
+#dist-hook:
+#	cp -r $(srcdir)/boost $(distdir)
+#	find $(distdir) -name .libs -o -name "*~" -o -name ".*" -o -name "*.o" -o -name "*.lo" -o -name CVS -o -name autom4te.cache | xargs rm -rf

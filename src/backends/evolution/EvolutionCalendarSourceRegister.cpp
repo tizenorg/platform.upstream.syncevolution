@@ -1,24 +1,26 @@
 /*
- * Copyright (C) 2008 Patrick Ohly
+ * Copyright (C) 2008-2009 Patrick Ohly <patrick.ohly@gmx.de>
+ * Copyright (C) 2009 Intel Corporation
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) version 3.
  *
- * This program is distributed in the hope that it will be useful,
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301  USA
  */
 
 #include "EvolutionCalendarSource.h"
 #include "EvolutionMemoSource.h"
-#include "SyncEvolutionUtil.h"
+#include "test.h"
 
 #include <boost/algorithm/string.hpp>
 
@@ -28,11 +30,8 @@ static EvolutionSyncSource *createSource(const EvolutionSyncSourceParams &params
     bool isMe;
     bool enabled;
 
-#ifdef ENABLE_ECAL
-    enabled = e_cal_new && e_source_group_peek_sources;
-#else
-    enabled = false;
-#endif
+    EDSAbiWrapperInit();
+    enabled = EDSAbiHaveEcal && EDSAbiHaveEdataserver;
 
     isMe = sourceType.first == "Evolution Task List";
     if (isMe || sourceType.first == "todo") {
@@ -121,7 +120,7 @@ protected:
 
         item.setData(data.c_str(), data.size());
         source->addItemThrow(item);
-        CPPUNIT_ASSERT(item.getKey());
+        CPPUNIT_ASSERT(!item.getKey().empty());
         return item.getKey();
     }
 
@@ -335,6 +334,7 @@ public:
     {
         config.uri = "note"; // ScheduleWorld
         config.type = "Evolution Memos"; // use an alias here to test that
+        config.itemType = "text/calendar";
         config.insertItem =
             "BEGIN:VCALENDAR\n"
             "PRODID:-//Ximian//NONSGML Evolution Calendar//EN\n"
@@ -342,7 +342,7 @@ public:
             "METHOD:PUBLISH\n"
             "BEGIN:VJOURNAL\n"
             "SUMMARY:Summary\n"
-            "DESCRIPTION:Summary\\nBody text\n"
+            "DESCRIPTION:Summary\\nBody text<<REVISION>>\n"
             "END:VJOURNAL\n"
             "END:VCALENDAR\n";
         config.updateItem =
@@ -371,8 +371,10 @@ public:
         config.uniqueProperties = "SUMMARY:DESCRIPTION";
         config.sizeProperty = "DESCRIPTION";
         config.import = ClientTest::import;
+        config.compare = ClientTest::compare;
         config.dump = dump;
-        config.testcases = "testcases/imemo20.ics";
+        config.testcases =
+            config.testcases_server = "testcases/imemo20.ics";
         config.type = "evolution-memos";
     }
 } memoTest;

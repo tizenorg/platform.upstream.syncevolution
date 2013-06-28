@@ -15,6 +15,7 @@
 @SET_MAKE@
 
 
+
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
 pkglibdir = $(libdir)/@PACKAGE@
@@ -33,25 +34,45 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-bin_PROGRAMS = syncevolution$(EXEEXT)
+EXTRA_PROGRAMS = $(am__EXEEXT_1)
+TESTS = $(am__EXEEXT_2)
+bin_PROGRAMS = syncevolution$(EXEEXT) $(am__EXEEXT_2)
 @ENABLE_MODULES_FALSE@am__append_1 = $(SYNCSOURCES)
 @ENABLE_MODULES_FALSE@am__append_2 = $(SYNCSOURCES)
-EXTRA_PROGRAMS = client-test$(EXEEXT)
 @ENABLE_MODULES_TRUE@am__append_3 = $(BACKEND_REGISTRIES)
 @ENABLE_MODULES_FALSE@am__append_4 = $(BACKEND_REGISTRIES)
+
+# distribute test system?
+# yes: install client-test in bindir, test files in datadir
+@ENABLE_TESTING_TRUE@am__append_5 = client-test
+@ENABLE_TESTING_TRUE@am__append_6 = client-test
+# The "all" dependency causes a rebuild even if the actual input files
+# haven't changed. If client-test is part of the regular targets built
+# by "all", then it must not depend on all!
+@ENABLE_TESTING_FALSE@am__append_7 = client-test
+@ENABLE_TESTING_FALSE@am__append_8 = all
 subdir = src
-DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
+DIST_COMMON = $(am__nobase_dist_doc_DATA_DIST) $(srcdir)/Makefile.am \
+	$(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/configure.in
+am__aclocal_m4_deps = $(top_srcdir)/m4/ax_boost_base.m4 \
+	$(top_srcdir)/m4/libtool.m4 $(top_srcdir)/m4/ltoptions.m4 \
+	$(top_srcdir)/m4/ltsugar.m4 $(top_srcdir)/m4/ltversion.m4 \
+	$(top_srcdir)/m4/lt~obsolete.m4 $(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
-mkinstalldirs = $(install_sh) -d
+mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
-am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(bindir)"
+@ENABLE_TESTING_FALSE@am__EXEEXT_1 = client-test$(EXEEXT)
+@ENABLE_TESTING_TRUE@am__EXEEXT_2 = client-test$(EXEEXT)
+am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(bindir)" \
+	"$(DESTDIR)$(docdir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
 am__client_test_SOURCES_DIST = client-test-app.cpp \
+	../test/ClientTest.cpp ../test/ClientTest.h \
+	../test/client-test-main.cpp \
 	backends/addressbook/AddressBookSourceRegister.cpp \
 	backends/evolution/EvolutionCalendarSourceRegister.cpp \
 	backends/evolution/EvolutionContactSourceRegister.cpp \
@@ -65,16 +86,17 @@ am__objects_1 = client_test-AddressBookSourceRegister.$(OBJEXT) \
 @ENABLE_MODULES_FALSE@am__objects_2 = $(am__objects_1)
 am__objects_3 = $(am__objects_2)
 am_client_test_OBJECTS = client_test-client-test-app.$(OBJEXT) \
-	$(am__objects_3)
-am__objects_4 = client_test-ClientTest.$(OBJEXT) \
-	client_test-client-test-main.$(OBJEXT)
-nodist_client_test_OBJECTS = $(am__objects_4)
+	client_test-ClientTest.$(OBJEXT) \
+	client_test-client-test-main.$(OBJEXT) $(am__objects_3)
+am__objects_4 =
+@ENABLE_TESTING_FALSE@nodist_client_test_OBJECTS = $(am__objects_4)
 client_test_OBJECTS = $(am_client_test_OBJECTS) \
 	$(nodist_client_test_OBJECTS)
 am__DEPENDENCIES_1 =
 @ENABLE_MODULES_FALSE@am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
 am__DEPENDENCIES_3 = $(am__DEPENDENCIES_2)
-am__DEPENDENCIES_4 = $(am__DEPENDENCIES_3) core/libsyncevolution.la
+am__DEPENDENCIES_4 = $(am__DEPENDENCIES_3) core/libsyncevolution.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 client_test_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(client_test_CXXFLAGS) \
 	$(CXXFLAGS) $(client_test_LDFLAGS) $(LDFLAGS) -o $@
@@ -96,7 +118,7 @@ am_syncevolution_OBJECTS = syncevolution-syncevolution.$(OBJEXT) \
 syncevolution_OBJECTS = $(am_syncevolution_OBJECTS)
 syncevolution_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(syncevolution_CXXFLAGS) \
-	$(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
+	$(CXXFLAGS) $(syncevolution_LDFLAGS) $(LDFLAGS) -o $@
 binSCRIPT_INSTALL = $(INSTALL_SCRIPT)
 SCRIPTS = $(bin_SCRIPTS)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
@@ -131,11 +153,21 @@ RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	install-pdf-recursive install-ps-recursive install-recursive \
 	installcheck-recursive installdirs-recursive pdf-recursive \
 	ps-recursive uninstall-recursive
+am__nobase_dist_doc_DATA_DIST = testcases/vcard21.vcf \
+	testcases/vcard30.vcf testcases/ical20.ics \
+	testcases/imemo20.ics testcases/itodo20.ics
+am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
+am__vpath_adj = case $$p in \
+    $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
+    *) f=$$p;; \
+  esac;
+am__strip_dir = `echo $$p | sed -e 's|^.*/||'`;
+nobase_dist_docDATA_INSTALL = $(install_sh_DATA)
+DATA = $(nobase_dist_doc_DATA)
 RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
   distclean-recursive maintainer-clean-recursive
 ETAGS = etags
 CTAGS = ctags
-DIST_SUBDIRS = $(SUBDIRS)
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 ADDRESSBOOK_CFLAGS = @ADDRESSBOOK_CFLAGS@
@@ -148,22 +180,17 @@ AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BACKEND_CPPFLAGS = @BACKEND_CPPFLAGS@
 BACKEND_DEFINES = @BACKEND_DEFINES@
+BOOST_CPPFLAGS = @BOOST_CPPFLAGS@
+BOOST_LDFLAGS = @BOOST_LDFLAGS@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
-
-# set to directory name if the client API sources need to be removed
 CLEAN_CLIENT_SRC = @CLEAN_CLIENT_SRC@
-
-# set to absolute path of client API sources which need to be compiled
-CLIENT_API_SRC = @CLIENT_API_SRC@
 CORE_LDADD_DEP = @CORE_LDADD_DEP@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CPPUNIT_CXXFLAGS = @CPPUNIT_CXXFLAGS@
 CPPUNIT_LDFLAGS = @CPPUNIT_LDFLAGS@
-CPPUNIT_TESTS = @CPPUNIT_TESTS@
-CURL_LDFLAGS = @CURL_LDFLAGS@
 CXX = @CXX@
 CXXCPP = @CXXCPP@
 CXXDEPMODE = @CXXDEPMODE@
@@ -172,11 +199,11 @@ CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DSYMUTIL = @DSYMUTIL@
+DUMPBIN = @DUMPBIN@
 EBOOK_CFLAGS = @EBOOK_CFLAGS@
 EBOOK_LIBS = @EBOOK_LIBS@
 ECAL_CFLAGS = @ECAL_CFLAGS@
 ECAL_LIBS = @ECAL_LIBS@
-ECHO = @ECHO@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
@@ -184,23 +211,9 @@ EGREP = @EGREP@
 EPACKAGE_CFLAGS = @EPACKAGE_CFLAGS@
 EPACKAGE_LIBS = @EPACKAGE_LIBS@
 EXEEXT = @EXEEXT@
-F77 = @F77@
-FFLAGS = @FFLAGS@
+FGREP = @FGREP@
 FILE_CFLAGS = @FILE_CFLAGS@
 FILE_LIBS = @FILE_LIBS@
-FUNAMBOL = @FUNAMBOL@
-
-# FUNAMBOL_SUBDIR specifies the directory where we compile
-# the client library by invoking make there.
-# Installing its source is done explicitly.
-#
-# The path may be empty!
-FUNAMBOLSRC = @FUNAMBOLSRC@
-FUNAMBOL_CFLAGS = @FUNAMBOL_CFLAGS@
-FUNAMBOL_DEP = @FUNAMBOL_DEP@
-FUNAMBOL_LIB = @FUNAMBOL_LIB@
-FUNAMBOL_LIBS = @FUNAMBOL_LIBS@
-FUNAMBOL_SUBDIR = @FUNAMBOL_SUBDIR@
 GLIB_CFLAGS = @GLIB_CFLAGS@
 GLIB_LIBS = @GLIB_LIBS@
 GREP = @GREP@
@@ -209,17 +222,24 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
+LIBSOUP_CFLAGS = @LIBSOUP_CFLAGS@
+LIBSOUP_LIBS = @LIBSOUP_LIBS@
 LIBTOOL = @LIBTOOL@
+LIPO = @LIPO@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
 MODIFY_SYNCCOMPARE = @MODIFY_SYNCCOMPARE@
+NM = @NM@
 NMEDIT = @NMEDIT@
 OBJEXT = @OBJEXT@
+OTOOL = @OTOOL@
+OTOOL64 = @OTOOL64@
 PACKAGE = @PACKAGE@
 PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
 PACKAGE_NAME = @PACKAGE_NAME@
@@ -235,19 +255,19 @@ SHELL = @SHELL@
 SQLITE_CFLAGS = @SQLITE_CFLAGS@
 SQLITE_LIBS = @SQLITE_LIBS@
 STRIP = @STRIP@
-
-# applies to sources in SyncEvolution repository, but not
-# the Funambol C++ client library
 SYNCEVOLUTION_CXXFLAGS = @SYNCEVOLUTION_CXXFLAGS@
-# The Funambol libs should be inherited via libsyncevolution.la, but
-# somehow that didn't work when enabling shared objects (probably
-# because only a static libfunambol.a is built, which relies on
-# tricks like adding -fPIC manually).
-SYNCEVOLUTION_LDADD = @SYNCEVOLUTION_LDADD@ @FUNAMBOL_LIBS@ \
-	$(am__append_1)
+SYNCEVOLUTION_LDADD = @SYNCEVOLUTION_LDADD@ $(am__append_1)
 SYNCSOURCES = @SYNCSOURCES@
+SYNTHESIS = @SYNTHESIS@
+SYNTHESISSRC = @SYNTHESISSRC@
+SYNTHESIS_CFLAGS = @SYNTHESIS_CFLAGS@
+SYNTHESIS_DEP = @SYNTHESIS_DEP@
+SYNTHESIS_LIB = @SYNTHESIS_LIB@
+SYNTHESIS_LIBS = @SYNTHESIS_LIBS@
+SYNTHESIS_SRC = @SYNTHESIS_SRC@
+SYNTHESIS_SUBDIR = @SYNTHESIS_SUBDIR@
 TRANSPORT_CFLAGS = @TRANSPORT_CFLAGS@
-TRANSPORT_LDFLAGS = @TRANSPORT_LDFLAGS@
+TRANSPORT_LIBS = @TRANSPORT_LIBS@
 VERSION = @VERSION@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
@@ -255,7 +275,7 @@ abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
-ac_ct_F77 = @ac_ct_F77@
+ac_ct_DUMPBIN = @ac_ct_DUMPBIN@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -286,6 +306,7 @@ libdir = @libdir@
 libexecdir = @libexecdir@
 localedir = @localedir@
 localstatedir = @localstatedir@
+lt_ECHO = @lt_ECHO@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
@@ -301,13 +322,13 @@ target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 BACKENDS = backends/addressbook backends/evolution backends/file backends/sqlite
-SUBDIRS = core $(BACKENDS)
-AM_CPPFLAGS = $(SUBDIRS:%=-I$(srcdir)/%) @BACKEND_CPPFLAGS@ @FUNAMBOL_CFLAGS@
+SUBDIRS = $(SYNTHESIS_SUBDIR) core $(BACKENDS)
+DIST_SUBDIRS = core $(BACKENDS)
+AM_CPPFLAGS = $(SUBDIRS:%=-I$(srcdir)/%) -I$(srcdir)/../test $(BACKEND_CPPFLAGS) $(GLIB_CFLAGS)
 bin_SCRIPTS = synccompare
 SYNCEVOLUTION_DEP = $(am__append_2)
-EXTRA_DIST = shlibs.local Makefile-gen.am $(am__append_3)
-check_PROGRAMS = @CPPUNIT_TESTS@
-TESTS = @CPPUNIT_TESTS@
+EXTRA_DIST = shlibs.local Makefile-gen.am syncevolution.xml \
+	$(am__append_3)
 DISTCLEANFILES = synccompare
 MAINTAINERCLEANFILES = Makefile.in
 CLEANFILES = libstdc++.a client-test $(CLIENT_LIB_TEST_FILES)
@@ -323,8 +344,10 @@ CORE_SOURCES = $(am__append_4)
 # module and the register file is unnecessary. However, they
 # still need to be included in "make dist".
 BACKEND_REGISTRIES = backends/addressbook/AddressBookSourceRegister.cpp backends/evolution/EvolutionCalendarSourceRegister.cpp backends/evolution/EvolutionContactSourceRegister.cpp backends/file/FileSyncSourceRegister.cpp backends/sqlite/SQLiteContactSourceRegister.cpp
-CORE_LDADD = $(SYNCEVOLUTION_LDADD) core/libsyncevolution.la @GLIB_LIBS@ @LIBS@
-CORE_DEP = $(SYNCEVOLUTION_DEP) core/libsyncevolution.la @FUNAMBOL_DEP@
+CORE_CXXFLAGS = $(SYNTHESIS_CFLAGS)
+CORE_LDADD = $(SYNCEVOLUTION_LDADD) core/libsyncevolution.la $(GLIB_LIBS) $(LIBS)
+CORE_DEP = $(SYNCEVOLUTION_DEP) core/libsyncevolution.la $(SYNTHESIS_DEP)
+CORE_LD_FLAGS = -uSyncEvolution_Module_Version -Wl,--export-dynamic
 syncevolution_SOURCES = \
 	syncevolution.cpp \
 	$(CORE_SOURCES)
@@ -334,40 +357,42 @@ syncevolution_SOURCES = \
 # if linking statically against them, empty otherwise;
 # either way this does not lead to a dependency on those libs - done explicitly
 syncevolution_LDADD = $(CORE_LDADD)
-syncevolution_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS)
-syncevolution_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP)
-BUILT_SOURCES = $(FUNAMBOL_SUBDIR)/all $(CLIENT_LIB_TEST_FILES)
+syncevolution_LDFLAGS = $(CORE_LD_FLAGS)
+syncevolution_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS)
+syncevolution_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) # $(SYNTHESIS_DEP)
 
 # With --disable-shared autotools links against libfunambol.a which does not
 # pull any of the test suites into the test binary, so they would not be
 # executed. The workaround is to explicitly set them as undefined on the
 # link line.
-client_test_SOURCES = client-test-app.cpp $(CORE_SOURCES)
-CLIENT_LIB_TEST_FILES = ClientTest.h ClientTest.cpp client-test-main.cpp \
+client_test_SOURCES = \
+	client-test-app.cpp \
+	../test/ClientTest.cpp \
+	../test/ClientTest.h \
+	../test/client-test-main.cpp \
+	$(CORE_SOURCES)
+
+CLIENT_LIB_TEST_FILES = \
 	testcases/vcard21.vcf \
 	testcases/vcard30.vcf \
 	testcases/ical20.ics \
 	testcases/imemo20.ics \
 	testcases/itodo20.ics
 
-nodist_client_test_SOURCES = $(CLIENT_LIB_TEST_FILES)
 client_test_CPPFLAGS = -DHAVE_CONFIG_H -DENABLE_INTEGRATION_TESTS -DENABLE_UNIT_TESTS $(AM_CPPFLAGS)
-client_test_CXXFLAGS = `cppunit-config --cflags` $(SYNCEVOLUTION_CXXFLAGS)
-client_test_LDFLAGS = `cppunit-config --libs` `nm $(FUNAMBOL_SUBDIR)/src/.libs/libfunambol.a core/.libs/libsyncevolution.a | grep funambolAutoRegisterRegistry | sed -e 's/.* /-u /'`
-client_test_LDADD = $(FUNAMBOL_SUBDIR)/src/libfunambol.la $(CORE_LDADD)
+client_test_CXXFLAGS = `cppunit-config --cflags` $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS)
+client_test_LDFLAGS = `cppunit-config --libs` `nm core/.libs/libsyncevolution.a | grep funambolAutoRegisterRegistry | sed -e 's/.* /-u /'` $(CORE_LD_FLAGS)
+client_test_LDADD = $(CORE_LDADD)
 # These dependencies are intentionally a bit too broad:
-# they ensure that all files are in place to *run* client-test,
-# but in particular the "all" dependency causes a rebuild
-# even if the actual input files haven't changed.
-client_test_DEPENDENCIES = all $(EXTRA_LTLIBRARIES) $(CORE_DEP) $(CLIENT_LIB_TEST_FILES) synccompare
+# they ensure that all files are in place to *run* client-test.
+client_test_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) \
+	$(CLIENT_LIB_TEST_FILES) synccompare $(am__append_8)
 
-# copy test files for several reasons:
-# - automake expects them here
-# - wchar needs to be removed from distribution to avoid need for defines
-# - a file in SyncEvolution's test directory is preferred if it exists
+# copy test files because client-test expects them here
 LOCAL_TEST_FILES = $(subst $(srcdir)/../test/,,$(wildcard $(srcdir)/../test/* $(srcdir)/../test/testcases/*))
-all: $(BUILT_SOURCES)
-	$(MAKE) $(AM_MAKEFLAGS) all-recursive
+@ENABLE_TESTING_TRUE@nobase_dist_doc_DATA = $(CLIENT_LIB_TEST_FILES)
+@ENABLE_TESTING_FALSE@nodist_client_test_SOURCES = $(CLIENT_LIB_TEST_FILES)
+all: all-recursive
 
 .SUFFIXES:
 .SUFFIXES: .cpp .lo .o .obj
@@ -424,13 +449,6 @@ uninstall-binPROGRAMS:
 
 clean-binPROGRAMS:
 	@list='$(bin_PROGRAMS)'; for p in $$list; do \
-	  f=`echo $$p|sed 's/$(EXEEXT)$$//'`; \
-	  echo " rm -f $$p $$f"; \
-	  rm -f $$p $$f ; \
-	done
-
-clean-checkPROGRAMS:
-	@list='$(check_PROGRAMS)'; for p in $$list; do \
 	  f=`echo $$p|sed 's/$(EXEEXT)$$//'`; \
 	  echo " rm -f $$p $$f"; \
 	  rm -f $$p $$f ; \
@@ -517,6 +535,34 @@ client_test-client-test-app.obj: client-test-app.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-client-test-app.obj `if test -f 'client-test-app.cpp'; then $(CYGPATH_W) 'client-test-app.cpp'; else $(CYGPATH_W) '$(srcdir)/client-test-app.cpp'; fi`
 
+client_test-ClientTest.o: ../test/ClientTest.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-ClientTest.o -MD -MP -MF $(DEPDIR)/client_test-ClientTest.Tpo -c -o client_test-ClientTest.o `test -f '../test/ClientTest.cpp' || echo '$(srcdir)/'`../test/ClientTest.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/client_test-ClientTest.Tpo $(DEPDIR)/client_test-ClientTest.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='../test/ClientTest.cpp' object='client_test-ClientTest.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-ClientTest.o `test -f '../test/ClientTest.cpp' || echo '$(srcdir)/'`../test/ClientTest.cpp
+
+client_test-ClientTest.obj: ../test/ClientTest.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-ClientTest.obj -MD -MP -MF $(DEPDIR)/client_test-ClientTest.Tpo -c -o client_test-ClientTest.obj `if test -f '../test/ClientTest.cpp'; then $(CYGPATH_W) '../test/ClientTest.cpp'; else $(CYGPATH_W) '$(srcdir)/../test/ClientTest.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/client_test-ClientTest.Tpo $(DEPDIR)/client_test-ClientTest.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='../test/ClientTest.cpp' object='client_test-ClientTest.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-ClientTest.obj `if test -f '../test/ClientTest.cpp'; then $(CYGPATH_W) '../test/ClientTest.cpp'; else $(CYGPATH_W) '$(srcdir)/../test/ClientTest.cpp'; fi`
+
+client_test-client-test-main.o: ../test/client-test-main.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-client-test-main.o -MD -MP -MF $(DEPDIR)/client_test-client-test-main.Tpo -c -o client_test-client-test-main.o `test -f '../test/client-test-main.cpp' || echo '$(srcdir)/'`../test/client-test-main.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/client_test-client-test-main.Tpo $(DEPDIR)/client_test-client-test-main.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='../test/client-test-main.cpp' object='client_test-client-test-main.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-client-test-main.o `test -f '../test/client-test-main.cpp' || echo '$(srcdir)/'`../test/client-test-main.cpp
+
+client_test-client-test-main.obj: ../test/client-test-main.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-client-test-main.obj -MD -MP -MF $(DEPDIR)/client_test-client-test-main.Tpo -c -o client_test-client-test-main.obj `if test -f '../test/client-test-main.cpp'; then $(CYGPATH_W) '../test/client-test-main.cpp'; else $(CYGPATH_W) '$(srcdir)/../test/client-test-main.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/client_test-client-test-main.Tpo $(DEPDIR)/client_test-client-test-main.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='../test/client-test-main.cpp' object='client_test-client-test-main.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-client-test-main.obj `if test -f '../test/client-test-main.cpp'; then $(CYGPATH_W) '../test/client-test-main.cpp'; else $(CYGPATH_W) '$(srcdir)/../test/client-test-main.cpp'; fi`
+
 client_test-AddressBookSourceRegister.o: backends/addressbook/AddressBookSourceRegister.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-AddressBookSourceRegister.o -MD -MP -MF $(DEPDIR)/client_test-AddressBookSourceRegister.Tpo -c -o client_test-AddressBookSourceRegister.o `test -f 'backends/addressbook/AddressBookSourceRegister.cpp' || echo '$(srcdir)/'`backends/addressbook/AddressBookSourceRegister.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/client_test-AddressBookSourceRegister.Tpo $(DEPDIR)/client_test-AddressBookSourceRegister.Po
@@ -586,34 +632,6 @@ client_test-SQLiteContactSourceRegister.obj: backends/sqlite/SQLiteContactSource
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/sqlite/SQLiteContactSourceRegister.cpp' object='client_test-SQLiteContactSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-SQLiteContactSourceRegister.obj `if test -f 'backends/sqlite/SQLiteContactSourceRegister.cpp'; then $(CYGPATH_W) 'backends/sqlite/SQLiteContactSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/sqlite/SQLiteContactSourceRegister.cpp'; fi`
-
-client_test-ClientTest.o: ClientTest.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-ClientTest.o -MD -MP -MF $(DEPDIR)/client_test-ClientTest.Tpo -c -o client_test-ClientTest.o `test -f 'ClientTest.cpp' || echo '$(srcdir)/'`ClientTest.cpp
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/client_test-ClientTest.Tpo $(DEPDIR)/client_test-ClientTest.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ClientTest.cpp' object='client_test-ClientTest.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-ClientTest.o `test -f 'ClientTest.cpp' || echo '$(srcdir)/'`ClientTest.cpp
-
-client_test-ClientTest.obj: ClientTest.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-ClientTest.obj -MD -MP -MF $(DEPDIR)/client_test-ClientTest.Tpo -c -o client_test-ClientTest.obj `if test -f 'ClientTest.cpp'; then $(CYGPATH_W) 'ClientTest.cpp'; else $(CYGPATH_W) '$(srcdir)/ClientTest.cpp'; fi`
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/client_test-ClientTest.Tpo $(DEPDIR)/client_test-ClientTest.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ClientTest.cpp' object='client_test-ClientTest.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-ClientTest.obj `if test -f 'ClientTest.cpp'; then $(CYGPATH_W) 'ClientTest.cpp'; else $(CYGPATH_W) '$(srcdir)/ClientTest.cpp'; fi`
-
-client_test-client-test-main.o: client-test-main.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-client-test-main.o -MD -MP -MF $(DEPDIR)/client_test-client-test-main.Tpo -c -o client_test-client-test-main.o `test -f 'client-test-main.cpp' || echo '$(srcdir)/'`client-test-main.cpp
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/client_test-client-test-main.Tpo $(DEPDIR)/client_test-client-test-main.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='client-test-main.cpp' object='client_test-client-test-main.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-client-test-main.o `test -f 'client-test-main.cpp' || echo '$(srcdir)/'`client-test-main.cpp
-
-client_test-client-test-main.obj: client-test-main.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-client-test-main.obj -MD -MP -MF $(DEPDIR)/client_test-client-test-main.Tpo -c -o client_test-client-test-main.obj `if test -f 'client-test-main.cpp'; then $(CYGPATH_W) 'client-test-main.cpp'; else $(CYGPATH_W) '$(srcdir)/client-test-main.cpp'; fi`
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/client_test-client-test-main.Tpo $(DEPDIR)/client_test-client-test-main.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='client-test-main.cpp' object='client_test-client-test-main.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-client-test-main.obj `if test -f 'client-test-main.cpp'; then $(CYGPATH_W) 'client-test-main.cpp'; else $(CYGPATH_W) '$(srcdir)/client-test-main.cpp'; fi`
 
 syncevolution-syncevolution.o: syncevolution.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -MT syncevolution-syncevolution.o -MD -MP -MF $(DEPDIR)/syncevolution-syncevolution.Tpo -c -o syncevolution-syncevolution.o `test -f 'syncevolution.cpp' || echo '$(srcdir)/'`syncevolution.cpp
@@ -704,6 +722,25 @@ mostlyclean-libtool:
 
 clean-libtool:
 	-rm -rf .libs _libs
+install-nobase_dist_docDATA: $(nobase_dist_doc_DATA)
+	@$(NORMAL_INSTALL)
+	test -z "$(docdir)" || $(MKDIR_P) "$(DESTDIR)$(docdir)"
+	@$(am__vpath_adj_setup) \
+	list='$(nobase_dist_doc_DATA)'; for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  $(am__vpath_adj) \
+	  echo " $(nobase_dist_docDATA_INSTALL) '$$d$$p' '$(DESTDIR)$(docdir)/$$f'"; \
+	  $(nobase_dist_docDATA_INSTALL) "$$d$$p" "$(DESTDIR)$(docdir)/$$f"; \
+	done
+
+uninstall-nobase_dist_docDATA:
+	@$(NORMAL_UNINSTALL)
+	@$(am__vpath_adj_setup) \
+	list='$(nobase_dist_doc_DATA)'; for p in $$list; do \
+	  $(am__vpath_adj) \
+	  echo " rm -f '$(DESTDIR)$(docdir)/$$f'"; \
+	  rm -f "$(DESTDIR)$(docdir)/$$f"; \
+	done
 
 # This directory's subdirectories are mostly independent; you can cd
 # into them and run `make' without going through this Makefile.
@@ -955,18 +992,15 @@ distdir: $(DISTFILES)
 	  top_distdir="$(top_distdir)" distdir="$(distdir)" \
 	  dist-hook
 check-am: all-am
-	$(MAKE) $(AM_MAKEFLAGS) $(check_PROGRAMS)
 	$(MAKE) $(AM_MAKEFLAGS) check-TESTS
-check: $(BUILT_SOURCES)
-	$(MAKE) $(AM_MAKEFLAGS) check-recursive
-all-am: Makefile $(PROGRAMS) $(SCRIPTS)
+check: check-recursive
+all-am: Makefile $(PROGRAMS) $(SCRIPTS) $(DATA)
 installdirs: installdirs-recursive
 installdirs-am:
-	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(bindir)"; do \
+	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(docdir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
-install: $(BUILT_SOURCES)
-	$(MAKE) $(AM_MAKEFLAGS) install-recursive
+install: install-recursive
 install-exec: install-exec-recursive
 install-data: install-data-recursive
 uninstall: uninstall-recursive
@@ -992,12 +1026,11 @@ distclean-generic:
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
-	-test -z "$(BUILT_SOURCES)" || rm -f $(BUILT_SOURCES)
 	-test -z "$(MAINTAINERCLEANFILES)" || rm -f $(MAINTAINERCLEANFILES)
 clean: clean-recursive
 
-clean-am: clean-binPROGRAMS clean-checkPROGRAMS clean-generic \
-	clean-libtool clean-local mostlyclean-am
+clean-am: clean-binPROGRAMS clean-generic clean-libtool clean-local \
+	mostlyclean-am
 
 distclean: distclean-recursive
 	-rm -rf ./$(DEPDIR)
@@ -1015,7 +1048,7 @@ info: info-recursive
 
 info-am:
 
-install-data-am:
+install-data-am: install-nobase_dist_docDATA
 
 install-dvi: install-dvi-recursive
 
@@ -1051,37 +1084,34 @@ ps: ps-recursive
 
 ps-am:
 
-uninstall-am: uninstall-binPROGRAMS uninstall-binSCRIPTS
+uninstall-am: uninstall-binPROGRAMS uninstall-binSCRIPTS \
+	uninstall-nobase_dist_docDATA
 
 .MAKE: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) install-am \
 	install-strip
 
 .PHONY: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) CTAGS GTAGS \
 	all all-am check check-TESTS check-am clean clean-binPROGRAMS \
-	clean-checkPROGRAMS clean-generic clean-libtool clean-local \
-	ctags ctags-recursive dist-hook distclean distclean-compile \
-	distclean-generic distclean-libtool distclean-local \
-	distclean-tags distdir dvi dvi-am html html-am info info-am \
-	install install-am install-binPROGRAMS install-binSCRIPTS \
-	install-data install-data-am install-dvi install-dvi-am \
-	install-exec install-exec-am install-html install-html-am \
-	install-info install-info-am install-man install-pdf \
-	install-pdf-am install-ps install-ps-am install-strip \
-	installcheck installcheck-am installdirs installdirs-am \
-	maintainer-clean maintainer-clean-generic mostlyclean \
-	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
-	pdf pdf-am ps ps-am tags tags-recursive uninstall uninstall-am \
-	uninstall-binPROGRAMS uninstall-binSCRIPTS
+	clean-generic clean-libtool clean-local ctags ctags-recursive \
+	dist-hook distclean distclean-compile distclean-generic \
+	distclean-libtool distclean-local distclean-tags distdir dvi \
+	dvi-am html html-am info info-am install install-am \
+	install-binPROGRAMS install-binSCRIPTS install-data \
+	install-data-am install-dvi install-dvi-am install-exec \
+	install-exec-am install-html install-html-am install-info \
+	install-info-am install-man install-nobase_dist_docDATA \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-strip installcheck installcheck-am installdirs \
+	installdirs-am maintainer-clean maintainer-clean-generic \
+	mostlyclean mostlyclean-compile mostlyclean-generic \
+	mostlyclean-libtool pdf pdf-am ps ps-am tags tags-recursive \
+	uninstall uninstall-am uninstall-binPROGRAMS \
+	uninstall-binSCRIPTS uninstall-nobase_dist_docDATA
 
 
 # synccompare is created by replacing its 'import Algorithm::Diff;'
 # with a simplified copy of Diff.pm.
-#
-# If there is a copy of synccompare.pl in the SyncEvolution test directory,
-# then it is used instead of the one from the client library.
-vpath %.pl $(srcdir)/../test $(FUNAMBOL_SUBDIR)/test/test
-vpath %.pm $(srcdir)/../test $(FUNAMBOL_SUBDIR)/test/test/Algorithm
-synccompare : Diff.pm synccompare.pl
+synccompare : ../test/Algorithm/Diff.pm ../test/synccompare.pl
 	perl -e '$$diff = shift; open(DIFF, "<$$diff"); ($$_) = split(/__END__/, join("", <DIFF>)); s/\*import.*//m; s/require +Exporter;//; s/^#.*\n//mg; s/ +#.*\n//mg; $$diff = $$_;' -e 'while(<>) {' @MODIFY_SYNCCOMPARE@ -e 's/use +Algorithm::Diff;/"# embedded version of Algorithm::Diff follows, copyright by the original authors\n" . $$diff . "# end of embedded Algorithm::Diff\n"/e; print;}' $+ >$@
 	chmod u+x $@
 
@@ -1089,51 +1119,49 @@ synccompare : Diff.pm synccompare.pl
 libstdc++.a :
 	path=`$(CXX) $(CORE_LDADD) $(LD_FLAGS) -print-file-name=libstdc++.a` && ln -s $$path .
 
-@FUNAMBOL_LIB@ : $(FUNAMBOL_SUBDIR)/all
+# rule which is only relevant when compiling Synthesis in subdirectory
+#$(SYNTHESIS_LIB) : $(SYNTHESIS_SUBDIR)/all
+#$(SYNTHESIS_SUBDIR)/% :
+#	[ ! "$(SYNTHESIS_SUBDIR)" ] || ( cd ${@D} && $(MAKE) ${@F} )
 
-# include client library in distribution
+# include Synthesis in distribution: package only files in git if using a git checkout
 dist-hook:
-	[ ! "$(FUNAMBOL_SUBDIR)" ] || mkdir -p $(distdir)/client-api && cp -r $(CLIENT_API_SRC)/* $(distdir)/client-api
-	find $(distdir) -name .libs -o -name "*~" -o -name ".*" -o -name "*.o" -o -name "*.lo" -o -name CVS -o -name .svn -o -name .git -o -name autom4te.cache | xargs rm -rf
+	set -x; [ ! "$(SYNTHESIS_SUBDIR)" ] || \
+	mkdir -p $(distdir)/synthesis && \
+	if test -d "$(SYNTHESIS_SRC)/.git"; \
+	then \
+		( ( cd "$(SYNTHESIS_SRC)" && git archive HEAD ) | ( cd "$(distdir)/synthesis" && tar xf - && $$SHELL autogen.sh && rm -rf autom4te.cache ) ) && \
+		( echo Creating ChangeLog && \
+		  ( ( cd "$(SYNTHESIS_SRC)" && \
+		      echo '# Generated by configure.  Do no edit.' && \
+		      githash=`git show-ref --head --hash | head -1` && \
+		      echo "# git revision $$githash"  && \
+		      echo "# git tag `git describe --tags $$githash`" && \
+		      echo && \
+		      "$(top_srcdir)/missing" --run perl "$(top_srcdir)/build/gen-changelog.pl" ) > ChangeLog.tmp ) && \
+		  mv -f ChangeLog.tmp "$(distdir)/synthesis/ChangeLog" || \
+		  ( rm -f ChangeLog.tmp ; \
+		     echo Failed to generate ChangeLog >&2 ) \
+                ); \
+	else \
+		cp -a $(SYNTHESIS_SRC)/* $(distdir)/synthesis  && \
+		for i in _build autom4te.cache; do [ ! -d "$(SYNTHESIS_SRC)/$$i" ] || chmod -R u+rwx "$(SYNTHESIS_SRC)/$$i"; done && \
+		find "$(distdir)" -name .libs -o -name "*~" -o -name ".*" -o -name "*.o" -o -name "*.lo" -o -name CVS -o -name .svn -o -name .git -o -name autom4te.cache -print0 | xargs -0 rm -rf; \
+	fi
 
 clean-local: testclean
 	rm -rf testcases
-	[ ! -d "$(FUNAMBOL_SUBDIR)" ] || (cd $(FUNAMBOL_SUBDIR) && $(MAKE) clean)
 
 # files created during testing
 testclean:
-	rm -f *.test.vcf *.log *.tests *.diff *.dat
+	rm -rf *.test.vcf *.log *.tests *.diff *.dat *Client_Sync_*client.*
 
 distclean-local:
-	rm -rf $(FUNAMBOL_SUBDIR)
+	rm -rf $(SYNTHESIS_SUBDIR)
 	rm -rf $(CLEAN_CLIENT_SRC)
-
-# sources from SyncEvolution
-$(filter-out testcases/%, $(filter $(LOCAL_TEST_FILES), $(CLIENT_LIB_TEST_FILES))) : % : $(srcdir)/../test/%
-	sed -e 's/WCHAR_T/char/g' -e 's/TEXT(/(/g' -e 's/wcslen/strlen/g' -e 's/wcscmp/strcmp/g' $< >$@
-
-# sources from compiled client library
-$(filter-out $(LOCAL_TEST_FILES) testcases/%, $(CLIENT_LIB_TEST_FILES)) : % : $(FUNAMBOL_SUBDIR)/test/test/%
-	sed -e 's/WCHAR_T/char/g' -e 's/TEXT(/(/g' -e 's/wcslen/strlen/g' -e 's/wcscmp/strcmp/g' $< >$@
-
-$(CLIENT_LIB_TEST_FILES:%=$(FUNAMBOL_SUBDIR)/test/test/%): @FUNAMBOL_DEP@
-
-# verbatim files from SyncEvolution
 $(filter testcases/%, $(filter $(LOCAL_TEST_FILES), $(CLIENT_LIB_TEST_FILES))) : % : $(srcdir)/../test/%
 	mkdir -p testcases
 	cp $< $@
-
-$(filter testcases/%, $(filter-out $(LOCAL_TEST_FILES), $(CLIENT_LIB_TEST_FILES))) : % : $(FUNAMBOL_SUBDIR)/test/test/%
-	mkdir -p testcases
-	cp $< $@
-
-# rule to satisfy automatic dependencies on header files
-$(FUNAMBOL_SUBDIR)/%.h :
-	[ ! "$(FUNAMBOL_SUBDIR)" ] || ( cd $(FUNAMBOL_SUBDIR)/include && $(MAKE) all )
-
-# default rule for building in $(FUNAMBOL_SUBDIR)
-$(FUNAMBOL_SUBDIR)/% :
-	[ ! "$(FUNAMBOL_SUBDIR)" ] || ( cd ${@D} && $(MAKE) ${@F} )
 
 # special target for testing with valgrind
 valgrind : test

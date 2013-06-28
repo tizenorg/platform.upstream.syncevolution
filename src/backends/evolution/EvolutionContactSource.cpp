@@ -1,19 +1,21 @@
 /*
- * Copyright (C) 2005-2008 Patrick Ohly
+ * Copyright (C) 2005-2009 Patrick Ohly <patrick.ohly@gmx.de>
+ * Copyright (C) 2009 Intel Corporation
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) version 3.
  *
- * This program is distributed in the hope that it will be useful,
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301  USA
  */
 
 #include <memory>
@@ -31,9 +33,7 @@ using namespace std;
 #include "EvolutionContactSource.h"
 #include "SyncEvolutionUtil.h"
 
-#include <common/base/Log.h>
-#include "vocl/VConverter.h"
-using namespace vocl;
+#include "Logging.h"
 
 #include <boost/algorithm/string.hpp>
 #include <boost/foreach.hpp>
@@ -61,13 +61,13 @@ const EvolutionContactSource::unique EvolutionContactSource::m_uniqueProperties;
 
 EvolutionContactSource::EvolutionContactSource(const EvolutionSyncSourceParams &params,
                                                EVCardFormat vcardFormat) :
-    EvolutionSyncSource(params),
+    TrackingSyncSource(params),
     m_vcardFormat(vcardFormat)
 {
 }
 
 EvolutionContactSource::EvolutionContactSource( const EvolutionContactSource &other ) :
-        EvolutionSyncSource( other ),
+        TrackingSyncSource( other ),
         m_vcardFormat( other.m_vcardFormat )
 {
 }
@@ -160,14 +160,14 @@ void EvolutionContactSource::open()
     // by setting user or password
     const char *user = getUser(),
         *passwd = getPassword();
-    if (user && user[0] || passwd && passwd[0]) {
+    if ((user && user[0]) || (passwd && passwd[0])) {
         GList *authmethod;
         if (!e_book_get_supported_auth_methods(m_addressbook, &authmethod, &gerror)) {
             throwError("getting authentication methods", gerror );
         }
         while (authmethod) {
             const char *method = (const char *)authmethod->data;
-            LOG.debug("%s: trying authentication method \"%s\", user %s, password %s",
+            SE_LOG_DEBUG(this, NULL, "%s: trying authentication method \"%s\", user %s, password %s",
                       getName(), method,
                       user && user[0] ? "configured" : "not configured",
                       passwd && passwd[0] ? "configured" : "not configured");
@@ -176,11 +176,10 @@ void EvolutionContactSource::open()
                                          passwd ? passwd : "",
                                          method,
                                          &gerror)) {
-                LOG.debug("%s: authentication succeeded", getName());
+                SE_LOG_DEBUG(this, NULL, "authentication succeeded");
                 break;
             } else {
-                LOG.error("%s: authentication failed: %s",
-                          getName(), gerror->message);
+                SE_LOG_ERROR(this, NULL, "authentication failed: %s", gerror->message);
                 g_clear_error(&gerror);
             }
             authmethod = authmethod->next;
@@ -193,135 +192,48 @@ void EvolutionContactSource::open()
                            (void *)"Evolution Data Server has died unexpectedly, contacts no longer available.");
 }
 
-void EvolutionContactSource::beginSyncThrow(bool needAll,
-                                            bool needPartial,
-                                            bool deleteLocal)
+
+void EvolutionContactSource::listAllItems(RevisionMap_t &revisions)
 {
     GError *gerror = NULL;
-
-    eptr<EBookQuery> deleteItemsQuery;
-    if (deleteLocal) {
-        deleteItemsQuery.set( e_book_query_any_field_contains(""), "query" );
+    eptr<EBookQuery> allItemsQuery(e_book_query_any_field_contains(""), "query");
+    GList *nextItem;
+    if (!e_book_get_contacts(m_addressbook, allItemsQuery, &nextItem, &gerror)) {
+        throwError( "reading all items", gerror );
     }
-#ifdef ENABLE_MAEMO_OSSO_CONTACT_STATE
-    else {
-        deleteItemsQuery.set( e_book_query_vcard_field_exists("X-OSSO-CONTACT-STATE"), "query" );
+    eptr<GList> listptr(nextItem);
+    while (nextItem) {
+        EContact *contact = E_CONTACT(nextItem->data);
+        if (!contact) {
+            throwError("contact entry without data");
+        }
+        pair<string, string> revmapping;
+        const char *uid = (const char *)e_contact_get_const(contact,
+                                                            E_CONTACT_UID);
+        if (!uid || !uid[0]) {
+            throwError("contact entry without UID");
+        }
+        revmapping.first = uid;
+        const char *rev = (const char *)e_contact_get_const(contact,
+                                                            E_CONTACT_REV);
+        if (!rev || !rev[0]) {
+            throwError(string("contact entry without REV: ") + revmapping.first);
+        }
+        revmapping.second = rev;
+        revisions.insert(revmapping);
+        nextItem = nextItem->next;
     }
-#endif
-
-    if (deleteItemsQuery) {
-        GList *nextItem;
-    
-        if (!e_book_get_contacts( m_addressbook, deleteItemsQuery, &nextItem, &gerror )) {
-            throwError( "reading items to be deleted", gerror );
-        }
-        eptr<GList> listptr(nextItem);
-        for (;nextItem; nextItem = nextItem->next) {
-            const char *uid = (const char *)e_contact_get_const(E_CONTACT(nextItem->data),
-                                                                E_CONTACT_UID);
-#ifdef ENABLE_MAEMO_OSSO_CONTACT_STATE
-            if (!deleteLocal) {
-                GList *nextState = (GList *)e_contact_get(E_CONTACT(nextItem->data),
-                                                          E_CONTACT_OSSO_CONTACT_STATE);
-                bool deleted = false;
-                while (nextState) {
-                    LOG.debug("checking X-OSSO-CONTACT-STATE %p of uid %s",
-                              nextState->data, uid);
-                    if ((char *)nextState->data < (char *)1024) {
-                        LOG.info("broken X-OSSO-CONTACT-STATE %p, please report this to the SyncEvolution developer",
-                                 nextState->data);
-                    } else {
-                        LOG.debug("X-OSSO-CONTACT-STATE %p = %s",
-                                  nextState->data, (char *)nextState->data);
-                        if (nextState->data && !strcmp((char *)nextState->data, "DELETED")) {
-                            deleted = true;
-                        }
-                    }
-                    nextState = nextState->next;
-                }
-                if (!deleted) {
-                    continue;
-                }
-                logItem(string(uid), "deleting item scheduled for removal", true);
-                if (needPartial) {
-                    // the observation is that the deleted item is not listed again
-                    // below; apparently only changes made by someone else are recorded
-                    // in the list of changes ?!
-                    m_deletedItems.addItem(uid);
-                }
-            }
-#endif
-            if (!e_book_remove_contact( m_addressbook, uid, &gerror ) ) {
-                throwError( string( "deleting contact " ) + uid,
-                            gerror );
-            }
-        }
-    }
-
-    if (needAll) {
-        eptr<EBookQuery> allItemsQuery( e_book_query_any_field_contains(""), "query" );
-        GList *nextItem;
-        if (!e_book_get_contacts( m_addressbook, allItemsQuery, &nextItem, &gerror )) {
-            throwError( "reading all items", gerror );
-        }
-        eptr<GList> listptr(nextItem);
-        while (nextItem) {
-            const char *uid = (const char *)e_contact_get_const(E_CONTACT(nextItem->data),
-                                                                E_CONTACT_UID);
-            m_allItems.addItem(uid);
-            nextItem = nextItem->next;
-        }
-    }
-
-    if (needPartial) {
-        GList *nextItem;
-        if (!e_book_get_changes( m_addressbook, (char *)m_changeId.c_str(), &nextItem, &gerror )) {
-            throwError( "reading changes", gerror );
-        }
-        eptr<GList, GList, unrefEBookChanges> listptr(nextItem);
-        while (nextItem) {
-            EBookChange *ebc = (EBookChange *)nextItem->data;
-
-            if (ebc->contact) {
-                const char *uid = (const char *)e_contact_get_const( ebc->contact, E_CONTACT_UID );
-                
-                if (uid) {
-                    switch (ebc->change_type) {            
-                     case E_BOOK_CHANGE_CARD_ADDED:
-                        m_newItems.addItem(uid);
-                        break;
-                     case E_BOOK_CHANGE_CARD_MODIFIED:
-                        m_updatedItems.addItem(uid);
-                        break;
-                     case E_BOOK_CHANGE_CARD_DELETED:
-                        m_deletedItems.addItem(uid);
-                        break;
-                    }
-                }
-            }
-            nextItem = nextItem->next;
-        }
-    }
-}
-
-void EvolutionContactSource::endSyncThrow()
-{
-    if (m_isModified) {
-        GError *gerror = NULL;
-        GList *nextItem;
-        // move change_id forward so that our own changes are not listed the next time
-        if (!e_book_get_changes( m_addressbook, (char *)m_changeId.c_str(), &nextItem, &gerror )) {
-            throwError( "reading changes", gerror );
-        }
-        eptr<GList, GList, unrefEBookChanges> listptr(nextItem);
-    }
-    resetItems();
-    m_isModified = false;
 }
 
 void EvolutionContactSource::close()
 {
-    endSyncThrow();
+    // Our change tracking is time based.
+    // Don't let caller proceed without waiting for
+    // one second to prevent being called again before
+    // the modification time stamp is larger than it
+    // is now.
+    sleepSinceModification(1);
+
     m_addressbook = NULL;
 }
 
@@ -346,27 +258,49 @@ void EvolutionContactSource::exportData(ostream &out)
     }
 }
 
-SyncItem *EvolutionContactSource::createItem(const string &uid)
+string EvolutionContactSource::getRevision(const string &luid)
 {
-    logItem( uid, "extracting from EV", true );
+    EContact *contact;
+    GError *gerror = NULL;
+    if (!e_book_get_contact(m_addressbook,
+                            luid.c_str(),
+                            &contact,
+                            &gerror)) {
+        throwError(string("reading contact ") + luid,
+                   gerror);
+    }
+    eptr<EContact, GObject> contactptr(contact, "contact");
+    const char *rev = (const char *)e_contact_get_const(contact,
+                                                        E_CONTACT_REV);
+    if (!rev || !rev[0]) {
+        throwError(string("contact entry without REV: ") + luid);
+    }
+    return rev;
+}
+
+SyncItem *EvolutionContactSource::createItem(const string &luid)
+{
+    logItem(luid, "extracting from EV", true);
 
     EContact *contact;
     GError *gerror = NULL;
-    if (! e_book_get_contact( m_addressbook,
-                              uid.c_str(),
-                              &contact,
-                              &gerror ) ) {
-        throwError( string( "reading contact " ) + uid,
-                    gerror );
+    if (!e_book_get_contact(m_addressbook,
+                            luid.c_str(),
+                            &contact,
+                            &gerror)) {
+        throwError(string("reading contact ") + luid,
+                   gerror);
     }
-    eptr<EContact, GObject> contactptr( contact, "contact" );
-    eptr<char> vcardstr(e_vcard_to_string( &contactptr->parent,
-                                           EVC_FORMAT_VCARD_30 ) );
+    eptr<EContact, GObject> contactptr(contact, "contact");
+    eptr<char> vcardstr(e_vcard_to_string(&contactptr->parent,
+                                          EVC_FORMAT_VCARD_30));
     if (!vcardstr) {
-        throwError(string("failure extracting contact from Evolution " ) + uid);
+        throwError(string("failure extracting contact from Evolution " ) + luid);
     }
-    LOG.debug("%s", vcardstr.get());
+    SE_LOG_DEBUG(this, NULL, "%s", vcardstr.get());
 
+#if 0
+    // @TODO reimplement Evolution hacks via Synthesis datatype conversions
     std::auto_ptr<VObject> vobj(VConverter::parse(vcardstr));
     if (vobj.get() == 0) {
         throwError(string("failure parsing contact " ) + uid);
@@ -405,7 +339,7 @@ SyncItem *EvolutionContactSource::createItem(const string &uid)
 
     // convert from 3.0 to 2.1?
     if (m_vcardFormat == EVC_FORMAT_VCARD_21) {
-        LOG.debug("convert to 2.1");
+        SE_LOG_DEBUG(this, NULL, "convert to 2.1");
 
         // escape extended properties so that they are preserved
         // as custom values by the server
@@ -490,24 +424,27 @@ SyncItem *EvolutionContactSource::createItem(const string &uid)
     vobj->fromNativeEncoding();
 
     arrayptr<char> finalstr(vobj->toString(), "VOCL string");
-    LOG.debug("after conversion:");
-    LOG.debug("%s", (char *)finalstr);
+    SE_LOG_DEBUG(this, NULL, "after conversion:");
+    SE_LOG_DEBUG(this, NULL, "%s", (char *)finalstr);
+#endif
 
-    auto_ptr<SyncItem> item( new SyncItem( uid.c_str() ) );
-    item->setData( (char *)finalstr, strlen(finalstr) );
-    item->setDataType( getMimeType() );
-    item->setModificationTime( 0 );
-
+    cxxptr<SyncItem> item(new SyncItem(), "SyncItem");
+    item->setKey(luid);
+    item->setData(vcardstr.get(), strlen(vcardstr.get()));
     return item.release();
 }
 
 string EvolutionContactSource::preparseVCard(SyncItem& item)
 {
+    return item.getData();
+
+#if 0
+    // @TODO Synthesis data conversion
     string data = (const char *)item.getData();
     // convert to 3.0 to get rid of quoted-printable encoded
     // non-ASCII chars, because Evolution does not support
     // decoding them
-    LOG.debug("%s", data.c_str());
+    SE_LOG_DEBUG(this, NULL, "%s", data.c_str());
     std::auto_ptr<VObject> vobj(VConverter::parse((char *)data.c_str()));
     if (vobj.get() == 0) {
         throwError(string("failure parsing contact " ) + item.getKey());
@@ -684,139 +621,58 @@ string EvolutionContactSource::preparseVCard(SyncItem& item)
     vobj->fromNativeEncoding();
     arrayptr<char> voclstr(vobj->toString(), "VOCL string");
     data = (char *)voclstr;
-    LOG.debug("after conversion to 3.0:");
-    LOG.debug("%s", data.c_str());
+    SE_LOG_DEBUG(this, NULL, "after conversion to 3.0:");
+    SE_LOG_DEBUG(this, NULL, "%s", data.c_str());
     return data;
-}
-
-void EvolutionContactSource::setItemStatusThrow(const char *key, int status)
-{
-    switch (status) {
-     case STC_CONFLICT_RESOLVED_WITH_SERVER_DATA: {
-        // make a copy before allowing the server to overwrite it
-
-        LOG.error("%s: contact %s: conflict, will be replaced by server contact - create copy",
-                  getName(), key);
-        
-        EContact *contact;
-        GError *gerror = NULL;
-        if (! e_book_get_contact( m_addressbook,
-                                  key,
-                                  &contact,
-                                  &gerror ) ) {
-            LOG.error("%s: item %.80s: reading original for copy failed",
-                      getName(), key);
-            break;
-        }
-        eptr<EContact, GObject> contactptr( contact, "contact" );
-        EContact *copy = e_contact_duplicate(contact);
-        eptr<EContact, GObject> contactcopyptr(copy);
-        if(!copy ||
-           ! e_book_add_contact(m_addressbook,
-                                copy,
-                                &gerror)) {
-            LOG.error("%s: item %.80s: making copy failed",
-                      getName(), key);
-            break;
-        }
-        break;
-     }
-     default:
-        EvolutionSyncSource::setItemStatusThrow(key, status);
-        break;
-    }
-}
-
-int EvolutionContactSource::addItemThrow(SyncItem& item)
-{
-    int status = STC_OK;
-    string data;
-    if( strcmp(item.getDataType(), "raw" ) ) {
-        data = preparseVCard(item);
-    } else {
-        data = (const char *)item.getData();
-    }
-    eptr<EContact, GObject> contact(e_contact_new_from_vcard(data.c_str()));
-    if( contact ) {
-        GError *gerror = NULL;
-        e_contact_set(contact, E_CONTACT_UID, NULL);
-        if (e_book_add_contact(m_addressbook, contact, &gerror)) {
-            item.setKey( (const char *)e_contact_get_const( contact, E_CONTACT_UID ) );
-        } else {
-            throwError( "storing new contact", gerror );
-        }
-    } else {
-        throwError(string("failure parsing vcard " ) + data);
-    }
-    return status;
-}
-
-int EvolutionContactSource::updateItemThrow(SyncItem& item)
-{
-    int status = STC_OK;
-    string data = preparseVCard(item);
-    eptr<EContact, GObject> contact(e_contact_new_from_vcard(data.c_str()));
-    if( contact ) {
-        GError *gerror = NULL;
-
-        // The following code commits the new_from_vcard contact using the
-        // existing UID. It has been observed in Evolution 2.0.4 that the
-        // changes were then not "noticed" properly by the Evolution GUI.
-        //
-        // The code below was supposed to "notify" Evolution of the change by
-        // loaded the updated contact, modifying it, committing, restoring
-        // and committing once more, but that did not solve the problem.
-        //
-        // TODO: test with current Evolution
-        e_contact_set( contact, E_CONTACT_UID, (void *)item.getKey() );
-        if ( e_book_commit_contact(m_addressbook, contact, &gerror) ) {
-            const char *uid = (const char *)e_contact_get_const(contact, E_CONTACT_UID);
-            if (uid) {
-                item.setKey( uid );
-            }
-
-#if 0
-            EContact *refresh_contact;
-            if (! e_book_get_contact( m_addressbook,
-                                      uid,
-                                      &refresh_contact,
-                                      &gerror ) ) {
-                throwError( string( "reading refresh contact " ) + uid,
-                            gerror );
-            }
-            eptr<EContact, GObject> contactptr( refresh_contact, "contact" );
-            string nick = (const char *)e_contact_get_const(refresh_contact, E_CONTACT_NICKNAME);
-            string nick_mod = nick + "_";
-            e_contact_set(refresh_contact, E_CONTACT_NICKNAME, (void *)nick_mod.c_str());
-            e_book_commit_contact(m_addressbook, refresh_contact, &gerror);
-            e_contact_set(refresh_contact, E_CONTACT_NICKNAME, (void *)nick.c_str());
-            e_book_commit_contact(m_addressbook, refresh_contact, &gerror);
 #endif
-        } else {
-            throwError( string( "updating contact " ) + item.getKey(), gerror );
-        }
-    } else {
-        throwError(string("failure parsing vcard " ) + data);
-    }
-    return status;
 }
 
-int EvolutionContactSource::deleteItemThrow(SyncItem& item)
+TrackingSyncSource::InsertItemResult
+EvolutionContactSource::insertItem(const string &uid, const SyncItem& item)
 {
-    int status = STC_OK;
+    eptr<EContact, GObject> contact(e_contact_new_from_vcard(item.getData()));
+    if (contact) {
+        GError *gerror = NULL;
+        e_contact_set(contact, E_CONTACT_UID,
+                      uid.empty() ?
+                      NULL :
+                      const_cast<char *>(uid.c_str()));
+        if (uid.empty() ?
+            e_book_add_contact(m_addressbook, contact, &gerror) :
+            e_book_commit_contact(m_addressbook, contact, &gerror)) {
+            const char *newuid = (const char *)e_contact_get_const(contact, E_CONTACT_UID);
+            if (!newuid) {
+                throwError("no UID for contact");
+            }
+            string newrev = getRevision(newuid);
+            return InsertItemResult(newuid, newrev, false);
+        } else {
+            throwError(uid.empty() ?
+                       "storing new contact" :
+                       string("updating contact ") + uid,
+                       gerror);
+        }
+    } else {
+        throwError(string("failure parsing vcard " ) + item.getData());
+    }
+    // not reached!
+    return InsertItemResult("", "", false);
+}
+
+void EvolutionContactSource::deleteItem(const string &uid)
+{
     GError *gerror = NULL;
-    if (!e_book_remove_contact( m_addressbook, item.getKey(), &gerror ) ) {
+    if (!e_book_remove_contact(m_addressbook, uid.c_str(), &gerror)) {
         if (gerror->domain == E_BOOK_ERROR &&
             gerror->code == E_BOOK_ERROR_CONTACT_NOT_FOUND) {
-            LOG.debug("%s: %s: request to delete non-existant contact ignored",
-                      getName(), item.getKey());
+            SE_LOG_DEBUG(this, NULL, "%s: %s: request to delete non-existant contact ignored",
+                         getName(), uid.c_str());
             g_clear_error(&gerror);
         } else {
-            throwError( string( "deleting contact " ) + item.getKey(),
+            throwError( string( "deleting contact " ) + uid,
                         gerror );
         }
     }
-    return status;
 }
 
 const char *EvolutionContactSource::getMimeType() const
@@ -847,7 +703,7 @@ const char *EvolutionContactSource::getMimeVersion() const
 
 void EvolutionContactSource::logItem(const string &uid, const string &info, bool debug)
 {
-    if (LOG.getLevel() >= (debug ? LOG_LEVEL_DEBUG : LOG_LEVEL_INFO)) {
+    if (getLevel() >= (debug ? Logger::DEBUG : Logger::INFO)) {
         string line;
         EContact *contact;
         GError *gerror = NULL;
@@ -878,13 +734,13 @@ void EvolutionContactSource::logItem(const string &uid, const string &info, bool
         line += "): ";
         line += info;
         
-        (LOG.*(debug ? &Log::debug : &Log::info))( "%s: %s", getName(), line.c_str() );
+        SE_LOG(debug ? Logger::DEBUG : Logger::INFO, this, NULL, "%s", line.c_str() );
     }
 }
 
 void EvolutionContactSource::logItem(const SyncItem &item, const string &info, bool debug)
 {
-    if (LOG.getLevel() >= (debug ? LOG_LEVEL_DEBUG : LOG_LEVEL_INFO)) {
+    if (getLevel() >= (debug ? Logger::DEBUG : Logger::INFO)) {
         string line;
         const char *data = (const char *)item.getData();
         int datasize = item.getDataSize();
@@ -904,9 +760,7 @@ void EvolutionContactSource::logItem(const SyncItem &item, const string &info, b
             line += "<unnamed contact>";
         }
 
-        if (!item.getKey() ) {
-            line += ", NULL UID (?!)";
-        } else if (!strlen( item.getKey() )) {
+        if (item.getKey().empty()) {
             line += ", empty UID";
         } else {
             line += ", ";
@@ -914,10 +768,10 @@ void EvolutionContactSource::logItem(const SyncItem &item, const string &info, b
         
             EContact *contact;
             GError *gerror = NULL;
-            if (e_book_get_contact( m_addressbook,
-                                    item.getKey(),
-                                    &contact,
-                                    &gerror )) {
+            if (e_book_get_contact(m_addressbook,
+                                   item.getKey().c_str(),
+                                   &contact,
+                                   &gerror)) {
                 eptr<EContact, GObject> contactptr( contact, "contact" );
 
                 line += ", EV ";
@@ -939,7 +793,7 @@ void EvolutionContactSource::logItem(const SyncItem &item, const string &info, b
         line += ": ";
         line += info;
         
-        (LOG.*(debug ? &Log::debug : &Log::info))( "%s: %s", getName(), line.c_str() );
+        SE_LOG(debug ? Logger::DEBUG : Logger::INFO, this, NULL, "%s", line.c_str() );
     }
 }
 

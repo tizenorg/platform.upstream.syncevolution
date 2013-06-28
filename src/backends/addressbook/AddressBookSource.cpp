@@ -1,19 +1,21 @@
 /*
- * Copyright (C) 2007-2008 Patrick Ohly
+ * Copyright (C) 2007-2009 Patrick Ohly <patrick.ohly@gmx.de>
+ * Copyright (C) 2009 Intel Corporation
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) version 3.
  *
- * This program is distributed in the hope that it will be useful,
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301  USA
  */
 
 #include <memory>
@@ -110,7 +112,7 @@ enum {
 #include "EvolutionSyncClient.h"
 #include "AddressBookSource.h"
 
-#include <common/base/Log.h>
+#include "Logging.h"
 #include <common/base/util/StringBuffer.h>
 #include "vocl/VConverter.h"
 
@@ -1225,7 +1227,7 @@ void AddressBookSource::listAllItems(RevisionMap_t &revisions)
 void AddressBookSource::close()
 {
     if (m_addressbook && !hasFailed()) {
-        LOG.debug("flushing address book");
+        SE_LOG_DEBUG(this, NULL, "flushing address book");
         // store changes persistently
         if (!ABSave(m_addressbook)) {
             throwError("saving address book");
@@ -1236,7 +1238,7 @@ void AddressBookSource::close()
         // sleep a bit before returning control
         sleep(2);
 
-        LOG.debug("done with address book");
+        SE_LOG_DEBUG(this, NULL, "done with address book");
     }
     
     m_addressbook = NULL;
@@ -1267,7 +1269,7 @@ SyncItem *AddressBookSource::createItem(const string &uid, bool asVCard30)
 
 #ifdef USE_ADDRESS_BOOK_VCARD
     ref<CFDataRef> vcard(ABPersonCopyVCardRepresentation(person), "vcard");
-    LOG.debug("%*s", (int)CFDataGetLength(vcard), (const char *)CFDataGetBytePtr(vcard));
+    SE_LOG_DEBUG(this, NULL, "%*s", (int)CFDataGetLength(vcard), (const char *)CFDataGetBytePtr(vcard));
     item->setData(CFDataGetBytePtr(vcard), CFDataGetLength(vcard));
 #else
     string vcard;
@@ -1314,7 +1316,7 @@ AddressBookSource::InsertItemResult AddressBookSource::insertItem(const string &
         person.set(PersonCreateWrapper(m_addressbook), "contact");
     }
     try {
-        LOG.debug("storing vCard for %s:\n%s",
+        SE_LOG_DEBUG(this, NULL, "storing vCard for %s:\n%s",
                   update ? luid.c_str() : "new contact",
                   data.c_str());
         vCard2ABPerson converter(data, person);
@@ -1362,14 +1364,14 @@ void AddressBookSource::deleteItem(const string &uid)
             throwError(string("deleting contact ") + uid);
         }
     } else {
-        LOG.debug("%s: %s: request to delete non-existant contact ignored",
+        SE_LOG_DEBUG(this, NULL, "%s: %s: request to delete non-existant contact ignored",
                   getName(), uid.c_str());
     }
 }
 
 void AddressBookSource::logItem(const string &uid, const string &info, bool debug)
 {
-    if (LOG.getLevel() >= (debug ? LOG_LEVEL_DEBUG : LOG_LEVEL_INFO)) {
+    if (getLevel() >= (debug ? Logger::DEBUG : Logger::INFO)) {
         string line;
 
 #if 0
@@ -1400,13 +1402,13 @@ void AddressBookSource::logItem(const string &uid, const string &info, bool debu
         line += "): ";
         line += info;
         
-        (LOG.*(debug ? &Log::debug : &Log::info))( "%s: %s", getName(), line.c_str() );
+        SE_LOG(debug ? Logger::DEBUG : Logger::INFO, this, NULL, "%s", line.c_str() );
     }
 }
 
 void AddressBookSource::logItem(const SyncItem &item, const string &info, bool debug)
 {
-    if (LOG.getLevel() >= (debug ? LOG_LEVEL_DEBUG : LOG_LEVEL_INFO)) {
+    if (getLevel() >= (debug ? Logger::DEBUG : Logger::INFO)) {
         string line;
         const char *data = (const char *)item.getData();
         int datasize = item.getDataSize();
@@ -1460,7 +1462,7 @@ void AddressBookSource::logItem(const SyncItem &item, const string &info, bool d
         line += ": ";
         line += info;
         
-        (LOG.*(debug ? &Log::debug : &Log::info))( "%s: %s", getName(), line.c_str() );
+        SE_LOG(debug ? Logger::DEBUG : Logger::INFO, this, NULL, "%s", line.c_str() );
     }
 }
 

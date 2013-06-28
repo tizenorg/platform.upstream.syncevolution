@@ -1,28 +1,27 @@
 /*
- * Copyright (C) 2008 Patrick Ohly
+ * Copyright (C) 2008-2009 Patrick Ohly <patrick.ohly@gmx.de>
+ * Copyright (C) 2009 Intel Corporation
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) version 3.
  *
- * This program is distributed in the hope that it will be useful,
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY, TITLE, NONINFRINGEMENT or FITNESS FOR A PARTICULAR
- * PURPOSE.  See the GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
- * 02111-1307  USA
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301  USA
  */
 #ifndef INCL_SYNC_EVOLUTION_CONFIG
 # define INCL_SYNC_EVOLUTION_CONFIG
 
 #include "FilterConfigNode.h"
 
-#include "spds/AbstractSyncConfig.h"
-#include "spds/AbstractSyncSourceConfig.h"
 #include <boost/shared_ptr.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/trim.hpp>
@@ -461,7 +460,7 @@ class ConfigStringCache {
  * uses a FileConfigTree instance. Other implementations would be
  * possible.
  */
-class EvolutionSyncConfig : public AbstractSyncConfig {
+class EvolutionSyncConfig {
  public:
     /**
      * Opens the configuration for a specific server,
@@ -642,10 +641,6 @@ class EvolutionSyncConfig : public AbstractSyncConfig {
      */
     /**@{*/
 
-    virtual AbstractSyncSourceConfig* getAbstractSyncSourceConfig(const char* name) const { return NULL; }
-    virtual AbstractSyncSourceConfig* getAbstractSyncSourceConfig(unsigned int i) const { return NULL; }
-    virtual unsigned int getAbstractSyncSourceConfigsCount() const { return 0; }
-
     virtual const char*  getUsername() const;
     virtual void setUsername(const string &value, bool temporarily = false);
     virtual const char*  getPassword() const;
@@ -692,31 +687,20 @@ class EvolutionSyncConfig : public AbstractSyncConfig {
     virtual const char*  getDevID() const;
     virtual void setDevID(const string &value, bool temporarily = false);
 
-    virtual bool getServerAuthRequired() const { return false; }
-    virtual const char*  getServerAuthType() const { return ""; }
-    virtual const char*  getServerPWD() const { return ""; }
-    virtual const char*  getServerID() const { return ""; }
+    /**
+     * Specifies whether WBXML is to be used (default).
+     * Otherwise XML is used.
+     */
+    virtual bool getWBXML() const;
+    virtual void setWBXML(bool isWBXML, bool temporarily = false);
 
     virtual const char*  getUserAgent() const { return "SyncEvolution"; }
-    virtual const char*  getVerDTD() const { return "1.1"; }
     virtual const char*  getMan() const { return "Patrick Ohly"; }
     virtual const char*  getMod() const { return "SyncEvolution"; }
     virtual const char*  getOem() const { return "Open Source"; }
-    virtual const char*  getFwv() const { return ""; }
-    virtual const char*  getHwv() const { return ""; }
-    virtual const char*  getDsV() const { return ""; }
+    virtual const char*  getHwv() const { return "unknown"; }
     virtual const char*  getSwv() const;
     virtual const char*  getDevType() const;
-
-    virtual bool getUtc() const { return true; }
-    virtual bool getNocSupport() const { return false; }
-
-    virtual const char*  getServerNonce() const;
-    virtual void setServerNonce(const char *value);
-    virtual const char*  getClientNonce() const;
-    virtual void setClientNonce(const char *value);
-    virtual const char*  getDevInfHash() const;
-    virtual void setDevInfHash(const char *value);
 
     /**@}*/
 
@@ -805,7 +789,7 @@ struct ConstSyncSourceNodes {
  * Some properties are not configurable and have to be provided
  * by derived classes.
  */
-class EvolutionSyncSourceConfig : public AbstractSyncSourceConfig {
+class EvolutionSyncSourceConfig {
  public:
     EvolutionSyncSourceConfig(const string &name, const SyncSourceNodes &nodes);
 
@@ -899,38 +883,20 @@ class EvolutionSyncSourceConfig : public AbstractSyncSourceConfig {
     virtual void setURI(const string &value, bool temporarily = false);
 
     /**
-     * Returns a comma separated list of the possible syncModes for the
-     * SyncSource. Sync modes can be one of
+     * Gets the default syncMode.
+     *
+     * Sync modes can be one of:
+     * - disabled
      * - slow
      * - two-way
      * - one-way-from-server
      * - one-way-from-client
      * - refresh-from-server
      * - refresh-from-client
-     * - one-way-from-server
-     * - one-way-from-client
-     * - addrchange (Funambol extension)
-     *
-     * This is hard-coded in SyncEvolution because changing it
-     * wouldn't have any effect (IMHO).
-     */
-    virtual const char*  getSyncModes() const { return "slow,two-way,one-way-from-server,one-way-from-client,refresh-from-server,refresh-from-client"; }
-
-    /**
-     * Gets the default syncMode as one of the strings listed in setSyncModes.
      */
     virtual const char*  getSync() const;
     virtual void setSync(const string &value, bool temporarily = false);
     
-    /**
-     * Specifies how the content of an outgoing item should be
-     * encoded by the client library if the sync source does not
-     * set an encoding on the item that it created. Valid values
-     * are listed in SyncItem::encodings.
-     */
-    virtual const char*  getEncoding() const;
-    virtual void setEncoding(const string &value, bool temporarily = false);
-
     /**
      * Sets the last sync timestamp. Called by the sync engine at
      * the end of a sync. The client must save that modified
@@ -959,9 +925,9 @@ class EvolutionSyncSourceConfig : public AbstractSyncSourceConfig {
      * returning an empty array implies that it supports all aspects.
      * This is the default implementation of this call.
      *
-     * @return an ArrayList of CTCap
+     * @TODO: per-source capabilities
      */
-    virtual const ArrayList& getCtCaps() const { static const ArrayList dummy; return dummy; }
+    // virtual const ArrayList& getCtCaps() const { static const ArrayList dummy; return dummy; }
 
     /**@}*/
 

@@ -21,9 +21,11 @@ fi
 
 dnl check for glib - calling g_type_init() is expected on Maemo
 PKG_CHECK_MODULES(GLIB, "glib-2.0", GLIBFOUND=yes, GLIBFOUND=no)
-if test "x${GLIBFOUND}" = "xno"; then
-	PKG_CHECK_MODULES(GLIB, "glib", GLIBFOUND=yes, GLIBFOUND=no)
-fi
+# This check here is broken on Ubuntu 8.04: it calls glib-config,
+# which isn't found, but the error is not detected by configure.
+#if test "x${GLIBFOUND}" = "xno"; then
+#	PKG_CHECK_MODULES(GLIB, "glib", GLIBFOUND=yes, GLIBFOUND=no)
+#fi
 AC_SUBST(GLIB_CFLAGS)
 AC_SUBST(GLIB_LIBS)
 
@@ -41,6 +43,7 @@ else
         if  test "x${GLIBFOUND}" = "xyes"; then
             AC_DEFINE(HAVE_GLIB, 1, [glib found])
         fi
+        BACKEND_CPPFLAGS="$BACKEND_CPPFLAGS $GLIB_CFLAGS"
 fi
 
 dnl figure out whether we link all code statically or as modules
@@ -83,6 +86,7 @@ for backend in $BACKENDS; do
 done
 echo
 
+AC_DEFINE(SYNTHESIS, 1, "using Synthesis engine")
+
 AC_CONFIG_FILES(Makefile src/Makefile src/core/Makefile test/Makefile)
 AC_OUTPUT
-

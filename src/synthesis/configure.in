@@ -1,0 +1,67 @@
+dnl Invoke autogen.sh to produce a configure script.
+
+AC_INIT(src/sysync/engineinterface.cpp)
+AC_CONFIG_MACRO_DIR([m4])
+AM_INIT_AUTOMAKE(syncevolution, 0.8-beta2)
+AM_CONFIG_HEADER(config.h)
+AC_LIBTOOL_DLOPEN
+
+dnl check for programs.
+AC_PROG_CXX
+AC_PROG_LIBTOOL
+AC_PROG_MAKE_SET
+AM_PROG_CC_C_O
+
+dnl All of these libraries have to be compiled and installed
+dnl separately. TODO: build bundled sources?
+PKG_CHECK_MODULES(PCRE, libpcre)
+PKG_CHECK_MODULES(SQLITE3, sqlite3)
+AC_CHECK_HEADER(zlib.h, , [AC_ERROR(zlib.h not found.)])
+AC_CHECK_HEADER(xmltok/xmlparse.h, have_xmltok="yes")
+
+dnl libical might be installed stand-alone (upstream)
+dnl or bundled with libecal. Upstream is preferred and
+dnl thus checked first. libical is optional, so don't
+dnl complain if not found.
+PKG_CHECK_MODULES(LIBICAL, libical,
+                           [AC_DEFINE(HAVE_LIBICAL, 1, "libical available")],
+                           [PKG_CHECK_MODULES(LIBECAL, libecal-1.2,
+                                                       [AC_DEFINE(HAVE_LIBICAL, 1, "libical available")
+                                                        AC_DEFINE(HAVE_LIBECAL, 1, "libecal available")],
+                                                       [true])])
+
+AC_ARG_WITH(xmltok,
+        AS_HELP_STRING([--with-xmltok=<builtin|system|path>],
+                       [Chooses which xmltok/xmlparse gets used.
+                        "builtin" = compile code into libsynthesis.
+                        "system" = use header files and libxmlparse from standard search paths.
+                        "path" = use header files in "path/include" and libxmlparse in "path/lib".
+                        Default is system if header files are found, otherwise builtin.]),
+        [ if test "$withval" = "builtin"; then xmltok_builtin="yes"
+          elif test "$withval" = "system"; then
+               if test "$have_xmltok" = "yes"; then XMLPARSE_LIBS="-lxmlparse"
+               else AC_ERROR(xmltok/xmplarse.h not found.)
+               fi
+          else
+                XMLPARSE_LIBS="-L$withval/lib -lxmlparse"
+                XMLPARSE_CFLAGS="-I$withval/include"
+          fi ],
+        [ if test "$have_xmltok" = "yes"; then XMLPARSE_LIBS="-lxmlparse"
+          else xmltok_builtin="yes"
+          fi ])
+
+AC_SUBST(XMLPARSE_LIBS)
+AC_SUBST(XMLPARSE_CFLAGS)
+AM_CONDITIONAL([COND_XMLPARSE], [test "$xmltok_builtin" = "yes"])
+
+AC_CHECK_HEADER(stdint.h)
+
+echo "enable dynamic $enable_shared"
+if test "$enable_shared" = "no"; then
+   AC_DEFINE(UIAPI_LINKED, 1, [libsynthesis.a linked statically])
+   AC_DEFINE(DBAPI_LINKED, 1, [libsynthesis.a linked statically])
+fi
+AM_CONDITIONAL([COND_STATIC], [test "$enable_shared" = "no"])
+
+AC_CONFIG_FILES(Makefile src/Makefile)
+AC_OUTPUT

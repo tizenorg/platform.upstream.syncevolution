@@ -1,19 +1,21 @@
 /*
- * Copyright (C) 2007-2008 Patrick Ohly
+ * Copyright (C) 2007-2009 Patrick Ohly <patrick.ohly@gmx.de>
+ * Copyright (C) 2009 Intel Corporation
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) version 3.
  *
- * This program is distributed in the hope that it will be useful,
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301  USA
  */
 
 #include "config.h"
@@ -165,12 +167,9 @@ SyncItem *FileSyncSource::createItem(const string &uid)
     }
 
     string content = out.str();
-    auto_ptr<SyncItem> item(new SyncItem(uid.c_str()));
+    cxxptr<SyncItem> item(new SyncItem(), "SyncItem");
+    item->setKey(uid);
     item->setData(content.c_str(), content.size());
-    item->setDataType(getMimeType());
-    // probably not even used by Funambol client library...
-    item->setModificationTime(0);
-
     return item.release();
 }
 
@@ -241,13 +240,11 @@ void FileSyncSource::deleteItem(const string &uid)
 
 void FileSyncSource::logItem(const string &uid, const string &info, bool debug)
 {
-    if (LOG.getLevel() >= (debug ? LOG_LEVEL_DEBUG : LOG_LEVEL_INFO)) {
+    if (getLevel() >= (debug ? Logger::DEBUG : Logger::INFO)) {
         // If there was a good way to extract a short string identifying
         // the item with uid, we would use it here and log it like this:
-        // (LOG.*(debug ? &Log::debug : &Log::info))("%s: %s %s",
-        //                                           getName() /* out sync source name */,
-        //                                           itemName,
-        //                                           info.c_str());
+        // SE_LOG(this, NULL, debug ? Logger::DEBUG : Logger::INFO, "%s %s",
+        //        itemName, info.c_str());
         //
         // Alternatively we could just log the uid. EvolutionSyncSource::logItem()
         // is an utility function which extracts a short string from certain
@@ -277,7 +274,7 @@ void FileSyncSource::logItem(const string &uid, const string &info, bool debug)
 
 void FileSyncSource::logItem(const SyncItem &item, const string &info, bool debug)
 {
-    if (LOG.getLevel() >= (debug ? LOG_LEVEL_DEBUG : LOG_LEVEL_INFO)) {
+    if (getLevel() >= (debug ? Logger::DEBUG : Logger::INFO)) {
         if (!item.getData()) {
             // operation on item without data, fall back to logging via uid
             logItem(string(item.getKey()), info, debug);

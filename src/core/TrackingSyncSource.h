@@ -1,19 +1,21 @@
 /*
- * Copyright (C) 2008 Patrick Ohly
+ * Copyright (C) 2008-2009 Patrick Ohly <patrick.ohly@gmx.de>
+ * Copyright (C) 2009 Intel Corporation
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) version 3.
  *
- * This program is distributed in the hope that it will be useful,
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301  USA
  */
 
 #ifndef INCL_TRACKINGSYNCSOURCE
@@ -212,17 +214,15 @@ class TrackingSyncSource : public EvolutionSyncSource
     virtual void logItem(const string &uid, const string &info, bool debug = false) = 0;
     virtual void logItem(const SyncItem &item, const string &info, bool debug = false) = 0;
 
-    virtual void setItemStatusThrow(const char *key, int status);
-
   private:
     /* implementations of EvolutionSyncSource callbacks */
     virtual void beginSyncThrow(bool needAll,
                                 bool needPartial,
                                 bool deleteLocal);
     virtual void endSyncThrow();
-    virtual int addItemThrow(SyncItem& item);
-    virtual int updateItemThrow(SyncItem& item);
-    virtual int deleteItemThrow(SyncItem& item);
+    virtual SyncMLStatus addItemThrow(SyncItem& item);
+    virtual SyncMLStatus updateItemThrow(SyncItem& item);
+    virtual SyncMLStatus deleteItemThrow(SyncItem& item);
 
     boost::shared_ptr<ConfigNode> m_trackingNode;
 };

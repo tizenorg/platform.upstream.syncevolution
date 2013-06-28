@@ -15,8 +15,11 @@
 /* file available */
 #undef ENABLE_FILE
 
-/* enable unit tests outside of the library's source code */
-#undef ENABLE_INTEGRATION_TESTS
+/* enable libcurl transport */
+#undef ENABLE_LIBCURL
+
+/* enable libsoup transport */
+#undef ENABLE_LIBSOUP
 
 /* enable Maemo hacks */
 #undef ENABLE_MAEMO
@@ -32,6 +35,9 @@
 
 /* avoid hard dependency on Evolution shared objects */
 #undef EVOLUTION_COMPATIBILITY
+
+/* define if the Boost library is available */
+#undef HAVE_BOOST
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
@@ -84,6 +90,10 @@
 /* compiling for iPhone */
 #undef IPHONE
 
+/* Define to the sub-directory in which libtool stores uninstalled libraries.
+   */
+#undef LT_OBJDIR
+
 /* Name of package */
 #undef PACKAGE
 
@@ -104,6 +114,9 @@
 
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
+
+/* "using Synthesis engine" */
+#undef SYNTHESIS
 
 /* Version number of package */
 #undef VERSION

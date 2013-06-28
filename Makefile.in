@@ -35,14 +35,18 @@ subdir = .
 DIST_COMMON = README $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in $(srcdir)/config.h.in \
 	$(top_srcdir)/configure AUTHORS COPYING ChangeLog INSTALL NEWS \
-	config.guess config.sub depcomp install-sh ltmain.sh missing
+	config.guess config.sub depcomp install-sh ltmain.sh missing \
+	mkinstalldirs
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/configure.in
+am__aclocal_m4_deps = $(top_srcdir)/m4/ax_boost_base.m4 \
+	$(top_srcdir)/m4/libtool.m4 $(top_srcdir)/m4/ltoptions.m4 \
+	$(top_srcdir)/m4/ltsugar.m4 $(top_srcdir)/m4/ltversion.m4 \
+	$(top_srcdir)/m4/lt~obsolete.m4 $(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
  configure.lineno config.status.lineno
-mkinstalldirs = $(install_sh) -d
+mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_HEADER = config.h
 CONFIG_CLEAN_FILES =
 SOURCES =
@@ -81,18 +85,17 @@ AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BACKEND_CPPFLAGS = @BACKEND_CPPFLAGS@
 BACKEND_DEFINES = @BACKEND_DEFINES@
+BOOST_CPPFLAGS = @BOOST_CPPFLAGS@
+BOOST_LDFLAGS = @BOOST_LDFLAGS@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CLEAN_CLIENT_SRC = @CLEAN_CLIENT_SRC@
-CLIENT_API_SRC = @CLIENT_API_SRC@
 CORE_LDADD_DEP = @CORE_LDADD_DEP@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CPPUNIT_CXXFLAGS = @CPPUNIT_CXXFLAGS@
 CPPUNIT_LDFLAGS = @CPPUNIT_LDFLAGS@
-CPPUNIT_TESTS = @CPPUNIT_TESTS@
-CURL_LDFLAGS = @CURL_LDFLAGS@
 CXX = @CXX@
 CXXCPP = @CXXCPP@
 CXXDEPMODE = @CXXDEPMODE@
@@ -101,11 +104,11 @@ CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DSYMUTIL = @DSYMUTIL@
+DUMPBIN = @DUMPBIN@
 EBOOK_CFLAGS = @EBOOK_CFLAGS@
 EBOOK_LIBS = @EBOOK_LIBS@
 ECAL_CFLAGS = @ECAL_CFLAGS@
 ECAL_LIBS = @ECAL_LIBS@
-ECHO = @ECHO@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
@@ -113,17 +116,9 @@ EGREP = @EGREP@
 EPACKAGE_CFLAGS = @EPACKAGE_CFLAGS@
 EPACKAGE_LIBS = @EPACKAGE_LIBS@
 EXEEXT = @EXEEXT@
-F77 = @F77@
-FFLAGS = @FFLAGS@
+FGREP = @FGREP@
 FILE_CFLAGS = @FILE_CFLAGS@
 FILE_LIBS = @FILE_LIBS@
-FUNAMBOL = @FUNAMBOL@
-FUNAMBOLSRC = @FUNAMBOLSRC@
-FUNAMBOL_CFLAGS = @FUNAMBOL_CFLAGS@
-FUNAMBOL_DEP = @FUNAMBOL_DEP@
-FUNAMBOL_LIB = @FUNAMBOL_LIB@
-FUNAMBOL_LIBS = @FUNAMBOL_LIBS@
-FUNAMBOL_SUBDIR = @FUNAMBOL_SUBDIR@
 GLIB_CFLAGS = @GLIB_CFLAGS@
 GLIB_LIBS = @GLIB_LIBS@
 GREP = @GREP@
@@ -132,17 +127,24 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
+LIBSOUP_CFLAGS = @LIBSOUP_CFLAGS@
+LIBSOUP_LIBS = @LIBSOUP_LIBS@
 LIBTOOL = @LIBTOOL@
+LIPO = @LIPO@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
 MODIFY_SYNCCOMPARE = @MODIFY_SYNCCOMPARE@
+NM = @NM@
 NMEDIT = @NMEDIT@
 OBJEXT = @OBJEXT@
+OTOOL = @OTOOL@
+OTOOL64 = @OTOOL64@
 PACKAGE = @PACKAGE@
 PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
 PACKAGE_NAME = @PACKAGE_NAME@
@@ -161,8 +163,16 @@ STRIP = @STRIP@
 SYNCEVOLUTION_CXXFLAGS = @SYNCEVOLUTION_CXXFLAGS@
 SYNCEVOLUTION_LDADD = @SYNCEVOLUTION_LDADD@
 SYNCSOURCES = @SYNCSOURCES@
+SYNTHESIS = @SYNTHESIS@
+SYNTHESISSRC = @SYNTHESISSRC@
+SYNTHESIS_CFLAGS = @SYNTHESIS_CFLAGS@
+SYNTHESIS_DEP = @SYNTHESIS_DEP@
+SYNTHESIS_LIB = @SYNTHESIS_LIB@
+SYNTHESIS_LIBS = @SYNTHESIS_LIBS@
+SYNTHESIS_SRC = @SYNTHESIS_SRC@
+SYNTHESIS_SUBDIR = @SYNTHESIS_SUBDIR@
 TRANSPORT_CFLAGS = @TRANSPORT_CFLAGS@
-TRANSPORT_LDFLAGS = @TRANSPORT_LDFLAGS@
+TRANSPORT_LIBS = @TRANSPORT_LIBS@
 VERSION = @VERSION@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
@@ -170,7 +180,7 @@ abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
-ac_ct_F77 = @ac_ct_F77@
+ac_ct_DUMPBIN = @ac_ct_DUMPBIN@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -201,6 +211,7 @@ libdir = @libdir@
 libexecdir = @libexecdir@
 localedir = @localedir@
 localstatedir = @localstatedir@
+lt_ECHO = @lt_ECHO@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
@@ -215,14 +226,24 @@ sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
+ACLOCAL_AMFLAGS = -I m4
 SUBDIRS = src test
-EXTRA_DIST = HACKING description configure-pre.in configure-post.in autogen.sh Makefile-gen.am Doxyfile
+EXTRA_DIST = \
+	HACKING \
+	LICENSE.txt \
+	LICENSE.LGPL-21 \
+	description \
+	configure-pre.in \
+	configure-post.in \
+	autogen.sh \
+	Makefile-gen.am \
+	Doxyfile
+
 MAINTAINERCLEANFILES = Makefile.in config.h.in config.guess config.sub configure depcomp install-sh ltmain.sh missing mkinstalldirs
-DISTCHECK_CONFIGURE_FLAGS = --with-sync4j=@FUNAMBOL@
 IPHONE_FILENAME = syncevolution-$(VERSION)-iphone.zip
 TYPE_deb = -D
 TYPE_rpm = -R
-REQUIRES_deb = --requires="`dpkg-shlibdeps -L$(srcdir)/src/shlibs.local -O src/syncevolution | sed -e 's/[^=]*=//'`"
+REQUIRES_deb = --requires="'$(shell dpkg-shlibdeps -L$(srcdir)/src/shlibs.local -O src/syncevolution | sed -e 's/[^=]*=//')'"
 VERSION_deb = `echo 1:$(VERSION) | perl -p -e 's/(\d+\.\d+)([-a-z0-9]+)/sprintf("%0.1f+$$1$$2", ($$1 - 0.1))/e'`
 VERSION_rpm = `echo $(VERSION) | sed -e s/-/_/g`
 RELEASE = 2
@@ -478,6 +499,9 @@ distdir: $(DISTFILES)
 	      || exit 1; \
 	  fi; \
 	done
+	$(MAKE) $(AM_MAKEFLAGS) \
+	  top_distdir="$(top_distdir)" distdir="$(distdir)" \
+	  dist-hook
 	-find $(distdir) -type d ! -perm -777 -exec chmod a+rwx {} \; -o \
 	  ! -type d ! -perm -444 -links 1 -exec chmod a+r {} \; -o \
 	  ! -type d ! -perm -400 -exec chmod a+r {} \; -o \
@@ -675,8 +699,8 @@ uninstall-am:
 .PHONY: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) CTAGS GTAGS \
 	all all-am am--refresh check check-am clean clean-generic \
 	clean-libtool clean-local ctags ctags-recursive dist dist-all \
-	dist-bzip2 dist-gzip dist-lzma dist-shar dist-tarZ dist-zip \
-	distcheck distclean distclean-generic distclean-hdr \
+	dist-bzip2 dist-gzip dist-hook dist-lzma dist-shar dist-tarZ \
+	dist-zip distcheck distclean distclean-generic distclean-hdr \
 	distclean-libtool distclean-tags distcleancheck distdir \
 	distuninstallcheck dvi dvi-am html html-am info info-am \
 	install install-am install-data install-data-am install-dvi \
@@ -734,10 +758,11 @@ deb rpm : all doc-pak description-pak
 		--pkgversion=$(VERSION_$@) \
 		--pkgrelease=$(RELEASE) \
 		--pkgname=$(PKGNAME) \
+		--pkgarch=$(PKGARCH) \
 		--provides=syncevolution \
 	        --replaces="'syncevolution, `echo $(filter-out $(PKGNAME), $(PKGS)) | sed -e 's/  */ (<< 1:0.8.1-2), /g'` (<< 1:0.8.1-2)'" \
 		--conflicts="'syncevolution, `echo $(filter-out $(PKGNAME), $(PKGS)) | sed -e 's/  */ (<< 1:0.8.1-2), /g'` (<< 1:0.8.1-2)'" \
-		--maintainer='Patrick Ohly <patrick.ohly@gmx.de>' \
+		--maintainer="'Patrick Ohly <patrick.ohly@gmx.de>'" \
 		--pkgsource='http://sourceforge.net/project/showfiles.php?group_id=146288' \
 		--pkgaltsource='http://www.estamos.de/projects/SyncML/' \
 		--pkggroup='gnome' \
@@ -780,6 +805,20 @@ $(srcdir)/configure.in: configure-pre.in configure-post.in $(CONFIG_SUBS)
 $(srcdir)/Makefile.am: Makefile-gen.am
 	sed -e 's;[@]CONFIG_SUBS[@];$(CONFIG_SUBS);' \
 	    $< >$@
+
+dist-hook:
+	@if test -d "$(srcdir)/.git"; \
+	then \
+		echo Creating ChangeLog && \
+		( cd "$(top_srcdir)" && \
+		  echo '# Generated by configure.  Do no edit.'; echo; \
+		  $(top_srcdir)/missing --run perl $(top_srcdir)/build/gen-changelog.pl ) > ChangeLog.tmp \
+		&& mv -f ChangeLog.tmp $(top_distdir)/ChangeLog \
+		|| ( rm -f ChangeLog.tmp ; \
+		     echo Failed to generate ChangeLog >&2 ); \
+	else \
+		echo A git checkout is required to generate a ChangeLog >&2; \
+	fi
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

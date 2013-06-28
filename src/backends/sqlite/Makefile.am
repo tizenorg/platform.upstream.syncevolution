@@ -1,8 +1,4 @@
-AM_CPPFLAGS = -I$(srcdir)/../../core @EPACKAGE_CFLAGS@ @EBOOK_CFLAGS@ @ECAL_CFLAGS@ @SQLITE_CFLAGS@ @FUNAMBOL_CFLAGS@
-
-# applies to sources in SyncEvolution repository, but not
-# the Funambol C++ client library
-SYNCEVOLUTION_CXXFLAGS = @SYNCEVOLUTION_CXXFLAGS@
+AM_CPPFLAGS = -I$(srcdir)/../../core $(BACKEND_CPPFLAGS)
 
 EXTRA_DIST = configure-sub.in
 
@@ -23,13 +19,13 @@ SYNCSQLITE_SOURCES = \
 	SQLiteContactSource.cpp
 
 syncsqlite_la_SOURCES = $(SYNCSQLITE_SOURCES)
-syncsqlite_la_LIBADD = @SQLITE_LIBS@
+syncsqlite_la_LIBADD = $(SQLITE_LIBS)
 syncsqlite_la_LDFLAGS = -module -rpath '$(pkglibdir)'
 syncsqlite_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS)
 
 # SQLiteContactSource does not support all fields from Funambol vCard 2.1
 # test cases: filter them out before testing
-../../testcases/sqlite_vcard21.vcf: $(FUNAMBOL_SUBDIR)/test/test/testcases/vcard21.vcf
-	mkdir -p ${@D}
-	perl -e '$$_ = join("", <>); s/^(ADR|TEL|EMAIL|PHOTO).*?(?=^\S)//msg; s/;X-EVOLUTION-UI-SLOT=\d+//g; print;' $< >$@
-all: ../../testcases/sqlite_vcard21.vcf
+#../../testcases/sqlite_vcard21.vcf: $(FUNAMBOL_SUBDIR)/test/test/testcases/vcard21.vcf
+#	mkdir -p ${@D}
+#	perl -e '$$_ = join("", <>); s/^(ADR|TEL|EMAIL|PHOTO).*?(?=^\S)//msg; s/;X-EVOLUTION-UI-SLOT=\d+//g; print;' $< >$@
+# all: ../../testcases/sqlite_vcard21.vcf

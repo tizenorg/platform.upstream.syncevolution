@@ -1,26 +1,30 @@
 /*
- * Copyright (C) 2008 Patrick Ohly
+ * Copyright (C) 2008-2009 Patrick Ohly <patrick.ohly@gmx.de>
+ * Copyright (C) 2009 Intel Corporation
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) version 3.
  *
- * This program is distributed in the hope that it will be useful,
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY, TITLE, NONINFRINGEMENT or FITNESS FOR A PARTICULAR
- * PURPOSE.  See the GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
- * 02111-1307  USA
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301  USA
  */
 
-#include <config.h>
+#include "config.h"
 #include "SyncEvolutionUtil.h"
 #include "EvolutionSyncClient.h"
-#include <base/test.h>
+#include "TransportAgent.h"
+#include "Logging.h"
+
+#include <synthesis/syerror.h>
 
 #include <boost/scoped_array.hpp>
 #include <boost/foreach.hpp>
@@ -33,6 +37,7 @@
 #include <dirent.h>
 
 #ifdef ENABLE_UNIT_TESTS
+#include <cppunit/extensions/HelperMacros.h>
 CPPUNIT_REGISTRY_ADD_TO_DEFAULT("SyncEvolution");
 #endif
 
@@ -148,8 +153,8 @@ UUID::UUID()
     sprintf(buffer, "%08x-%04x-%04x-%02x%02x-%08x%04x",
             rand() & 0xFFFFFFFF,
             rand() & 0xFFFF,
-            rand() & 0x0FFF | 0x4000 /* RFC 4122 time_hi_and_version */,
-            rand() & 0xBF | 0x80 /* clock_seq_hi_and_reserved */,
+            (rand() & 0x0FFF) | 0x4000 /* RFC 4122 time_hi_and_version */,
+            (rand() & 0xBF) | 0x80 /* clock_seq_hi_and_reserved */,
             rand() & 0xFF,
             rand() & 0xFFFFFFFF,
             rand() & 0xFFFF
@@ -187,4 +192,102 @@ ReadDir::ReadDir(const string &path) : m_path(path)
     }
 
     closedir(dir);
+}
+
+bool ReadFile(const string &filename, string &content)
+{
+    ifstream in;
+    in.open(filename.c_str());
+    ostringstream out;
+    char buf[8192];
+    do {
+        in.read(buf, sizeof(buf));
+        out.write(buf, in.gcount());
+    } while(in);
+
+    content = out.str();
+    return in.eof();
+}
+
+unsigned long Hash(const char *str)
+{
+    unsigned long hashval = 5381;
+    int c;
+
+    while ((c = *str++) != 0) {
+        hashval = ((hashval << 5) + hashval) + c;
+    }
+
+    return hashval;
+}
+
+std::string StringPrintf(const char *format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+    std::string res = StringPrintfV(format, ap);
+    va_end(ap);
+    return res;
+}
+
+std::string StringPrintfV(const char *format, va_list ap)
+{
+    va_list aq;
+
+    char *buffer = NULL;
+    ssize_t size = 0;
+    ssize_t realsize = 255;
+    do {
+        // vsnprintf() destroys ap, so make a copy first
+        va_copy(aq, ap);
+
+        if (size < realsize) {
+            buffer = (char *)realloc(buffer, realsize + 1);
+            if (!buffer) {
+                if (buffer) {
+                    free(buffer);
+                }
+                return "";
+            }
+            size = realsize;
+        }
+
+        realsize = vsnprintf(buffer, size + 1, format, aq);
+        if (realsize == -1) {
+            // old-style vnsprintf: exact len unknown, try again with doubled size
+            realsize = size * 2;
+        }
+        va_end(aq);
+    } while(realsize > size);
+
+    std::string res = buffer;
+    free(buffer);
+    return res;
+}
+
+SyncMLStatus SyncEvolutionException::handle(SyncMLStatus *status)
+{
+    SyncMLStatus new_status = STATUS_FATAL;
+
+    try {
+        throw;
+    } catch (const TransportException &ex) {
+        SE_LOG_DEBUG(NULL, NULL, "TransportException thrown at %s:%d",
+                     ex.m_file.c_str(), ex.m_line);
+        SE_LOG_ERROR(NULL, NULL, "%s", ex.what());
+        new_status = SyncMLStatus(sysync::LOCERR_TRANSPFAIL);
+    } catch (const SyncEvolutionException &ex) {
+        SE_LOG_DEBUG(NULL, NULL, "exception thrown at %s:%d",
+                     ex.m_file.c_str(), ex.m_line);
+        SE_LOG_ERROR(NULL, NULL, "%s", ex.what());
+    } catch (const std::exception &ex) {
+        SE_LOG_ERROR(NULL, NULL, "%s", ex.what());
+    } catch (...) {
+        SE_LOG_ERROR(NULL, NULL, "unknown error");
+    }
+
+    if (status && *status == STATUS_OK) {
+        *status = new_status;
+    }
+    return status ? *status : new_status;
 }

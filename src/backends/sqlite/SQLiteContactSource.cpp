@@ -1,19 +1,21 @@
 /*
- * Copyright (C) 2007-2008 Patrick Ohly
+ * Copyright (C) 2007-2009 Patrick Ohly <patrick.ohly@gmx.de>
+ * Copyright (C) 2009 Intel Corporation
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) version 3.
  *
- * This program is distributed in the hope that it will be useful,
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301  USA
  */
 
 #include "config.h"
@@ -23,7 +25,7 @@
 
 #include "SQLiteContactSource.h"
 
-#include <common/base/Log.h>
+#include "Logging.h"
 #include "vocl/VConverter.h"
 
 #include <algorithm>
@@ -233,7 +235,7 @@ SyncItem *SQLiteContactSource::createItem(const string &uid)
     vobj.fromNativeEncoding();
 
     arrayptr<char> finalstr(vobj.toString(), "VOCL string");
-    LOG.debug("%s", (char *)finalstr);
+    SE_LOG_DEBUG(this, NULL, "%s", (char *)finalstr);
 
     cxxptr<SyncItem> item( new SyncItem( uid.c_str() ) );
     item->setData( (char *)finalstr, strlen(finalstr) );
@@ -392,15 +394,15 @@ void SQLiteContactSource::deleteItem(const string &uid)
 
 void SQLiteContactSource::logItem(const string &uid, const string &info, bool debug)
 {
-    if (LOG.getLevel() >= (debug ? LOG_LEVEL_DEBUG : LOG_LEVEL_INFO)) {
-        (LOG.*(debug ? &Log::debug : &Log::info))("%s: %s %s",
-                                                  getName(),
-                                                  m_sqlite.findColumn("ABPerson",
-                                                                      "ROWID",
-                                                                      uid.c_str(),
-                                                                      "FirstSort",
-                                                                      uid.c_str()).c_str(),
-                                                  info.c_str());
+    if (getLevel() >= (debug ? Logger::DEBUG : Logger::INFO)) {
+        SE_LOG(this, NULL, debug ? Logger::DEBUG : Logger::INFO,
+               "%s %s",
+               m_sqlite.findColumn("ABPerson",
+                                   "ROWID",
+                                   uid.c_str(),
+                                   "FirstSort",
+                                   uid.c_str()).c_str(),
+               info.c_str());
     }
 }
 
@@ -411,7 +413,7 @@ void SQLiteContactSource::logItem(const SyncItem &item, const string &info, bool
         return;
     }
 
-    if (LOG.getLevel() >= (debug ? LOG_LEVEL_DEBUG : LOG_LEVEL_INFO)) {
+    if (getLevel() >= (debug ? Logger::DEBUG : Logger::INFO)) {
         string data = (const char *)item.getData();
 
         // avoid pulling in a full vcard parser by just searching for a specific property,
@@ -426,11 +428,10 @@ void SQLiteContactSource::logItem(const SyncItem &item, const string &info, bool
                 name = data.substr(start, end - start);
             }
         }
-
-        (LOG.*(debug ? &Log::debug : &Log::info))("%s: %s %s",
-                                                  getName(),
-                                                  name.c_str(),
-                                                  info.c_str());
+        SE_LOG(this, NULL, debug ? Logger::DEBUG : Logger::INFO,
+               "%s %s",
+               name.c_str(),
+               info.c_str());
     }
 }
 
