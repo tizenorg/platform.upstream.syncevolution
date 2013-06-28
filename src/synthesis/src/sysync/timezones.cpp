@@ -169,7 +169,8 @@ bool GZones::matchTZ(const tz_entry &aTZ, TDebugLogger *aLogP, timecontext_t &aC
 
       bool rule_match = tzcmp(fTZ, aTZ) && YearFit(fTZ, aTZ, fG);
 
-      if (aTZ.dynYear.empty())
+			// start of a group is an entry that has a dynYear empty or set to "CUR" (for dynamically created entries)
+      if (aTZ.dynYear.empty() || aTZ.dynYear == "CUR")
         fLeadContext = aContext;
 
       if (rule_match &&
@@ -205,7 +206,7 @@ bool GZones::matchTZ(const tz_entry &aTZ, TDebugLogger *aLogP, timecontext_t &aC
           rule_match &&
           !fRuleMatch) {
           PLOGDEBUGPRINTFX(fLogP, DBG_PARSE+DBG_EXOTIC,
-                           ("matchTZ %s: rules match", aTZ.name.c_str()));
+                           ("matchTZ %s: rules match (context #%d/%d, leadcontext=#%d)", aTZ.name.c_str(), TCTX_TZENUM(aContext), tctx_numtimezones, TCTX_TZENUM(fLeadContext)));
         fContext = fLeadContext;
         fRuleMatch = true;
       }

@@ -24,7 +24,7 @@
 
 #include "KCalExtendedSource.h"
 
-#include <QApplication>
+#include <QCoreApplication>
 
 #include <event.h>
 #include <journal.h>
@@ -38,6 +38,18 @@
 #include <syncevo/declarations.h>
 SE_BEGIN_CXX
 
+/**
+ * All std::string and plain C strings in SyncEvolution are in UTF-8.
+ * QString must be told about that explicitly.
+ */
+static QString std2qstring(const std::string &str) { return QString::fromUtf8(str.c_str()); }
+// static QString std2qstring(const char *str) { return QString::fromUtf8(str); }
+
+/**
+ * Convert back to UTF-8.
+ */
+static std::string qstring2std(const QString str) { return str.toUtf8().constData(); }
+
 class KCalExtendedData
 {
     KCalExtendedSource *m_parent;
@@ -45,9 +57,6 @@ class KCalExtendedData
     QString m_notebook;
     QString m_notebookUID;
     KCalCore::IncidenceBase::IncidenceType m_type;
-
-    // needed when using Qt code
-    static QApplication *m_app;
 
     mKCal::ExtendedCalendar::Ptr m_calendar;
     mKCal::ExtendedStorage::Ptr m_storage;
@@ -61,10 +70,10 @@ public:
         m_notebook(notebook),
         m_type(type)
     {
-        if (!m_app) {
+        if (!qApp) {
             static const char *argv[] = { "SyncEvolution" };
             static int argc = 1;
-            m_app = new QApplication(argc, (char **)argv);
+            new QCoreApplication(argc, (char **)argv);
         }
     }
 
@@ -102,8 +111,8 @@ public:
 
         const string m_uid, m_rid;
 
-        QString getIDString() const { return QString(m_uid.c_str()); }
-        KDateTime getDateTime() const { return KDateTime::fromString(QString(m_rid.c_str())); }
+        QString getIDString() const { return std2qstring(m_uid); }
+        KDateTime getDateTime() const { return KDateTime::fromString(std2qstring(m_rid)); }
 
         string getLUID() const;
         static string getLUID(const string &uid, const string &rid);
@@ -142,7 +151,7 @@ KCalCore::Incidence::Ptr KCalExtendedData::findIncidence(const string &luid)
     QString uid = id.getIDString();
     KDateTime rid = id.getDateTime();
     if (!m_storage->load(uid, rid)) {
-        m_parent->throwError("failed to load incidence");
+        m_parent->throwError(string("failed to load incidence ") + luid);
     }
     KCalCore::Incidence::Ptr incidence = m_calendar->incidence(uid, rid);
     return incidence;
@@ -154,13 +163,10 @@ KCalExtendedData::ItemID KCalExtendedData::getItemID(const KCalCore::Incidence::
     KDateTime rid = incidence->recurrenceId();
     string ridStr;
     if (rid.isValid()) {
-        ridStr = rid.toString().toLocal8Bit().constData();
+        ridStr = qstring2std(rid.toString());
     }
-    return ItemID(uid.toLocal8Bit().constData(),
-                  ridStr);
+    return ItemID(qstring2std(uid), ridStr);
 }
-
-QApplication *KCalExtendedData::m_app;
 
 KCalExtendedSource::KCalExtendedSource(const SyncSourceParams &params) :
     TestingSyncSource(params)
@@ -290,7 +296,7 @@ std::string KCalExtendedSource::endSync(bool success)
     }
 
     QDateTime now = QDateTime::currentDateTime().toUTC();
-    string anchor(now.toString(Qt::ISODate).toLocal8Bit().constData());
+    string anchor(qstring2std(now.toString(Qt::ISODate)));
     return anchor;
 }
 
@@ -303,14 +309,14 @@ void KCalExtendedSource::readItem(const string &uid, std::string &item)
     KCalCore::Calendar::Ptr calendar(new KCalCore::MemoryCalendar(KDateTime::Spec::LocalZone()));
     calendar->addIncidence(incidence);
     KCalCore::ICalFormat formatter;
-    item = formatter.toString(calendar).toLocal8Bit().constData();
+    item = qstring2std(formatter.toString(calendar));
 }
 
 TestingSyncSource::InsertItemResult KCalExtendedSource::insertItem(const string &uid, const std::string &item)
 {
     KCalCore::Calendar::Ptr calendar(new KCalCore::MemoryCalendar(KDateTime::Spec::LocalZone()));
     KCalCore::ICalFormat parser;
-    if (!parser.fromString(calendar, QString(item.c_str()))) {
+    if (!parser.fromString(calendar, std2qstring(item))) {
         throwError("error parsing iCalendar 2.0 item");
     }
     KCalCore::Incidence::List incidences = calendar->rawIncidences();
@@ -392,10 +398,10 @@ void KCalExtendedSource::deleteItem(const string &uid)
 {
     KCalCore::Incidence::Ptr incidence = m_data->findIncidence(uid);
     if (!incidence) {
-        throwError("incidence not found");
+        throwError(string("incidence ") + uid + " not found");
     }
     if (!m_data->m_calendar->deleteIncidence(incidence)) {
-        throwError("could not delete incidence");
+        throwError(string("could not delete incidence") + uid);
     }
     m_data->m_modified = true;
 }
@@ -423,11 +429,11 @@ std::string KCalExtendedSource::getDescription(const string &luid)
             // for VEVENT
             str = incidence->summary();
             if (!str.isEmpty()) {
-                parts.push_back(str.toLocal8Bit().constData());
+                parts.push_back(qstring2std(str));
             }
             str = incidence->location();
             if (!str.isEmpty()) {
-                parts.push_back(str.toLocal8Bit().constData());
+                parts.push_back(qstring2std(str));
             }
             return boost::join(parts, ", ");
         } else {

@@ -92,7 +92,66 @@ const char* VTZ_OFROM = "TZOFFSETFROM";
 const char* VTZ_OTO   = "TZOFFSETTO";
 const char* VTZ_NAME  = "TZNAME";
 
+/*!
+  * escapes newline ('\n'), comma, semicolon and backslash itself with backslash,
+  * according to RFC 2445 "4.3.1 Text" value definition
+  */
+static string escapeText(const string &str)
+{
+  string res;
+  res.reserve(str.size() * 110 / 100);
 
+  for (size_t i = 0; i < str.size(); i++) {
+    switch (str[i]) {
+    case '\n':
+      res += "\\n";
+      break;
+    case '\\':
+    case ',':
+    case ';':
+      res += '\\';
+      // no break!
+    default:
+      res += str[i];
+      break;
+    }
+  }
+
+  return res;
+}
+
+/*!
+ * reverses escapeText(); in addition, accepts arbitrary characters
+ * after backslash and replaces them with that character
+ */
+static string unescapeText(const string &str)
+{
+  string res;
+  res.reserve(str.size());
+
+  for (size_t i = 0; i < str.size(); i++) {
+    switch (str[i]) {
+    case '\\':
+      i++;
+      if (i < str.size()) {
+        switch (str[i]) {
+        case 'n':
+          res += '\n';
+          break;
+        default:
+          res += str[i];
+          break;
+        }
+      }
+      break;
+    default:
+      res += str[i];
+      break;
+    }
+  }
+
+  return res;
+}
 
 /*! RRULE2toInternal, using RType
  *  Converts  vCalendar 2.0 RRULE string into internal recurrence representation
@@ -290,7 +349,7 @@ static bool GetTZInfo( cAppCharP     aText,
          st= VValue( a, VTZ_START ); //            - start time
   string of= VValue( a, VTZ_OFROM ); //            - tz offset from
   string ot= VValue( a, VTZ_OTO   ); //            - tz offset to
-      cName= VValue( a, VTZ_NAME  ); //            - tz name
+      cName= unescapeText( VValue( a, VTZ_NAME  ) ); // - tz name
 
   if (ISO8601StrToTimestamp( st.c_str(), dtstart, tctx )==0)  return false;
   if (!Get_Bias( of,ot, cBias ))                              return false;
@@ -438,7 +497,7 @@ bool VTIMEZONEtoTZEntry( const char*    aText, // VTIMEZONE string to be parsed
   else t.biasDST= dBias - t.bias; // t.biasDST WILL be calculated here
 
   // get TZID as found in VTIMEZONE
-  t.name = VValue( aText, VTZ_ID );
+  t.name = unescapeText( VValue( aText, VTZ_ID ) );
 
   return success;
 } // VTIMEZONEtoTZEntry
@@ -607,7 +666,7 @@ static string GenerateTZInfo( tz_entry t,
   if (withDST) s+= Property( VTZ_RR,    rTxt      );
                s+= FromTo             ( aFrom,aTo );
   if (withDST &&
-     !aName.empty()) s+= Property( VTZ_NAME, aName );
+     !aName.empty()) s+= Property( VTZ_NAME, escapeText( aName ) );
 
   return Encapsuled( value, s );
 } // GenerateTZInfo
@@ -671,7 +730,7 @@ bool internalToVTIMEZONE( timecontext_t  aContext,
   }
   
   // at least one STANDARD or DAYLIGHT info is mandatory
-  aText=    Property      (    VTZ_ID,      tzn ) +
+  aText=    Property      (    VTZ_ID,      escapeText( tzn ) ) +
             GenerateTZInfo( t, VTZ_STD, id, t.std, y_std, t_plus,t.bias, g, aLogP );
 
   if (withDST)

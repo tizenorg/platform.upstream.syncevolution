@@ -5,7 +5,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="Docutils 0.6: http://docutils.sourceforge.net/" />
 <title>SyncEvolution</title>
-<meta name="date" content="2010-09-09" />
+<meta name="date" content="2010-09-30" />
 <style type="text/css">
 
 /*
@@ -315,9 +315,9 @@ ul.auto-toc {
 <tr class="field"><th class="docinfo-name">Manual section:</th><td class="field-body">1</td>
 </tr>
 <tr><th class="docinfo-name">Version:</th>
-<td>1.0.99.6+20100909+SE+3c7dca9+SYSYNC+47f51a5</td></tr>
+<td>1.0.99.7</td></tr>
 <tr><th class="docinfo-name">Date:</th>
-<td>2010-09-09</td></tr>
+<td>2010-09-30</td></tr>
 </tbody>
 </table>
 <div class="section" id="synopsis">
@@ -617,10 +617,14 @@ directory. The &lt;luid&gt; of each item is used as file name. Otherwise it
 creates a new file under that name and writes the selected items
 separated by the chosen delimiter string. stdout can be selected with
 a dash.</p>
-<p class="last">The default delimiter are two newline characters for a blank line. This
-works for vCard 3.0 and iCalendar 2.0, which never contain blank lines.
-Because items may or may not end in a newline, as a special case the
-initial newline of a delimiter is skipped if the item ends in a newline.</p>
+<p>The default delimiter (two line breaks) matches a blank line. As a special
+case, it also matches a blank line with DOS line ending (line break,
+carriage return, line break). This works for vCard 3.0 and iCalendar 2.0,
+which never contain blank lines.</p>
+<p class="last">When exporting, the default delimiter will always insert two line
+breaks regardless whether the items contain DOS line ends. As a
+special case, the initial newline of a delimiter is skipped if the
+item already ends in a newline.</p>
 </dd>
 <dt>--import</dt>
 <dd>Adds all items found in the directory or input file to the

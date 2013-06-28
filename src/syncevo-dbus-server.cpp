@@ -185,6 +185,65 @@ static DBusMessage* SyncEvoHandleException(DBusMessage *msg)
 }
 
 /**
+ * Utility class which makes it easier to work with g_timeout_add_seconds().
+ * Instantiate this class with a specific callback. Use boost::bind()
+ * to attach specific parameters to that callback. Then activate
+ * the timeout. Destructing this class will automatically remove
+ * the timeout and thus ensure that it doesn't trigger without
+ * valid parameters.
+ */
+class Timeout
+{
+    guint m_tag;
+    boost::function<bool ()> m_callback;
+
+public:
+    Timeout() :
+        m_tag(0)
+    {
+    }
+
+    ~Timeout()
+    {
+        if (m_tag) {
+            g_source_remove(m_tag);
+        }
+    }
+
+    /**
+     * call the callback at regular intervals until it returns false
+     */
+    void activate(int seconds,
+                  const boost::function<bool ()> &callback)
+    {
+        m_callback = callback;
+        m_tag = g_timeout_add_seconds(seconds, triggered, static_cast<gpointer>(this));
+        if (!m_tag) {
+            SE_THROW("g_timeout_add_seconds() failed");
+        }
+    }
+
+    /**
+     * stop calling the callback, drop callback
+     */
+    void deactivate()
+    {
+        if (m_tag) {
+            g_source_remove(m_tag);
+            m_tag = 0;
+        }
+        m_callback = 0;
+    }
+
+private:       
+    static gboolean triggered(gpointer data)
+    {
+        Timeout *me = static_cast<Timeout *>(data);
+        return me->m_callback();
+    }
+};
+
+/**
  * Implements the read-only methods in a Session and the Server.
  * Only data is the server configuration name, everything else
  * is created and destroyed inside the methods.
@@ -935,6 +994,8 @@ private:
     SignalWatch2 <string,boost::variant<vector<string>, string> > m_propertyChanged;
 };
 
+
+
 /**
  * Implements the main org.syncevolution.Server interface.
  *
@@ -1188,6 +1249,19 @@ class DBusServer : public DBusObjectHelper,
     //send signals to clients and put logs in the parent logger.
     LoggerBase &m_parentLogger;
 
+    /**
+     * All active timeouts created by addTimeout().
+     * Each timeout which requests to be not called
+     * again will be removed from this list.
+     */
+    list< boost::shared_ptr<Timeout> > m_timeouts;
+
+    /**
+     * called each time a timeout triggers,
+     * removes those which are done
+     */
+    bool callTimeout(const boost::shared_ptr<Timeout> &timeout, const boost::function<bool ()> &callback);
+
 public:
     DBusServer(GMainLoop *loop, const DBusConnectionPtr &conn, int duration);
     ~DBusServer();
@@ -1241,6 +1315,15 @@ public:
      * and if so, activates the first one in the queue.
      */
     void checkQueue();
+
+    /**
+     * Invokes the given callback once in the given amount of seconds.
+     * Keeps a copy of the callback. If the DBusServer is destructed
+     * before that time, then the callback will be deleted without
+     * being called.
+     */
+    void addTimeout(const boost::function<bool ()> &callback,
+                    int seconds);
 
     boost::shared_ptr<InfoReq> createInfoReq(const string &type, 
                                              const std::map<string, string> &parameters,
@@ -1320,6 +1403,8 @@ public:
  */
 class Client
 {
+    DBusServer &m_server;
+
     typedef std::list< boost::shared_ptr<Resource> > Resources_t;
     Resources_t m_resources;
 
@@ -1329,19 +1414,20 @@ class Client
     /** current client setting for notifications (see HAS_NOTIFY) */
     bool m_notificationsEnabled;
 
+    /** called 1 minute after last client detached from a session */
+    static bool sessionExpired(const boost::shared_ptr<Session> &session);
+
 public:
     const Caller_t m_ID;
 
-    Client(const Caller_t &ID) :
+    Client(DBusServer &server,
+           const Caller_t &ID) :
+        m_server(server),
         m_attachCount(0),
         m_notificationsEnabled(true),
         m_ID(ID)
     {}
-
-    ~Client()
-    {
-        SE_LOG_DEBUG(NULL, NULL, "D-Bus client %s is destructing", m_ID.c_str());
-    }
+    ~Client();
 
     void increaseAttachCount() { ++m_attachCount; }
     void decreaseAttachCount() { --m_attachCount; }
@@ -1367,20 +1453,8 @@ public:
      * session. It's an error to call detach() more often than
      * attach().
      */
-    void detach(Resource *resource)
-    {
-        for (Resources_t::iterator it = m_resources.begin();
-             it != m_resources.end();
-             ++it) {
-            if (it->get() == resource) {
-                // got it
-                m_resources.erase(it);
-                return;
-            }
-        }
+    void detach(Resource *resource);
 
-        SE_THROW_EXCEPTION(InvalidCall, "cannot detach from resource that client is not attached to");
-    }
     void detach(boost::shared_ptr<Resource> resource)
     {
         detach(resource.get());
@@ -1747,6 +1821,11 @@ class Session : public DBusObjectHelper,
     bool m_active;
 
     /**
+     * True once done() was called.
+     */
+    bool m_done;
+
+    /**
      * Indicates whether this session was initiated by the peer or locally.
      */
     bool m_remoteInitiated;
@@ -1822,6 +1901,9 @@ class Session : public DBusObjectHelper,
     /** Cmdline to execute command line args */
     boost::shared_ptr<CmdlineWrapper> m_cmdline;
 
+    /** Session.Attach() */
+    void attach(const Caller_t &caller);
+
     /** Session.Detach() */
     void detach(const Caller_t &caller);
 
@@ -1868,13 +1950,37 @@ class Session : public DBusObjectHelper,
     static string syncStatusToString(SyncStatus state);
 
 public:
+    /**
+     * Sessions must always be held in a shared pointer
+     * because some operations depend on that. This
+     * constructor function here ensures that and
+     * also adds a weak pointer to the instance itself,
+     * so that it can create more shared pointers as
+     * needed.
+     */
+    static boost::shared_ptr<Session> createSession(DBusServer &server,
+                                                    const std::string &peerDeviceID,
+                                                    const std::string &config_name,
+                                                    const std::string &session,
+                                                    const std::vector<std::string> &flags = std::vector<std::string>());
+
+    /**
+     * automatically marks the session as completed before deleting it
+     */
+    ~Session();
+
+    /** explicitly mark the session as completed, even if it doesn't get deleted yet */
+    void done();
+
+private:
     Session(DBusServer &server,
             const std::string &peerDeviceID,
             const std::string &config_name,
             const std::string &session,
             const std::vector<std::string> &flags = std::vector<std::string>());
-    ~Session();
+    boost::weak_ptr<Session> m_me;
 
+public:
     enum {
         PRI_CMDLINE = -10,
         PRI_DEFAULT = 0,
@@ -2402,6 +2508,66 @@ private:
     Timer m_timer;
 };
 
+
+/***************** Client implementation ****************/
+
+Client::~Client()
+{
+    SE_LOG_DEBUG(NULL, NULL, "D-Bus client %s is destructing", m_ID.c_str());
+
+    // explicitly detach all resources instead of just freeing the
+    // list, so that the special behavior for sessions in detach() is
+    // triggered
+    while (!m_resources.empty()) {
+        detach(m_resources.front().get());
+    }
+}
+
+bool Client::sessionExpired(const boost::shared_ptr<Session> &session)
+{
+    SE_LOG_DEBUG(NULL, NULL, "session %s expired",
+                 session->getSessionID().c_str());
+    // don't call me again
+    return false;
+}
+
+void Client::detach(Resource *resource)
+{
+    for (Resources_t::iterator it = m_resources.begin();
+         it != m_resources.end();
+         ++it) {
+        if (it->get() == resource) {
+            if (it->unique()) {
+                boost::shared_ptr<Session> session = boost::dynamic_pointer_cast<Session>(*it);
+                if (session) {
+                    // Special behavior for sessions: keep them
+                    // around for another minute after the last
+                    // client detaches. This allows another client
+                    // to attach and/or get information about the
+                    // session.
+                    // This is implemented as a timeout which holds
+                    // a reference to the session. Once the timeout
+                    // fires, it is called and then removed, which
+                    // removes the reference.
+                    m_server.addTimeout(boost::bind(&Client::sessionExpired,
+                                                    session),
+                                        60 /* 1 minute */);
+
+                    // allow other sessions to start
+                    session->done();
+                }
+            }
+            // this will trigger removal of the resource if
+            // the client was the last remaining owner
+            m_resources.erase(it);
+            return;
+        }
+    }
+
+    SE_THROW_EXCEPTION(InvalidCall, "cannot detach from resource that client is not attached to");
+}
+
+
 /***************** ReadOperations implementation ****************/
 
 ReadOperations::ReadOperations(const std::string &config_name, DBusServer &server) :
@@ -2890,6 +3056,19 @@ string DBusSync::askPassword(const string &passwordName,
 
 /***************** Session implementation ***********************/
 
+void Session::attach(const Caller_t &caller)
+{
+    boost::shared_ptr<Client> client(m_server.findClient(caller));
+    if (!client) {
+        throw runtime_error("unknown client");
+    }
+    boost::shared_ptr<Session> me = m_me.lock();
+    if (!me) {
+        throw runtime_error("session already deleted?!");
+    }
+    client->attach(me);
+}
+
 void Session::detach(const Caller_t &caller)
 {
     boost::shared_ptr<Client> client(m_server.findClient(caller));
@@ -3163,6 +3342,17 @@ string Session::syncStatusToString(SyncStatus state)
     };
 }
 
+boost::shared_ptr<Session> Session::createSession(DBusServer &server,
+                                                  const std::string &peerDeviceID,
+                                                  const std::string &config_name,
+                                                  const std::string &session,
+                                                  const std::vector<std::string> &flags)
+{
+    boost::shared_ptr<Session> me(new Session(server, peerDeviceID, config_name, session, flags));
+    me->m_me = me;
+    return me;
+}
+
 Session::Session(DBusServer &server,
                  const std::string &peerDeviceID,
                  const std::string &config_name,
@@ -3182,6 +3372,7 @@ Session::Session(DBusServer &server,
     m_tempConfig(false),
     m_setConfig(false),
     m_active(false),
+    m_done(false),
     m_remoteInitiated(false),
     m_syncStatus(SYNC_QUEUEING),
     m_stepIsWaiting(false),
@@ -3199,6 +3390,7 @@ Session::Session(DBusServer &server,
     emitStatus(*this, "StatusChanged"),
     emitProgress(*this, "ProgressChanged")
 {
+    add(this, &Session::attach, "Attach");
     add(this, &Session::detach, "Detach");
     add(this, &Session::getFlags, "GetFlags");
     add(this, &Session::getNormalConfigName, "GetConfigName");
@@ -3220,10 +3412,14 @@ Session::Session(DBusServer &server,
     add(emitProgress);
 }
 
-Session::~Session()
+void Session::done()
 {
+    if (m_done) {
+        return;
+    }
+
     /* update auto sync manager when a config is changed */
-    if(m_setConfig) {
+    if (m_setConfig) {
         m_server.getAutoSyncManager().update(m_configName);
     }
     m_server.dequeue(this);
@@ -3232,8 +3428,17 @@ Session::~Session()
     if (m_setConfig) {
         m_server.configChanged();
     }
+
+    // typically set by m_server.dequeue(), but let's really make sure...
+    m_active = false;
+
+    m_done = true;
 }
-    
+
+Session::~Session()
+{
+    done();
+}
 
 void Session::setActive(bool active)
 {
@@ -4053,10 +4258,10 @@ void Connection::process(const Caller_t &caller,
 
             // run session as client or server
             m_state = PROCESSING;
-            m_session.reset(new Session(m_server,
-                                        peerDeviceID,
-                                        config,
-                                        m_sessionID));
+            m_session = Session::createSession(m_server,
+                                               peerDeviceID,
+                                               config,
+                                               m_sessionID);
             if (serverMode) {
                 m_session->initServer(SharedBuffer(reinterpret_cast<const char *>(message.second),
                                                    message.first),
@@ -4691,6 +4896,7 @@ vector<string> DBusServer::getCapabilities()
     capabilities.push_back("Notifications");
     capabilities.push_back("Version");
     capabilities.push_back("SessionFlags");
+    capabilities.push_back("SessionAttach");
     return capabilities;
 }
 
@@ -4789,11 +4995,11 @@ void DBusServer::startSessionWithFlags(const Caller_t &caller,
                                                  caller,
                                                  watch);
     std::string new_session = getNextSession();   
-    boost::shared_ptr<Session> session(new Session(*this,
-                                                   "is this a client or server session?",
-                                                   server,
-                                                   new_session,
-                                                   flags));
+    boost::shared_ptr<Session> session = Session::createSession(*this,
+                                                                "is this a client or server session?",
+                                                                server,
+                                                                new_session,
+                                                                flags);
     client->attach(session);
     session->activate();
     enqueue(session);
@@ -4953,7 +5159,7 @@ boost::shared_ptr<Client> DBusServer::addClient(const DBusConnectionPtr &conn,
     if (client) {
         return client;
     }
-    client.reset(new Client(ID));
+    client.reset(new Client(*this, ID));
     // add to our list *before* checking that peer exists, so
     // that clientGone() can remove it if the check fails
     m_clients.push_back(std::make_pair(watch, client));
@@ -5082,6 +5288,30 @@ void DBusServer::checkQueue()
             return;
         }
     }
+}
+
+bool DBusServer::callTimeout(const boost::shared_ptr<Timeout> &timeout, const boost::function<bool ()> &callback)
+{
+    if (!callback()) {
+        m_timeouts.remove(timeout);
+        return false;
+    } else {
+        return true;
+    }
+}
+
+void DBusServer::addTimeout(const boost::function<bool ()> &callback,
+                            int seconds)
+{
+    boost::shared_ptr<Timeout> timeout(new Timeout);
+    m_timeouts.push_back(timeout);
+    timeout->activate(seconds,
+                      boost::bind(&DBusServer::callTimeout,
+                                  this,
+                                  // avoid copying the shared pointer here,
+                                  // otherwise the Timeout will never be deleted
+                                  boost::ref(m_timeouts.back()),
+                                  callback));
 }
 
 void DBusServer::infoResponse(const Caller_t &caller,
@@ -5737,10 +5967,10 @@ void AutoSyncManager::startTask()
         m_activeTask.reset(new AutoSyncTask(m_workQueue.front()));
         m_workQueue.pop_front();
         string newSession = m_server.getNextSession();   
-        m_session.reset(new Session(m_server,
-                                    "",
-                                    m_activeTask->m_peer,
-                                    newSession));
+        m_session = Session::createSession(m_server,
+                                           "",
+                                           m_activeTask->m_peer,
+                                           newSession);
         m_session->setPriority(Session::PRI_AUTOSYNC);
         m_session->addListener(this);
         m_server.enqueue(m_session);
