@@ -15,6 +15,7 @@
 #include "syncappbase.h"
 #include "scriptcontext.h"
 #include "iso8601.h"
+#include "syncagent.h"
 #include "multifielditem.h" // in case we have no scripts...
 
 #ifdef SYSER_REGISTRATION
@@ -124,7 +125,11 @@ const char * const PlatformStringNames[numPlatformStrings] = {
     TSyncAppBase *appBase = getExistingSyncAppBase();
     if (appBase) return appBase;
     // no appBase yet, we must create and anchor the TEngineInterface
-    ENGINE_IF_CLASS *engine = sysync::newEngine();
+    #ifdef SYSYNC_CLIENT
+    ENGINE_IF_CLASS *engine = sysync::newClientEngine();
+    #else
+    ENGINE_IF_CLASS *engine = sysync::newServerEngine();
+    #endif
     // we must init the engine to trigger creation of the appbase!
     if (engine) engine->Init();
     return GET_SYNCAPPBASE;
@@ -433,12 +438,10 @@ bool TRootConfig::localStartElement(const char *aElementName, const char **aAttr
   #endif
   else
   // Agent: Server or client
-  #ifdef SYSYNC_CLIENT
-  if (strucmp(aElementName,"client")==0)
-  #else
-  if (strucmp(aElementName,"server")==0)
-  #endif
-  {
+  if (
+  	(IS_CLIENT && strucmp(aElementName,"client")==0) ||
+		(IS_SERVER && strucmp(aElementName,"server")==0)
+  ) {
     // Agent config
     if (!fAgentConfigP) return false;
     return parseAgentConfig(aAttributes, aLine);
@@ -733,11 +736,11 @@ void TDebugConfig::localResolve(bool aLastPass)
         fGlobalDbgLoggerOptions.fSubThreadMode=dbgsubthread_separate; // separate per thread
         fGlobalDbgLoggerOptions.fTimestampForAll=true; // timestamp for every message
       #else
-        #ifndef SYSYNC_CLIENT
+      	if (IS_SERVER) {
           // - global log for ISAPI/XPT *Servers* is always in openclose mode (possibly multiple processes accessing it)
           fGlobalDbgLoggerOptions.fFlushMode=dbgflush_openclose; // open and close for every log line
-        #endif
-          fGlobalDbgLoggerOptions.fSubThreadMode=dbgsubthread_linemix; // mix in one file
+        }
+        fGlobalDbgLoggerOptions.fSubThreadMode=dbgsubthread_linemix; // mix in one file
         #ifdef MULTI_THREAD_SUPPORT
           fGlobalDbgLoggerOptions.fThreadIDForAll=true; // thread ID for each message
         #endif
@@ -751,7 +754,9 @@ void TDebugConfig::localResolve(bool aLastPass)
     if (!getSyncAppBase()->fAppLogger.outputEstablished()) {
       getSyncAppBase()->fAppLogger.installOutput(getSyncAppBase()->newDbgOutputter(true)); // install the output object (and pass ownership!)
       getSyncAppBase()->fAppLogger.setDebugPath(fDebugInfoPath.c_str()); // global log all in one file
-      getSyncAppBase()->fAppLogger.appendToDebugPath(TARGETID);
+      getSyncAppBase()->fAppLogger.appendToDebugPath(fGlobalDbgLoggerOptions.fBasename.empty() ?
+                                                     TARGETID :
+                                                     fGlobalDbgLoggerOptions.fBasename.c_str());
       if (fSingleGlobLog) {
         // One single log - in this case, we MUST append to current log
         fGlobalDbgLoggerOptions.fAppend=true;
@@ -921,6 +926,8 @@ bool TDebugConfig::localStartElement(const char *aElementName, const char **aAtt
     expectRawString(fSessionDbgLoggerOptions.fCustomPrefix);
   else if (strucmp(aElementName,"filesuffix")==0)
     expectRawString(fSessionDbgLoggerOptions.fCustomSuffix);
+  else if (strucmp(aElementName,"filename")==0)
+    expectRawString(fSessionDbgLoggerOptions.fBasename);
   else if (strucmp(aElementName,"logflushmode")==0)
     expectEnum(sizeof(fSessionDbgLoggerOptions.fFlushMode),&fSessionDbgLoggerOptions.fFlushMode,DbgFlushModeNames,numDbgFlushModes);
   else if (strucmp(aElementName,"appendtoexisting")==0)
@@ -1100,47 +1107,47 @@ void ConsolePuts(const char *text)
 
 extern "C" {
   /* message callbacks */
-  Ret_t smlStartMessageCallback(InstanceID_t id, VoidPtr_t userData, SmlSyncHdrPtr_t pContent);
-  Ret_t smlEndMessageCallback(InstanceID_t id, VoidPtr_t userData, Boolean_t final);
+  static Ret_t smlStartMessageCallback(InstanceID_t id, VoidPtr_t userData, SmlSyncHdrPtr_t pContent);
+  static Ret_t smlEndMessageCallback(InstanceID_t id, VoidPtr_t userData, Boolean_t final);
   /* grouping commands */
-  Ret_t smlStartSyncCallback(InstanceID_t id, VoidPtr_t userData, SmlSyncPtr_t pContent);
-  Ret_t smlEndSyncCallback(InstanceID_t id, VoidPtr_t userData);
+  static Ret_t smlStartSyncCallback(InstanceID_t id, VoidPtr_t userData, SmlSyncPtr_t pContent);
+  static Ret_t smlEndSyncCallback(InstanceID_t id, VoidPtr_t userData);
   #ifdef ATOMIC_RECEIVE  /* these callbacks are NOT included in the Toolkit lite version */
-    Ret_t smlStartAtomicCallback(InstanceID_t id, VoidPtr_t userData, SmlAtomicPtr_t pContent);
-    Ret_t smlEndAtomicCallback(InstanceID_t id, VoidPtr_t userData);
+    static Ret_t smlStartAtomicCallback(InstanceID_t id, VoidPtr_t userData, SmlAtomicPtr_t pContent);
+    static Ret_t smlEndAtomicCallback(InstanceID_t id, VoidPtr_t userData);
   #endif
   #ifdef SEQUENCE_RECEIVE
-    Ret_t smlStartSequenceCallback(InstanceID_t id, VoidPtr_t userData, SmlSequencePtr_t pContent);
-    Ret_t smlEndSequenceCallback(InstanceID_t id, VoidPtr_t userData);
+    static Ret_t smlStartSequenceCallback(InstanceID_t id, VoidPtr_t userData, SmlSequencePtr_t pContent);
+    static Ret_t smlEndSequenceCallback(InstanceID_t id, VoidPtr_t userData);
   #endif
   /* Sync Commands */
-  Ret_t smlAddCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlAddPtr_t pContent);
-  Ret_t smlAlertCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlAlertPtr_t pContent);
-  Ret_t smlDeleteCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlDeletePtr_t pContent);
-  Ret_t smlGetCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlGetPtr_t pContent);
-  Ret_t smlPutCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlPutPtr_t pContent);
+  static Ret_t smlAddCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlAddPtr_t pContent);
+  static Ret_t smlAlertCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlAlertPtr_t pContent);
+  static Ret_t smlDeleteCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlDeletePtr_t pContent);
+  static Ret_t smlGetCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlGetPtr_t pContent);
+  static Ret_t smlPutCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlPutPtr_t pContent);
   #ifdef MAP_RECEIVE
-    Ret_t smlMapCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlMapPtr_t pContent);
+    static Ret_t smlMapCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlMapPtr_t pContent);
   #endif
   #ifdef RESULT_RECEIVE
-    Ret_t smlResultsCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlResultsPtr_t pContent);
+    static Ret_t smlResultsCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlResultsPtr_t pContent);
   #endif
-  Ret_t smlStatusCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlStatusPtr_t pContent);
-  Ret_t smlReplaceCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlReplacePtr_t pContent);
+  static Ret_t smlStatusCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlStatusPtr_t pContent);
+  static Ret_t smlReplaceCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlReplacePtr_t pContent);
   /* othe commands */
   #ifdef COPY_RECEIVE  /* these callbacks are NOT included in the Toolkit lite version */
-    Ret_t smlCopyCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlCopyPtr_t param);
+    static Ret_t smlCopyCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlCopyPtr_t param);
   #endif
-  Ret_t smlMoveCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlMovePtr_t param);
+  static Ret_t smlMoveCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlMovePtr_t param);
   #ifdef EXEC_RECEIVE
-    Ret_t smlExecCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlExecPtr_t pContent);
+    static Ret_t smlExecCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlExecPtr_t pContent);
   #endif
   #ifdef SEARCH_RECEIVE
-    Ret_t smlSearchCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlSearchPtr_t pContent);
+    static Ret_t smlSearchCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlSearchPtr_t pContent);
   #endif
   /* Other Callbacks */
-  Ret_t smlHandleErrorCallback(InstanceID_t id, VoidPtr_t userData);
-  Ret_t smlTransmitChunkCallback(InstanceID_t id, VoidPtr_t userData);
+  static Ret_t smlHandleErrorCallback(InstanceID_t id, VoidPtr_t userData);
+  static Ret_t smlTransmitChunkCallback(InstanceID_t id, VoidPtr_t userData);
 
   /* print callback */
   void smlPrintCallback(String_t outputString);
@@ -1149,6 +1156,7 @@ extern "C" {
 
 // constructor
 TSyncAppBase::TSyncAppBase() :
+  fIsServer(false),
   fDeleting(false),
   fConfigP(NULL),
   fRequestCount(0),
@@ -1178,6 +1186,9 @@ TSyncAppBase::TSyncAppBase() :
       #error "DIRECT_APPBASE_GLOBALACCESS is not allowed with ENGINE_LIBRARY"
     #endif
     sysync_glob_setanchor(this);
+  #endif
+  #ifdef MD5_TEST_FUNCS
+  md5::dotest();
   #endif
   // init profiling
   TP_INIT(fTPInfo);
@@ -1508,10 +1519,11 @@ typedef struct {
 
 
 // prototypes
-extern "C" void startElement(void *userData, const char *name, const char **atts);
-extern "C" void charData(void *userData, const XML_Char *s, int len);
-extern "C" void endElement(void *userData, const char *name);
-
+extern "C" {
+  static void startElement(void *userData, const char *name, const char **atts);
+  static void charData(void *userData, const XML_Char *s, int len);
+  static void endElement(void *userData, const char *name);
+}
 
 static localstatus checkErrors(TRootConfigElement *aRootConfigP,XML_Parser aParser)
 {
@@ -1532,7 +1544,7 @@ static localstatus checkErrors(TRootConfigElement *aRootConfigP,XML_Parser aPars
 
 
 // callback for expat
-extern "C" void startElement(void *userData, const char *name, const char **atts)
+static void startElement(void *userData, const char *name, const char **atts)
 {
   TRootConfigElement *cfgP = static_cast<TXMLUserData *>(userData)->rootconfig;
   XML_Parser parser = static_cast<TXMLUserData *>(userData)->parser;
@@ -1548,7 +1560,7 @@ extern "C" void startElement(void *userData, const char *name, const char **atts
 
 
 // callback for expat
-extern "C" void charData(void *userData, const XML_Char *s, int len)
+static void charData(void *userData, const XML_Char *s, int len)
 {
   TRootConfigElement *cfgP = static_cast<TXMLUserData *>(userData)->rootconfig;
   XML_Parser parser = static_cast<TXMLUserData *>(userData)->parser;
@@ -1565,7 +1577,7 @@ extern "C" void charData(void *userData, const XML_Char *s, int len)
 
 
 // callback for expat
-extern "C" void endElement(void *userData, const char *name)
+static void endElement(void *userData, const char *name)
 {
   TRootConfigElement *cfgP = static_cast<TXMLUserData *>(userData)->rootconfig;
   XML_Parser parser = static_cast<TXMLUserData *>(userData)->parser;
@@ -2349,47 +2361,47 @@ typedef struct {
 #define GET_USERDATA(x) (((TSmlContextDataRec *)x)->userDataP)
 
 /* message callbacks */
-Ret_t smlStartMessageCallback(InstanceID_t id, VoidPtr_t userData, SmlSyncHdrPtr_t pContent) { return GET_APPBASE(userData)->StartMessage(id,GET_USERDATA(userData),pContent); }
-Ret_t smlEndMessageCallback(InstanceID_t id, VoidPtr_t userData, Boolean_t final) { return GET_APPBASE(userData)->EndMessage(GET_USERDATA(userData),final); }
+static Ret_t smlStartMessageCallback(InstanceID_t id, VoidPtr_t userData, SmlSyncHdrPtr_t pContent) { return GET_APPBASE(userData)->StartMessage(id,GET_USERDATA(userData),pContent); }
+static Ret_t smlEndMessageCallback(InstanceID_t id, VoidPtr_t userData, Boolean_t final) { return GET_APPBASE(userData)->EndMessage(GET_USERDATA(userData),final); }
 /* grouping commands */
-Ret_t smlStartSyncCallback(InstanceID_t id, VoidPtr_t userData, SmlSyncPtr_t pContent) { return GET_APPBASE(userData)->StartSync(GET_USERDATA(userData),pContent); }
-Ret_t smlEndSyncCallback(InstanceID_t id, VoidPtr_t userData) { return GET_APPBASE(userData)->EndSync(GET_USERDATA(userData)); }
+static Ret_t smlStartSyncCallback(InstanceID_t id, VoidPtr_t userData, SmlSyncPtr_t pContent) { return GET_APPBASE(userData)->StartSync(GET_USERDATA(userData),pContent); }
+static Ret_t smlEndSyncCallback(InstanceID_t id, VoidPtr_t userData) { return GET_APPBASE(userData)->EndSync(GET_USERDATA(userData)); }
 #ifdef ATOMIC_RECEIVE  /* these callbacks are NOT included in the Toolkit lite version */
-  Ret_t smlStartAtomicCallback(InstanceID_t id, VoidPtr_t userData, SmlAtomicPtr_t pContent) { return GET_APPBASE(userData)->StartAtomic(GET_USERDATA(userData),pContent); }
-  Ret_t smlEndAtomicCallback(InstanceID_t id, VoidPtr_t userData) { return GET_APPBASE(userData)->EndAtomic(GET_USERDATA(userData)); }
+  static Ret_t smlStartAtomicCallback(InstanceID_t id, VoidPtr_t userData, SmlAtomicPtr_t pContent) { return GET_APPBASE(userData)->StartAtomic(GET_USERDATA(userData),pContent); }
+  static Ret_t smlEndAtomicCallback(InstanceID_t id, VoidPtr_t userData) { return GET_APPBASE(userData)->EndAtomic(GET_USERDATA(userData)); }
 #endif
 #ifdef SEQUENCE_RECEIVE
-  Ret_t smlStartSequenceCallback(InstanceID_t id, VoidPtr_t userData, SmlSequencePtr_t pContent) { return GET_APPBASE(userData)->StartSequence(GET_USERDATA(userData),pContent); }
-  Ret_t smlEndSequenceCallback(InstanceID_t id, VoidPtr_t userData) { return GET_APPBASE(userData)->EndSequence(GET_USERDATA(userData)); }
+  static Ret_t smlStartSequenceCallback(InstanceID_t id, VoidPtr_t userData, SmlSequencePtr_t pContent) { return GET_APPBASE(userData)->StartSequence(GET_USERDATA(userData),pContent); }
+  static Ret_t smlEndSequenceCallback(InstanceID_t id, VoidPtr_t userData) { return GET_APPBASE(userData)->EndSequence(GET_USERDATA(userData)); }
 #endif
 /* Sync Commands */
-Ret_t smlAddCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlAddPtr_t pContent) { return GET_APPBASE(userData)->AddCmd(GET_USERDATA(userData),pContent); }
-Ret_t smlAlertCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlAlertPtr_t pContent) { return GET_APPBASE(userData)->AlertCmd(GET_USERDATA(userData),pContent); }
-Ret_t smlDeleteCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlDeletePtr_t pContent) { return GET_APPBASE(userData)->DeleteCmd(GET_USERDATA(userData),pContent); }
-Ret_t smlGetCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlGetPtr_t pContent) { return GET_APPBASE(userData)->GetCmd(GET_USERDATA(userData),pContent); }
-Ret_t smlPutCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlPutPtr_t pContent) { return GET_APPBASE(userData)->PutCmd(GET_USERDATA(userData),pContent); }
+static Ret_t smlAddCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlAddPtr_t pContent) { return GET_APPBASE(userData)->AddCmd(GET_USERDATA(userData),pContent); }
+static Ret_t smlAlertCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlAlertPtr_t pContent) { return GET_APPBASE(userData)->AlertCmd(GET_USERDATA(userData),pContent); }
+static Ret_t smlDeleteCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlDeletePtr_t pContent) { return GET_APPBASE(userData)->DeleteCmd(GET_USERDATA(userData),pContent); }
+static Ret_t smlGetCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlGetPtr_t pContent) { return GET_APPBASE(userData)->GetCmd(GET_USERDATA(userData),pContent); }
+static Ret_t smlPutCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlPutPtr_t pContent) { return GET_APPBASE(userData)->PutCmd(GET_USERDATA(userData),pContent); }
 #ifdef MAP_RECEIVE
-  Ret_t smlMapCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlMapPtr_t pContent) { return GET_APPBASE(userData)->MapCmd(GET_USERDATA(userData),pContent); }
+  static Ret_t smlMapCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlMapPtr_t pContent) { return GET_APPBASE(userData)->MapCmd(GET_USERDATA(userData),pContent); }
 #endif
 #ifdef RESULT_RECEIVE
-  Ret_t smlResultsCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlResultsPtr_t pContent) { return GET_APPBASE(userData)->ResultsCmd(GET_USERDATA(userData),pContent); }
+  static Ret_t smlResultsCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlResultsPtr_t pContent) { return GET_APPBASE(userData)->ResultsCmd(GET_USERDATA(userData),pContent); }
 #endif
-Ret_t smlStatusCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlStatusPtr_t pContent) { return GET_APPBASE(userData)->StatusCmd(GET_USERDATA(userData),pContent); }
-Ret_t smlReplaceCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlReplacePtr_t pContent) { return GET_APPBASE(userData)->ReplaceCmd(GET_USERDATA(userData),pContent); }
+static Ret_t smlStatusCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlStatusPtr_t pContent) { return GET_APPBASE(userData)->StatusCmd(GET_USERDATA(userData),pContent); }
+static Ret_t smlReplaceCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlReplacePtr_t pContent) { return GET_APPBASE(userData)->ReplaceCmd(GET_USERDATA(userData),pContent); }
 /* other commands */
 #ifdef COPY_RECEIVE  /* these callbacks are NOT included in the Toolkit lite version */
-  Ret_t smlCopyCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlCopyPtr_t pContent) { return GET_APPBASE(userData)->CopyCmd(GET_USERDATA(userData),pContent); }
+  static Ret_t smlCopyCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlCopyPtr_t pContent) { return GET_APPBASE(userData)->CopyCmd(GET_USERDATA(userData),pContent); }
 #endif
-Ret_t smlMoveCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlMovePtr_t pContent) { return GET_APPBASE(userData)->MoveCmd(GET_USERDATA(userData),pContent); }
+static Ret_t smlMoveCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlMovePtr_t pContent) { return GET_APPBASE(userData)->MoveCmd(GET_USERDATA(userData),pContent); }
 #ifdef EXEC_RECEIVE
-  Ret_t smlExecCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlExecPtr_t pContent) { /*%%%tbd return GET_APPBASE(userData)->ExecCmd(GET_USERDATA(userData),pContent); */ return SML_ERR_INVALID_OPTIONS; }
+  static Ret_t smlExecCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlExecPtr_t pContent) { /*%%%tbd return GET_APPBASE(userData)->ExecCmd(GET_USERDATA(userData),pContent); */ return SML_ERR_INVALID_OPTIONS; }
 #endif
 #ifdef SEARCH_RECEIVE
-  Ret_t smlSearchCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlSearchPtr_t pContent) { /*%%%tbd return GET_APPBASE(userData)->SearchCmd(GET_USERDATA(userData),pContent); */ return SML_ERR_INVALID_OPTIONS; }
+  static Ret_t smlSearchCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlSearchPtr_t pContent) { /*%%%tbd return GET_APPBASE(userData)->SearchCmd(GET_USERDATA(userData),pContent); */ return SML_ERR_INVALID_OPTIONS; }
 #endif
 /* Other Callbacks */
-Ret_t smlHandleErrorCallback(InstanceID_t id, VoidPtr_t userData) { return GET_APPBASE(userData)->DummyHandler(GET_USERDATA(userData),"ErrorCallback"); }
-Ret_t smlTransmitChunkCallback(InstanceID_t id, VoidPtr_t userData) { /*%%%tdb return GET_APPBASE(userData)->TransmitChunk(GET_USERDATA(userData),pContent); */ return SML_ERR_INVALID_OPTIONS; }
+static Ret_t smlHandleErrorCallback(InstanceID_t id, VoidPtr_t userData) { return GET_APPBASE(userData)->DummyHandler(GET_USERDATA(userData),"ErrorCallback"); }
+static Ret_t smlTransmitChunkCallback(InstanceID_t id, VoidPtr_t userData) { /*%%%tdb return GET_APPBASE(userData)->TransmitChunk(GET_USERDATA(userData),pContent); */ return SML_ERR_INVALID_OPTIONS; }
 
 
 /* end callback implementations */
@@ -2496,6 +2508,54 @@ void TSyncAppBase::freeSmlInstance(InstanceID_t aInstance)
 } // TSyncAppBase::freeSmlInstance
 
 
+// determine encoding from beginning of SyncML message data
+SmlEncoding_t TSyncAppBase::encodingFromData(cAppPointer aData, memSize aDataSize)
+{
+	SmlEncoding_t enc = SML_UNDEF;
+  if (aData && aDataSize>=5) {
+  	// check for WBXML intro sequences
+    if (
+      (memcmp((cAppCharP)aData,"\x02\x00\x00",3)==0) || // WBXML V2 + Public identifier as string
+      (memcmp((cAppCharP)aData,"\x02\xA4\x01",3)==0) || // WBXML V2 + Public identifier 0x1201 for SyncML 1.2
+      (memcmp((cAppCharP)aData,"\x02\x9F\x53",3)==0) || // WBXML V2 + Public identifier 0x0FD3 for SyncML 1.1
+      (memcmp((cAppCharP)aData,"\x02\x9F\x51",3)==0)    // WBXML V2 + Public identifier 0x0FD1 for SyncML 1.0
+    )
+      enc=SML_WBXML;
+    else {
+    	// could be XML
+      // - skip UTF-8 BOM if there is one
+      cUInt8P p = (cUInt8P)aData;
+      if (p[0]==0xEF && p[1]==0xBB && p[2]==0xBF)
+      	p+=3; // skip the BOM
+      // now check for XML
+	    if (strnncmp((cAppCharP)p,"<?xml",5)==0 ||
+                strnncmp((cAppCharP)p,"<SyncML",7)==0)
+                enc=SML_XML;
+  	}
+  }
+  return enc;
+} // TSyncAppBase::encodingFromData
+
+
+// determine encoding from Content-Type: header value
+SmlEncoding_t TSyncAppBase::encodingFromContentType(cAppCharP aTypeString)
+{
+	sInt16 enc = SML_UNDEF;
+  if (aTypeString) {
+    stringSize l=strlen(SYNCML_MIME_TYPE SYNCML_ENCODING_SEPARATOR);
+    if (strucmp(aTypeString,SYNCML_MIME_TYPE SYNCML_ENCODING_SEPARATOR,l)==0) {
+      // is SyncML, check encoding
+      cAppCharP p = strchr(aTypeString,';');
+      sInt16 cl = p ? p-aTypeString-l : 0; // length of encoding string (charset could be appended here)  
+      StrToEnum(SyncMLEncodingMIMENames,numSyncMLEncodings,enc,aTypeString+l,cl);
+    }
+  }
+  return static_cast<SmlEncoding_t>(enc);
+} // TSyncAppBase::encodingFromContentType
+
+
+
+
 // save app state (such as settings in datastore configs etc.)
 void TSyncAppBase::saveAppState(void)
 {
@@ -2525,6 +2585,7 @@ string TSyncAppBase::getModel(void) {
 	return CUST_SYNC_MODEL;
 } // TSyncAppBase::getModel
 
+
 // hardware version
 string TSyncAppBase::getHardwareVersion(void) {
   #ifdef ENGINEINTERFACE_SUPPORT
@@ -2537,6 +2598,7 @@ string TSyncAppBase::getHardwareVersion(void) {
   getPlatformString(pfs_device_name, s);
   return s;
 } // TSyncAppBase::getHardwareVersion
+
 
 // firmware version (depends a lot on the context - OS version?)
 string TSyncAppBase::getFirmwareVersion(void) {
@@ -2551,6 +2613,7 @@ string TSyncAppBase::getFirmwareVersion(void) {
   return s;
 } // TSyncAppBase::getHardwareVersion
 
+
 // hardware type (PDA, PC, ...)
 string TSyncAppBase::getDevTyp() {
   #ifdef ENGINEINTERFACE_SUPPORT
@@ -2559,8 +2622,12 @@ string TSyncAppBase::getDevTyp() {
   }
   #endif
   // if no string configured, return default
-  return SYNCML_CLIENT_DEVTYP;
+  if (isServer())
+  	return SYNCML_SERVER_DEVTYP;
+  else
+    return SYNCML_CLIENT_DEVTYP;
 } // TSyncAppBase::getDevTyp
+
 
 #ifdef APP_CAN_EXPIRE
 

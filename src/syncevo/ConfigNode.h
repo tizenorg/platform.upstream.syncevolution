@@ -28,9 +28,18 @@ using namespace std;
 
 #include <boost/shared_ptr.hpp>
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/foreach.hpp>
 
 #include <syncevo/declarations.h>
+#include <syncevo/util.h>
 SE_BEGIN_CXX
+
+/** a case-insensitive string to string mapping */
+class ConfigProps : public map<string, string, Nocase<string> > {
+ public:
+    /** format as <key> = <value> lines */
+    operator string () const;
+};
 
 /**
  * This class corresponds to the Funambol C++ client
@@ -146,6 +155,8 @@ class ConfigNode {
         }
     }
 
+    // defined here for source code backwards compatibility
+    typedef ConfigProps PropsType;
 
     /**
      * Extract all list of all currently defined properties
@@ -156,8 +167,18 @@ class ConfigNode {
      * @retval props    to be filled with key/value pairs; guaranteed
      *                  to be empty before the call
      */
-    virtual void readProperties(map<string, string> &props) const = 0;
-    typedef map<string, string> PropsType;
+    virtual void readProperties(ConfigProps &props) const = 0;
+
+    /**
+     * Add the given properties. To replace the content of the
+     * node, call clear() first.
+     */
+    virtual void writeProperties(const ConfigProps &props)
+    {
+        BOOST_FOREACH(const ConfigProps::value_type &entry, props) {
+            setProperty(entry.first, entry.second);
+        }
+    }
 
     /**
      * Remove a certain property.
@@ -165,6 +186,11 @@ class ConfigNode {
      * @param property    the name of the property which is to be removed
      */
     virtual void removeProperty(const string &property) = 0;
+
+    /**
+     * Remove all properties.
+     */
+    virtual void clear() = 0;
 
     /**
      * Node exists in backend storage.

@@ -93,6 +93,13 @@ uInt32 TSyncItem::getDbgMask(void)
 } // TSyncItem::getDbgMask
 #endif
 
+
+TSyncAppBase *TSyncItem::getSyncAppBase(void)
+{
+	return getSession() ? getSession()->getSyncAppBase() : NULL;	
+} // TSyncItem::getSyncAppBase
+
+
 /* end of TSyncItem implementation */
 
 // eof

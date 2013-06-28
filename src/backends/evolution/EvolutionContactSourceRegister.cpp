@@ -142,6 +142,8 @@ protected:
 SYNCEVOLUTION_TEST_SUITE_REGISTRATION(EvolutionContactTest);
 #endif // ENABLE_UNIT_TESTS
 
+#ifdef ENABLE_INTEGRATION_TESTS
+
 namespace {
 #if 0
 }
@@ -180,6 +182,7 @@ public:
 } vCard30Test;
 
 }
+#endif // ENABLE_INTEGRATION_TESTS
 
 #endif // ENABLE_EBOOK
 

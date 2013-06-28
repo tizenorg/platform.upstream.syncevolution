@@ -151,7 +151,7 @@ public:
     TSyncItem *syncitemP,
     TStatusCommand &aStatusCommand
   );
-  #ifndef SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
   // - called to process map commands from client to server
   virtual localstatus engProcessMap(cAppCharP aRemoteID, cAppCharP aLocalID);
   #endif
@@ -217,22 +217,12 @@ protected:
   // - returns true if DB implementation supports resume (saving of resume marks, alert code, pending maps, tempGUIDs)
   virtual bool dsResumeSupportedInDB(void);
   #ifdef SYSYNC_CLIENT
-  /* %%% not required - these will be called for all local DS anyway,
-     and superDS will ALWAYS be called after contained subDS, as the superDS's definition
-     is always AFTER the contained subDS's definition in the config
-  // client only: called whenever outgoing Message of Sync Package starts
-  // - should start a sync command for all alerted datastores
-  virtual void engClientStartOfSyncMessage(void);
-  // called whenever outgoing Message of Map Package starts
-  virtual void engClientStartOfMapMessage(bool aNotYetInMapPackage);
-  */
   // Client only: called to generate Map items
   // - Returns true if now finished for this datastore
   // - also sets fState to dss_done when finished
-  virtual bool engGenerateMapItems(TMapCommand *aMapCommandP);
+  virtual bool engGenerateMapItems(TMapCommand *aMapCommandP, cAppCharP aLocalIDPrefix);
   // Client only: returns number of unsent map items
   virtual sInt32 numUnsentMaps(void);
-  #ifdef SYSYNC_CLIENT
   /// client: called to generate sync sub-commands to be sent to server
   /// Returns true if now finished for this datastore
   /// also sets fState to dss_syncdone(server)/dss_syncready(client) when finished
@@ -243,8 +233,8 @@ protected:
   ) { return LOCERR_NOTIMP; };
   // Client only: called to mark maps confirmed, that is, we have received ok status for them
   virtual void engMarkMapConfirmed(cAppCharP aLocalID, cAppCharP aRemoteID);
-  #endif
-  #else
+  #endif // SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
   // Server only:
   /// server: called to generate sync sub-commands to be sent to client
   /// Returns true if now finished for this datastore
@@ -272,7 +262,7 @@ protected:
   virtual void dsLocalIdHasChanged(const char *aOldID, const char *aNewID) {};
   // - called to have additional item sent to remote (DB takes ownership of item)
   virtual void SendItemAsServer(TSyncItem *aSyncitemP) {};
-  #endif
+  #endif // SYSYNC_SERVER
   /// called to have all non-yet-generated sync commands as "to-be-resumed"
   virtual void logicMarkOnlyUngeneratedForResume(void) {};
   /// called to mark an already generated (but probably not sent or not yet statused) item

@@ -1,17 +1,17 @@
-BACKENDS =  backends/addressbook backends/evolution backends/file backends/maemo backends/sqlite backends/xmlrpc
+BACKENDS =  backends/addressbook backends/evolution backends/file backends/sqlite
 
-service_in_files = org.Moblin.SyncEvolution.service.in
+service_in_files = org.syncevolution.service.in
 if COND_DBUS
 servicedir = $(DBUS_SERVICES_DIR)
 service_DATA = $(service_in_files:.service.in=.service)
 $(service_DATA): $(service_in_files) Makefile
 	@sed -e "s|\@libexecdir\@|$(libexecdir)|" $< > $@
 
-DBUS_DIR = dbus
+DBUS_DIRS = gdbus dbus
 else
 if COND_GUI
 # jump into interface directory directly instead of going through dbus
-DBUS_DIR = dbus/interfaces
+DBUS_DIRS = dbus/interfaces
 endif
 endif
 
@@ -19,11 +19,11 @@ if COND_GUI
 GUI_DIR = gtk-ui
 endif
 
-SUBDIRS = $(SYNTHESIS_SUBDIR) $(DBUS_DIR) syncevo $(BACKENDS) $(GUI_DIR)
-DIST_SUBDIRS = dbus syncevo $(BACKENDS) gtk-ui
+SUBDIRS = $(SYNTHESIS_SUBDIR) $(DBUS_DIRS) syncevo $(BACKENDS) $(GUI_DIR)
+DIST_SUBDIRS = gdbus dbus syncevo $(BACKENDS) gtk-ui
 BUILT_SOURCES =
 
-AM_CPPFLAGS = $(SUBDIRS:%=-I$(srcdir)/%) -I$(srcdir)/../test -I$(top_srcdir) $(BACKEND_CPPFLAGS)
+AM_CPPFLAGS = $(SUBDIRS:%=-I$(srcdir)/%) -I$(srcdir)/../test -I$(top_srcdir) $(BACKEND_CPPFLAGS) $(GLIB_CFLAGS)
 
 EXTRA_PROGRAMS =
 TESTS =
@@ -48,7 +48,7 @@ nobase_dist_template_DATA = $(TEMPLATE_FILES)
 DISTCLEANFILES = synccompare
 MAINTAINERCLEANFILES = Makefile.in
 CLEANFILES = libstdc++.a client-test $(CLIENT_LIB_TEST_FILES) \
-	org.Moblin.SyncEvolution.service
+	org.syncevolution.service
 
 # synccompare is created by replacing its 'import Algorithm::Diff;'
 # with a simplified copy of Diff.pm.
@@ -67,7 +67,7 @@ CORE_SOURCES =
 # When using modules the registration is done inside the
 # module and the register file is unnecessary. However, they
 # still need to be included in "make dist".
-BACKEND_REGISTRIES = backends/addressbook/AddressBookSourceRegister.cpp backends/evolution/EvolutionCalendarSourceRegister.cpp backends/evolution/EvolutionContactSourceRegister.cpp backends/file/FileSyncSourceRegister.cpp backends/maemo/MaemoCalendarSourceRegister.cpp backends/sqlite/SQLiteContactSourceRegister.cpp backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
+BACKEND_REGISTRIES = backends/addressbook/AddressBookSourceRegister.cpp backends/evolution/EvolutionCalendarSourceRegister.cpp backends/evolution/EvolutionContactSourceRegister.cpp backends/file/FileSyncSourceRegister.cpp backends/sqlite/SQLiteContactSourceRegister.cpp
 if ENABLE_MODULES
 EXTRA_DIST += $(BACKEND_REGISTRIES)
 else
@@ -75,7 +75,7 @@ CORE_SOURCES += $(BACKEND_REGISTRIES)
 endif
 
 CORE_CXXFLAGS = $(SYNTHESIS_CFLAGS)
-CORE_LDADD = $(SYNCEVOLUTION_LDADD) syncevo/libsyncevolution.la $(GLIB_LIBS) $(GTHREAD_LIBS) $(GOBJECT_LIBS) $(LIBS)
+CORE_LDADD = $(SYNCEVOLUTION_LDADD) syncevo/libsyncevolution.la $(GLIB_LIBS) $(LIBS)
 CORE_DEP = $(SYNCEVOLUTION_DEP) syncevo/libsyncevolution.la $(SYNTHESIS_DEP)
 CORE_LD_FLAGS = -uSyncEvolution_Module_Version -Wl,--export-dynamic
 
@@ -88,9 +88,7 @@ syncevolution_SOURCES = \
 	CmdlineSyncClient.h \
 	CmdlineSyncClient.cpp \
 	$(CORE_SOURCES)
-if ENABLE_UNIT_TESTS
 nodist_syncevolution_SOURCES = ../test/test.cpp
-endif
 
 # SYNCEVOLUTION_LDADD will be replaced with libsyncebook.la/libsyncecal.la/libsyncsqlite.la
 # if linking statically against them, empty otherwise;
@@ -143,21 +141,16 @@ distclean-local:
 
 if COND_DBUS
 syncevo_dbus_server_SOURCES = \
-	syncevo-dbus-server.cpp syncevo-dbus-server.h \
-	DBusSyncClient.cpp DBusSyncClient.h \
+	syncevo-dbus-server.cpp \
 	$(CORE_SOURCES)
 nodist_syncevo_dbus_server_SOURCES = \
-	dbus/interfaces/syncevo-marshal.c
-if ENABLE_UNIT_TESTS
-nodist_syncevo_dbus_server_SOURCES += \
 	../test/test.cpp
-endif
 
-syncevo_dbus_server_LDADD = $(DBUS_GLIB_LIBS) $(KEYRING_LIBS) $(CORE_LDADD)
-syncevo_dbus_server_CPPFLAGS = -DHAVE_CONFIG_H -Idbus/interfaces $(DBUS_GLIB_CFLAGS) $(KEYRING_CFLAGS) $(AM_CPPFLAGS)
-syncevo_dbus_server_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS)
-syncevo_dbus_server_LDFLAGS = $(CORE_LD_FLAGS)
-syncevo_dbus_server_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) $(SYNTHESIS_DEP)
+syncevo_dbus_server_LDADD = gdbus/libgdbus.la $(CORE_LDADD)
+syncevo_dbus_server_CPPFLAGS = -DHAVE_CONFIG_H -I$(srcdir)/gdbus $(AM_CPPFLAGS)
+syncevo_dbus_server_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS) $(GLIB_CFLAGS) $(DBUS_CFLAGS) $(LIBSOUP_CFLAGS)
+syncevo_dbus_server_LDFLAGS = $(CORE_LD_FLAGS) $(LIBSOUP_LIBS)
+syncevo_dbus_server_DEPENDENCIES = gdbus/libgdbus.la $(EXTRA_LTLIBRARIES) $(CORE_DEP) $(SYNTHESIS_DEP)
 endif
 
 # With --disable-shared autotools links against libfunambol.a which does not
@@ -171,6 +164,17 @@ client_test_SOURCES = \
 	../test/client-test-main.cpp \
 	$(CORE_SOURCES)
 nodist_client_test_SOURCES = ../test/test.cpp
+
+# Always compile the registry files into client-test because that is
+# the only place where they are compiled with
+# ENABLE_INTEGRATION_TESTS.  This works without undefined references
+# because client-test is linked against all shared backend libraries
+# (non-portable, but works).
+# Disabled now, the client test can also be dynamically loaded and registered
+# just the same as syncevolution
+# if ENABLE_MODULES
+# client_test_SOURCES += $(BACKEND_REGISTRIES)
+# endif
 
 # list of test file base files
 #
@@ -244,8 +248,16 @@ $(filter-out %.tem, $(filter testcases/%, $(subst $(srcdir)/../test/,,$(CLIENT_L
 # The binary does not really depend on the test cases, only running it does.
 # Listing the dependencies here is done to ensure that one doesn't accidentally
 # runs the binary with out-dated auxiliary files.
-client_test_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) $(CLIENT_LIB_TEST_FILES) testcase2patch synccompare
+client_test_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) $(CLIENT_LIB_TEST_FILES) testcase2patch synccompare templates
 
+# copy template directory into current working directory, if not there
+# yet
+.PHONY: templates
+templates:
+	if test "$(srcdir)/templates" != "./templates"; then \
+		rm -rf ./templates; \
+		cp -r "$(srcdir)/templates" .; \
+	fi
 
 # distribute test system?
 if ENABLE_TESTING

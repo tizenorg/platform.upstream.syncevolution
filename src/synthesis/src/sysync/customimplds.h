@@ -23,7 +23,12 @@
 
 #ifdef BASED_ON_BINFILE_CLIENT
   #include "binfileimplds.h"
+#else
+	#ifdef BINFILE_ALWAYS_ACTIVE
+  	#error "BINFILE_ALWAYS_ACTIVE is only possible when BASED_ON_BINFILE_CLIENT"
+  #endif
 #endif
+
 
 using namespace sysync;
 
@@ -214,14 +219,14 @@ public:
   bool fUserZoneOutput; // if set, all non-floating timestamps are moved to user time zone (probably from datatimezone)
   // - admin capability info
   bool fStoreSyncIdentifiers; // if set, database separately stores "last sync with data sent to remote" and "last suspend" identifiers (stored as string, not necessarily a date)
-  #ifndef BASED_ON_BINFILE_CLIENT
+  #ifndef BINFILE_ALWAYS_ACTIVE
   bool fSyncTimeStampAtEnd; // if set, time point of sync is taken AFTER last write to DB (for single-user DBs like FMPro)
   bool fOneWayFromRemoteSupported; // if set, database has a separate "last sync with data sent to remote" timestamp
   bool fResumeSupport; // if set, admin tables have DS 1.2 support needed for resume (map entrytype, map flags, fResumeAlertCode, fLastSuspend, fLastSuspendIdentifier
   bool fResumeItemSupport; // if set, admin tables have support for storing data to resume a partially transferred item
   // - one-way support is always given for binfile based DS
   virtual bool isOneWayFromRemoteSupported() { return fOneWayFromRemoteSupported; }
-  #endif // not BASED_ON_BINFILE_CLIENT
+  #endif // not BINFILE_ALWAYS_ACTIVE
   // - Database field to item field mappings
   TFieldMappings fFieldMappings;
   #ifdef SCRIPT_SUPPORT
@@ -255,7 +260,7 @@ protected:
 }; // TCustomDSConfig
 
 
-#ifndef BASED_ON_BINFILE_CLIENT
+#ifndef BINFILE_ALWAYS_ACTIVE
 
 // getitem phase
 typedef enum {
@@ -305,7 +310,7 @@ typedef struct {
 // container for map entries
 typedef list<TMapEntry> TMapContainer;
 
-#endif // BASED_ON_BINFILE_CLIENT
+#endif // BINFILE_ALWAYS_ACTIVE
 
 
 // local SyncSet entry
@@ -358,6 +363,7 @@ protected:
   /// @note normally==fPreviousSyncTime, but can be end of sync for datastore that can't write modified timestamps at will
   #ifndef BASED_ON_BINFILE_CLIENT
   /// @note for BASED_ON_BINFILE_CLIENT case, these already exist at the binfile level, so we MUST NOT have them here again!!
+  /// @note if binfile is there, but disabled, we still dont need these member vars.
   lineartime_t fPreviousToRemoteSyncCmpRef;
   /// Reference string used by database API level to determine modifications since last to-remote-sync
   string fPreviousToRemoteSyncIdentifier;
@@ -395,7 +401,7 @@ public:
   /// @{
   //
 
-  #ifndef BASED_ON_BINFILE_CLIENT
+  #ifndef BINFILE_ALWAYS_ACTIVE
   /// @brief Load admin data from database
   /// @param aDeviceID[in]       remote device URI (device ID)
   /// @param aDatabaseID[in]     local database ID
@@ -467,12 +473,7 @@ public:
   ///   - fTempGUIDMap      = map<string,string>. The implementation must save all entries as temporary LUID to GUID mappings
   ///                         (server only)
   virtual localstatus apiSaveAdminData(bool aSessionFinished, bool aSuccessful) = 0;
-  /* %%% luz 2008-04-01: no, this is NOT needed
-  #else // not BASED_ON_BINFILE_CLIENT
-  // when based on binfile, we need this apiEndDataWrite signature as glue
-  virtual localstatus apiEndDataWrite(void);
-  */
-  #endif // BASED_ON_BINFILE_CLIENT
+  #endif // BINFILE_ALWAYS_ACTIVE
 
   /// read sync set IDs and mod dates.
   /// @param[in] if set, all data fields are needed, so ReadSyncSet MAY
@@ -544,11 +545,11 @@ public:
   virtual localstatus dsBeforeStateChange(TLocalEngineDSState aOldState,TLocalEngineDSState aNewState);
   /// inform logic of happened state change
   virtual localstatus dsAfterStateChange(TLocalEngineDSState aOldState,TLocalEngineDSState aNewState);
-  #ifndef BASED_ON_BINFILE_CLIENT
+  #ifndef BINFILE_ALWAYS_ACTIVE
   /// called to confirm a sync operation's completion (ok status from remote received)
   /// @note aSyncOp passed not necessarily reflects what was sent to remote, but what actually happened
   virtual void dsConfirmItemOp(TSyncOperation aSyncOp, cAppCharP aLocalID, cAppCharP aRemoteID, bool aSuccess, localstatus aErrorStatus=0);
-  #endif
+  #endif // BINFILE_ALWAYS_ACTIVE
 
   /// @}
 
@@ -590,6 +591,7 @@ protected:
   // - returns true if database implementation can only update all fields of a record at once
   virtual bool dsReplaceWritesAllDBFields(void);
   #ifndef BASED_ON_BINFILE_CLIENT
+  // Note: these are identically in binfile client, so we need them only if there is no binfile layer
   // - returns true if DB implementation supports resume (saving of resume marks, alert code, pending maps, tempGUIDs)
   virtual bool dsResumeSupportedInDB(void) { return fConfigP && fConfigP->fResumeSupport; };
   /// returns true if DB implementation supports resuming in midst of a chunked item (can save fPIxxx.. and related admin data)
@@ -640,10 +642,15 @@ protected:
   ///       inhertited binfile version.
   virtual bool implEndDataWrite(void);
 
-  #ifndef BASED_ON_BINFILE_CLIENT
-
-  /// when based on binfile client, we don't need the syncset loaded to be able to retrieve items
+  #ifdef BASED_ON_BINFILE_CLIENT
+  /// when based on binfile client, we need the syncset loaded when binfile is active
+  bool implNeedSyncSetToRetrieve(void) { return binfileDSActive(); };
+  #else
   bool implNeedSyncSetToRetrieve(void) { return false; };
+  #endif
+  
+
+  #ifndef BINFILE_ALWAYS_ACTIVE
   /// get item from DB
   virtual localstatus implGetItem(
     bool &aEof,
@@ -686,15 +693,15 @@ protected:
   virtual localstatus implSaveResumeMarks(void);
 
   /// @}
-  #else // not BASED_ON_BINFILE_CLIENT
+  #endif // not BINFILE_ALWAYS_ACTIVE
+  
+  #ifdef BASED_ON_BINFILE_CLIENT
   /// @name methods used when based on BinfileImplDS
   /// @{
 
   #ifndef CHANGEDETECTION_AVAILABLE
     #error "CustomImplDS can be built only on BinFileImplDS with CHANGEDETECTION_AVAILABLE"
   #endif
-  /// when based on binfile client, we need the syncset loaded to be able to retrieve items
-  bool implNeedSyncSetToRetrieve(void) { return true; };
   /// get first item's ID and modification status from the sync set
   /// @return false if no item found
   virtual bool getFirstItemInfo(localid_out_t &aLocalID, bool &aItemHasChanged);
@@ -758,19 +765,19 @@ public:
   // - find entry in sync set by localid
   TSyncSetList::iterator findInSyncSet(const char *aLocalID);
 protected:
-  #ifndef BASED_ON_BINFILE_CLIENT
+  #ifndef BINFILE_ALWAYS_ACTIVE
   // - find non-deleted map entry by local ID / entry type
   TMapContainer::iterator findMapByLocalID(const char *aLocalID,TMapEntryType aEntryType, bool aDeletedAsWell=false);
   // - find map entry by remote ID
   TMapContainer::iterator findMapByRemoteID(const char *aRemoteID);
   // - modify map, if remoteID or localID is NULL or empty, map item will be deleted (if it exists at all)
   void modifyMap(TMapEntryType aEntryType, const char *aLocalID, const char *aRemoteID, uInt32 aMapFlags, bool aDelete, uInt32 aClearFlags=0xFFFFFFFF);
-  #endif // not BASED_ON_BINFILE_CLIENT
-  #ifndef SYSYNC_CLIENT
+  #endif // not BINFILE_ALWAYS_ACTIVE
+  #ifdef SYSYNC_SERVER
   // - called when a item in the sync set changes its localID (due to local DB internals)
   //   Datastore must make sure that eventually cached items get updated
   virtual void dsLocalIdHasChanged(const char *aOldID, const char *aNewID);
-  #endif
+  #endif // SYSYNC_SERVER
   // - target key (if needed by descendant)
   string fTargetKey;
   // - folder key (key value for subselecting in datastore, determined at implMakeAdminReady())
@@ -781,7 +788,7 @@ protected:
   TSyncSetList::iterator fSyncSetPos;
   // - list of items that must be processed in finalisation at end of sync
   TMultiFieldItemList fFinalisationQueue;
-  #ifndef BASED_ON_BINFILE_CLIENT
+  #ifndef BINFILE_ALWAYS_ACTIVE
   // local map list
   TMapContainer fMapTable;
   // - iterator for reporting deleted items in GetItem
@@ -789,7 +796,8 @@ protected:
   bool fReportDeleted;
   TGetPhases fGetPhase; // phase of get
   bool fGetPhasePrepared; // set if phase is prepared (select or list iterator init)
-  #else // not BASED_ON_BINFILE_CLIENT
+  #endif // BINFILE_ALWAYS_ACTIVE
+  #ifdef BASED_ON_BINFILE_CLIENT
   bool fSyncSetLoaded; // set if sync set is currently loaded
   bool makeSyncSetLoaded(bool aNeedAll);
   #endif // BASED_ON_BINFILE_CLIENT
@@ -798,7 +806,7 @@ protected:
   #ifdef SCRIPT_SUPPORT
   bool fOptionFilterTested;
   bool fOptionFilterWorksOnDBLevel; // set if option filters can be executed by DB
-  #endif
+  #endif // SCRIPT_SUPPORT
 
 	#ifdef DBAPI_TUNNEL_SUPPORT
   // Tunnel DB access support

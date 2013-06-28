@@ -55,12 +55,17 @@ class TSyncAppBase;
 
 #ifdef SIMPLE_LINKING
   // for using the engineInterface without EngineModuleBase, engine base class
-  // for the newEngine() function is TEngineInterface
+  // for the newXXXXEngine() functions is TEngineInterface
   #define ENGINE_IF_CLASS TEngineInterface
-  // factory function declaration is here, as we have no EngineModuleBase
-  ENGINE_IF_CLASS *newEngine(void);
+  // factory function declarations are here, as we have no EngineModuleBase
+  #ifdef SYSYNC_CLIENT
+  ENGINE_IF_CLASS *newClientEngine(void);
+  #endif
+  #ifdef SYSYNC_SERVER
+  ENGINE_IF_CLASS *newServerEngine(void);
+  #endif
 #else
-  // with EngineModuleBase, use it as base class. newEngine is declared in
+  // with EngineModuleBase, use it as base class. newXXXXXEngine are declared in
   // enginemodulebase.h
   #define ENGINE_IF_CLASS TEngineModuleBase
 #endif
@@ -322,6 +327,7 @@ public:
   // - static helper for procedural string readers
   static TSyError returnString(cAppCharP aReturnString, appPointer aBuffer, memSize aBufSize, memSize &aValSize);
   static TSyError returnInt(sInt32 aInt, memSize aIntSize, appPointer aBuffer, memSize aBufSize, memSize &aValSize);
+  static TSyError returnLineartime(lineartime_t aTime, appPointer aBuffer, memSize aBufSize, memSize &aValSize);
 
 protected:
 
@@ -749,6 +755,10 @@ public:
     EMBVIRTUAL TSyError InsertItemAsKey  ( SessionH aSessionH, KeyH aItemKey,  ItemID aID ) TUNNEL_IMPL;
     EMBVIRTUAL TSyError UpdateItemAsKey  ( SessionH aSessionH, KeyH aItemKey, cItemID aID, ItemID updID ) TUNNEL_IMPL;
     
+    EMBVIRTUAL TSyError debugPuts(cAppCharP aFile, int aLine, cAppCharP aFunction,
+                                  int aDbgLevel, cAppCharP aLinePrefix,
+                                  cAppCharP aText);
+
     /// @}
 
     /// @brief returns the current application base object

@@ -311,7 +311,7 @@ public:
   virtual bool replaceDataFrom(TSyncItem &aItem, bool aAvailableOnly=false, bool aDetectCutoffs=false, bool aAssignedOnly=false, bool aTransferUnassigned=false);
   // check item before processing it
   virtual bool checkItem(TLocalEngineDS *aDatastoreP);
-  #ifndef SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
   // merge this item with specified item.
   // Notes:
   // - specified item is treated as loosing item, this item is winning item

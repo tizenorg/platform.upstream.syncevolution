@@ -11,4 +11,4 @@ MAINTAINERCLEANFILES = Makefile.in config.guess config.sub configure depcomp ins
 ACLOCAL_AMFLAGS = -I m4
 
 pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA = synthesis.pc
+pkgconfig_DATA = synthesis.pc synthesis-sdk.pc

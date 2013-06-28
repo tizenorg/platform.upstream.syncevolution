@@ -104,8 +104,9 @@ class FileConfigNode : public FileBaseConfigNode {
                              const string &value,
                              const string &comment = "",
                              const string *defValue = NULL);
-    virtual void readProperties(map<string, string> &props) const;
+    virtual void readProperties(ConfigProps &props) const;
     virtual void removeProperty(const string &property);
+    virtual void clear();
 };
 
 /**
@@ -131,8 +132,10 @@ class HashFileConfigNode: public FileBaseConfigNode {
                              const string &value,
                              const string &comment = "",
                              const string *defValue = NULL);
-    virtual void readProperties(map<string, string> &props) const;
+    virtual void readProperties(ConfigProps &props) const;
+    virtual void writeProperties(const ConfigProps &props);
     virtual void removeProperty(const string &property);
+    virtual void clear();
 };
 
 

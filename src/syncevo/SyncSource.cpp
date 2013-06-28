@@ -26,6 +26,7 @@
 #include <syncevo/SyncSource.h>
 #include <syncevo/SyncContext.h>
 #include <syncevo/util.h>
+#include <syncevo/SafeConfigNode.h>
 
 #include <syncevo/SynthesisEngine.h>
 #include <synthesis/SDK_util.h>
@@ -33,6 +34,9 @@
 
 #include <boost/bind.hpp>
 #include <boost/algorithm/string/join.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 
 #include <ctype.h>
 #include <errno.h>
@@ -88,7 +92,10 @@ void SyncSourceBase::getDatastoreXML(string &xml, XMLConfigFragments &fragments)
 
     xmlstream <<
         "      <plugin_module>SyncEvolution</plugin_module>\n"
-        "      <plugin_datastoreadmin>no</plugin_datastoreadmin>\n"
+        "      <plugin_datastoreadmin>" <<
+        (serverModeEnabled() ? "yes" : "no") <<
+        "</plugin_datastoreadmin>\n"
+        "      <fromremoteonlysupport> yes </fromremoteonlysupport>\n"
         "\n"
         "      <!-- General datastore settings for all DB types -->\n"
         "\n"
@@ -336,7 +343,7 @@ SyncSource *SyncSource::createTestingSource(const string &name, const string &ty
 {
     SyncConfig config("testing");
     SyncSourceNodes nodes = config.getSyncSourceNodes(name);
-    SyncSourceParams params(name, nodes, "");
+    SyncSourceParams params(name, nodes);
     PersistentSyncSourceConfig sourceconfig(name, nodes);
     sourceconfig.setSourceType(type);
     if (prefix) {
@@ -440,7 +447,7 @@ void SyncSourceSerialize::getSynthesisInfo(SynthesisInfo &info,
         info.m_datatypes =
             "        <use datatype='vCard21' mode='rw'/>\n"
             "        <use datatype='vCard30' mode='rw' preferred='yes'/>\n";
-    } else if (type == "text/x-calendar") {
+    } else if (type == "text/x-calendar" || type == "text/x-vcalendar") {
         info.m_native = "vCalendar10";
         info.m_fieldlist = "calendar";
         info.m_profile = "\"vCalendar\", 1";
@@ -488,7 +495,8 @@ void SyncSourceSerialize::getSynthesisInfo(SynthesisInfo &info,
             info.m_datatypes +=
                 "        <use datatype='vCard21' mode='rw'/>\n";
         }
-    } else if (type == "text/x-vcalendar:1.0" || type == "text/x-vcalendar") {
+    } else if (type == "text/x-vcalendar:1.0" || type == "text/x-vcalendar"
+             || type == "text/x-calendar:1.0" || type == "text/x-calendar") {
         info.m_datatypes =
             "        <use datatype='vcalendar10' mode='rw' preferred='yes'/>\n";
         if (!sourceType.m_forceFormat) {
@@ -705,7 +713,7 @@ void SyncSourceRevisions::detectChanges(ConfigNode &trackingNode)
     }
 
     // clear information about all items that we recognized as deleted
-    map<string, string> props;
+    ConfigProps props;
     trackingNode.readProperties(props);
 
     BOOST_FOREACH(const StringPair &mapping, props) {
@@ -861,5 +869,167 @@ void SyncSourceLogging::init(const std::list<std::string> &fields,
                                    this, _1, ops.m_deleteItem);
 }
 
+sysync::TSyError SyncSourceAdmin::loadAdminData(const char *aLocDB,
+                                                const char *aRemDB,
+                                                char **adminData)
+{
+    std::string data = m_configNode->readProperty(m_adminPropertyName);
+    *adminData = StrAlloc(SafeConfigNode::unescape(data).c_str());
+    resetMap();
+    return sysync::LOCERR_OK;
+}
+
+sysync::TSyError SyncSourceAdmin::saveAdminData(const char *adminData)
+{
+    m_configNode->setProperty(m_adminPropertyName,
+                              SafeConfigNode::escape(adminData, false, false));
+
+    // Flush here, because some calls to saveAdminData() happend
+    // after SyncSourceAdmin::flush() (= session end).
+    m_configNode->flush();
+    return sysync::LOCERR_OK;
+}
+
+bool SyncSourceAdmin::readNextMapItem(sysync::MapID mID, bool aFirst)
+{
+    if (aFirst) {
+        resetMap();
+    }
+    if (m_mappingIterator != m_mapping.end()) {
+        entry2mapid(m_mappingIterator->first, m_mappingIterator->second, mID);
+        ++m_mappingIterator;
+        return true;
+    } else {
+        return false;
+    }
+}
+
+sysync::TSyError SyncSourceAdmin::insertMapItem(sysync::cMapID mID)
+{
+    string key, value;
+    mapid2entry(mID, key, value);
+
+#if 0
+    StringMap::iterator it = m_mapping.find(key);
+    if (it != m_mapping.end()) {
+        // error, exists already
+        return sysync::DB_Forbidden;
+    } else {
+        m_mapping[key] = value;
+        return sysync::LOCERR_OK;
+    }
+#else
+    m_mapping[key] = value;
+    m_mappingNode->clear();
+    m_mappingNode->writeProperties(m_mapping);
+    m_mappingNode->flush();
+    return sysync::LOCERR_OK;
+#endif
+}
+
+sysync::TSyError SyncSourceAdmin::updateMapItem(sysync::cMapID mID)
+{
+    string key, value;
+    mapid2entry(mID, key, value);
+
+    StringMap::iterator it = m_mapping.find(key);
+    if (it == m_mapping.end()) {
+        // error, does not exist
+        return sysync::DB_Forbidden;
+    } else {
+        m_mapping[key] = value;
+        m_mappingNode->clear();
+        m_mappingNode->writeProperties(m_mapping);
+        m_mappingNode->flush();
+        return sysync::LOCERR_OK;
+    }
+}
+
+sysync::TSyError SyncSourceAdmin::deleteMapItem(sysync::cMapID mID)
+{
+    string key, value;
+    mapid2entry(mID, key, value);
+
+    StringMap::iterator it = m_mapping.find(key);
+    if (it == m_mapping.end()) {
+        // error, does not exist
+        return sysync::DB_Forbidden;
+    } else {
+        m_mapping.erase(it);
+        m_mappingNode->clear();
+        m_mappingNode->writeProperties(m_mapping);
+        m_mappingNode->flush();
+        return sysync::LOCERR_OK;
+    }
+}
+
+void SyncSourceAdmin::flush()
+{
+    m_configNode->flush();
+    m_mappingNode->clear();
+    m_mappingNode->writeProperties(m_mapping);
+    m_mappingNode->flush();
+}
+
+void SyncSourceAdmin::resetMap()
+{
+    m_mapping.clear();
+    m_mappingNode->readProperties(m_mapping);
+    m_mappingIterator = m_mapping.begin();
+}
+
+
+void SyncSourceAdmin::mapid2entry(sysync::cMapID mID, string &key, string &value)
+{
+    key = SafeConfigNode::escape(mID->localID ? mID->localID : "", true, false);
+    value = StringPrintf("%s %x %x",
+                         SafeConfigNode::escape(mID->remoteID ? mID->remoteID : "", true, false).c_str(),
+                         mID->flags, mID->ident);
+}
+
+void SyncSourceAdmin::entry2mapid(const string &key, const string &value, sysync::MapID mID)
+{
+    mID->localID = StrAlloc(SafeConfigNode::unescape(key).c_str());
+    std::vector< std::string > tokens;
+    boost::split(tokens, value, boost::is_from_range(' ', ' '));
+    mID->remoteID = tokens.size() > 0 ? StrAlloc(tokens[0].c_str()) : NULL;
+    mID->flags = tokens.size() > 1 ? strtol(tokens[1].c_str(), NULL, 16) : 0;
+    mID->ident = tokens.size() > 2 ? strtol(tokens[2].c_str(), NULL, 16) : 0;
+}
+
+void SyncSourceAdmin::init(SyncSource::Operations &ops,
+                           const boost::shared_ptr<ConfigNode> &config,
+                           const std::string adminPropertyName,
+                           const boost::shared_ptr<ConfigNode> &mapping)
+{
+    m_configNode = config;
+    m_adminPropertyName = adminPropertyName;
+    m_mappingNode = mapping;
+
+    ops.m_loadAdminData = boost::bind(&SyncSourceAdmin::loadAdminData,
+                                      this, _1, _2, _3);
+    ops.m_saveAdminData = boost::bind(&SyncSourceAdmin::saveAdminData,
+                                      this, _1);
+    ops.m_readNextMapItem = boost::bind(&SyncSourceAdmin::readNextMapItem,
+                                        this, _1, _2);
+    ops.m_insertMapItem = boost::bind(&SyncSourceAdmin::insertMapItem,
+                                      this, _1);
+    ops.m_updateMapItem = boost::bind(&SyncSourceAdmin::updateMapItem,
+                                      this, _1);
+    ops.m_deleteMapItem = boost::bind(&SyncSourceAdmin::deleteMapItem,
+                                      this, _1);
+    ops.m_endSession.push_back(boost::bind(&SyncSourceAdmin::flush,
+                                           this));
+}
+
+void SyncSourceAdmin::init(SyncSource::Operations &ops,
+                           SyncSource *source)
+{
+    init(ops,
+         source->getProperties(true),
+         SourceAdminDataName,
+         source->getServerNode());
+}
 
 SE_END_CXX
+

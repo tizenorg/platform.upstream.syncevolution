@@ -16,7 +16,7 @@ SIZE="size"
 
 CFLAGS=  -m32 -Wall -O2 -c -MMD
 LDFLAGS= -m32
-MAKEFILE= "sysync_linux.mk"
+MAKEFILE= "client_engine_linux.mk"
 
 
 SYNCML_TK_SML=\
@@ -134,7 +134,7 @@ CLIENTENGINE=\
   sysync_SDK/Sources/enginemodulebase.cpp\
   sysync/engineentry.cpp\
   sysync/engineinterface.cpp\
-  sysync/syncclient.cpp\
+  sysync/syncagent.cpp\
   sysync/syncclientbase.cpp
 
 ODBC_DB=\

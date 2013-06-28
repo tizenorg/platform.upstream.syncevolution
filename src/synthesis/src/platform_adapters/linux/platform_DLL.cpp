@@ -63,6 +63,8 @@ public:
     string      aName= aDLLName;
 
     do {
+      aDLL = dlopen(aName.c_str(), RTLD_LAZY); if (!dlerror()) break;      
+
       aName+= DSuff;
       aDLL = dlopen(aName.c_str(), RTLD_LAZY); if (!dlerror()) break;
 

@@ -349,6 +349,16 @@ void SQLiteContactSource::deleteItem(const string& uid)
     deleteRevision(*m_trackingNode, uid);
 }
 
+void SQLiteContactSource::enableServerMode()
+{
+    SyncSourceAdmin::init(m_operations, this);
+}
+
+bool SQLiteContactSource::serverModeEnabled() const
+{
+    return m_operations.m_loadAdminData;
+}
+
 
 void SQLiteContactSource::beginSync(const std::string &lastToken, const std::string &resumeToken)
 {

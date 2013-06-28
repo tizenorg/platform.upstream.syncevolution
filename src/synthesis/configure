@@ -21158,8 +21158,7 @@ fi
 
 
 
-echo "enable dynamic $enable_shared"
-if test "$enable_shared" = "no"; then
+# the autotools SDK always assumes that it is linked against the engine
 
 cat >>confdefs.h <<\_ACEOF
 #define UIAPI_LINKED 1
@@ -21170,7 +21169,15 @@ cat >>confdefs.h <<\_ACEOF
 #define DBAPI_LINKED 1
 _ACEOF
 
-fi
+
+cat >>confdefs.h <<\_ACEOF
+#define DBAPI_SRV_LINKED 1
+_ACEOF
+
+
+# determines which object files are needed in the SDK:
+# if linking statically, some object files are shared with
+# libsynthesis.a
  if test "$enable_shared" = "no"; then
   COND_STATIC_TRUE=
   COND_STATIC_FALSE='#'
@@ -21180,7 +21187,15 @@ else
 fi
 
 
-ac_config_files="$ac_config_files Makefile src/Makefile synthesis.pc"
+# Disable unconditionally at the moment. Would add dependency of SDK
+# on SyncML Toolkit.
+
+cat >>confdefs.h <<\_ACEOF
+#define WITHOUT_SAN_1_1 1
+_ACEOF
+
+
+ac_config_files="$ac_config_files Makefile src/Makefile synthesis.pc synthesis-sdk.pc"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -21785,6 +21800,7 @@ do
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
     "synthesis.pc") CONFIG_FILES="$CONFIG_FILES synthesis.pc" ;;
+    "synthesis-sdk.pc") CONFIG_FILES="$CONFIG_FILES synthesis-sdk.pc" ;;
 
   *) { { echo "$as_me:$LINENO: error: invalid argument: $ac_config_target" >&5
 echo "$as_me: error: invalid argument: $ac_config_target" >&2;}

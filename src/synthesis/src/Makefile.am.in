@@ -9,34 +9,52 @@
 $(srcdir)/Makefile.am: $(srcdir)/Makefile.am.in $(srcdir)/gen-makefile-am.sh
 	cd $(srcdir) && sh ./gen-makefile-am.sh
 
+# versioning for *all* libs
+#
+# CURRENT - most recent interface version
+# REVISION - minor version number of that interface implementation
+# AGE - number of previous interface versions supported in addition
+#       to the current one
+#
+# When adding to the interface, increment CURRENT and AGE and reset
+# REVISION to zero. When breaking the interface in a backwards
+# incompatible way, increment CURRENT and reset AGE and REVISION to
+# zero. When fixing something without interface change, increment
+# REVISION.
+ENGINE_CURRENT = 3
+ENGINE_REVISION = 0
+ENGINE_AGE = 3
+
 CLEANFILES =
 EXTRA_DIST =
 
-lib_LTLIBRARIES = libsmltk.la libsynthesis.la libsynthesissdk.la
+lib_LTLIBRARIES = libsmltk.la libsynthesis.la libsynthesissdk.la libsynthesisstubs.la
 nobase_include_HEADERS = @LIBSYNTHESISSDK_HEADERS@ synthesis/target_options.h
 
 # Configuration header files are searched in this order:
 # - Targets/ReleasedProducts/autotools: files only used when compiling with autotools
-# - Targets/ReleasedProducts/[clientEngine_opensource_linux|SDK]: files also used with Synthesis Linux makefile
+# - Targets/ReleasedProducts/[combiEngine_opensource_linux|serverEngine_opensource_linux|SDK]: files also used with Synthesis Linux makefile
 #
 # Always included first via -include:
 # - config.h: configure result (top directory)
-# - Targets/ReleasedProducts/clientEngine_opensource_linux/clientengine_demo_x86_linux_prefix.h
+# - Targets/ReleasedProducts/combiEngine_opensource_linux/clientengine_demo_x86_linux_prefix.h resp. Targets/ReleasedProducts/serverEngine_opensource_linux/serverengine_opensource_linux_prefix.h
 #
 # Included as needed:
 # - define.h: hard-coded SyncML Toolkit config (from search path above)
 
-libsynthesis_la_SOURCES = @LIBSYNTHESIS_SOURCES@
+libsynthesis_la_SOURCES = @LIBSYNTHESIS_SOURCES@ \
+	$(XMLPARSE_SOURCES)
 libsynthesis_la_CPPFLAGS = -I$(srcdir)/sysync_SDK/Sources
-LIBSYNTHESIS_CFLAGS = \
+libsynthesis_la_CFLAGS = \
 	-include $(top_builddir)/config.h \
-	-include $(srcdir)/Targets/ReleasedProducts/clientEngine_opensource_linux/clientengine_demo_x86_linux_prefix.h \
+	-include $(srcdir)/Targets/ReleasedProducts/combiEngine_opensource_linux/combiengine_opensource_linux_prefix.h \
 	-I$(srcdir)/Targets/ReleasedProducts/clientEngine_autotools/ \
-	-I$(srcdir)/Targets/ReleasedProducts/clientEngine_opensource_linux/ \
+	-I$(srcdir)/Targets/ReleasedProducts/combiEngine_opensource_linux/ \
 	-I$(srcdir)/platform_adapters/linux/ \
 	-I$(srcdir)/platform_adapters/unix_common/ \
 	-I$(srcdir)/platform_adapters/ \
 	-I$(srcdir)/syncapps/clientEngine_custom/ \
+	-I$(srcdir)/syncapps/serverEngine_custom/ \
 	-I$(srcdir)/sysync/ \
 	-I$(srcdir)/Transport_interfaces/engine/ \
 	-I$(srcdir)/ \
@@ -51,13 +69,22 @@ LIBSYNTHESIS_CFLAGS = \
 	-I$(srcdir)/DB_interfaces/odbc_db/ \
 	-I$(srcdir)/DB_interfaces/api_db/ \
 	-I$(srcdir)/sysync_SDK/Sources/ \
-	$(PCRE_CFLAGS) $(SQLITE3_CFLAGS) $(ZLIB_CFLAGS) $(XMLPARSE_CFLAGS) $(LIBICAL_CFLAGS) $(LIBECAL_CFLAGS)
-libsynthesis_la_CFLAGS = $(LIBSYNTHESIS_CFLAGS)
-libsynthesis_la_CXXFLAGS = $(LIBSYNTHESIS_CFLAGS)
+	$(PCRE_CFLAGS) \
+	$(SQLITE3_CFLAGS) \
+	$(ZLIB_CFLAGS) \
+	$(XMLPARSE_CFLAGS) \
+	$(XMLPARSE_CFLAGS_BUILTIN) \
+	$(LIBICAL_CFLAGS) \
+	$(LIBECAL_CFLAGS)
+libsynthesis_la_CXXFLAGS = $(libsynthesis_la_CFLAGS)
 libsynthesis_la_LIBADD = $(PCRE_LIBS) $(SQLITE3_LIBS) $(XMLPARSE_LIBS) $(LIBICAL_LIBS) $(LIBECAL_LIBS) libsmltk.la -lz
+libsynthesis_la_LDFLAGS = -version-info $(ENGINE_CURRENT):$(ENGINE_REVISION):$(ENGINE_AGE) \
+	-Wl,--version-script=$(srcdir)/synthesis-linker.map
+libsynthesis_la_DEPENDENCIES = $(srcdir)/synthesis-linker.map libsmltk.la
+
 if COND_XMLPARSE
-LIBSYNTHESIS_CFLAGS += -I$(srcdir)/expat -I$(srcdir)/expat/xmltok -I$(srcdir)/expat/xmlparse
-libsynthesis_la_SOURCES += \
+XMLPARSE_CFLAGS_BUILTIN = -I$(srcdir)/expat -I$(srcdir)/expat/xmltok -I$(srcdir)/expat/xmlparse
+XMLPARSE_SOURCES = \
 	expat/xmlparse/xmlparse.c \
 	expat/xmlparse/xmlparse.h \
 	expat/xmltok/ascii.h \
@@ -77,28 +104,9 @@ EXTRA_DIST += \
 	expat/xmltok/xmltok_ns.c
 else
 # add path to xmlparse.h which includes the system's xmltok/xmlparse.h
-LIBSYNTHESIS_CFLAGS += -I$(srcdir)/Targets/ReleasedProducts/clientEngine_autotools/systemxml
+XMLPARSE_CFLAGS_BUILTIN = -I$(srcdir)/Targets/ReleasedProducts/clientEngine_autotools/systemxml
 endif
 
-# versioning:
-# CURRENT - most recent interface version
-# REVISION - minor version number of that interface implementation
-# AGE - number of previous interface versions supported in addition
-#       to the current one
-#
-# When adding to the interface, increment CURRENT and AGE and reset
-# REVISION to zero. When breaking the interface in a backwards
-# incompatible way, increment CURRENT and reset AGE and REVISION to
-# zero. When fixing something without interface change, increment
-# REVISION.
-ENGINE_CURRENT = 2
-ENGINE_REVISION = 0
-ENGINE_AGE = 2
-libsynthesis_la_LDFLAGS = -version-info $(ENGINE_CURRENT):$(ENGINE_REVISION):$(ENGINE_AGE) \
-	-Wl,--version-script=$(srcdir)/synthesis-linker.map
-libsynthesis_la_DEPENDENCIES = $(srcdir)/synthesis-linker.map libsmltk.la
-
-libsynthesissdk_la_LIBADD = libsynthesis.la
 libsynthesissdk_la_LDFLAGS = -static
 libsynthesissdk_la_SOURCES = @LIBSYNTHESISSDK_HEADERS@
 if COND_STATIC
@@ -111,13 +119,17 @@ libsynthesissdk_la_CPPFLAGS = \
 	-I$(srcdir)/sysync_SDK/Sources \
 	-I$(srcdir)/Targets/ReleasedProducts/SDK
 
+libsynthesisstubs_la_LDFLAGS = -static
+libsynthesisstubs_la_SOURCES = sysync_SDK/Sources/enginestubs.c
+libsynthesisstubs_la_CPPFLAGS = $(libsynthesissdk_la_CPPFLAGS)
+
 # All files needed by libsynthesissdk.a come from either
 # sysync_SDK/Sources (shared between engine and SDK) or
 # sysync_SDK/SDK (only in SDK). We patch the files so that
 # they include their own files via #include "synthesis/..."
-vpath %.cpp $(srcdir)/sysync_SDK/Sources $(srcdir)/sysync_SDK/SDK # $(srcdir)/Targets/ReleasedProducts/clientEngine_opensource_linux $(srcdir)/syncapps/clientEngine_custom $(srcdir)/sysync $(srcdir)/platform_adapters $(srcdir)
-vpath %.c $(srcdir)/sysync_SDK/Sources $(srcdir)/sysync_SDK/SDK # $(srcdir)/Targets/ReleasedProducts/clientEngine_opensource_linux $(srcdir)/syncapps/clientEngine_custom $(srcdir)/sysync $(srcdir)/platform_adapters $(srcdir)
-vpath %.h $(srcdir)/sysync_SDK/Sources $(srcdir)/sysync_SDK/SDK # $(srcdir)/Targets/ReleasedProducts/clientEngine_opensource_linux $(srcdir)/syncapps/clientEngine_custom $(srcdir)/sysync $(srcdir)/platform_adapters $(srcdir)
+vpath %.cpp $(srcdir)/sysync_SDK/Sources $(srcdir)/sysync_SDK/SDK
+vpath %.c $(srcdir)/sysync_SDK/Sources $(srcdir)/sysync_SDK/SDK
+vpath %.h $(srcdir)/sysync_SDK/Sources $(srcdir)/sysync_SDK/SDK
 @LIBSYNTHESISSDK_HEADERS@: synthesis/%: %
 	mkdir -p synthesis
 	sed -e 's;# *include  *";#include "synthesis/;' -e 's/defined(HAVE_STDINT_H)/1/' $< >$@
@@ -131,8 +143,8 @@ synthesis/target_options.h: $(srcdir)/Targets/ReleasedProducts/SDK/target_option
 
 # libsmltk: compiled just like libsynthesis
 libsmltk_la_SOURCES = @LIBSMLTK_SOURCES@
-libsmltk_la_CFLAGS = $(LIBSYNTHESIS_CFLAGS)
-libsmltk_la_CXXFLAGS = $(LIBSYNTHESIS_CFLAGS)
+libsmltk_la_CFLAGS = $(libsynthesis_la_CFLAGS)
+libsmltk_la_CXXFLAGS = $(libsmltk_la_CFLAGS)
 
 # versioning: same as of engine! changes in libsmltk are not tracked separately.
 libsmltk_la_LDFLAGS = -version-info $(ENGINE_CURRENT):$(ENGINE_REVISION):$(ENGINE_AGE) \

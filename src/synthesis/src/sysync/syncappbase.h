@@ -175,6 +175,8 @@ public:
 }; // TCommConfig
 
 
+/* %%% this was a useless intermediate class. We now call the unilib config TAgentConfig
+       (union of TClientConfig and TServerConfig)
 // agent configuration (an agent is a server or a client)
 class TAgentConfig : public TConfigElement
 {
@@ -186,9 +188,9 @@ public:
   //   such as binfile profiles. If aDoLoose==false, situations, where existing config
   //   is detected but cannot be re-used will return an error. With aDoLoose==true, config
   //   files etc. are created even if it means a loss of data.
-  virtual localstatus loadVarConfig(bool aDoLoose=false) { return LOCERR_OK; /* NOP and ok by default */ }
+  virtual localstatus loadVarConfig(bool aDoLoose=false) { return LOCERR_OK; }
 }; // TAgentConfig
-
+*/
 
 
 // single data type configuration abstract class
@@ -304,6 +306,7 @@ private:
 #endif
 
 class TProfileConfig; // forward
+class TAgentConfig; // forward
 
 // root Config element
 class TRootConfig : public TRootConfigElement
@@ -359,7 +362,7 @@ public:
   bool fNeverPutDevinf;
   // transport/environment config
   TCommConfig *fCommConfigP;
-  // Server or Client config
+  // Agent (Server or Client session) config
   TAgentConfig *fAgentConfigP;
   // datatypes config
   TDatatypesConfig *fDatatypesConfigP;
@@ -486,6 +489,10 @@ public:
   Ret_t getSmlInstanceUserData(InstanceID_t aInstanceID, void **aUserDataPP);
   Ret_t setSmlInstanceUserData(InstanceID_t aInstanceID, void *aUserDataP);
   void freeSmlInstance(InstanceID_t aInstance);
+	// determine encoding from beginning of SyncML message data
+	static SmlEncoding_t encodingFromData(cAppPointer aData, memSize aDataSize);
+	// determine encoding from Content-Type: header value
+	static SmlEncoding_t encodingFromContentType(cAppCharP aTypeString);
   // virtual handlers for SyncML toolkit callbacks, must be separately derived for server/client cases
   // - Start/End Message: derived method in server case actually creates session
   virtual Ret_t StartMessage(
@@ -533,6 +540,8 @@ public:
   // convenience version for getting time
   lineartime_t getSystemNowAs(timecontext_t aContext) { return sysync::getSystemNowAs(aContext,getAppZones()); };
 protected:
+	// Server or client
+  bool fIsServer;
   // Application custom time zones
   GZones fAppZones;
   // Destruction flag
@@ -546,6 +555,8 @@ protected:
   // request count
   sInt32 fRequestCount; // count of requests
 public:
+	// this is called to control behaviour for builds that can be client OR server
+  bool isServer(void) { return fIsServer; };
   #ifdef SYSER_REGISTRATION
   // somewhat scattered within object to make reverse engineering harder
   bool fRegOK; // updated by checkRegInfo, used to disable hard-coded-expiry
@@ -654,7 +665,6 @@ private:
 
 
 } // namespace sysync
-
 
 #endif // SYNCAPPBASE_H
 

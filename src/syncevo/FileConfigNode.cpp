@@ -247,7 +247,7 @@ string FileConfigNode::readProperty(const string &property) const {
 
 
 
-void FileConfigNode::readProperties(map<string, string> &props) const {
+void FileConfigNode::readProperties(ConfigProps &props) const {
     map<string, string> res;
     string value, property;
 
@@ -323,6 +323,12 @@ void FileConfigNode::setProperty(const string &property,
     m_modified = true;
 }
 
+void FileConfigNode::clear()
+{
+    m_lines.clear();
+    m_modified = true;
+}
+
 HashFileConfigNode::HashFileConfigNode(const string &path, const string &fileName, bool readonly) :
     FileBaseConfigNode(path,fileName,readonly)
 {
@@ -366,11 +372,19 @@ void HashFileConfigNode::toFile(FILE* file) {
     }
 }
 
-void HashFileConfigNode::readProperties(map<string, string> &props) const {
+void HashFileConfigNode::readProperties(ConfigProps &props) const {
     BOOST_FOREACH(const StringPair &prop, m_props) {
         props.insert(prop);
     }
 }
+
+void HashFileConfigNode::writeProperties(const ConfigProps &props) {
+    if (!props.empty()) {
+        m_props.insert(props.begin(), props.end());
+        m_modified = true;
+    }
+}
+
 
 string HashFileConfigNode::readProperty(const string &property) const {
     std::map<std::string, std::string>::const_iterator it = m_props.find(property);
@@ -389,6 +403,14 @@ void HashFileConfigNode::removeProperty(const string &property){
     }
 }
 
+void HashFileConfigNode::clear()
+{
+    if (!m_props.empty()) {
+        m_props.clear();
+        m_modified = true;
+    }
+}
+
 void HashFileConfigNode::setProperty(const string &property,
                                  const string &newvalue,
                                  const string &comment,
@@ -396,6 +418,7 @@ void HashFileConfigNode::setProperty(const string &property,
     /** we don't support property comments here. Also, we ignore comment*/
     if (defValue &&
         *defValue == newvalue) {
+        removeProperty(property);
         return;
     }
     map<string, string>::iterator it = m_props.find(property);

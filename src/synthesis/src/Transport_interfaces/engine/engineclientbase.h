@@ -15,7 +15,7 @@
 // required headers
 #include "syncappbase.h"
 #include "syncclientbase.h"
-#include "syncclient.h"
+#include "syncagent.h"
 
 
 namespace sysync {
@@ -37,12 +37,12 @@ public:
 
 
 // engine client transport config
-class TEngineCommConfig: public TCommConfig
+class TEngineClientCommConfig: public TCommConfig
 {
   typedef TCommConfig inherited;
 public:
-  TEngineCommConfig(TConfigElement *aParentElementP);
-  virtual ~TEngineCommConfig();
+  TEngineClientCommConfig(TConfigElement *aParentElementP);
+  virtual ~TEngineClientCommConfig();
 protected:
   // check config elements
   #ifndef HARDCODED_CONFIG

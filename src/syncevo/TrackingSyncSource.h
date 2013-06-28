@@ -63,7 +63,9 @@ using namespace std;
  *   (beware, such a hash might change as the textual representation
  *    changes even though the item is unchanged)
  */
-class TrackingSyncSource : public TestingSyncSource, virtual public SyncSourceRevisions
+class TrackingSyncSource : public TestingSyncSource,
+    virtual public SyncSourceRevisions,
+    virtual public SyncSourceAdmin
 {
   public:
     /**
@@ -127,10 +129,7 @@ class TrackingSyncSource : public TestingSyncSource, virtual public SyncSourceRe
      *
      * @param luid     identifies the item to be modified, empty for creating
      * @param item     contains the new content of the item
-     * @param raw      item has internal format instead of engine format;
-     *                 testing and backup/restore might use such an internal format
-     *                 which may be different (more complete!) than the
-     *                 format when talking to the sync engine
+     * @param raw      item has internal format instead of engine format
      * @return the result of inserting the item
      */
     virtual InsertItemResult insertItem(const std::string &luid, const std::string &item, bool raw) = 0;
@@ -180,10 +179,16 @@ class TrackingSyncSource : public TestingSyncSource, virtual public SyncSourceRe
      */
     virtual const char *getMimeVersion() const = 0;
 
+    /**
+     * Mime type a backend provides by default, this is used to alert the
+     * remote peer in SAN during server alerted sync.
+     */
+    virtual const char *getPeerMimeType() const;
+
     using SyncSource::getName;
 
   private:
-    void checkStatus(SyncSourceReport &changes);
+    void checkStatus();
 
     /* implementations of SyncSource callbacks */
     virtual void beginSync(const std::string &lastToken, const std::string &resumeToken);
@@ -193,6 +198,8 @@ class TrackingSyncSource : public TestingSyncSource, virtual public SyncSourceRe
     virtual void readItem(const std::string &luid, std::string &item);
     virtual InsertItemResult insertItemRaw(const std::string &luid, const std::string &item);
     virtual void readItemRaw(const std::string &luid, std::string &item);
+    virtual void enableServerMode();
+    virtual bool serverModeEnabled() const;
 
     boost::shared_ptr<ConfigNode> m_trackingNode;
 };

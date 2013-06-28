@@ -92,6 +92,7 @@ namespace sysync {
 #define SYSER_PRODCODE_CLIENT_LIB_WM      	22 // for Windows Mobile
 #define SYSER_PRODCODE_CLIENT_LIB_PALM    	23 // for PALMOS
 #define SYSER_PRODCODE_CLIENT_LIB_IPHONEOS  28 // iPhone OS
+#define SYSER_PRODCODE_CLIENT_LIB_ANDROID   40 // Android
 
 
 #define SYSER_PRODCODE_CLIENT_LIB_ALL     	24 // ALL Platforms
@@ -108,13 +109,14 @@ namespace sysync {
 // Servers
 
 // - Server Libraries
-#define SYSER_PRODCODE_SERVER_LIB_WIN32   	28 // Win32 ODBC PRO
+#define SYSER_PRODCODE_SERVER_LIB_WIN32   	39 // Win32 ODBC PRO
 #define SYSER_PRODCODE_SERVER_LIB_MACOSX  	29 // for Mac OS X
 #define SYSER_PRODCODE_SERVER_LIB_LINUX   	30 // for Linux
 #define SYSER_PRODCODE_SERVER_LIB_SYMBIAN 	31 // for Symbian
 #define SYSER_PRODCODE_SERVER_LIB_WM      	32 // for Windows Mobile
 #define SYSER_PRODCODE_SERVER_LIB_PALM    	33 // for PALMOS
 #define SYSER_PRODCODE_SERVER_LIB_IPHONEOS  38 // iPhone OS
+#define SYSER_PRODCODE_SERVER_LIB_ANDROID   41 // Android
 
 
 #define SYSER_PRODCODE_SERVER_LIB_ALL     	34 // ALL Platforms

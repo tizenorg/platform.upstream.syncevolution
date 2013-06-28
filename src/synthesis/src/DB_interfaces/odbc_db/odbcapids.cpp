@@ -603,12 +603,13 @@ void TOdbcDSConfig::apiResolveScripts(void)
 TLocalEngineDS *TOdbcDSConfig::newLocalDataStore(TSyncSession *aSessionP)
 {
   // Synccap defaults to normal set supported by the engine by default
-  TLocalEngineDS *ldsP =
-    #ifdef SYSYNC_CLIENT
-    new TODBCApiDS(this,aSessionP,getName(),aSessionP->getSyncCapMask() & ~(isOneWayFromRemoteSupported() ? 0 : SCAP_MASK_ONEWAY_SERVER));
-    #else
-    new TODBCApiDS(this,aSessionP,getName(),aSessionP->getSyncCapMask() & ~(isOneWayFromRemoteSupported() ? 0 : SCAP_MASK_ONEWAY_CLIENT));
-    #endif
+  TLocalEngineDS *ldsP;
+	if (IS_CLIENT) {
+    ldsP = new TODBCApiDS(this,aSessionP,getName(),aSessionP->getSyncCapMask() & ~(isOneWayFromRemoteSupported() ? 0 : SCAP_MASK_ONEWAY_SERVER));
+  }
+  else {
+    ldsP = new TODBCApiDS(this,aSessionP,getName(),aSessionP->getSyncCapMask() & ~(isOneWayFromRemoteSupported() ? 0 : SCAP_MASK_ONEWAY_CLIENT));
+  }
   // do common stuff
   addTypes(ldsP,aSessionP);
   // return
@@ -848,7 +849,7 @@ SQLHDBC TODBCApiDS::getODBCConnectionHandle(void)
     PDEBUGPRINTFX(DBG_DBAPI+DBG_EXOTIC,("Datastore %s does not own a DB connection yet -> pulling connection from session level",getName()));
     fODBCConnectionHandle = fAgentP->pullODBCConnectionHandle();
   }
-  PDEBUGPRINTFX(DBG_DBAPI+DBG_EXOTIC,("Datastore %s: using connection handle 0x%lX",getName(),(uInt32)fODBCConnectionHandle));
+  PDEBUGPRINTFX(DBG_DBAPI+DBG_EXOTIC,("Datastore %s: using connection handle 0x%lX",getName(),(uIntArch)fODBCConnectionHandle));
   return fODBCConnectionHandle;
 } // TODBCApiDS::getODBCConnectionHandle
 
@@ -1226,7 +1227,7 @@ void TODBCApiDS::writeArray(bool aDelete, bool aInsert, SQLHSTMT aStatement, TMu
   TODBCFieldMapArrayItem *fmaiP = dynamic_cast<TODBCFieldMapArrayItem *>(aMapItemP);
   PDEBUGPRINTFX(DBG_DATA+DBG_DBAPI+DBG_EXOTIC,("Writing Array, fmaiP=0x%lX",(long)fmaiP));
   if (!fmaiP) return; // do nothing
-  PDEBUGPRINTFX(DBG_DATA+DBG_DBAPI+DBG_EXOTIC,("Writing Array for field '%s'",fmaiP->getName()));
+  PDEBUGPRINTFX(DBG_DATA+DBG_DBAPI+DBG_EXOTIC,("Writing Array"));
   // Check initscript first. If it returns false, we do not insert anything
   bool doit;
   #ifdef SCRIPT_SUPPORT
@@ -4148,13 +4149,16 @@ localstatus TODBCApiDS::apiLoadAdminData(
             // Note: in the main map, these are marked deleted. Before the next saveAdminData, these will
             //       be re-added (=re-activated) from the extra lists if they still exist.
             switch (entry.entrytype) {
-              #ifndef SYSYNC_CLIENT
+              #ifdef SYSYNC_SERVER
               case mapentry_tempidmap:
-                fTempGUIDMap[entry.remoteid]=entry.localid; // tempGUIDs are accessed by remoteID=tempID
+              	if (IS_SERVER)
+	                fTempGUIDMap[entry.remoteid]=entry.localid; // tempGUIDs are accessed by remoteID=tempID
                 break;
-              #else
+              #endif
+              #ifdef SYSYNC_CLIENT
               case mapentry_pendingmap:
-                fPendingAddMaps[entry.localid]=entry.remoteid;
+              	if (IS_CLIENT)
+	                fPendingAddMaps[entry.localid]=entry.remoteid;
                 break;
               #endif
             }

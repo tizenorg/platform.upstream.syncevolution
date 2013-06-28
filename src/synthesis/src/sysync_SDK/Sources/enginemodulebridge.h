@@ -31,6 +31,7 @@ class TEngineModuleBridge : public TEngineModuleBase
     virtual ~TEngineModuleBridge();
 
     appPointer fDLL;
+    bool       fIsServer;
 
     virtual TSyError Init();
     virtual TSyError Term();

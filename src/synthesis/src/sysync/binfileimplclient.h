@@ -23,9 +23,10 @@
 #include "stdlogicagent.h"
 #include "binfileimplds.h"
 #include "engineinterface.h"
+#include "syncclientbase.h"
 
 #ifndef SYSYNC_CLIENT
-  #error "binfileimplclient is CLIENT-ONLY!"
+  #error "binfileimplclient only makes sense with client datastores"
 #endif
 
 namespace sysync {
@@ -37,7 +38,7 @@ namespace sysync {
 #ifdef ENGINEINTERFACE_SUPPORT
 
 // forward
-class TBinfileClientRootKey;
+class TBinfileAgentRootKey;
 class TBinfileClientConfig;
 
 // Engine module class
@@ -333,33 +334,22 @@ private:
 
 
 // Binfile based client settings rootkey
-class TBinfileClientRootKey :
+class TBinfileAgentRootKey :
   public TSettingsRootKey
 {
   typedef TSettingsRootKey inherited;
 
 public:
-  TBinfileClientRootKey(TEngineInterface *aEngineInterfaceP) :
-    inherited(aEngineInterfaceP) {};
+  TBinfileAgentRootKey(TEngineInterface *aEngineInterfaceP);
 
 protected:
   // open subkey by name (not by path!)
-  // - this is the actual implementation
   virtual TSyError OpenSubKeyByName(
     TSettingsKeyImpl *&aSettingsKeyP,
     cAppCharP aName, stringSize aNameSize,
     uInt16 aMode
-  ) {
-    if (strucmp(aName,"profiles",aNameSize)==0)
-      aSettingsKeyP = new TBinfileProfilesKey(fEngineInterfaceP);
-    else if (strucmp(aName,"synclogs",aNameSize)==0)
-      aSettingsKeyP = new TBinfileLogsKey(fEngineInterfaceP);
-    else
-      return inherited::OpenSubKeyByName(aSettingsKeyP,aName,aNameSize,aMode);
-    // opened a key
-    return LOCERR_OK;
-  };
-}; // TBinfileClientRootKey
+  );
+}; // TBinfileAgentRootKey
 
 
 
@@ -370,9 +360,9 @@ protected:
 // ======
 
 class TBinfileClientConfig:
-  public TClientConfig
+  public TAgentConfig
 {
-  typedef TClientConfig inherited;
+  typedef TAgentConfig inherited;
 public:
   TBinfileClientConfig(TConfigElement *aParentElement);
   virtual ~TBinfileClientConfig();
@@ -468,6 +458,8 @@ public:
   );
   // - get path where to store binfiles
   void getBinFilesPath(string &aPath);
+  // activtion switch (for making it inactive e.g. in server case)
+  bool fBinfilesActive;
   #ifndef HARDCODED_CONFIG
   // - configurable path where to store binfiles
   string fBinFilesPath;
@@ -509,10 +501,12 @@ class TBinfileImplClient: public TStdLogicAgent
 {
   typedef TStdLogicAgent inherited;
   #ifdef ENGINEINTERFACE_SUPPORT
-  friend class TBinFileClientParamsKey;
+  friend class TBinFileAgentParamsKey;
   #endif
 public:
-  TBinfileImplClient(TSyncClientBase *aSyncClientBaseP, const char *aSessionID);
+  TBinfileImplClient(TSyncAppBase *aSyncAppBaseP, TSyncSessionHandle *aSyncSessionHandleP, cAppCharP aSessionID);
+  /// check if active derived classes (in particular: customImplDS that CAN derive binfiles, but does not necessarily so)
+  bool binfilesActive(void) { return fConfigP && fConfigP->fBinfilesActive; };
   // - selects a profile (returns false if profile not found)
   //   Note: This call must create and initialize all datastores that
   //         are to be synced with that profile.
@@ -566,24 +560,23 @@ private:
 // =========================================
 
 // client runtime parameters
-class TBinFileClientParamsKey :
-  public TClientParamsKey
+class TBinFileAgentParamsKey :
+  public TAgentParamsKey
 {
-  typedef TClientParamsKey inherited;
+  typedef TAgentParamsKey inherited;
 
 public:
-  TBinFileClientParamsKey(TEngineInterface *aEngineInterfaceP, TSyncClient *aClientSessionP);
-  virtual ~TBinFileClientParamsKey() {};
+  TBinFileAgentParamsKey(TEngineInterface *aEngineInterfaceP, TSyncAgent *aClientSessionP);
+  virtual ~TBinFileAgentParamsKey() {};
 
 protected:
   // open subkey by name (not by path!)
-  // - this is the actual implementation
   virtual TSyError OpenSubKeyByName(
     TSettingsKeyImpl *&aSettingsKeyP,
     cAppCharP aName, stringSize aNameSize,
     uInt16 aMode
   );
-}; // TBinFileClientParamsKey
+}; // TBinFileAgentParamsKey
 
 
 #endif // ENGINEINTERFACE_SUPPORT

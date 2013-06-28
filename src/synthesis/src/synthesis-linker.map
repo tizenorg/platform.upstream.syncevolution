@@ -1,8 +1,8 @@
 VER_1.0 {
     global:
-        SySync_ConnectEngine;
-        SySync_ConnectEngineS;
-        SySync_DisconnectEngine;
+        SySync_*ConnectEngine;
+        SySync_*ConnectEngineS;
+        SySync_*DisconnectEngine;
         extern "C++" {
                sysync::DataConversion*;
                sysync::SySyncDebugPuts*;

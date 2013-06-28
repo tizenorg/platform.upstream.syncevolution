@@ -93,9 +93,9 @@ bool TSyncSessionHandle::TerminateSession(uInt16 aStatusCode)
 #ifdef SYSYNC_TOOL
 
 // get or create a session for use with the diagnostic tool
-TSyncServer *TSyncSessionDispatch::getSySyToolSession(void)
+TSyncAgent *TSyncSessionDispatch::getSySyToolSession(void)
 {
-  TSyncServer *sessionP=NULL; // the session (new or existing found in fSessions)
+  TSyncAgent *sessionP=NULL; // the session (new or existing found in fSessions)
 
   if (fToolSessionHP) {
     sessionP = fToolSessionHP->fSessionP;
@@ -103,7 +103,7 @@ TSyncServer *TSyncSessionDispatch::getSySyToolSession(void)
   else {
     // - create session object with given ID
     fToolSessionHP = CreateSessionHandle();
-    sessionP = static_cast<TServerConfig *>(fConfigP->fAgentConfigP)->CreateServerSession(fToolSessionHP,"SySyTool");
+    sessionP = static_cast<TAgentConfig *>(fConfigP->fAgentConfigP)->CreateServerSession(fToolSessionHP,"SySyTool");
     fToolSessionHP->fSessionP=sessionP;
   }
   return sessionP;
@@ -117,6 +117,9 @@ TSyncServer *TSyncSessionDispatch::getSySyToolSession(void)
 TSyncSessionDispatch::TSyncSessionDispatch() :
   TSyncAppBase()
 {
+  // this is a server engine
+  fIsServer = true;
+  // other init
   #ifdef SYSYNC_TOOL
   fToolSessionHP=NULL; // no tool session yet
   #endif
@@ -177,7 +180,7 @@ Ret_t TSyncSessionDispatch::StartMessage(
   VoidPtr_t aUserData, // user data, contains NULL or char* to transport-layer supported session ID
   SmlSyncHdrPtr_t aContentP // SyncML tookit's decoded form of the <SyncHdr> element
 ) {
-  TSyncServer *sessionP=NULL; // the session (new or existing found in fSessions)
+  TSyncAgent *sessionP=NULL; // the session (new or existing found in fSessions)
   TSyncSessionHandle *sessionHP=NULL;
   Ret_t err;
 
@@ -347,12 +350,12 @@ Ret_t TSyncSessionDispatch::StartMessage(
 /// @note session list must be locked before call!
 void TSyncSessionDispatch::collectTimedOutSessions(TSyncSessionHandlePList &aDeletableSessions)
 {
-  TSyncServer *sessionP=NULL; // the session (new or existing found in fSessions)
+  TSyncAgent *sessionP=NULL; // the session (new or existing found in fSessions)
   TSyncSessionHandle *sessionHP=NULL;
-  TServerConfig *serverconfigP=NULL;
+  TAgentConfig *serverconfigP=NULL;
 
   // get agent config
-  GET_CASTED_PTR(serverconfigP,TServerConfig,fConfigP->fAgentConfigP,"missing agent (server) config");
+  GET_CASTED_PTR(serverconfigP,TAgentConfig,fConfigP->fAgentConfigP,"missing agent (server) config");
   // - find timed-out sessions and count sessions not belonging to this client
   TSyncSessionHandlePContainer::iterator pos;
   for (pos=fSessions.begin();pos!=fSessions.end();pos++) {
@@ -393,12 +396,12 @@ void TSyncSessionDispatch::collectTimedOutSessions(TSyncSessionHandlePList &aDel
 /// - intended for implementations without a session thread (XPT, ISAPI, not pipe)
 void TSyncSessionDispatch::deleteListedSessions(TSyncSessionHandlePList &aDelSessionList)
 {
-  TSyncServer *sessionP=NULL;
+  TSyncAgent *sessionP=NULL;
   TSyncSessionHandle *sessionHP=NULL;
-  TServerConfig *serverconfigP=NULL;
+  TAgentConfig *serverconfigP=NULL;
 
   // get agent config
-  GET_CASTED_PTR(serverconfigP,TServerConfig,fConfigP->fAgentConfigP,"missing agent (server) config");
+  GET_CASTED_PTR(serverconfigP,TAgentConfig,fConfigP->fAgentConfigP,"missing agent (server) config");
 
   TSyncSessionHandlePList::iterator delpos;
   for (delpos=aDelSessionList.begin();delpos!=aDelSessionList.end();delpos++) {
@@ -460,9 +463,9 @@ void TSyncSessionDispatch::deleteListedSessions(TSyncSessionHandlePList &aDelSes
 /// @param aPredefinedSessionID : predefined sessionID, if NULL, internal ID will be generated
 TSyncSessionHandle *TSyncSessionDispatch::CreateAndEnterServerSession(cAppCharP aPredefinedSessionID)
 {
-  TSyncServer *sessionP=NULL; // the session (new or existing found in fSessions)
+  TSyncAgent *sessionP=NULL; // the session (new or existing found in fSessions)
   TSyncSessionHandle *sessionHP=NULL;
-  TServerConfig *serverconfigP=NULL;
+  TAgentConfig *serverconfigP=NULL;
 
   // - create new session instance
   //   NOTE: session list is unlocked here already
@@ -517,7 +520,7 @@ TSyncSessionHandle *TSyncSessionDispatch::CreateAndEnterServerSession(cAppCharP 
           time(NULL);
         sid =
           ((sid >> 16) & 0xFFFF) + ((sid << 47) & 0x7FFF000000000000LL) + // aaaa00000000dddd
-          (((uInt32)sessionHP) << 16); // 0000bbbbcccc0000
+          ((((uIntPtr)sessionHP)&0xFFFFFFFF) << 16); // 0000bbbbcccc0000
         // - make a string of it
         StringObjPrintf(SessionIDString,"%lld",sid);
       }
@@ -532,7 +535,7 @@ TSyncSessionHandle *TSyncSessionDispatch::CreateAndEnterServerSession(cAppCharP 
       #endif
       #endif
       // - create session object with given ID
-      sessionP = static_cast<TServerConfig *>(fConfigP->fAgentConfigP)->CreateServerSession(sessionHP,SessionIDString.c_str());
+      sessionP = static_cast<TAgentConfig *>(fConfigP->fAgentConfigP)->CreateServerSession(sessionHP,SessionIDString.c_str());
       sessionHP->fSessionP=sessionP;
       // debug
       PDEBUGPRINTFX(DBG_HOT,(
@@ -576,7 +579,7 @@ TSyncSessionHandle *TSyncSessionDispatch::CreateAndEnterServerSession(cAppCharP 
 // cleaning up the session if needed
 Ret_t TSyncSessionDispatch::EndRequest(InstanceID_t aSmlWorkspaceID, bool &aHasData, string &aRespURI, bool &aEOSession, uInt32 aReqBytes)
 {
-  TSyncServer *serverSessionP=NULL; // the session
+  TSyncAgent *serverSessionP=NULL; // the session
   Ret_t err;
 
   // In case of a totally wrong request, this method may be
@@ -588,10 +591,10 @@ Ret_t TSyncSessionDispatch::EndRequest(InstanceID_t aSmlWorkspaceID, bool &aHasD
       // Important: instance and session must remain attached until session either continues
       //            running or is deleted.
       // Normal case: there IS a session attached
-      DEBUGPRINTFX(DBG_SESSION,("Request ended with session attached, calling TSyncServer::EndRequest"));
+      DEBUGPRINTFX(DBG_SESSION,("Request ended with session attached, calling TSyncAgent::EndRequest"));
       if (serverSessionP->EndRequest(aHasData,aRespURI,aReqBytes)) {
         // TSyncSession::EndRequest returns true when session is done and must be removed
-        PDEBUGPRINTFX(DBG_SESSION,("TSyncServer::EndRequest returned true -> terminating and deleting session now"));
+        PDEBUGPRINTFX(DBG_SESSION,("TSyncAgent::EndRequest returned true -> terminating and deleting session now"));
         // - take session out of session list
         LockSessions();
         TSyncSessionHandle *sessionHP = RemoveSession(serverSessionP);
@@ -617,7 +620,7 @@ Ret_t TSyncSessionDispatch::EndRequest(InstanceID_t aSmlWorkspaceID, bool &aHasD
       }
       else {
         // session is not finished, just leave lock as next message might come from another thread
-        PDEBUGPRINTFX(DBG_SESSION,("TSyncServer::EndRequest returned false -> just leave session"));
+        PDEBUGPRINTFX(DBG_SESSION,("TSyncAgent::EndRequest returned false -> just leave session"));
         serverSessionP->getSessionHandle()->LeaveSession();
         aEOSession=false; // session does not end
         // remove session's reference to this workspace as next request might be decoded in a different workspace
@@ -694,7 +697,7 @@ void TSyncSessionDispatch::dbgListSessions(void)
 // buffer answer in the session's buffer if instance still has a session attached at all
 Ret_t TSyncSessionDispatch::bufferAnswer(InstanceID_t aSmlWorkspaceID, MemPtr_t aAnswer, MemSize_t aAnswerSize)
 {
-  TSyncServer *serverSessionP=NULL; // the session
+  TSyncAgent *serverSessionP=NULL; // the session
   Ret_t err;
 
   err=getSmlInstanceUserData(aSmlWorkspaceID,(void **)&serverSessionP);
@@ -709,7 +712,7 @@ Ret_t TSyncSessionDispatch::bufferAnswer(InstanceID_t aSmlWorkspaceID, MemPtr_t 
 // get buffered answer from the session's buffer if there is any
 void TSyncSessionDispatch::getBufferedAnswer(InstanceID_t aSmlWorkspaceID, MemPtr_t &aAnswer, MemSize_t &aAnswerSize)
 {
-  TSyncServer *serverSessionP=NULL; // the session
+  TSyncAgent *serverSessionP=NULL; // the session
   Ret_t err;
 
   err=getSmlInstanceUserData(aSmlWorkspaceID,(void **)&serverSessionP);
@@ -732,7 +735,7 @@ void TSyncSessionDispatch::getBufferedAnswer(InstanceID_t aSmlWorkspaceID, MemPt
 // Note: may not be called when session list is already locked
 void TSyncSessionDispatch::KillSessionByInstance(InstanceID_t aSmlWorkspaceID, uInt16 aStatusCode, const char *aMsg, uInt32 aErrorCode)
 {
-  TSyncServer *sessionP;
+  TSyncAgent *sessionP;
 
   // In case of a totally bad request, this method may be
   // called when no session is attached to the smlWorkspace
@@ -750,7 +753,7 @@ void TSyncSessionDispatch::KillSessionByInstance(InstanceID_t aSmlWorkspaceID, u
 
 // remove and kill session
 // Note: may not be called when session list is already locked
-void TSyncSessionDispatch::KillServerSession(TSyncServer *aSessionP, uInt16 aStatusCode, const char *aMsg, uInt32 aErrorCode)
+void TSyncSessionDispatch::KillServerSession(TSyncAgent *aSessionP, uInt16 aStatusCode, const char *aMsg, uInt32 aErrorCode)
 {
   if (aSessionP) {
     LockSessions();
@@ -849,7 +852,7 @@ Ret_t TSyncSessionDispatch::HandleDecodingException(TSyncSession *aSessionP, con
   #endif
   // try to kill session
   DEBUGPRINTFX(DBG_SESSION,("******** Exception aborts session: calling KillServerSession"));
-  KillServerSession(static_cast<TSyncServer *>(aSessionP),412,"Decoding Exception");
+  KillServerSession(static_cast<TSyncAgent *>(aSessionP),412,"Decoding Exception");
   // return error
   DEBUGPRINTFX(DBG_SESSION,("******** Exception: returning SML_ERR_UNSPECIFIC to abort smlProcessData"));
   return SML_ERR_UNSPECIFIC;

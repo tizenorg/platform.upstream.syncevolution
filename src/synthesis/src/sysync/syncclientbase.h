@@ -12,7 +12,7 @@
 // general includes (SyncML tookit, windows, Clib)
 #include "sysync.h"
 #include "syncappbase.h"
-#include "syncclient.h"
+#include "syncagent.h"
 
 
 
@@ -20,7 +20,7 @@ namespace sysync {
 
 // forward declarations
 class TSyncSession;
-class TSyncClient;
+class TSyncAgent;
 class TSyncClientBase;
 
 #ifdef ENGINEINTERFACE_SUPPORT
@@ -158,14 +158,14 @@ public:
   // - process message in the instance buffer
   localstatus processAnswer(void);
   // - get current session
-  TSyncClient *getClientSession(void) { return fClientSessionP; };
+  TSyncAgent *getClientSession(void) { return fClientSessionP; };
   // - remove and kill current session
   void KillClientSession(localstatus aStatusCode=0);
   // handlers for SyncML toolkit callbacks
   // - Start/End Message: identifies Session, and creates new or assigns existing session
   Ret_t StartMessage(
     InstanceID_t aSmlWorkspaceID, // SyncML toolkit workspace instance ID
-    VoidPtr_t aUserData, // pointer to a TSyncClient descendant
+    VoidPtr_t aUserData, // pointer to a TSyncAgent descendant
     SmlSyncHdrPtr_t aContentP // SyncML tookit's decoded form of the <SyncHdr> element
   );
   // Session handling
@@ -181,7 +181,7 @@ protected:
   virtual Ret_t HandleDecodingException(TSyncSession * /* aSessionP */, const char * /* aRoutine */, exception * /* aExceptionP */=NULL) { return SML_ERR_UNSPECIFIC; /* %%%% nop so far */ };
 private:
   // the current session
-  TSyncClient *fClientSessionP;
+  TSyncAgent *fClientSessionP;
 }; // TSyncClientBase
 
 

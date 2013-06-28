@@ -14,7 +14,7 @@
   #error "ODBC_SUPPORT no longer exists, is now called SQL_SUPPORT. ODBCAPI_SUPPORT exists."
 #endif
 // SQL based admin
-#if defined (SQL_SUPPORT) && defined(ODBCAPI_SUPPORT) && !defined(BASED_ON_BINFILE_CLIENT)
+#if defined (SQL_SUPPORT) && defined(ODBCAPI_SUPPORT) && !defined(BINFILE_ALWAYS_ACTIVE)
   #define HAS_SQL_ADMIN 1
 #endif
 

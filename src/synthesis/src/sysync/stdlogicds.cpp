@@ -80,17 +80,21 @@ void TStdLogicDS::InternalResetDataStore(void)
   fInitializing=false;
   // no start init request yet
   fStartInit=false;
-  #if !defined(SYSYNC_CLIENT) || defined(CLIENT_USES_SERVER_DB)
-  // remove all items
-  TSyncItemPContainer::iterator pos;
-  for (pos=fItems.begin(); pos!=fItems.end(); ++pos) {
-    delete *pos;
+  if(HAS_SERVER_DB) {
+  	#ifdef USES_SERVER_DB
+    // remove all items
+    TSyncItemPContainer::iterator pos;
+    for (pos=fItems.begin(); pos!=fItems.end(); ++pos) {
+      delete *pos;
+    }
+    fItems.clear(); // clear list
+    #endif
   }
-  fItems.clear(); // clear list
-  #endif
-  #ifndef SYSYNC_CLIENT
-  fNumRefOnlyItems=0;
-  #endif
+  if (IS_SERVER) {
+  	#ifdef SYSYNC_SERVER
+	  fNumRefOnlyItems=0;
+    #endif
+  }
 } // TStdLogicDS::InternalResetDataStore
 
 
@@ -150,21 +154,25 @@ localstatus TStdLogicDS::startDataWrite()
   if (!fWriteStarted) {
     sta=implStartDataWrite();
     fWriteStarted = sta==LOCERR_OK; // must be here to prevent recursion as startDataWrite might be called implicitly below
-    #if !defined(SYSYNC_CLIENT) || defined(CLIENT_USES_SERVER_DB)
-    // server-type DB needs post-processing to update map entries (client and server case)
-    TSyncItemPContainer::iterator pos;
-    if (sta==LOCERR_OK) {
-      // Now allow post-processing of all reported items
-      for (pos=fItems.begin(); pos!=fItems.end(); ++pos) {
-        localstatus sta2 = implReviewReadItem(**pos);
-        if (sta2!=LOCERR_OK) sta=sta2;
+    if (HAS_SERVER_DB) {
+    	#ifdef USES_SERVER_DB
+      // server-type DB needs post-processing to update map entries (client and server case)
+      TSyncItemPContainer::iterator pos;
+      if (sta==LOCERR_OK) {
+        // Now allow post-processing of all reported items
+        for (pos=fItems.begin(); pos!=fItems.end(); ++pos) {
+          localstatus sta2 = implReviewReadItem(**pos);
+          if (sta2!=LOCERR_OK) sta=sta2;
+        }
       }
+      #endif
     }
-    #endif
-    #if defined(SYSYNC_CLIENT) && defined(CLIENT_USES_SERVER_DB)
-    /// @todo we don't need the items to remain that long at all - not even for CLIENT_USES_SERVER_DB case
-    fItems.clear(); // empty list
-    #endif // client using server DB
+    if (IS_CLIENT && HAS_SERVER_DB) {
+    	#ifdef USES_SERVER_DB
+      /// @todo we don't need the items to remain that long at all - not even for CLIENT_USES_SERVER_DB case
+      fItems.clear(); // empty list
+      #endif
+    }
   }
   DEBUGPRINTFX(DBG_DATA,("startDataWrite called, status=%hd", sta));
   return sta;
@@ -207,12 +215,14 @@ bool TStdLogicDS::logicRetrieveItemByID(
 ///   or cannot be reached within the maximally allowed request processing time left.
 bool TStdLogicDS::isStarted(bool aWait)
 {
-  #ifndef SYSYNC_CLIENT
-  // only server has threaded datastores so far
-  if (aWait && fInitializing) {
-    localstatus sta = startDataAccessForServer();
-    if (sta!=LOCERR_OK) {
-      SYSYNC_THROW(TSyncException("startDataAccessForServer failed (when called from isStarted)", sta));
+	#ifdef SYSYNC_SERVER
+  if (IS_SERVER) {
+    // only server has threaded datastores so far
+    if (aWait && fInitializing) {
+      localstatus sta = startDataAccessForServer();
+      if (sta!=LOCERR_OK) {
+        SYSYNC_THROW(TSyncException("startDataAccessForServer failed (when called from isStarted)", sta));
+      }
     }
   }
   #endif
@@ -241,7 +251,7 @@ void TStdLogicDS::logicMarkItemForResend(cAppCharP aLocalID, cAppCharP aRemoteID
 
 
 
-#ifndef SYSYNC_CLIENT
+#ifdef SYSYNC_SERVER
 
 // Server case
 // ===========
@@ -351,7 +361,7 @@ localstatus TStdLogicDS::performStartSync(void)
     // end reading
     sta=implEndDataRead();
     // show items
-    PDEBUGPRINTFX(DBG_HOT,("%s: number of local items involved in %ssync = %ld",getName(), fSlowSync ? "slow " : "",fItems.size()));
+    PDEBUGPRINTFX(DBG_HOT,("%s: number of local items involved in %ssync = %lu",getName(), fSlowSync ? "slow " : "",(unsigned long)fItems.size()));
     CONSOLEPRINTF(("  %ld local items are new/changed/deleted for this sync",fItems.size()));
     if (PDEBUGTEST(DBG_DATA+DBG_DETAILS)) {
       PDEBUGBLOCKFMTCOLL(("SyncSet","Items involved in Sync","datastore=%s",getName()));
@@ -414,7 +424,7 @@ bool TStdLogicDS::threadedStartSync(void)
   // Note: ThreadMayChangeNow() has been posted already by startingThread()
   PDEBUGPRINTFX(DBG_HOT,("******* starting background thread for reading sync set..."));
   fStartSyncStatus.setStatusCode(200); // assume ok
-  if (!fStartSyncThread.launch(StartSyncThreadFunc,(uInt32)this)) { // pass datastoreP as param
+  if (!fStartSyncThread.launch(StartSyncThreadFunc,(uIntArch)this)) { // pass datastoreP as param
     // starting thread failed
     PDEBUGPRINTFX(DBG_ERROR,("******* Failed starting background thread for reading sync set"));
     return false;
@@ -440,7 +450,7 @@ bool TStdLogicDS::shouldExitStartSync(void)
   return fMultiThread && fStartSyncThread.terminationRequested();
 } // TStdLogicDS::shouldExitStartSync
 
-#else
+#else // MULTI_THREAD_DATASTORE
 
 // can be called to check if performStartSync() should be terminated
 bool TStdLogicDS::shouldExitStartSync(void)
@@ -449,7 +459,7 @@ bool TStdLogicDS::shouldExitStartSync(void)
   return false;
 } // TStdLogicDS::shouldExitStartSync
 
-#endif
+#endif // MULTI_THREAD_DATASTORE
 
 
 // called by dsBeforeStateChange to dssta_dataaccessstarted to make sure datastore is
@@ -465,7 +475,7 @@ localstatus TStdLogicDS::startDataAccessForServer(void)
     // - start initialisation now
     fWriteStarted=false;
     // - read all records from DB right now if server data is used at all
-    DEBUGPRINTFX(DBG_DATA,("- number of items in list before StartDataRead = %ld",fItems.size()));
+    DEBUGPRINTFX(DBG_DATA,("- number of items in list before StartDataRead = %lu",(unsigned long)fItems.size()));
     // now we can initialize the conflict resolution mode for this session
     /// @todo move this to localengineds, at point where we get dssta_syncmodestable
     fSessionConflictStrategy=getConflictStrategy(fSlowSync,fFirstTimeSync);
@@ -529,7 +539,7 @@ localstatus TStdLogicDS::startDataAccessForServer(void)
     if (sta==LOCERR_OK) {
       // quick test: if number of items is > than allowed maxid of remote datatstore,
       // sync is unlikely to succeed
-      if (getRemoteDatastore()->getMaxID()<fItems.size()) {
+      if (getRemoteDatastore()->getMaxID()<(long)fItems.size()) {
         // this will not work, warn (but no longer abort session, as Siemens S55 guys don't like that)
         CONSOLEPRINTF((
           "Warning: Synchronisation involves more items (%ld) than client can possibly manage (%ld",
@@ -538,8 +548,8 @@ localstatus TStdLogicDS::startDataAccessForServer(void)
         ));
         PDEBUGPRINTFX(DBG_ERROR,(
           "Warning: Synchronisation involves more items (%ld) than client can possibly manage (%ld)",
-          (sInt32)fItems.size(),
-          (sInt32)getRemoteDatastore()->getMaxID()
+          (long)fItems.size(),
+          (long)getRemoteDatastore()->getMaxID()
         ));
       }
     }
@@ -699,24 +709,6 @@ sInt32 TStdLogicDS::getNumberOfChanges(void)
 } // TStdLogicDS::getNumberOfChanges
 
 
-/// @brief called to have all non-yet-generated sync commands as "to-be-resumed"
-void TStdLogicDS::logicMarkOnlyUngeneratedForResume(void)
-{
-  // we do not maintain the map/bookmark list at this level, so
-  // derived class (ODBC, BinFile etc.) must make sure that their list is
-  // clean (no marks from previous sessions) before calling this inherited version
-  implMarkOnlyUngeneratedForResume();
-  // Now add those that we have already received from the implementation
-  TSyncItemPContainer::iterator pos;
-  for (pos = fItems.begin(); pos != fItems.end(); ++pos) {
-    // let datastore mark these unprocessed
-    TSyncItem *syncitemP = (*pos);
-    // mark it for resume by ID
-    logicMarkItemForResume(syncitemP->getLocalID(),syncitemP->getRemoteID(),true); // these are unsent
-  }
-} // TStdLogicDS::logicMarkOnlyUngeneratedForResume
-
-
 
 // - called to let server generate sync commands for client
 //   Returns true if now finished (or aborted) for this datastore
@@ -740,14 +732,14 @@ bool TStdLogicDS::logicGenerateSyncCommandsAsServer(
   if (fMaxItemCount> 0) {
     PDEBUGPRINTFX(DBG_DATA+DBG_HOT,(
       "Info: Max number of items to be sent in this session is limited to %ld (already sent by now=%ld)",
-      fMaxItemCount,
-      fItemsSent
+      (long)fMaxItemCount,
+      (long)fItemsSent
     ));
   }
   #endif
   while (
     !isAborted() && // not aborted
-    (getDSConfig()->fMaxItemsPerMessage==0 || itemcount<getDSConfig()->fMaxItemsPerMessage==0) && // max item count per message not reached or not active
+    (getDSConfig()->fMaxItemsPerMessage==0 || itemcount<getDSConfig()->fMaxItemsPerMessage) && // max item count per message not reached or not active
     !fSessionP->outgoingMessageFull() && // message not full
     aNextMessageCommands.size()==0 // no commands already queued for next message
   ) {
@@ -871,8 +863,11 @@ localstatus TStdLogicDS::logicProcessMap(cAppCharP aRemoteID, cAppCharP aLocalID
 } // TStdLogicDS::logicProcessMap
 
 
+#endif // SYSYNC_SERVER
 
-#else
+
+
+#ifdef SYSYNC_CLIENT
 
 // Client Case
 // ===========
@@ -900,19 +895,6 @@ localstatus TStdLogicDS::startDataAccessForClient(void)
   localstatus sta=implStartDataRead();
   return sta;
 } // TStdLogicDS::startDataAccessForClient
-
-
-/// @brief called to have all non-yet-generated sync commands as "to-be-resumed"
-void TStdLogicDS::logicMarkOnlyUngeneratedForResume(void)
-{
-  // we do not maintain the map/bookmark list at this level, so
-  // derived class (ODBC, BinFile etc.) must make sure that their list is
-  // clean (no marks from previous sessions) before calling this inherited version
-  implMarkOnlyUngeneratedForResume();
-  // in client case, fItems does not contain ungenerated/unprocessed items
-  // so we don't have anything more do here for now
-} // TStdLogicDS::logicMarkOnlyUngeneratedForResume
-
 
 
 // called to generate sync sub-commands as client for remote server
@@ -1022,7 +1004,40 @@ bool TStdLogicDS::logicGenerateSyncCommandsAsClient(
 } // TStdLogicDS::logicGenerateSyncCommandsAsClient
 
 
-#endif // client case
+#endif // SYSYNC_CLIENT
+
+
+/// @brief called to have all non-yet-generated sync commands as "to-be-resumed"
+void TStdLogicDS::logicMarkOnlyUngeneratedForResume(void)
+{
+	if (IS_SERVER) {
+  	#ifdef SYSYNC_SERVER
+    // we do not maintain the map/bookmark list at this level, so
+    // derived class (ODBC, BinFile etc.) must make sure that their list is
+    // clean (no marks from previous sessions) before calling this inherited version
+    implMarkOnlyUngeneratedForResume();
+    // Now add those that we have already received from the implementation
+    TSyncItemPContainer::iterator pos;
+    for (pos = fItems.begin(); pos != fItems.end(); ++pos) {
+      // let datastore mark these unprocessed
+      TSyncItem *syncitemP = (*pos);
+      // mark it for resume by ID
+      logicMarkItemForResume(syncitemP->getLocalID(),syncitemP->getRemoteID(),true); // these are unsent
+    }
+    #endif // SYSYNC_SERVER
+  }
+  else {
+  	#ifdef SYSYNC_CLIENT
+    // we do not maintain the map/bookmark list at this level, so
+    // derived class (ODBC, BinFile etc.) must make sure that their list is
+    // clean (no marks from previous sessions) before calling this inherited version
+    implMarkOnlyUngeneratedForResume();
+    // in client case, fItems does not contain ungenerated/unprocessed items
+    // so we don't have anything more do here for now
+    #endif // SYSYNC_CLIENT
+  }
+} // TStdLogicDS::logicMarkOnlyUngeneratedForResume
+
 
 
 // called to process incoming item operation
@@ -1089,15 +1104,16 @@ bool TStdLogicDS::logicProcessRemoteItem(
           // - create new empty TMultiFieldItem
           TMultiFieldItem *refitemP =
             (TMultiFieldItem *) newItemForRemote(ity_multifield);
-          #ifdef SYSYNC_CLIENT
-          // Client: retrieve by local ID
-          refitemP->clearRemoteID(); // not known
-          refitemP->setLocalID(syncitemP->getLocalID()); // make sure we retrieve by local ID
-          #else
-          // Server: retrieve by remote ID
-          refitemP->clearLocalID(); // make sure we retrieve by remote ID
-          refitemP->setRemoteID(syncitemP->getRemoteID()); // make sure we retrieve by remote ID
-          #endif
+          if (IS_CLIENT) {
+            // Client: retrieve by local ID
+            refitemP->clearRemoteID(); // not known
+            refitemP->setLocalID(syncitemP->getLocalID()); // make sure we retrieve by local ID
+          }
+          else {
+            // Server: retrieve by remote ID
+            refitemP->clearLocalID(); // make sure we retrieve by remote ID
+            refitemP->setRemoteID(syncitemP->getRemoteID()); // make sure we retrieve by remote ID
+          }
           refitemP->setSyncOp(sop_replace);
           #ifdef OBJECT_FILTERING
           PDEBUGPRINTFX(DBG_DATA,(
@@ -1168,14 +1184,11 @@ bool TStdLogicDS::logicProcessRemoteItem(
             if (sta==404 || sta==410) {
               // this is an irregularity for a client (but it's perfectly
               // normal case for server, as client may use replace for adds+replaces)
-              #ifdef SYSYNC_CLIENT
-              if (!syncitemP->hasRemoteID()) {
+              if (IS_CLIENT && !syncitemP->hasRemoteID()) {
                 // - we cannot handle this properly, we have no remoteID, so report error to server
                 PDEBUGPRINTFX(DBG_ERROR,("TStdLogicDS: Item not found, but cannot switch to add because no RemoteID is known, Status=%hd",aStatusCommand.getStatusCode()));
               }
-              else
-              #endif
-              {
+              else {
                 if (fPreventAdd) {
                   // prevent implicit add -> return sta as is
                 }
@@ -1183,14 +1196,16 @@ bool TStdLogicDS::logicProcessRemoteItem(
                   // - switch to add if remote sent remoteID along so we can properly map
                   syncitemP->setSyncOp(sop_add);
                   PDEBUGPRINTFX(DBG_DATA,("TStdLogicDS: RetrieveItem: not found (Status=%hd) --> adding instead",sta));
-                  #ifndef SYSYNC_CLIENT
-                  // - make sure we delete the old item from the map table (as we *know* the item is gone - should it reappear under a different localID, it'll be re-added)
-                  implProcessMap(syncitemP->getRemoteID(),NULL);
-                  #endif
-                  // we can handle it, as we know the remoteID
-                  #ifdef SYSYNC_CLIENT
-                  irregular=true; // irregular only for client
-                  #endif
+                  if (IS_SERVER) {
+                  	#ifdef SYSYNC_SERVER
+                    // server: make sure we delete the old item from the map table (as we *know* the item is gone - should it reappear under a different localID, it'll be re-added)
+                    implProcessMap(syncitemP->getRemoteID(),NULL);
+                    #endif
+                  }
+                  else {
+                    // client: we can handle it, as we know the remoteID
+                    irregular=true; // irregular only for client
+                  }
                   sta=LOCERR_OK; // ok for further processing, anyway
                 }
               }
@@ -1250,28 +1265,27 @@ bool TStdLogicDS::logicProcessRemoteItem(
             if (sta==404 || sta==410) {
               // this is an irregularity for a client (but it's perfectly
               // normal case for server, as client may use replace for adds+replaces)
-              #ifdef SYSYNC_CLIENT
-              if (!syncitemP->hasRemoteID()) {
+              if (IS_CLIENT && !syncitemP->hasRemoteID()) {
                 // - we cannot handle this properly, we have no remoteID, so report error to server
                 PDEBUGPRINTFX(DBG_ERROR,("to-be-replaced item not found, but cannot switch to add because no RemoteID is known, Status=%hd",sta));
               }
-              else
-              #endif
-              {
+              else {
                 if (fPreventAdd) {
                   // prevent implicit add -> return status as is
                 }
                 else {
                   // - switch to add if remote sent remoteID along so we can properly map
                   syncitemP->setSyncOp(sop_add);
-                  #ifndef SYSYNC_CLIENT
-                  // - make sure we delete the old item from the map table (as we *know* the item is gone - should it reappear under a different localID, it'll be re-added)
-                  implProcessMap(syncitemP->getRemoteID(),NULL);
-                  #endif
-                  // we can handle it, as we know the remoteID
-                  #ifdef SYSYNC_CLIENT
-                  irregular=true;
-                  #endif
+                  if (IS_SERVER) {
+                  	#ifdef SYSYNC_SERVER                  
+                    // - make sure we delete the old item from the map table (as we *know* the item is gone - should it reappear under a different localID, it'll be re-added)
+                    implProcessMap(syncitemP->getRemoteID(),NULL);
+                    #endif
+                  }
+                  else {
+                    // we can handle it, as we know the remoteID
+                    irregular=true;
+                	}
                   PDEBUGPRINTFX(DBG_DATA,("to-be-replaced item not found (Status=%hd) --> adding instead",sta));
                   // - process again (note that we are re-using the status command that might
                   //   already have a text item with an OS errir if something failed before)
@@ -1358,18 +1372,23 @@ localstatus TStdLogicDS::dsBeforeStateChange(TLocalEngineDSState aOldState,TLoca
 
   if (aNewState==dssta_dataaccessstarted) {
     // start data access
-    #ifdef SYSYNC_CLIENT
-    sta = startDataAccessForClient();
-    #else
-    sta = startDataAccessForServer();
-    #endif
+    if (IS_CLIENT) {
+    	#ifdef SYSYNC_CLIENT
+	    sta = startDataAccessForClient();
+      #endif
+    }
+    else {
+      #ifdef SYSYNC_SERVER
+	    sta = startDataAccessForServer();
+      #endif
+    }
   }
-  #ifdef SYSYNC_CLIENT
-  if (aNewState==dssta_syncgendone) {
-    // when client has done sync gen, start writing
-    sta = startDataWrite();
-  }
-  #endif
+  if (IS_CLIENT) {
+    if (aNewState==dssta_syncgendone) {
+      // when client has done sync gen, start writing
+      sta = startDataWrite();
+    }
+  } // client
   if (aNewState==dssta_completed && !isAborted()) {
     // finish writing data now anyway
     endDataWrite();

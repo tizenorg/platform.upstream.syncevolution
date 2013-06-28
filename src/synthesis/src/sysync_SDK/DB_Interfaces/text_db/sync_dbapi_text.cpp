@@ -493,6 +493,7 @@ TSyError Session_SaveNonce( CContext sContext, cAppCharP nonce )
   DEBUG_DB      ( sc->fCB, MyDB, Se_SN, "%d '%s'", sc,nonce );
 
   if (sc->fDev) { sc->fDev->fToken= nonce;
+                  sc->fDevList.fChanged= true;
     err=          sc->fDevList.SaveDB( true, sc->fCB ); // save it
   } // if
 
@@ -1127,13 +1128,13 @@ TSyError InsertItem( CContext aContext, cAppCharP aItemData, ItemID newID )
   string   newItemID;
   TDBItem* act;
 
-  ItemID_Struct a; a.item  = "";
-                   a.parent= newID->parent; if (!a.parent) a.parent= "";
+  ItemID_Struct a; a.item  = (appCharP)"";
+                   a.parent= newID->parent; if (!a.parent) a.parent= (appCharP)"";
 
   TSyError err= ac->fItemList.CreateEmptyItem( &a, newItemID, act, ac->fNewID );
 
-  if (err) a.item= "???"; // undefined
-  else     a.item= (char*)newItemID.c_str();
+  if (err) a.item= (appCharP)"???"; // undefined
+  else     a.item= (appCharP)newItemID.c_str();
   string   s= ItemID_Info( &a );
 
   DEBUG_DB( ac->fCB, MyDB,Da_II, "%s '%s' err=%d", s.c_str(), aItemData, err );

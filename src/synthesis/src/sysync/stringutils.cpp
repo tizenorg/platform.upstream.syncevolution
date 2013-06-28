@@ -544,7 +544,10 @@ sInt16 HexStrToUIntPtr(const char *aStr, uIntPtr &aIntPtr, sInt16 aMaxDigits)
 #if __WORDSIZE == 64
   return HexStrToULongLong(aStr, aIntPtr, aMaxDigits);
 #else
-  return HexStrToULong(aStr, aIntPtr, aMaxDigits);
+	uInt32 l;
+  sInt16 n = HexStrToULong(aStr, l, aMaxDigits);
+  aIntPtr = (uIntPtr)l;
+  return n;
 #endif
 } // HexStrToUIntPtr
 

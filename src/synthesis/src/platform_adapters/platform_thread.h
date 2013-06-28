@@ -34,9 +34,9 @@ namespace sysync {
 
 
 // get id of the running process
-uInt32 myProcessID();
+uIntArch myProcessID();
 // get id of the running thread
-uInt32 myThreadID();
+uIntArch myThreadID();
 
 
 class TThreadObject; // forward
@@ -55,12 +55,12 @@ public:
   // starts thread (or re-starts it again after termination)
   bool launch(
     TThreadFunc aThreadFunc=NULL, // the function to execute in the thread
-    uInt32 aThreadFuncParam=0, // a parameter to pass to the thread
+    uIntArch aThreadFuncParam=0, // a parameter to pass to the thread
     size_t aStackSize=0, // if 0, default stack size is used
     bool aAutoDispose=false // if true, the thread object will dispose itself when thread has finished running
   );
   // get thread ID
-  uInt32 getid(void);
+  uIntArch getid(void);
   // soft-terminates thread (sets a flag which requests execute() to terminate
   void terminate(void) { fTerminationRequested=true; };
   // hard (emergency) terminate (aborts processing on the OS level)

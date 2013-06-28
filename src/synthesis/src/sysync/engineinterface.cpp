@@ -741,6 +741,17 @@ TSyError TStructFieldsKey::returnInt(sInt32 aInt, memSize aIntSize, appPointer a
 } // returnInt
 
 
+TSyError TStructFieldsKey::returnLineartime(lineartime_t aTime, appPointer aBuffer, memSize aBufSize, memSize &aValSize)
+{
+	aValSize=sizeof(lineartime_t);
+  if (aBufSize==0) return LOCERR_OK; // measuring size
+  if (aBufSize<aValSize) return LOCERR_BUFTOOSMALL;
+  *((lineartime_t *)aBuffer) = aTime;
+  return LOCERR_OK;
+}
+
+
+
 
 // get value's ID (e.g. internal index)
 sInt32 TStructFieldsKey::GetValueID(cAppCharP aName)
@@ -1771,12 +1782,77 @@ TSyError TEngineInterface::UpdateItemAsKey(SessionH aSessionH, KeyH aItemKey, cI
 
 #endif // DBAPI_TUNNEL_SUPPORT
 
+TSyError TEngineInterface::debugPuts(cAppCharP aFile, int aLine, cAppCharP aFunction,
+                                     int aDbgLevel, cAppCharP aPrefix,
+                                     cAppCharP aText)
+{
+  #if defined(SYDEBUG)
+  getSyncAppBase()->getDbgLogger()->DebugPuts(/* aFile, aLine, aFunction, aPrefix */
+                                              aDbgLevel, aText);
+  return 0;
+  #else
+  return LOCERR_NOTIMP;
+  #endif
+} // debugPuts
 
+#ifdef ENGINE_LIBRARY
 #ifndef SIMPLE_LINKING
 
 // Callback "factory" function implementation
 
-// Main entry point
+static TSyError internal_ConnectEngine(
+	bool aIsServer,
+  UI_Call_In *aCIP,
+  uInt16 aCallbackVersion, // if==0, engine creates new aCI
+  CVersion *aEngVersionP,
+  CVersion aPrgVersion,
+  uInt16 aDebugFlags
+)  
+{
+  // create new engine
+  TEngineModuleBase *engine = NULL;
+  TSyError err = LOCERR_OK;
+  if (aIsServer) {
+  	#ifdef SYSYNC_SERVER
+    engine = newServerEngine();
+    #else
+    err = LOCERR_WRONGUSAGE;
+    #endif
+  }
+  else {
+  	#ifdef SYSYNC_CLIENT
+    engine = newClientEngine();
+    #else
+    err = LOCERR_WRONGUSAGE;
+    #endif
+  }
+  if (err==LOCERR_OK) {
+    // connect the engine
+    if (aCallbackVersion!=0) {
+      // valid aCIP passed in
+      // - flag static
+      engine->fCIisStatic= true;
+      // - prepare callback and pass to engine
+      (*aCIP)->callbackVersion = aCallbackVersion;
+      engine->fCI = *aCIP;
+      // - connect the engine
+      err = engine->Connect("", aPrgVersion, aDebugFlags);
+    }
+    else {
+    	// no aCIP passed, let engine create one
+      // - connect engine
+		  err = engine->Connect("", aPrgVersion, aDebugFlags);
+      // - get CI from engine
+			*aCIP = engine->fCI;
+    }
+    // - get the version
+    if (aEngVersionP) *aEngVersionP = Plugin_Version(0);
+  }
+  return   err;	
+} // internal_ConnectEngine
+
+
+// Client engine main entry point
 TSyError SYSYNC_EXTERNAL(ConnectEngine)(
   UI_Call_In *aCI,
   CVersion   *aEngVersion,
@@ -1784,13 +1860,7 @@ TSyError SYSYNC_EXTERNAL(ConnectEngine)(
   uInt16      aDebugFlags
 )
 {
-  // create new engine
-  TEngineModuleBase *engine = newEngine();
-  // connect callback
-  TSyError err= engine->Connect("", aPrgVersion, aDebugFlags);
-  *aCI        = engine->fCI;
-  *aEngVersion= Plugin_Version(0);
-  return   err;
+	return internal_ConnectEngine(false, aCI, 0, aEngVersion, aPrgVersion, aDebugFlags);
 } // ConnectEngine
 
 
@@ -1803,21 +1873,38 @@ TSyError SYSYNC_EXTERNAL(ConnectEngineS)(
   uInt16      aDebugFlags
 )
 {
-  // create new engine
-  TEngineModuleBase *engine = newEngine();
-  engine->fCIisStatic= true;
-
-  // connect callback
-                aCI->callbackVersion= aCallbackVersion;
-  engine->fCI = aCI;
-  TSyError err= engine->Connect( "", aPrgVersion, aDebugFlags );
-  *aEngVersion= Plugin_Version(0);
-  return   err;
+	return internal_ConnectEngine(false, &aCI, aCallbackVersion, aEngVersion, aPrgVersion, aDebugFlags);
 } // ConnectEngineS
 
 
-/* Entry point to disconnect engine */
-TSyError SYSYNC_EXTERNAL(DisconnectEngine)( UI_Call_In aCI )
+// Server engine main entry point
+TSyError SYSYNC_EXTERNAL_SRV(ConnectEngine)(
+  UI_Call_In *aCI,
+  CVersion   *aEngVersion,
+  CVersion    aPrgVersion,
+  uInt16      aDebugFlags
+)
+{
+	return internal_ConnectEngine(true, aCI, 0, aEngVersion, aPrgVersion, aDebugFlags);
+} // ConnectEngine
+
+
+// The same, but coming in with a valid <aCI> */
+TSyError SYSYNC_EXTERNAL_SRV(ConnectEngineS)(
+  UI_Call_In  aCI,
+  uInt16      aCallbackVersion,
+  CVersion   *aEngVersion,
+  CVersion    aPrgVersion,
+  uInt16      aDebugFlags
+)
+{
+	return internal_ConnectEngine(true, &aCI, aCallbackVersion, aEngVersion, aPrgVersion, aDebugFlags);
+} // ConnectEngineS
+
+
+
+
+static TSyError internal_DisconnectEngine(UI_Call_In aCI)
 {
   TSyError err= LOCERR_OK;
 
@@ -1826,7 +1913,6 @@ TSyError SYSYNC_EXTERNAL(DisconnectEngine)( UI_Call_In aCI )
     TEngineModuleBase *engine = static_cast<TEngineModuleBase *>(aCI->thisBase);
     err= engine->Disconnect();
     aCI->thisBase= NULL; // no longer valid
-
     // delete the engine (this also deletes the callback!)
     SYSYNC_TRY {
       delete engine;
@@ -1836,13 +1922,26 @@ TSyError SYSYNC_EXTERNAL(DisconnectEngine)( UI_Call_In aCI )
     SYSYNC_ENDCATCH
     // done
   } // if
-
   return err;
-} // DisconnectEngine
+} // internal_DisconnectEngine
 
+
+/* Entry point to disconnect client engine */
+TSyError SYSYNC_EXTERNAL(DisconnectEngine)(UI_Call_In aCI)
+{
+	return internal_DisconnectEngine(aCI);
+}
+
+
+/* Entry point to disconnect server engine */
+TSyError SYSYNC_EXTERNAL_SRV(DisconnectEngine)(UI_Call_In aCI)
+{
+	return internal_DisconnectEngine(aCI);
+}
 
 
 #endif // not SIMPLE_LINKING
+#endif // ENGINE_LIBRARY
 
 
 } // namespace sysync

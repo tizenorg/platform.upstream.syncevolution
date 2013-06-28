@@ -63,20 +63,17 @@ static RegisterSyncSource registerMe("Files in one directory",
                                      createSource,
                                      "Files in one directory = file\n"
                                      "   Stores items in one directory as one file per item.\n"
-                                     "   The directory is selected via evolutionsource=[file://]<path>.\n"
-                                     "   It will only be created if the prefix is given, otherwise\n"
+                                     "   The directory is selected via [file://]<path>; it\n"
+                                     "   will only be created if the prefix is given, otherwise\n"
                                      "   it must exist already. Only items of the same type can\n"
                                      "   be synchronized and this type must be specified explicitly\n"
                                      "   with both mime type and version.\n"
-                                     "   Examples for type:\n"
+                                     "   Examples:\n"
                                      "      file:text/plain:1.0\n"
                                      "      file:text/x-vcard:2.1\n"
                                      "      file:text/vcard:3.0\n"
-                                     "      file:text/x-calendar:1.0\n"
-                                     "      file:text/calendar:2.0\n"
-                                     "   Examples for evolutionsource:\n"
-                                     "      /home/joe/datadir - directory must exist\n"
-                                     "      file:///tmp/scratch - directory is created\n",
+                                     "      file:text/x-vcalendar:1.0\n"
+                                     "      file:text/calendar:2.0\n",
                                      Values() +
                                      (Aliases("Files in one directory") + "file"));
 
@@ -100,6 +97,8 @@ protected:
 SYNCEVOLUTION_TEST_SUITE_REGISTRATION(FileSyncSourceUnitTest);
 
 #endif // ENABLE_UNIT_TESTS
+
+#ifdef ENABLE_INTEGRATION_TESTS
 
 // The anonymous namespace ensures that we don't get
 // name clashes: although the classes and objects are
@@ -172,6 +171,7 @@ public:
 } ITodo20Test;
 
 }
+#endif // ENABLE_INTEGRATION_TESTS
 
 #endif // ENABLE_FILE
 

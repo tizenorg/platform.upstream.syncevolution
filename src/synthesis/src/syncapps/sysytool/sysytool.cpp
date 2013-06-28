@@ -14,7 +14,7 @@
 
 // include files where commands are implemented
 #include "odbcapiagent.h"
-#include "syncserver.h"
+#include "syncagent.h"
 #include "sysync_utils.h"
 #include "rrules.h"
 

@@ -21,6 +21,8 @@
 #include "mimedirprofile.h"
 #include "mimediritemtype.h"
 
+#include "syncagent.h"
+
 
 using namespace sysync;
 
@@ -384,7 +386,6 @@ bool TMIMEProfileConfig::localStartElement(const char *aElementName, const char 
       val = getAttr(aAttributes,"value");
       // - get mode
       TEnumMode mode=enm_translate; // default to translate
-      sInt16 m;
       const char *mod=getAttr(aAttributes,"mode");
       if (mod) {
         if (!StrToEnum(EnumModeNames,numEnumModes,m,mod))
@@ -509,7 +510,6 @@ bool TMIMEProfileConfig::localStartElement(const char *aElementName, const char 
         return fail("'subprofile' must have 'name' attribute");
       // - get profile mode
       TProfileModes mode = profm_custom;
-      sInt16 m;
       cAppCharP pfmode = getAttr(aAttributes,"mode");
       if (pfmode) {
         if (!StrToEnum(ProfileModeNames,numProfileModes,m,pfmode))
@@ -668,7 +668,7 @@ bool TMIMEProfileConfig::localStartElement(const char *aElementName, const char 
 
 #ifndef NO_REMOTE_RULES
 // resolve remote rule dependencies in profile (recursive)
-static void resolveRemoteRuleDeps(TProfileDefinition *aProfileP, TSessionConfig *aSessionConfigP)
+static void resolveRemoteRuleDeps(TProfileDefinition *aProfileP, TAgentConfig *aSessionConfigP)
 {
   TProfileDefinition *profileP = aProfileP;
   while (profileP) {
@@ -717,7 +717,7 @@ void TMIMEProfileConfig::localResolve(bool aLastPass)
     // recursively resolve remote rule dependencies in all properties
     resolveRemoteRuleDeps(
       fRootProfileP,
-      static_cast<TSessionConfig *>(static_cast<TRootConfig *>(getRootElement())->fAgentConfigP)
+      static_cast<TAgentConfig *>(static_cast<TRootConfig *>(getRootElement())->fAgentConfigP)
     );
     #endif
   }
@@ -1390,7 +1390,7 @@ bool TMimeDirProfileHandler::fieldToMIMEString(
         // remote cannot handle UTC or time is floating (eventually dateonly or duration)
         if (tsFldP->isFloating()) {
           // floating, show as-is
-          lineartime_t ts = tsFldP->getTimestampAs(TCTX_UNKNOWN);
+          ts = tsFldP->getTimestampAs(TCTX_UNKNOWN);
           if (ts==noLinearTime)
             aString.erase();
           else {
@@ -1999,13 +1999,24 @@ static void finalizeProperty(
   ssize_t n=0,llen=0;
   ssize_t lastlwsp=-1; // no linear white space found so far
   bool explf;
-  const char *firstunwritten=proptext; // none written yet
+  cAppCharP firstunwritten=proptext; // none written yet
   while (proptext && (c=*proptext)!=0) {
     // remember position of last lwsp (space or TAB)
     if (c==' ' || c==0x09) lastlwsp=n;
-    // next char
-    n++;
-    proptext++;
+    // next (UTF8) char
+    // Note: we prevent folding within UTF8 sequences as result string would become inconvertible e.g. into UTF16
+    uInt32 uc;
+    cAppCharP nP = UTF8toUCS4(proptext, uc);
+    if (uc!=0) {
+    	// UTF-8 compliant byte (or byte sequence), skip as an entiety
+      n += nP-proptext;
+      proptext = nP;
+    }
+    else {
+    	// Not UTF-8 compliant, simply one byte
+      n++;
+      proptext++;
+    }
     // check for optional break indicator
     if (c=='\b') {
       aString.append(firstunwritten,n-1); // copy what we have up to that '\b'
@@ -2195,7 +2206,7 @@ sInt16 TMimeDirProfileHandler::generateValue(
                   val.erase(); // ignore -> make value empty as empty values are never stored
                 else if (enumP->enummode==enm_prefix) {
                   // replace value prefix by text prefix
-                  size_t n=TCFG_SIZE(enumP->enumval);
+                  n=TCFG_SIZE(enumP->enumval);
                   val.replace(0,n,TCFG_CSTR(enumP->enumtext)); // replace val prefix by text prefix
                 }
                 else {
@@ -3099,10 +3110,10 @@ bool TMimeDirProfileHandler::MIMEStringToField(
         // combine mode
         if (!fldP->isEmpty()) {
           // not empty, append with separator
-          char s[2];
-          s[0]=aConvDefP->combineSep;
-          s[1]=0;
-          fldP->appendString(s);
+          char cs[2];
+          cs[0]=aConvDefP->combineSep;
+          cs[1]=0;
+          fldP->appendString(cs);
         }
         fldP->appendString(aText);
       }
@@ -3968,8 +3979,8 @@ bool TMimeDirProfileHandler::parseLevels(
   bool aRootLevel
 )
 {
-  char c;
-  const char *p,*propname;
+  appChar c;
+  cAppCharP p, propname;
   sInt32 n;
   sInt16 foundmandatory=0;
   const sInt16 maxreps = 50;
@@ -4064,7 +4075,7 @@ bool TMimeDirProfileHandler::parseLevels(
                 string s2;
                 string s = "END:";
                 s.append(subprofileP->levelName);
-                size_t n = s.size(); // size of lead-out
+                n = s.size(); // size of lead-out
                 cAppCharP e = strstr(p,s.c_str());
                 if (e==NULL) return false; // unterminated vTimeZone sublevel
                 s.assign(p,e-p); // everything between lead-in and lead-out
@@ -4266,7 +4277,6 @@ bool TMimeDirProfileHandler::parseLevels(
     // p is now end of parsed part
     // - skip rest up to EOLN (=any ctrl char)
     //   Note: we need to check if this is quoted-printable, otherwise we might NOT cancel soft breaks
-		char c;
     bool isqp = false;
     while ((c=*p)!=0) {
     	if (isEndOfLineOrText(c)) break; // end of line or string
@@ -4288,7 +4298,7 @@ bool TMimeDirProfileHandler::parseLevels(
     // process delayed properties only after entire record is parsed (i.e. when we are at root level here)
     TDelayedParsingPropsList::iterator pos;
     for (pos=fDelayedProps.begin(); pos!=fDelayedProps.end(); pos++) {
-      const char *p = (*pos).start; // where to start parsing
+      p = (*pos).start; // where to start parsing
       PDEBUGPRINTFX(DBG_PARSE+DBG_EXOTIC,(
         "parseMimeDir: now parsing delayed property rank=%hd: %" FMT_LENGTH(".30") "s",
         (*pos).delaylevel,

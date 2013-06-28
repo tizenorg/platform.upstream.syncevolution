@@ -18,6 +18,9 @@
 namespace sysync {
 
 
+#ifndef SYSYNC_SERVER
+// if there is also a server in the system, it will define AppConsolePuts so we don't need it here 
+
 // write to platform's "console", whatever that is
 void AppConsolePuts(const char *aText)
 {
@@ -25,41 +28,43 @@ void AppConsolePuts(const char *aText)
   PlatformConsolePuts(aText);
 } // AppConsolePuts
 
+#endif // no SYSYNC_SERVER included
 
-// TEngineCommConfig
-// =================
+
+// TEngineClientCommConfig
+// =======================
 // (dummy at this time)
 
 
 // config constructor
-TEngineCommConfig::TEngineCommConfig(TConfigElement *aParentElementP) :
+TEngineClientCommConfig::TEngineClientCommConfig(TConfigElement *aParentElementP) :
   TCommConfig("engineclient",aParentElementP)
 {
   // do not call clear(), because this is virtual!
-} // TEngineCommConfig::TXPTCommConfig
+} // TEngineClientCommConfig::TEngineClientCommConfig
 
 
 // config destructor
-TEngineCommConfig::~TEngineCommConfig()
+TEngineClientCommConfig::~TEngineClientCommConfig()
 {
   // nop by now
-} // TEngineCommConfig::~TXPTCommConfig
+} // TEngineClientCommConfig::~TEngineClientCommConfig
 
 
 // init defaults
-void TEngineCommConfig::clear(void)
+void TEngineClientCommConfig::clear(void)
 {
   // init defaults
   // %%% none for now
   // clear inherited
   inherited::clear();
-} // TEngineCommConfig::clear
+} // TEngineClientCommConfig::clear
 
 
 #ifndef HARDCODED_CONFIG
 
 // XPT transport config element parsing
-bool TEngineCommConfig::localStartElement(const char *aElementName, const char **aAttributes, sInt32 aLine)
+bool TEngineClientCommConfig::localStartElement(const char *aElementName, const char **aAttributes, sInt32 aLine)
 {
   // checking the elements
   /*
@@ -70,13 +75,13 @@ bool TEngineCommConfig::localStartElement(const char *aElementName, const char *
     return inherited::localStartElement(aElementName,aAttributes,aLine);
   // ok
   return true;
-} // TEngineCommConfig::localStartElement
+} // TEngineClientCommConfig::localStartElement
 
 #endif
 
 
 // resolve
-void TEngineCommConfig::localResolve(bool aLastPass)
+void TEngineClientCommConfig::localResolve(bool aLastPass)
 {
   if (aLastPass) {
     // check for required settings
@@ -84,7 +89,7 @@ void TEngineCommConfig::localResolve(bool aLastPass)
   }
   // resolve inherited
   inherited::localResolve(aLastPass);
-} // TEngineCommConfig::localResolve
+} // TEngineClientCommConfig::localResolve
 
 
 
@@ -118,7 +123,7 @@ TEngineClientBase::~TEngineClientBase()
 void TEngineClientRootConfig::installCommConfig(void)
 {
   // engine API needs no config at this time, commconfig is a NOP dummy for now
-  fCommConfigP=new TEngineCommConfig(this);
+  fCommConfigP=new TEngineClientCommConfig(this);
 } // TEngineClientRootConfig::installCommConfig
 
 

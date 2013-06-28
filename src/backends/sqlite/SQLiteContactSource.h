@@ -53,6 +53,7 @@ SE_BEGIN_CXX
  */
 class SQLiteContactSource : public SyncSource,
     virtual public SyncSourceSession,
+    virtual public SyncSourceAdmin,
     virtual public SyncSourceRevisions,
     virtual public SyncSourceDelete,
     virtual public SyncSourceLogging,
@@ -62,7 +63,7 @@ class SQLiteContactSource : public SyncSource,
     SQLiteContactSource(const SyncSourceParams &params) :
         SyncSource(params),
         m_trackingNode(new PrefixConfigNode("item-",
-                                        boost::shared_ptr<ConfigNode>(new SafeConfigNode(params.m_nodes.m_trackingNode))))
+                                            boost::shared_ptr<ConfigNode>(new SafeConfigNode(params.m_nodes.getTrackingNode()))))
         {
             SyncSourceSession::init(m_operations);
             SyncSourceDelete::init(m_operations);
@@ -82,6 +83,9 @@ class SQLiteContactSource : public SyncSource,
     virtual Databases getDatabases();
     virtual const char *getMimeType() const { return "text/x-vcard"; }
     virtual const char *getMimeVersion() const { return "2.1"; }
+    virtual void enableServerMode();
+    virtual bool serverModeEnabled() const;
+    virtual const char *getPeerMimeType() const {return getMimeType(); }
 
     /* Methods in SyncSource */
     virtual void getSynthesisInfo (SynthesisInfo &info, XMLConfigFragments &fragment);

@@ -94,6 +94,8 @@ AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BACKEND_CPPFLAGS = @BACKEND_CPPFLAGS@
 BACKEND_DEFINES = @BACKEND_DEFINES@
+BLUEZ_CFLAGS = @BLUEZ_CFLAGS@
+BLUEZ_LIBS = @BLUEZ_LIBS@
 BOOST_CPPFLAGS = @BOOST_CPPFLAGS@
 BOOST_LDFLAGS = @BOOST_LDFLAGS@
 CATALOGS = @CATALOGS@
@@ -101,7 +103,6 @@ CATOBJEXT = @CATOBJEXT@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
-CLEAN_CLIENT_SRC = @CLEAN_CLIENT_SRC@
 CORE_LDADD_DEP = @CORE_LDADD_DEP@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
@@ -114,8 +115,10 @@ CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DATADIRNAME = @DATADIRNAME@
 DBUS_BINDING_TOOL = @DBUS_BINDING_TOOL@
+DBUS_CFLAGS = @DBUS_CFLAGS@
 DBUS_GLIB_CFLAGS = @DBUS_GLIB_CFLAGS@
 DBUS_GLIB_LIBS = @DBUS_GLIB_LIBS@
+DBUS_LIBS = @DBUS_LIBS@
 DBUS_SERVICES_DIR = @DBUS_SERVICES_DIR@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
@@ -142,11 +145,7 @@ GLIB_GENMARSHAL = @GLIB_GENMARSHAL@
 GLIB_LIBS = @GLIB_LIBS@
 GMOFILES = @GMOFILES@
 GMSGFMT = @GMSGFMT@
-GOBJECT_CFLAGS = @GOBJECT_CFLAGS@
-GOBJECT_LIBS = @GOBJECT_LIBS@
 GREP = @GREP@
-GTHREAD_CFLAGS = @GTHREAD_CFLAGS@
-GTHREAD_LIBS = @GTHREAD_LIBS@
 GTK_BUILDER_CONV = @GTK_BUILDER_CONV@
 GUI_CFLAGS = @GUI_CFLAGS@
 GUI_DESKTOP_FILES = @GUI_DESKTOP_FILES@
@@ -170,6 +169,8 @@ KEYRING_LIBS = @KEYRING_LIBS@
 LDFLAGS = @LDFLAGS@
 LIBEXECDIR = @LIBEXECDIR@
 LIBOBJS = @LIBOBJS@
+LIBOPENOBEX_CFLAGS = @LIBOPENOBEX_CFLAGS@
+LIBOPENOBEX_LIBS = @LIBOPENOBEX_LIBS@
 LIBS = @LIBS@
 LIBSOUP_CFLAGS = @LIBSOUP_CFLAGS@
 LIBSOUP_LIBS = @LIBSOUP_LIBS@
@@ -177,8 +178,6 @@ LIBTOOL = @LIBTOOL@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
-MCALB_CFLAGS = @MCALB_CFLAGS@
-MCALB_LIBS = @MCALB_LIBS@
 MKDIR_P = @MKDIR_P@
 MKINSTALLDIRS = @MKINSTALLDIRS@
 MODIFY_SYNCCOMPARE = @MODIFY_SYNCCOMPARE@
@@ -214,6 +213,7 @@ SYNTHESIS = @SYNTHESIS@
 SYNTHESISSRC = @SYNTHESISSRC@
 SYNTHESIS_CFLAGS = @SYNTHESIS_CFLAGS@
 SYNTHESIS_DEP = @SYNTHESIS_DEP@
+SYNTHESIS_ENGINE = @SYNTHESIS_ENGINE@
 SYNTHESIS_LIB = @SYNTHESIS_LIB@
 SYNTHESIS_LIBS = @SYNTHESIS_LIBS@
 SYNTHESIS_SRC = @SYNTHESIS_SRC@
@@ -225,8 +225,6 @@ UNIQUE_LIBS = @UNIQUE_LIBS@
 USE_NLS = @USE_NLS@
 VERSION = @VERSION@
 XGETTEXT = @XGETTEXT@
-XMLRPC_CFLAGS = @XMLRPC_CFLAGS@
-XMLRPC_LIBS = @XMLRPC_LIBS@
 XSLT = @XSLT@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
@@ -324,7 +322,7 @@ dist_doc_DATA = README NEWS COPYING $(TEST_README_FILES)
 # Because backend-related variables need to be substituted in
 # Makefile-gen.am and configure.in we need an explicit rule to redo that work
 # so that "make" rebuilds derived files correctly.
-CONFIG_SUBS = src/backends/addressbook/configure-sub.in src/backends/evolution/configure-sub.in src/backends/file/configure-sub.in src/backends/maemo/configure-sub.in src/backends/sqlite/configure-sub.in src/backends/xmlrpc/configure-sub.in
+CONFIG_SUBS = src/backends/addressbook/configure-sub.in src/backends/evolution/configure-sub.in src/backends/file/configure-sub.in src/backends/sqlite/configure-sub.in
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
@@ -885,7 +883,7 @@ dist/$(distdir): all
 	rm -rf $(call DEV_FILE_PATTERN, $@)
 clean-local: clean_dist
 clean_dist:
-	rm -rf dist description-pak
+	rm -rf dist doc-pak description-pak
 
 # required by dpkg-shlibdeps
 dist/debian/control:

@@ -8,17 +8,6 @@
 /* global includes */
 #include "target_options.h"
 
-/* compiler specifics */
-/* %%% probably obsolete
-#ifdef __BORLANDC__
-typedef __int64 longlong;
-typedef __uint64 ulonglong;
-#else if defined(_MSC_VER)
-typedef __int64 longlong;
-typedef unsigned __int64 ulonglong;
-#endif
-*/
-
 /* standard C includes */
 #ifdef __PALM_OS__
   // don't use the *.h versions! they don't work any more with CW Palm v9

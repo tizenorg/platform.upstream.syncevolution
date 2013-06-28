@@ -636,6 +636,8 @@ public:
   TBinfileDSConfig(const char* aName, TConfigElement *aParentElement);
   virtual ~TBinfileDSConfig();
   // properties
+  // - activtion switch (for making it inactive e.g. in server case)
+  bool fBinfileDSActive;
   // - identifies local Database related to this datastore
   string fLocalDBPath;
   // - flag that corresponds with profile.dsAvailFlags / dsavail_xxx
@@ -854,15 +856,15 @@ protected:
   /// get next item from the sync set. Caller obtains ownership if aItemP is not NULL after return
   /// @return false if no item found
   virtual bool getNextItem(TSyncItem *&aItemP) = 0;
-  #endif
-  #else
+  #endif // RECORDHASH_FROM_DBAPI
+  #else // CHANGEDETECTION_AVAILABLE
   /// get first item's ID and modification status from the sync set
   /// @return false if no item found
   virtual bool getFirstItemInfo(localid_out_t &aLocalID, bool &aItemHasChanged) = 0;
   /// get next item's ID and modification status from the sync set.
   /// @return false if no item found
   virtual bool getNextItemInfo(localid_out_t &aLocalID, bool &aItemHasChanged) = 0;
-  #endif
+  #endif // not CHANGEDETECTION_AVAILABLE
   /// get item by local ID from the sync set. Caller obtains ownership if aItemP is not NULL after return
   /// @return != LOCERR_OK  if item with specified ID is not found.
   virtual localstatus getItemByID(localid_t aLocalID, TSyncItem *&aItemP) = 0;
@@ -870,7 +872,7 @@ protected:
   /// get specified item's CRC as calculated by DB
   /// @return != LOCERR_OK  if item with specified ID is not found.
   virtual localstatus getItemCRCByID(localid_t aLocalID, uInt16 &aItemCRC) = 0;
-  #endif
+  #endif // RECORDHASH_FROM_DBAPI
   /// end of syncset reading phase (especially for customimplds on top of binfileds)
   virtual localstatus apiEndDataRead(void) { return LOCERR_OK; };
   /// signal start of data write phase
@@ -908,6 +910,8 @@ protected:
   /// zaps changelog. Should be called if datastore as a entiety was replaced
   /// by another datatstore (or created new)
   void zapChangeLog(void);
+  /// check if active derived classes (in particular: customImplDS that CAN derive binfiles, but does not necessarily so)
+  bool binfileDSActive(void) { return fConfigP && fConfigP->fBinfileDSActive; };
 private:
   /// load changelog into memory for quick access
   void loadChangeLog(void);
@@ -917,11 +921,13 @@ private:
   localstatus SaveAdminData(bool aSessionFinished, bool aSuccessful);
   /// load target record for this datastore
 	localstatus loadTarget(bool aCreateIfMissing, cAppCharP aRemoteDBID=NULL);
+  /* %%% seems obsolete - never called from anywhere
   // private utils
   #ifdef OBJECT_FILTERING
   // - Test Filters
   bool testFilters(TMultiFieldItem *aItemP);
   #endif
+  */
   // sync anchor, time and changelog cursor (modcount)
   #ifdef CHECKSUM_CHANGELOG
   /// change log
@@ -940,7 +946,7 @@ private:
   // - entire change log, loaded into memory for quick reference during write phase
   TChangeLogEntry *fLoadedChangeLog;
   uInt32 fLoadedChangeLogEntries;
-  #endif
+  #endif // CHECKSUM_CHANGELOG
   /// pending maps for Resume
   TBinFile fPendingMaps; ///< pending map binfile
   TPendingMapHeader fPendingMapHeader; ///< pending map header

@@ -84,6 +84,11 @@
 // - id defined, code allows calling of subsequent DLLs
 #define PLUGIN_DLL            1
 
+// - define what SDK modules are linked in
+//#define DBAPI_DEMO          1
+#define   DBAPI_TEXT          1
+//#define DBAPI_SILENT        1
+//#define DBAPI_EXAMPLE       1
 
 
 // SySync options

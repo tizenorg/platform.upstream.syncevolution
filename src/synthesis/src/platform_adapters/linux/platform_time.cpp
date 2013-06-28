@@ -17,16 +17,21 @@
 
 // Linux uses standard c time stuff
 //#warning "probably better use <cmath> here"
+#ifndef ANDROID
 #include <climits>
 #include <cstdarg>
 #include <cstdlib>
+#endif
+
 #include <cstdio>
 #include <cstring>
 // - Linux specific time stuff
 #include <sys/time.h>
 // - we need some library extras
 #define __USE_MISC 1
+#ifndef ANDROID
 #include <ctime>
+#endif
 
 namespace sysync {
 

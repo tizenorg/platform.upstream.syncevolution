@@ -27,6 +27,16 @@
 #include "platform_thread.h"
 #endif
 
+#if defined(CLIENT_USES_SERVER_DB)
+	#define USES_SERVER_DB 1
+	#define HAS_SERVER_DB 1
+#else
+	#ifdef SERVER_SUPPORT
+  	#define USES_SERVER_DB 1
+  #endif
+	#define HAS_SERVER_DB IS_SERVER
+#endif
+
 using namespace sysync;
 
 namespace sysync {
@@ -49,7 +59,8 @@ private:
   #ifdef CLIENT_USES_SERVER_DB
   TSyncItemPContainer fItems; ///< list of data items, used to simulate maps in server DB
   #endif
-  #else
+  #endif
+  #ifdef SYSYNC_SERVER
   TSyncItemPContainer fItems; ///< list of data items
   uInt32 fNumRefOnlyItems;
   #endif
@@ -117,7 +128,7 @@ protected:
   virtual localstatus dsBeforeStateChange(TLocalEngineDSState aOldState,TLocalEngineDSState aNewState);
   /// inform logic of happened state change
   virtual localstatus dsAfterStateChange(TLocalEngineDSState aOldState,TLocalEngineDSState aNewState);
-  #ifndef SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
   // - called when a item in the sync set changes its localID (due to local DB internals)
   //   Datastore must make sure that eventually cached items get updated
   virtual void dsLocalIdHasChanged(const char *aOldID, const char *aNewID);
@@ -222,7 +233,7 @@ protected:
 	virtual localstatus implReviewReadItem(
 	  TSyncItem &aItem         // the item
 	) = 0;
-	#ifndef SYSYNC_CLIENT
+	#ifdef SYSYNC_SERVER
   /// called to set maps.
   /// @note aLocalID or aRemoteID can be NULL - which signifies deletion of a map entry
   /// @note that this might be needed for clients accessing a server-style database as well
@@ -252,7 +263,8 @@ private:
   #ifdef SYSYNC_CLIENT
   /// called by dsBeforeStateChange to dssta_dataaccessstarted to make sure datastore is ready for being accessed.
   virtual localstatus startDataAccessForClient(void);
-  #else
+  #endif
+  #ifdef SYSYNC_SERVER
   /// called by dsBeforeStateChange to dssta_dataaccessstarted to make sure datastore is ready for being accessed.
   virtual localstatus startDataAccessForServer(void);
   #endif
@@ -261,7 +273,7 @@ private:
 
 
 
-  #ifndef SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
   // - called to check if conflicting replace or delete command from server exists
   virtual TSyncItem *getConflictingItemByRemoteID(TSyncItem *syncitemP);
   // - called to check if content-matching item from server exists
@@ -292,7 +304,9 @@ private:
   /// called for servers when receiving map from client
   /// @note aLocalID or aRemoteID can be NULL - which signifies deletion of a map entry
   virtual localstatus logicProcessMap(cAppCharP aLocalID, cAppCharP aRemoteID);
-  #else
+  #endif // SYSYNC_SERVER
+  
+  #ifdef SYSYNC_CLIENT
   /// called to generate sync sub-commands as server for remote client
   /// @return true if now finished for this datastore
   virtual bool logicGenerateSyncCommandsAsClient(
@@ -300,13 +314,8 @@ private:
     TSmlCommand * &aInterruptedCommandP,
     const char *aLocalIDPrefix
   );
-  #endif
-  /** @deprecated obsolete, replaced by stuff in dsBeforeStateChange()
-  // - called at very end of sync session, when everything is done
-  //   Note: is also called before deleting a datastore (so aborted sessions
-  //     can do cleanup and/or statistics display as well)
-  virtual void endOfSync(bool aRegular);
-  */
+  #endif // SYSYNC_CLIENT
+  
   // - determine if this is a first time sync situation
   virtual bool isFirstTimeSync(void) { return fFirstTimeSync; };
 

@@ -75,6 +75,7 @@ class TRootConfig;
 
 
 #ifdef SCRIPT_SUPPORT
+
 // publish as derivates might need it
 extern const TFuncTable ErrorFuncTable;
 
@@ -94,7 +95,9 @@ typedef struct {
   string itemData;
   string metaType;
 } TGetPutResultFuncContext;
-#endif
+
+#endif // SCRIPT_SUPPORT
+
 
 #ifndef NO_REMOTE_RULES
 
@@ -160,12 +163,12 @@ protected:
 
 typedef std::list<TRemoteRuleConfig *> TRemoteRulesList;
 
-#endif
+#endif // NO_REMOTE_RULES
 
 // session config
-class TSessionConfig: public TAgentConfig
+class TSessionConfig: public TConfigElement
 {
-  typedef TAgentConfig inherited;
+  typedef TConfigElement inherited;
 public:
   TSessionConfig(const char *aElementName, TConfigElement *aParentElementP);
   virtual ~TSessionConfig();
@@ -245,6 +248,11 @@ public:
   // public methods
   TLocalDSConfig *getLocalDS(const char *aName, uInt32 aDBTypeID=0);
   lineartime_t getSessionTimeout(void) { return fSessionTimeout * secondToLinearTimeFactor; };
+  // - MUST be called after creating config to load (or pre-load) variable parts of config
+  //   such as binfile profiles. If aDoLoose==false, situations, where existing config
+  //   is detected but cannot be re-used will return an error. With aDoLoose==true, config
+  //   files etc. are created even if it means a loss of data.
+  virtual localstatus loadVarConfig(bool aDoLoose=false) { return LOCERR_OK; }
 protected:
   // check config elements
   #ifndef HARDCODED_CONFIG
@@ -325,6 +333,7 @@ public:
   InstanceID_t getSmlWorkspaceID(void) { return fSmlWorkspaceID; };
   const char *getEncodingName(void); // encoding suffix in MIME type
   SmlEncoding_t getEncoding(void) { return fEncoding; }; // current encoding
+  void setEncoding(SmlEncoding_t aEncoding); // set encoding for session
   void addEncoding(string &aString); // add current encoding spec to given (type-)string
   sInt32 getSmlWorkspaceFreeBytes(void) { return ((sInt32) smlGetFreeBuffer(fSmlWorkspaceID)); };
   #ifdef ENGINEINTERFACE_SUPPORT
@@ -367,8 +376,6 @@ public:
   void setSessionBusy(bool aBusy) { fSessionIsBusy=aBusy; }; // make session behave busy generally
   bool getReadOnly(void) { return fReadOnly; }; // read-only option
   void setReadOnly(bool aReadOnly) { fReadOnly=aReadOnly; }; // read-only option
-  // info about session
-  virtual bool IsServerSession(void) = 0;
   // - check if we can handle UTC time (devices without time zone might override this)
   virtual bool canHandleUTC(void) { return true; }; // assume yes
   // helpers
@@ -755,8 +762,6 @@ protected:
   virtual string getDeviceType(void)=0; // abstract, must be client or server
   // - get new response URI to be sent to remote party for subsequent messages TO local party
   virtual SmlPcdataPtr_t newResponseURIForRemote(void) { return NULL; }; // no RespURI by default
-  // - URI to send outgoing message to
-  virtual const char *getSendURI(void) { return ""; }; // none by default (and server)
   // Authorisation
   // - required authentication type and mode
   virtual TAuthTypes requestedAuthType(void) = 0; // get preferred authentication type for authentication of remote party
@@ -768,6 +773,8 @@ protected:
   // - generate credentials (based on fRemoteNonce, fRemoteRequestedAuth, fRemoteRequestedAuthEnc)
   SmlCredPtr_t newCredentials(const char *aUser, const char *aPassword);
 public:
+  // - URI to send outgoing message to
+  virtual const char *getSendURI(void) { return ""; }; // none by default (and server)
   // - get common sync capabilities mask of this session (datastores might modify it)
   virtual uInt32 getSyncCapMask(void);
   // - check credentials, login to server

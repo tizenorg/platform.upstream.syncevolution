@@ -54,6 +54,7 @@ extern const char * const compareRelevanceNames[numEQmodes];
 
 // forward
 class TLocalEngineDS;
+class TSyncAppBase;
 
 class TSyncItem
 {
@@ -147,6 +148,8 @@ public:
   TDebugLogger *getDbgLogger(void);
   uInt32 getDbgMask(void);
   #endif
+  // - get session owner (dispatcher/clientbase)
+  TSyncAppBase *getSyncAppBase(void);  
 protected:
   // operation to be performed with this item at its destination
   TSyncOperation fSyncOp;

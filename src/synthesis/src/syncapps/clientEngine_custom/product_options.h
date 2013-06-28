@@ -33,6 +33,7 @@
 // Most hyperglobal definition, might even influence global_options.h:
 // - THIS IS A CLIENT
 #define SYSYNC_CLIENT 1
+
 // - is a engine library
 #define ENGINE_LIBRARY 1
 
@@ -77,7 +78,7 @@
 // separate files for outlook - different from old 1.0 client to make sure we don't import old problems
 #define SETTINGS_BFI_PREFIX "sysynclib_"
 
-// - if defined, local DB does not require any login
+// - if defined, local DB does not require any login in client mode
 #define NO_LOCAL_DBLOGIN 1
 
 // - if defined, config file might contain <syncrequest>s which will
@@ -90,7 +91,7 @@
 #undef HARDCODED_CONFIG
 
 // - if defined, remoterule mechanism is not included
-#define NO_REMOTE_RULES 1
+#undef NO_REMOTE_RULES
 
 // - if defined, support for hardcoded (predefined)
 //   type definitions will be included

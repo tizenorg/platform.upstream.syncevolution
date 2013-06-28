@@ -63,7 +63,8 @@ libsyncevo_dbus_la_DEPENDENCIES = $(am__DEPENDENCIES_1)
 am__objects_1 =
 am_libsyncevo_dbus_la_OBJECTS = $(am__objects_1) \
 	libsyncevo_dbus_la-syncevo-dbus-types.lo \
-	libsyncevo_dbus_la-syncevo-dbus.lo
+	libsyncevo_dbus_la-syncevo-server.lo \
+	libsyncevo_dbus_la-syncevo-session.lo
 nodist_libsyncevo_dbus_la_OBJECTS =  \
 	libsyncevo_dbus_la-syncevo-marshal.lo
 libsyncevo_dbus_la_OBJECTS = $(am_libsyncevo_dbus_la_OBJECTS) \
@@ -127,6 +128,8 @@ AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BACKEND_CPPFLAGS = @BACKEND_CPPFLAGS@
 BACKEND_DEFINES = @BACKEND_DEFINES@
+BLUEZ_CFLAGS = @BLUEZ_CFLAGS@
+BLUEZ_LIBS = @BLUEZ_LIBS@
 BOOST_CPPFLAGS = @BOOST_CPPFLAGS@
 BOOST_LDFLAGS = @BOOST_LDFLAGS@
 CATALOGS = @CATALOGS@
@@ -134,7 +137,6 @@ CATOBJEXT = @CATOBJEXT@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
-CLEAN_CLIENT_SRC = @CLEAN_CLIENT_SRC@
 CORE_LDADD_DEP = @CORE_LDADD_DEP@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
@@ -147,8 +149,10 @@ CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DATADIRNAME = @DATADIRNAME@
 DBUS_BINDING_TOOL = @DBUS_BINDING_TOOL@
+DBUS_CFLAGS = @DBUS_CFLAGS@
 DBUS_GLIB_CFLAGS = @DBUS_GLIB_CFLAGS@
 DBUS_GLIB_LIBS = @DBUS_GLIB_LIBS@
+DBUS_LIBS = @DBUS_LIBS@
 DBUS_SERVICES_DIR = @DBUS_SERVICES_DIR@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
@@ -175,11 +179,7 @@ GLIB_GENMARSHAL = @GLIB_GENMARSHAL@
 GLIB_LIBS = @GLIB_LIBS@
 GMOFILES = @GMOFILES@
 GMSGFMT = @GMSGFMT@
-GOBJECT_CFLAGS = @GOBJECT_CFLAGS@
-GOBJECT_LIBS = @GOBJECT_LIBS@
 GREP = @GREP@
-GTHREAD_CFLAGS = @GTHREAD_CFLAGS@
-GTHREAD_LIBS = @GTHREAD_LIBS@
 GTK_BUILDER_CONV = @GTK_BUILDER_CONV@
 GUI_CFLAGS = @GUI_CFLAGS@
 GUI_DESKTOP_FILES = @GUI_DESKTOP_FILES@
@@ -203,6 +203,8 @@ KEYRING_LIBS = @KEYRING_LIBS@
 LDFLAGS = @LDFLAGS@
 LIBEXECDIR = @LIBEXECDIR@
 LIBOBJS = @LIBOBJS@
+LIBOPENOBEX_CFLAGS = @LIBOPENOBEX_CFLAGS@
+LIBOPENOBEX_LIBS = @LIBOPENOBEX_LIBS@
 LIBS = @LIBS@
 LIBSOUP_CFLAGS = @LIBSOUP_CFLAGS@
 LIBSOUP_LIBS = @LIBSOUP_LIBS@
@@ -210,8 +212,6 @@ LIBTOOL = @LIBTOOL@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
-MCALB_CFLAGS = @MCALB_CFLAGS@
-MCALB_LIBS = @MCALB_LIBS@
 MKDIR_P = @MKDIR_P@
 MKINSTALLDIRS = @MKINSTALLDIRS@
 MODIFY_SYNCCOMPARE = @MODIFY_SYNCCOMPARE@
@@ -247,6 +247,7 @@ SYNTHESIS = @SYNTHESIS@
 SYNTHESISSRC = @SYNTHESISSRC@
 SYNTHESIS_CFLAGS = @SYNTHESIS_CFLAGS@
 SYNTHESIS_DEP = @SYNTHESIS_DEP@
+SYNTHESIS_ENGINE = @SYNTHESIS_ENGINE@
 SYNTHESIS_LIB = @SYNTHESIS_LIB@
 SYNTHESIS_LIBS = @SYNTHESIS_LIBS@
 SYNTHESIS_SRC = @SYNTHESIS_SRC@
@@ -258,8 +259,6 @@ UNIQUE_LIBS = @UNIQUE_LIBS@
 USE_NLS = @USE_NLS@
 VERSION = @VERSION@
 XGETTEXT = @XGETTEXT@
-XMLRPC_CFLAGS = @XMLRPC_CFLAGS@
-XMLRPC_LIBS = @XMLRPC_LIBS@
 XSLT = @XSLT@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
@@ -330,7 +329,8 @@ nodist_libsyncevo_dbus_la_SOURCES = \
 libsyncevo_dbus_la_SOURCES = \
 	$(syncevo_dbus_headers) \
 	syncevo-dbus-types.c \
-	syncevo-dbus.c
+	syncevo-server.c \
+	syncevo-session.c
 
 libsyncevo_dbus_la_CFLAGS = \
 	-I$(top_srcdir) \
@@ -342,7 +342,8 @@ libsyncevo_dbus_la_LIBADD = \
 
 syncevo_dbus_headers = \
 	syncevo-dbus-types.h \
-	syncevo-dbus.h
+	syncevo-server.h \
+	syncevo-session.h
 
 libsyncevo_dbus_includedir = $(includedir)/syncevo-dbus
 libsyncevo_dbus_include_HEADERS = \
@@ -430,8 +431,9 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevo_dbus_la-syncevo-dbus-types.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevo_dbus_la-syncevo-dbus.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevo_dbus_la-syncevo-marshal.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevo_dbus_la-syncevo-server.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevo_dbus_la-syncevo-session.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_syncevo_dbus-test.Po@am__quote@
 
 .c.o:
@@ -462,12 +464,19 @@ libsyncevo_dbus_la-syncevo-dbus-types.lo: syncevo-dbus-types.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsyncevo_dbus_la_CFLAGS) $(CFLAGS) -c -o libsyncevo_dbus_la-syncevo-dbus-types.lo `test -f 'syncevo-dbus-types.c' || echo '$(srcdir)/'`syncevo-dbus-types.c
 
-libsyncevo_dbus_la-syncevo-dbus.lo: syncevo-dbus.c
-@am__fastdepCC_TRUE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsyncevo_dbus_la_CFLAGS) $(CFLAGS) -MT libsyncevo_dbus_la-syncevo-dbus.lo -MD -MP -MF $(DEPDIR)/libsyncevo_dbus_la-syncevo-dbus.Tpo -c -o libsyncevo_dbus_la-syncevo-dbus.lo `test -f 'syncevo-dbus.c' || echo '$(srcdir)/'`syncevo-dbus.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/libsyncevo_dbus_la-syncevo-dbus.Tpo $(DEPDIR)/libsyncevo_dbus_la-syncevo-dbus.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='syncevo-dbus.c' object='libsyncevo_dbus_la-syncevo-dbus.lo' libtool=yes @AMDEPBACKSLASH@
+libsyncevo_dbus_la-syncevo-server.lo: syncevo-server.c
+@am__fastdepCC_TRUE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsyncevo_dbus_la_CFLAGS) $(CFLAGS) -MT libsyncevo_dbus_la-syncevo-server.lo -MD -MP -MF $(DEPDIR)/libsyncevo_dbus_la-syncevo-server.Tpo -c -o libsyncevo_dbus_la-syncevo-server.lo `test -f 'syncevo-server.c' || echo '$(srcdir)/'`syncevo-server.c
+@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/libsyncevo_dbus_la-syncevo-server.Tpo $(DEPDIR)/libsyncevo_dbus_la-syncevo-server.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='syncevo-server.c' object='libsyncevo_dbus_la-syncevo-server.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsyncevo_dbus_la_CFLAGS) $(CFLAGS) -c -o libsyncevo_dbus_la-syncevo-dbus.lo `test -f 'syncevo-dbus.c' || echo '$(srcdir)/'`syncevo-dbus.c
+@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsyncevo_dbus_la_CFLAGS) $(CFLAGS) -c -o libsyncevo_dbus_la-syncevo-server.lo `test -f 'syncevo-server.c' || echo '$(srcdir)/'`syncevo-server.c
+
+libsyncevo_dbus_la-syncevo-session.lo: syncevo-session.c
+@am__fastdepCC_TRUE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsyncevo_dbus_la_CFLAGS) $(CFLAGS) -MT libsyncevo_dbus_la-syncevo-session.lo -MD -MP -MF $(DEPDIR)/libsyncevo_dbus_la-syncevo-session.Tpo -c -o libsyncevo_dbus_la-syncevo-session.lo `test -f 'syncevo-session.c' || echo '$(srcdir)/'`syncevo-session.c
+@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/libsyncevo_dbus_la-syncevo-session.Tpo $(DEPDIR)/libsyncevo_dbus_la-syncevo-session.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='syncevo-session.c' object='libsyncevo_dbus_la-syncevo-session.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsyncevo_dbus_la_CFLAGS) $(CFLAGS) -c -o libsyncevo_dbus_la-syncevo-session.lo `test -f 'syncevo-session.c' || echo '$(srcdir)/'`syncevo-session.c
 
 libsyncevo_dbus_la-syncevo-marshal.lo: interfaces/syncevo-marshal.c
 @am__fastdepCC_TRUE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsyncevo_dbus_la_CFLAGS) $(CFLAGS) -MT libsyncevo_dbus_la-syncevo-marshal.lo -MD -MP -MF $(DEPDIR)/libsyncevo_dbus_la-syncevo-marshal.Tpo -c -o libsyncevo_dbus_la-syncevo-marshal.lo `test -f 'interfaces/syncevo-marshal.c' || echo '$(srcdir)/'`interfaces/syncevo-marshal.c

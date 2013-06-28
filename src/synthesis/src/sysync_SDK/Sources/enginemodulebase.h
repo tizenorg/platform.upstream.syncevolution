@@ -402,8 +402,13 @@ void SySyncDebugPuts(void* aCB,
                      cAppCharP aText);
 
 
-// factory function declaration - must be implemented in the source file of the leaf derivate of TEngineInterface
-TEngineModuleBase *newEngine(void);
+// factory function declarations - must be implemented in the source file of the leaf derivates of TEngineInterface
+#ifdef SYSYNC_CLIENT
+TEngineModuleBase *newClientEngine(void);
+#endif
+#ifdef SYSYNC_SERVER
+TEngineModuleBase *newServerEngine(void);
+#endif
 
 } // namespace sysync
 #endif // ENGINEMODULEBASE_H

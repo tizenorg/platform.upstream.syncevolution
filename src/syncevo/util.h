@@ -55,6 +55,7 @@ public:
 
 /** shorthand, primarily useful for BOOST_FOREACH macro */
 typedef pair<string, string> StringPair;
+typedef map<string, string> StringMap;
 
 /**
  * remove multiple slashes in a row and dots directly after a slash if not followed by filename,
@@ -76,6 +77,22 @@ inline bool rm_r_all(const string &path, bool isDir) { return true; }
  */
 void rm_r(const string &path, boost::function<bool (const string &,
                                                     bool)> filter = rm_r_all);
+
+/**
+ * copy complete directory hierarchy
+ *
+ * If the source is a directory, then the target
+ * also has to be a directory name. It will be
+ * created if necessary.
+ *
+ * Alternatively, both names may refer to files.
+ * In that case the directory which is going to
+ * contain the target file must exist.
+ *
+ * @param from     source directory or file
+ * @param to       target directory or file (must have same type as from)
+ */
+void cp_r(const string &from, const string &to);
 
 /** true if the path refers to a directory */
 bool isDir(const string &path);
@@ -216,6 +233,12 @@ inline string getHome() {
     const char *homestr = getenv("HOME");
     return homestr ? homestr : ".";
 }
+
+/**
+ * Parse a separator splitted set of strings src, the separator itself is
+ * escaped by a backslash. Spaces around the separator is also stripped.
+ * */
+std::vector<std::string> unescapeJoinedString (const std::string &src, char separator);
 
 /** throw a normal SyncEvolution Exception, including source information */
 #define SE_THROW(_what) \

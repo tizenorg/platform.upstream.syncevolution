@@ -169,7 +169,7 @@ public:
   virtual void dsResetDataStore(void) { InternalResetDataStore(); inherited::dsResetDataStore(); };
   virtual ~TPluginApiDS();
 
-  #ifndef BASED_ON_BINFILE_CLIENT
+  #ifndef BINFILE_ALWAYS_ACTIVE
   /// @name apiXXXX methods defining the interface from TCustomImplDS to TXXXApi actual API implementations
   /// @{
   //
@@ -249,7 +249,7 @@ public:
   ///   read items here already. Note that ReadSyncSet MAY read items here
   ///   even if aNeedAll is not set (if it is more efficient than reading
   ///   them separately afterwards).
-  #endif // not BASED_ON_BINFILE_CLIENT
+  #endif // not BINFILE_ALWAYS_ACTIVE
 
   virtual localstatus apiReadSyncSet(bool aNeedAll);
   /// Zap all data in syncset (note that everything outside the sync set will remain intact)

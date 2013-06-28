@@ -240,12 +240,13 @@ void TPluginDSConfig::localResolve(bool aLastPass)
 TLocalEngineDS *TPluginDSConfig::newLocalDataStore(TSyncSession *aSessionP)
 {
   // Synccap defaults to normal set supported by the engine by default
-  TLocalEngineDS *ldsP =
-    #ifdef SYSYNC_CLIENT
-    new TPluginApiDS(this,aSessionP,getName(),aSessionP->getSyncCapMask() & ~(isOneWayFromRemoteSupported() ? 0 : SCAP_MASK_ONEWAY_SERVER));
-    #else
-    new TPluginApiDS(this,aSessionP,getName(),aSessionP->getSyncCapMask() & ~(isOneWayFromRemoteSupported() ? 0 : SCAP_MASK_ONEWAY_CLIENT));
-    #endif
+  TLocalEngineDS *ldsP;
+  if (IS_CLIENT) {
+    ldsP = new TPluginApiDS(this,aSessionP,getName(),aSessionP->getSyncCapMask() & ~(isOneWayFromRemoteSupported() ? 0 : SCAP_MASK_ONEWAY_SERVER));
+  }
+  else {
+    ldsP = new TPluginApiDS(this,aSessionP,getName(),aSessionP->getSyncCapMask() & ~(isOneWayFromRemoteSupported() ? 0 : SCAP_MASK_ONEWAY_CLIENT));
+  }
   // do common stuff
   addTypes(ldsP,aSessionP);
   // return
@@ -972,7 +973,7 @@ bool TPluginApiDS::dsOptionFilterFetchesFromDB(void)
   // %%% tbd:
   // - attachments inhibit
   // - size limit
-  #if !defined _MSC_VER || defined WINCE
+  #if (!defined _MSC_VER || defined WINCE) && !defined(__GNUC__)
   #warning "attachments and limit filters not yet supported"
   #endif
   // - let plugin know and check (we can filter at DBlevel if plugin understands both start/end)
@@ -1033,25 +1034,27 @@ localstatus TPluginApiDS::apiReadSyncSet(bool aNeedAll)
 	TSyError dberr=LOCERR_OK;
 
   #ifdef BASED_ON_BINFILE_CLIENT
-  // we need to create the context for the data plugin here, as loadAdminData is not called in BASED_ON_BINFILE_CLIENT case.
-	dberr = connectDataPlugin();
-  if (dberr==LOCERR_OK) {
-    if (!fDBApi_Data.Created()) {
-      // - use datastore name as context name and link with session context
-      dberr = fDBApi_Data.CreateContext(
-        getName(), false,
-        &(fPluginDSConfigP->fDBApiConfig_Data),
-        "anydevice", // no real device key
-        "singleuser", // no real user key
-        NULL // no associated session level // fPluginAgentP->getDBApiSession()
-      );
+  if (binfileDSActive()) {
+    // we need to create the context for the data plugin here, as loadAdminData is not called in BASED_ON_BINFILE_CLIENT case.
+    dberr = connectDataPlugin();
+    if (dberr==LOCERR_OK) {
+      if (!fDBApi_Data.Created()) {
+        // - use datastore name as context name and link with session context
+        dberr = fDBApi_Data.CreateContext(
+          getName(), false,
+          &(fPluginDSConfigP->fDBApiConfig_Data),
+          "anydevice", // no real device key
+          "singleuser", // no real user key
+          NULL // no associated session level // fPluginAgentP->getDBApiSession()
+        );
+      }
     }
-  }
-  else if (dberr==LOCERR_NOTIMP)
-  	dberr=LOCERR_OK; // we just don't have a data plugin, that's ok, inherited (SQL) will handle data
-  if (dberr!=LOCERR_OK)
-  	return dberr;
-  #endif
+    else if (dberr==LOCERR_NOTIMP)
+      dberr=LOCERR_OK; // we just don't have a data plugin, that's ok, inherited (SQL) will handle data
+    if (dberr!=LOCERR_OK)
+      return dberr;
+  } // binfile active
+  #endif // BASED_ON_BINFILE_CLIENT
   #ifndef SDK_ONLY_SUPPORT
   // only handle here if we are in charge - otherwise let ancestor handle it
   if (!fDBApi_Data.Created()) return inherited::apiReadSyncSet(aNeedAll);
@@ -1414,40 +1417,6 @@ bool TPluginApiDS::dsFinalizeLocalID(string &aLocalID)
   }
   // no change - ID is ok as-is
   return false;
-
-  /*
-	// hacky implementation for now, as this routine is not yet in the DBApi.
-  // But as we need it for iPhone only so far, and iPhone only allows statically linked DB plugins, we can call
-  // it directly
-	#ifdef IPHONE_PLUGINS_STATIC
-  #warning "Ugly hack here"
-	char *finalizedID = NULL;
-  #ifdef HARDCODED_CONTACTS
-  if (fPluginDSConfigP->fLocalDBTypeID == 1001) {
-	  sta = iPhone_addressbook::FinalizeLocalID(fDBApi_Data.fContext, aLocalID.c_str(), &finalizedID);
-  }
-  else
-  #endif // HARDCODED_CONTACTS
-  #ifdef HARDCODED_CALENDAR
-  if (fPluginDSConfigP->fLocalDBTypeID == 1002) {
-	  sta = iPhone_calendar::FinalizeLocalID(fDBApi_Data.fContext, aLocalID.c_str(), &finalizedID);
-  }
-  else
-  #endif // HARDCODED_CALENDAR
-  {
-  	return false; // no know datastore, no finalisation
-  }
-  // now get back translated ID
-  if (sta==LOCERR_OK && finalizedID) {
-		aLocalID = finalizedID;
-    free(finalizedID); // %%% should be StrDispose
-    return true; // final ID is different from temp one
-	}
-  #endif // IPHONE_PLUGINS_STATIC
-
-  // no change - ID is ok as-is
-  return false;
-  */
 } // TPluginApiDS::dsFinalizeLocalID
 
 #endif // SYSYNC_CLIENT
@@ -1506,10 +1475,10 @@ localstatus TPluginApiDS::apiUpdateItem(TMultiFieldItem &aItem)
   if (dberr==LOCERR_OK) {
     // check if ID has changed
     if (!updItemAndParentID.item.empty() && strcmp(updItemAndParentID.item.c_str(),aItem.getLocalID())!=0) {
-      #ifndef SYSYNC_CLIENT
-      // update item ID and Map
-      dsLocalIdHasChanged(aItem.getLocalID(),updItemAndParentID.item.c_str());
-      #endif
+    	if (IS_SERVER) {
+        // update item ID and Map
+        dsLocalIdHasChanged(aItem.getLocalID(),updItemAndParentID.item.c_str());
+      }
       // - update in this item we have here as well
       aItem.setLocalID(updItemAndParentID.item.c_str());
       aItem.updateLocalIDDependencies();
@@ -1649,7 +1618,7 @@ void TPluginApiDS::dsThreadMayChangeNow(void)
 
 // - connect data handling part of plugin, Returns LOCERR_NOTIMPL when no data plugin is selected
 //   Note: this is either called as part of apiLoadAdminData (even if plugin is NOT responsible for data!)
-//         or directly before startDataRead (in BASED_ON_BINFILE_CLIENT case)
+//         or directly before startDataRead (in BASED_ON_BINFILE_CLIENT binfileDSActive() case)
 TSyError TPluginApiDS::connectDataPlugin(void)
 {
 	TSyError err = LOCERR_NOTIMP;
@@ -1684,7 +1653,7 @@ TSyError TPluginApiDS::connectDataPlugin(void)
 } // connectDataPlugin
 
 
-#ifndef BASED_ON_BINFILE_CLIENT
+#ifndef BINFILE_ALWAYS_ACTIVE
 
 /// @brief save admin data
 ///   Must save the following items:
@@ -1747,14 +1716,14 @@ localstatus TPluginApiDS::apiSaveAdminData(bool aDataCommitted, bool aSessionFin
 
   // save the entire map list differentially
   pos=fMapTable.begin();
-  PDEBUGPRINTFX(DBG_ADMIN+DBG_EXOTIC,("apiSaveAdminData: internal map table has %ld entries (normal and others)",fMapTable.size()));
+  PDEBUGPRINTFX(DBG_ADMIN+DBG_EXOTIC,("apiSaveAdminData: internal map table has %lu entries (normal and others)",(unsigned long)fMapTable.size()));
   while (pos!=fMapTable.end()) {
     DEBUGPRINTFX(DBG_ADMIN+DBG_EXOTIC,(
       "apiSaveAdminData: entryType=%s, localid='%s', remoteID='%s', mapflags=0x%lX, changed=%d, deleted=%d, added=%d, markforresume=%d, savedmark=%d",
       MapEntryTypeNames[(*pos).entrytype],
       (*pos).localid.c_str(),
       (*pos).remoteid.c_str(),
-      (*pos).mapflags,
+      (long)(*pos).mapflags,
       (int)(*pos).changed,
       (int)(*pos).deleted,
       (int)(*pos).added,
@@ -1858,8 +1827,8 @@ localstatus TPluginApiDS::apiSaveAdminData(bool aDataCommitted, bool aSessionFin
   }
 
   /// For datastores that can resume in middle of a chunked item (fConfigP->fResumeItemSupport==true):
-  void* blPtr = fPIStoredDataP; // position
-  ulong blSize= fPIStoredSize;  // actualbytes
+  void*   blPtr = fPIStoredDataP; // position
+  memSize blSize= fPIStoredSize;  // actualbytes
 
   if (dsResumeChunkedSupportedInDB()) {
     ///   - fPartialItemState = state of partial item (TPartialItemState enum):
@@ -1885,11 +1854,11 @@ localstatus TPluginApiDS::apiSaveAdminData(bool aDataCommitted, bool aSessionFin
       // - fLastTargetURI    = item ID (string, if limited in length should be long enough for large IDs, >=64 chars recommended)
       adminData+="\r\nlasttargetURI:"; StrToCStrAppend( fLastTargetURI.c_str(), adminData,true );
       // - fPITotalSize      = uInt32, total item size
-      adminData+="\r\ntotalsize:"; StringObjAppendPrintf( adminData,"%hd", fPITotalSize );
+      adminData+="\r\ntotalsize:"; StringObjAppendPrintf( adminData,"%ld", (long)fPITotalSize );
       // - fPIUnconfirmedSize= uInt32, unconfirmed part of item size
-      adminData+="\r\nunconfirmedsize:"; StringObjAppendPrintf( adminData,"%hd", fPIUnconfirmedSize );
+      adminData+="\r\nunconfirmedsize:"; StringObjAppendPrintf( adminData,"%ld", (long)fPIUnconfirmedSize );
       // - fPIStoredSize     = uInt32, size of BLOB to store, store it as well to make ReadBlob easier (mallloc)
-      adminData+="\r\nstoredsize:"; StringObjAppendPrintf( adminData,"%hd", blSize );
+      adminData+="\r\nstoredsize:"; StringObjAppendPrintf( adminData,"%lu", (unsigned long)blSize );
       // - fPIStoredSize     = uInt32, size of BLOB to store, 0=none
       // - fPIStoredDataP    = void *, BLOB data, NULL if none
       adminData+="\r\nstored;BLOBID="; adminData+= PIStored;
@@ -1958,10 +1927,10 @@ localstatus TPluginApiDS::apiSaveAdminData(bool aDataCommitted, bool aSessionFin
 ///   - fLastRemoteAnchor = anchor string used by remote party for last session (and saved to DB then)
 ///   - fPreviousSyncTime = anchor (beginning of session) timestamp of last session.
 ///   - fPreviousToRemoteSyncCmpRef = Reference time to determine items modified since last time sending data to remote
-///                         (or last changelog update in case of BASED_ON_BINFILE_CLIENT)
+///                         (or last changelog update in case of BASED_ON_BINFILE_CLIENT && binfileDSActive())
 ///   - fPreviousToRemoteSyncIdentifier = string identifying last session that sent data to remote
-///                         (or last changelog update in case of BASED_ON_BINFILE_CLIENT). Needs only be saved
-///                         if derived datastore cannot work with timestamps and has its own identifier.
+///                         (or last changelog update in case of BASED_ON_BINFILE_CLIENT && binfileDSActive()). Needs
+///                         only be saved if derived datastore cannot work with timestamps and has its own identifier.
 ///   - fMapTable         = list<TMapEntry> containing map entries. The implementation must load all map entries
 ///                         related to the current sync target identified by the triple of (aDeviceID,aDatabaseID,aRemoteDBID)
 ///                         or by fTargetKey. The entries added to fMapTable must have "changed", "added" and "deleted" flags
@@ -2201,8 +2170,8 @@ localstatus TPluginApiDS::apiLoadAdminData(
                 if (err)
                   break;
 
-                ulong rema= b.fSize;
-                if (dp+rema > lim)
+                memSize rema= b.fSize;
+                if  (dp+rema > lim)
                   rema= lim-dp;    // avoid overflow
                 memcpy( dp, b.fPtr, rema ); dp+= rema;
                 fDBApi_Admin.DisposeBlk( b );         // we have now a copy => remove it
@@ -2258,7 +2227,7 @@ localstatus TPluginApiDS::apiLoadAdminData(
     mapEntry.remoteid=mapid.remoteID.c_str();
     mapEntry.mapflags=mapid.flags;
     // check for old API which did not support entry types
-    if (fPluginDSConfigP->fDBApiConfig_Admin.Version()<VE_InsertMapItem) {
+    if (fPluginDSConfigP->fDBApiConfig_Admin.Version()<sInt32(VE_InsertMapItem)) {
       mapEntry.entrytype = mapentry_normal; // DB has no entry types, treat all as normal entries
     }
     else {
@@ -2272,7 +2241,7 @@ localstatus TPluginApiDS::apiLoadAdminData(
       MapEntryTypeNames[mapEntry.entrytype],
       mapEntry.localid.c_str(),
       mapEntry.remoteid.c_str(),
-      mapEntry.mapflags
+      (long)mapEntry.mapflags
     ));
     // save entry in list
     mapEntry.changed=false; // not yet changed
@@ -2289,15 +2258,23 @@ localstatus TPluginApiDS::apiLoadAdminData(
     // Note: in the main map, these are marked deleted. Before the next saveAdminData, these will
     //       be re-added (=re-activated) from the extra lists if they still exist.
     switch (mapEntry.entrytype) {
-      #ifndef SYSYNC_CLIENT
+      #ifdef SYSYNC_SERVER 
       case mapentry_tempidmap:
-        fTempGUIDMap[mapEntry.remoteid]=mapEntry.localid; // tempGUIDs are accessed by remoteID=tempID
-        break;
-      #else
-      case mapentry_pendingmap:
-        fPendingAddMaps[mapEntry.localid]=mapEntry.remoteid;
+      	if (IS_SERVER)
+	        fTempGUIDMap[mapEntry.remoteid]=mapEntry.localid; // tempGUIDs are accessed by remoteID=tempID
         break;
       #endif
+      #ifdef SYSYNC_CLIENT
+      case mapentry_pendingmap:
+      	if (IS_CLIENT)
+	        fPendingAddMaps[mapEntry.localid]=mapEntry.remoteid;
+        break;
+      #endif
+    case mapentry_invalid:
+    case mapentry_normal:
+    case numMapEntryTypes:
+      // nothing to do or should not occur
+      break;
     }
     // next is not first entry any more
     firstEntry=false;
@@ -2306,7 +2283,7 @@ localstatus TPluginApiDS::apiLoadAdminData(
 } // TPluginApiDS::apiLoadAdminData
 
 
-#endif // not BASED_ON_BINFILE_CLIENT
+#endif // not BINFILE_ALWAYS_ACTIVE
 
 
 /// @brief log datastore sync result, called at end of sync with this datastore
@@ -2362,13 +2339,13 @@ void TPluginApiDS::dsLogSyncResult(void)
   logData.erase();
   logData+="lastsync:"; TimestampToISO8601Str(s,fCurrentSyncTime,TCTX_UTC); logData+=s.c_str();
   logData+="\r\ntargetkey:"; StrToCStrAppend(fTargetKey.c_str(),logData,true);
-  #ifndef BASED_ON_BINFILE_CLIENT
+  #ifndef BINFILE_ALWAYS_ACTIVE
   logData+="\r\nuserkey:"; StrToCStrAppend(fPluginAgentP->fUserKey.c_str(),logData,true);
   logData+="\r\ndevicekey:"; StrToCStrAppend(fPluginAgentP->fDeviceKey.c_str(),logData,true);
   #ifdef SCRIPT_SUPPORT
   logData+="\r\ndomain:"; StrToCStrAppend(fPluginAgentP->fDomainName.c_str(),logData,true);
   #endif
-  #endif
+  #endif // BINFILE_ALWAYS_ACTIVE
   logData+="\r\ndsname:"; StrToCStrAppend(getName(),logData,true);
   #ifndef MINIMAL_CODE
   logData+="\r\ndsremotepath:"; StrToCStrAppend(getRemoteDBPath(),logData,true);
@@ -2393,12 +2370,14 @@ void TPluginApiDS::dsLogSyncResult(void)
   logData+="\r\ndevicerejected:"; StringObjAppendPrintf(logData,"%ld",(long)fRemoteItemsError);
   logData+="\r\nlocalupdated:"; StringObjAppendPrintf(logData,"%ld",(long)fLocalItemsUpdated);
   logData+="\r\ndeviceupdated:"; StringObjAppendPrintf(logData,"%ld",(long)fRemoteItemsUpdated);
-  #ifndef SYSYNC_CLIENT
-  logData+="\r\nslowsyncmatches:"; StringObjAppendPrintf(logData,"%ld",fSlowSyncMatches);
-  logData+="\r\nserverwins:"; StringObjAppendPrintf(logData,"%ld",fConflictsServerWins);
-  logData+="\r\nclientwins:"; StringObjAppendPrintf(logData,"%ld",fConflictsClientWins);
-  logData+="\r\nduplicated:"; StringObjAppendPrintf(logData,"%ld",fConflictsDuplicated);
-  #endif
+  #ifdef SYSYNC_SERVER
+  if (IS_SERVER) {
+    logData+="\r\nslowsyncmatches:"; StringObjAppendPrintf(logData,"%ld",(long)fSlowSyncMatches);
+    logData+="\r\nserverwins:"; StringObjAppendPrintf(logData,"%ld",(long)fConflictsServerWins);
+    logData+="\r\nclientwins:"; StringObjAppendPrintf(logData,"%ld",(long)fConflictsClientWins);
+    logData+="\r\nduplicated:"; StringObjAppendPrintf(logData,"%ld",(long)fConflictsDuplicated);
+  } // server
+  #endif // SYSYNC_SERVER
   logData+="\r\nsessionbytesin:"; StringObjAppendPrintf(logData,"%ld",(long)fSessionP->getIncomingBytes());
   logData+="\r\nsessionbytesout:"; StringObjAppendPrintf(logData,"%ld",(long)fSessionP->getOutgoingBytes());
   logData+="\r\ndatabytesin:"; StringObjAppendPrintf(logData,"%ld",(long)fIncomingDataBytes);

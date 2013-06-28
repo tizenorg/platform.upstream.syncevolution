@@ -18,6 +18,13 @@
 # include <stdint.h>
 #endif
 
+#ifndef __WORDSIZE
+/* 64 platforms should have this defined, so assume that */
+/* platforms without the define are 32 bit. */
+# define __WORDSIZE 32
+#endif
+
+
 #ifdef __cplusplus
   namespace sysync {
 #endif
@@ -51,17 +58,27 @@ typedef unsigned long long uInt64;
 typedef signed long long sInt64;
 #endif
 
-/*
-#ifdef __PALM_OS__
-*/
+/* machine size integer, at least 32 bits */
+typedef unsigned long uIntArch;
+typedef signed long sIntArch;
+
+
+/* TODO, FIXME %%%% for now, we need uInt32 to be 64bit actually */
+//#define UINT32_HAS_64BITS_ON_ARCH64 1
+
+
+#if defined(UINT32_HAS_64BITS_ON_ARCH64) || defined(__PALM_OS__) || (__WORDSIZE < 32)
+/* must use long to get a 32bit int (but gets 64bit in 64-bit architectures) */
 typedef  unsigned long uInt32;
 typedef  signed   long sInt32;
-/*
-#else
-  typedef unsigned int uInt32; // according to the ILP32/LP64 std for all other platforms
-  typedef signed   int sInt32; // %%%% requires some type cast fixing first %%%%
+#ifdef UINT32_HAS_64BITS_ON_ARCH64
+	#warning "%%% UINT32_HAS_64BITS_ON_ARCH64 - which means that uInt32 is really 64bit: UGLY & DANGEROUS, please be careful"
 #endif
-*/
+#else
+/* according to the ILP32/LP64 std for all other platforms, int is 32bit (and long is 64bit) */
+typedef unsigned int uInt32; 
+typedef signed   int sInt32;
+#endif
 
 typedef unsigned short uInt16;
 typedef signed short sInt16;
@@ -77,18 +94,13 @@ typedef signed long sIntPtr;
 #endif
 
 /* - application integers */
-typedef uInt32 bufferIndex; /* index into app buffers (small platforms may have 16bit here) */
-typedef uInt32 stringIndex; /* index into string (small platforms may have 16bit here) */
-typedef uInt32 stringSize;  /* size of a string object */
-typedef uInt32 memSize;     /* size of a memory buffer */
+typedef uIntArch bufferIndex; /* index into app buffers (small platforms may have 16bit here) */
+typedef uIntArch stringIndex; /* index into string (small platforms may have 16bit here) */
+typedef uIntArch stringSize;  /* size of a string object */
+typedef uIntArch memSize;     /* size of a memory buffer */
 
 #endif /* HAVE_STDINT_H */
 
-#ifndef __WORDSIZE
-/* 64 platforms should have this defined, so assume that */
-/* platforms without the define are 32 bit. */
-# define __WORDSIZE 32
-#endif
 
 /* undefined size types */
 /* - application chars & pointers */

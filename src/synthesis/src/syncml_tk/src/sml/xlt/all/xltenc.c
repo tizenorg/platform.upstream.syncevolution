@@ -1454,7 +1454,10 @@ Ret_t subdtdEncWBXML(XltTagID_t tagId, XltRO_t reqOptFlag, const VoidPtr_t pCont
     Ret_t             _err         = SML_ERR_OK;
     #endif
 
-    Short_t           SubBufSize   = 12000; // for starters we use 12kB for each sub DTD to encode in WBXML
+    /* Double the size of SubBufSize for the memory is small for some complex
+     * content.
+     */ 
+    Short_t           SubBufSize   = 12000 * 2; // for starters we use 12kB for each sub DTD to encode in WBXML
     BufferMgmtPtr_t   pSubBufMgr   = NULL;
 
 

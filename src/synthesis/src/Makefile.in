@@ -33,31 +33,12 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-@COND_XMLPARSE_TRUE@am__append_1 = -I$(srcdir)/expat -I$(srcdir)/expat/xmltok -I$(srcdir)/expat/xmlparse
-@COND_XMLPARSE_TRUE@am__append_2 = \
-@COND_XMLPARSE_TRUE@	expat/xmlparse/xmlparse.c \
-@COND_XMLPARSE_TRUE@	expat/xmlparse/xmlparse.h \
-@COND_XMLPARSE_TRUE@	expat/xmltok/ascii.h \
-@COND_XMLPARSE_TRUE@	expat/xmltok/asciitab.h \
-@COND_XMLPARSE_TRUE@	expat/xmltok/iasciitab.h \
-@COND_XMLPARSE_TRUE@	expat/xmltok/latin1tab.h \
-@COND_XMLPARSE_TRUE@	expat/xmltok/nametab.h \
-@COND_XMLPARSE_TRUE@	expat/xmltok/utf8tab.h \
-@COND_XMLPARSE_TRUE@	expat/xmltok/xmldef.h \
-@COND_XMLPARSE_TRUE@	expat/xmltok/xmlrole.c \
-@COND_XMLPARSE_TRUE@	expat/xmltok/xmlrole.h \
-@COND_XMLPARSE_TRUE@	expat/xmltok/xmltok.c \
-@COND_XMLPARSE_TRUE@	expat/xmltok/xmltok.h \
-@COND_XMLPARSE_TRUE@	expat/xmltok/xmltok_impl.h
-
-@COND_XMLPARSE_TRUE@am__append_3 = \
+@COND_XMLPARSE_TRUE@am__append_1 = \
 @COND_XMLPARSE_TRUE@	expat/xmltok/xmltok_impl.c \
 @COND_XMLPARSE_TRUE@	expat/xmltok/xmltok_ns.c
 
-# add path to xmlparse.h which includes the system's xmltok/xmlparse.h
-@COND_XMLPARSE_FALSE@am__append_4 = -I$(srcdir)/Targets/ReleasedProducts/clientEngine_autotools/systemxml
-@COND_STATIC_TRUE@am__append_5 = sysync_SDK/Sources/timeutil.cpp sysync_SDK/Sources/enginemodulebridge.cpp sysync_SDK/Sources/dbitem.cpp sysync_SDK/Sources/UI_util.cpp sysync_SDK/Sources/stringutil.cpp sysync_SDK/Sources/admindata.cpp sysync_SDK/Sources/blobs.cpp
-@COND_STATIC_FALSE@am__append_6 = sysync_SDK/Sources/timeutil.cpp sysync_SDK/Sources/enginemodulebridge.cpp sysync_SDK/Sources/SDK_support.cpp sysync_SDK/Sources/SDK_util.c sysync_SDK/Sources/dbitem.cpp sysync_SDK/Sources/UI_util.cpp sysync_SDK/Sources/enginemodulebase.cpp sysync_SDK/Sources/stringutil.cpp sysync_SDK/Sources/admindata.cpp sysync_SDK/Sources/blobs.cpp
+@COND_STATIC_TRUE@am__append_2 = sysync_SDK/Sources/timeutil.cpp sysync_SDK/Sources/san.cpp sysync_SDK/Sources/enginemodulebridge.cpp sysync_SDK/Sources/UI_util.cpp sysync_SDK/Sources/stringutil.cpp
+@COND_STATIC_FALSE@am__append_3 = sysync_SDK/Sources/sysync_b64.cpp sysync_SDK/Sources/timeutil.cpp sysync_SDK/Sources/sysync_md5.cpp sysync_SDK/Sources/san.cpp sysync_SDK/Sources/enginemodulebridge.cpp sysync_SDK/Sources/SDK_support.cpp sysync_SDK/Sources/SDK_util.c sysync_SDK/Sources/UI_util.cpp sysync_SDK/Sources/enginemodulebase.cpp sysync_SDK/Sources/stringutil.cpp
 subdir = src
 DIST_COMMON = $(nobase_include_HEADERS) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in
@@ -95,11 +76,10 @@ libsmltk_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(CFLAGS) $(libsmltk_la_LDFLAGS) $(LDFLAGS) -o $@
 am__DEPENDENCIES_1 =
 am__libsynthesis_la_SOURCES_DIST = sysync/binfileimplclient.cpp \
-	sysync/syncclientbase.h sysync/sysync_b64.cpp \
-	sysync/sysync_md5.cpp sysync/sysync_b64.h \
+	sysync/syncclientbase.h sysync/syncagent.cpp \
 	sysync/syncml_globs.h sysync/stdlogicagent.cpp \
 	sysync/syncappbase.cpp sysync/customimplds.cpp \
-	sysync/syncsession.h sysync/syncclient.cpp sysync/syncitem.cpp \
+	sysync/syncsession.h sysync/syncitem.cpp \
 	sysync/textitemtype.cpp sysync/textitemtype.h \
 	sysync/localengineds.h sysync/syncexception.cpp \
 	sysync/clientprovisioning_inc.h sysync/global_progress.h \
@@ -109,12 +89,11 @@ am__libsynthesis_la_SOURCES_DIST = sysync/binfileimplclient.cpp \
 	sysync/vcalendaritemtype.cpp sysync/scriptcontext.h \
 	sysync/syncitemtype.h sysync/smltk_precomp.h \
 	sysync/sysync_globs.h sysync/sysync_debug.h \
-	sysync/syncsessiondispatch.h sysync/san.cpp \
-	sysync/sysync_utils.cpp sysync/mimediritemtype.h \
-	sysync/dataobjtype.cpp sysync/multifielditem.cpp \
-	sysync/sysync_precomp_xpt.h sysync/iso8601.cpp \
-	sysync/syncclientbase.cpp sysync/itemfield.h \
-	sysync/syncserver.h sysync/remotedatastore.h \
+	sysync/syncsessiondispatch.h sysync/sysync_utils.cpp \
+	sysync/mimediritemtype.h sysync/dataobjtype.cpp \
+	sysync/multifielditem.cpp sysync/sysync_precomp_xpt.h \
+	sysync/iso8601.cpp sysync/syncclientbase.cpp \
+	sysync/itemfield.h sysync/remotedatastore.h \
 	sysync/engineentry.h sysync/itemfield.cpp sysync/stringutils.h \
 	sysync/lineartime.h sysync/syncml_tk.h \
 	sysync/mimediritemtype.cpp sysync/configelement.h \
@@ -128,7 +107,7 @@ am__libsynthesis_la_SOURCES_DIST = sysync/binfileimplclient.cpp \
 	sysync/customimplagent.h sysync/synccommand.h \
 	sysync/binfilebase.h sysync/textprofile.h \
 	sysync/vcarditemtype.h sysync/binfileimplds.h \
-	sysync/vcalendaritemtype.h sysync/syncexception.h sysync/san.h \
+	sysync/vcalendaritemtype.h sysync/syncexception.h \
 	sysync/multifielditemtype.cpp sysync/lineartime.cpp \
 	sysync/clientautosync_inc.h sysync/debuglogger.h \
 	sysync/smltk_precomp_xpt.h sysync/syncsession.cpp \
@@ -137,12 +116,12 @@ am__libsynthesis_la_SOURCES_DIST = sysync/binfileimplclient.cpp \
 	sysync/engineentry.cpp sysync/simpleitem.cpp \
 	sysync/superdatastore.h sysync/uiapi.h \
 	sysync/vcarditemtype.cpp sysync/engineinterface.cpp \
-	sysync/syncappbase.h sysync/syncclient.h sysync/sysync_crc16.h \
+	sysync/syncappbase.h sysync/sysync_crc16.h \
 	sysync/syncdatastore.cpp sysync/multifielditem.h \
 	sysync/scriptcontext.cpp sysync/syncitemtype.cpp \
 	sysync/stdlogicds.cpp sysync/vtimezone.h sysync/uiapi.cpp \
-	sysync/dataconversion.cpp sysync/timezones.cpp \
-	sysync/engineinterface.h sysync/sysync_md5.h \
+	sysync/syncagent.h sysync/dataconversion.cpp \
+	sysync/timezones.cpp sysync/engineinterface.h \
 	sysync/superdatastore.cpp sysync/sysync_utils.h \
 	sysync/customimplds.h sysync/rrules.cpp \
 	sysync/configelement.cpp sysync/syserial.h \
@@ -165,7 +144,10 @@ am__libsynthesis_la_SOURCES_DIST = sysync/binfileimplclient.cpp \
 	DB_interfaces/api_db/DLL_interface.h \
 	DB_interfaces/api_db/DLL_interface.cpp \
 	DB_interfaces/api_db/pluginapids.h \
-	sysync_SDK/Sources/SDK_util.h sysync_SDK/Sources/prefix_file.h \
+	sysync_SDK/Sources/sysync_b64.cpp \
+	sysync_SDK/Sources/sysync_md5.cpp \
+	sysync_SDK/Sources/sysync_b64.h sysync_SDK/Sources/SDK_util.h \
+	sysync_SDK/Sources/prefix_file.h \
 	sysync_SDK/Sources/sync_dbapi.h \
 	sysync_SDK/Sources/enginemodulebase.h \
 	sysync_SDK/Sources/SDK_support.h \
@@ -175,12 +157,18 @@ am__libsynthesis_la_SOURCES_DIST = sysync/binfileimplclient.cpp \
 	sysync_SDK/Sources/engine_defs.h \
 	sysync_SDK/Sources/sync_include.h \
 	sysync_SDK/Sources/SDK_support.cpp \
-	sysync_SDK/Sources/SDK_util.c \
+	sysync_SDK/Sources/SDK_util.c sysync_SDK/Sources/dbitem.h \
+	sysync_SDK/Sources/dbitem.cpp sysync_SDK/Sources/blobs.h \
 	sysync_SDK/Sources/enginemodulebase.cpp \
-	sysync_SDK/Sources/sync_uiapi.h \
+	sysync_SDK/Sources/sync_uiapi.h sysync_SDK/Sources/admindata.h \
 	sysync_SDK/Sources/dataconversion.h \
-	sysync_SDK/Sources/syerror.h \
+	sysync_SDK/Sources/admindata.cpp sysync_SDK/Sources/blobs.cpp \
+	sysync_SDK/Sources/sysync_md5.h sysync_SDK/Sources/syerror.h \
 	Transport_interfaces/engine/engine_client_precomp.h \
+	Transport_interfaces/engine/enginesessiondispatch.h \
+	Transport_interfaces/engine/engine_server_precomp.h \
+	Transport_interfaces/engine/enginesessiondispatch.cpp \
+	Transport_interfaces/engine/engine_server.h \
 	Transport_interfaces/engine/engineclientbase.cpp \
 	Transport_interfaces/engine/engineclientbase.h \
 	Transport_interfaces/engine/engine_client.h \
@@ -201,7 +189,6 @@ am__libsynthesis_la_SOURCES_DIST = sysync/binfileimplclient.cpp \
 	platform_adapters/platform_DLL.h \
 	platform_adapters/unix_common/platform_pipe.c \
 	platform_adapters/unix_common/platform_file.cpp \
-	platform_adapters/unix_common/platform_thread.cpp \
 	platform_adapters/unix_common/platform_pipe.h \
 	platform_adapters/unix_common/platform_mutex.cpp \
 	platform_adapters/platform_file.h \
@@ -212,6 +199,13 @@ am__libsynthesis_la_SOURCES_DIST = sysync/binfileimplclient.cpp \
 	syncapps/clientEngine_custom/product_options.h \
 	syncapps/clientEngine_custom/clientengine_custom_precomp.h \
 	syncapps/clientEngine_custom/clientengine_custom.h \
+	syncapps/serverEngine_custom/serverengine_custom.h \
+	syncapps/serverEngine_custom/serverengine_custom_Base.cpp \
+	syncapps/serverEngine_custom/serverengine_custom_Base.h \
+	syncapps/serverEngine_custom/combi_product_options.h \
+	syncapps/serverEngine_custom/product_options.h \
+	syncapps/serverEngine_custom/serverengine_custom_precomp.h \
+	sysync_SDK/DB_Interfaces/text_db/sync_dbapi_text.cpp \
 	expat/xmlparse/xmlparse.c expat/xmlparse/xmlparse.h \
 	expat/xmltok/ascii.h expat/xmltok/asciitab.h \
 	expat/xmltok/iasciitab.h expat/xmltok/latin1tab.h \
@@ -223,16 +217,14 @@ am__libsynthesis_la_SOURCES_DIST = sysync/binfileimplclient.cpp \
 @COND_XMLPARSE_TRUE@	libsynthesis_la-xmlrole.lo \
 @COND_XMLPARSE_TRUE@	libsynthesis_la-xmltok.lo
 am_libsynthesis_la_OBJECTS = libsynthesis_la-binfileimplclient.lo \
-	libsynthesis_la-sysync_b64.lo libsynthesis_la-sysync_md5.lo \
-	libsynthesis_la-stdlogicagent.lo \
+	libsynthesis_la-syncagent.lo libsynthesis_la-stdlogicagent.lo \
 	libsynthesis_la-syncappbase.lo libsynthesis_la-customimplds.lo \
-	libsynthesis_la-syncclient.lo libsynthesis_la-syncitem.lo \
-	libsynthesis_la-textitemtype.lo \
+	libsynthesis_la-syncitem.lo libsynthesis_la-textitemtype.lo \
 	libsynthesis_la-syncexception.lo \
 	libsynthesis_la-textprofile.lo libsynthesis_la-stringutils.lo \
 	libsynthesis_la-customimplagent.lo \
 	libsynthesis_la-debuglogger.lo libsynthesis_la-vtimezone.lo \
-	libsynthesis_la-vcalendaritemtype.lo libsynthesis_la-san.lo \
+	libsynthesis_la-vcalendaritemtype.lo \
 	libsynthesis_la-sysync_utils.lo libsynthesis_la-dataobjtype.lo \
 	libsynthesis_la-multifielditem.lo libsynthesis_la-iso8601.lo \
 	libsynthesis_la-syncclientbase.lo libsynthesis_la-itemfield.lo \
@@ -259,9 +251,12 @@ am_libsynthesis_la_OBJECTS = libsynthesis_la-binfileimplclient.lo \
 	libsynthesis_la-pluginapiagent.lo \
 	libsynthesis_la-sync_dbapiconnect.lo \
 	libsynthesis_la-pluginapids.lo libsynthesis_la-dbapi.lo \
-	libsynthesis_la-DLL_interface.lo \
-	libsynthesis_la-SDK_support.lo libsynthesis_la-SDK_util.lo \
+	libsynthesis_la-DLL_interface.lo libsynthesis_la-sysync_b64.lo \
+	libsynthesis_la-sysync_md5.lo libsynthesis_la-SDK_support.lo \
+	libsynthesis_la-SDK_util.lo libsynthesis_la-dbitem.lo \
 	libsynthesis_la-enginemodulebase.lo \
+	libsynthesis_la-admindata.lo libsynthesis_la-blobs.lo \
+	libsynthesis_la-enginesessiondispatch.lo \
 	libsynthesis_la-engineclientbase.lo libsynthesis_la-binfile.lo \
 	libsynthesis_la-sysyncinit.lo libsynthesis_la-platform_DLL.lo \
 	libsynthesis_la-profiling.lo libsynthesis_la-configfiles.lo \
@@ -270,55 +265,62 @@ am_libsynthesis_la_OBJECTS = libsynthesis_la-binfileimplclient.lo \
 	libsynthesis_la-platform_timezones.lo \
 	libsynthesis_la-platform_pipe.lo \
 	libsynthesis_la-platform_file.lo \
-	libsynthesis_la-platform_thread.lo \
 	libsynthesis_la-platform_mutex.lo \
-	libsynthesis_la-clientengine_custom_Base.lo $(am__objects_1)
+	libsynthesis_la-clientengine_custom_Base.lo \
+	libsynthesis_la-serverengine_custom_Base.lo \
+	libsynthesis_la-sync_dbapi_text.lo $(am__objects_1)
 libsynthesis_la_OBJECTS = $(am_libsynthesis_la_OBJECTS)
 libsynthesis_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) \
 	$(libsynthesis_la_LDFLAGS) $(LDFLAGS) -o $@
-libsynthesissdk_la_DEPENDENCIES = libsynthesis.la
-am__libsynthesissdk_la_SOURCES_DIST = synthesis/enginemodulebridge.h \
-	synthesis/SDK_util.h synthesis/prefix_file.h \
-	synthesis/sync_dbapi.h synthesis/enginemodulebase.h \
-	synthesis/SDK_support.h synthesis/stringutil.h \
-	synthesis/sync_declarations.h synthesis/sync_dbapidef.h \
-	synthesis/generic_types.h synthesis/engine_defs.h \
-	synthesis/sync_include.h synthesis/timeutil.h \
-	synthesis/dbitem.h synthesis/blobs.h synthesis/sync_uiapi.h \
-	synthesis/admindata.h synthesis/dataconversion.h \
+libsynthesissdk_la_LIBADD =
+am__libsynthesissdk_la_SOURCES_DIST = synthesis/sysync_b64.h \
+	synthesis/enginemodulebridge.h synthesis/SDK_util.h \
+	synthesis/prefix_file.h synthesis/sync_dbapi.h \
+	synthesis/enginemodulebase.h synthesis/SDK_support.h \
+	synthesis/stringutil.h synthesis/sync_declarations.h \
+	synthesis/sync_dbapidef.h synthesis/generic_types.h \
+	synthesis/engine_defs.h synthesis/sync_include.h \
+	synthesis/timeutil.h synthesis/dbitem.h synthesis/san.h \
+	synthesis/blobs.h synthesis/sync_uiapi.h synthesis/admindata.h \
+	synthesis/dataconversion.h synthesis/sysync_md5.h \
 	synthesis/syerror.h synthesis/UI_util.h \
-	sysync_SDK/Sources/timeutil.cpp \
+	sysync_SDK/Sources/timeutil.cpp sysync_SDK/Sources/san.cpp \
 	sysync_SDK/Sources/enginemodulebridge.cpp \
-	sysync_SDK/Sources/dbitem.cpp sysync_SDK/Sources/UI_util.cpp \
+	sysync_SDK/Sources/UI_util.cpp \
 	sysync_SDK/Sources/stringutil.cpp \
-	sysync_SDK/Sources/admindata.cpp sysync_SDK/Sources/blobs.cpp \
+	sysync_SDK/Sources/sysync_b64.cpp \
+	sysync_SDK/Sources/sysync_md5.cpp \
 	sysync_SDK/Sources/SDK_support.cpp \
 	sysync_SDK/Sources/SDK_util.c \
 	sysync_SDK/Sources/enginemodulebase.cpp
 @COND_STATIC_TRUE@am__objects_2 = libsynthesissdk_la-timeutil.lo \
+@COND_STATIC_TRUE@	libsynthesissdk_la-san.lo \
 @COND_STATIC_TRUE@	libsynthesissdk_la-enginemodulebridge.lo \
-@COND_STATIC_TRUE@	libsynthesissdk_la-dbitem.lo \
 @COND_STATIC_TRUE@	libsynthesissdk_la-UI_util.lo \
-@COND_STATIC_TRUE@	libsynthesissdk_la-stringutil.lo \
-@COND_STATIC_TRUE@	libsynthesissdk_la-admindata.lo \
-@COND_STATIC_TRUE@	libsynthesissdk_la-blobs.lo
-@COND_STATIC_FALSE@am__objects_3 = libsynthesissdk_la-timeutil.lo \
+@COND_STATIC_TRUE@	libsynthesissdk_la-stringutil.lo
+@COND_STATIC_FALSE@am__objects_3 = libsynthesissdk_la-sysync_b64.lo \
+@COND_STATIC_FALSE@	libsynthesissdk_la-timeutil.lo \
+@COND_STATIC_FALSE@	libsynthesissdk_la-sysync_md5.lo \
+@COND_STATIC_FALSE@	libsynthesissdk_la-san.lo \
 @COND_STATIC_FALSE@	libsynthesissdk_la-enginemodulebridge.lo \
 @COND_STATIC_FALSE@	libsynthesissdk_la-SDK_support.lo \
 @COND_STATIC_FALSE@	libsynthesissdk_la-SDK_util.lo \
-@COND_STATIC_FALSE@	libsynthesissdk_la-dbitem.lo \
 @COND_STATIC_FALSE@	libsynthesissdk_la-UI_util.lo \
 @COND_STATIC_FALSE@	libsynthesissdk_la-enginemodulebase.lo \
-@COND_STATIC_FALSE@	libsynthesissdk_la-stringutil.lo \
-@COND_STATIC_FALSE@	libsynthesissdk_la-admindata.lo \
-@COND_STATIC_FALSE@	libsynthesissdk_la-blobs.lo
+@COND_STATIC_FALSE@	libsynthesissdk_la-stringutil.lo
 am_libsynthesissdk_la_OBJECTS = $(am__objects_2) $(am__objects_3)
 libsynthesissdk_la_OBJECTS = $(am_libsynthesissdk_la_OBJECTS)
 libsynthesissdk_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
 	$(CXXFLAGS) $(libsynthesissdk_la_LDFLAGS) $(LDFLAGS) -o $@
+libsynthesisstubs_la_LIBADD =
+am_libsynthesisstubs_la_OBJECTS = libsynthesisstubs_la-enginestubs.lo
+libsynthesisstubs_la_OBJECTS = $(am_libsynthesisstubs_la_OBJECTS)
+libsynthesisstubs_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+	$(libsynthesisstubs_la_LDFLAGS) $(LDFLAGS) -o $@
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/../../depcomp
 am__depfiles_maybe = depfiles
@@ -341,10 +343,11 @@ CXXLINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
 SOURCES = $(libsmltk_la_SOURCES) $(libsynthesis_la_SOURCES) \
-	$(libsynthesissdk_la_SOURCES)
+	$(libsynthesissdk_la_SOURCES) $(libsynthesisstubs_la_SOURCES)
 DIST_SOURCES = $(libsmltk_la_SOURCES) \
 	$(am__libsynthesis_la_SOURCES_DIST) \
-	$(am__libsynthesissdk_la_SOURCES_DIST)
+	$(am__libsynthesissdk_la_SOURCES_DIST) \
+	$(libsynthesisstubs_la_SOURCES)
 nobase_includeHEADERS_INSTALL = $(install_sh_DATA)
 HEADERS = $(nobase_include_HEADERS)
 ETAGS = etags
@@ -469,169 +472,9 @@ sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-CLEANFILES = 
-EXTRA_DIST = $(am__append_3)
-lib_LTLIBRARIES = libsmltk.la libsynthesis.la libsynthesissdk.la
-nobase_include_HEADERS = synthesis/enginemodulebridge.h synthesis/SDK_util.h synthesis/prefix_file.h synthesis/sync_dbapi.h synthesis/enginemodulebase.h synthesis/SDK_support.h synthesis/stringutil.h synthesis/sync_declarations.h synthesis/sync_dbapidef.h synthesis/generic_types.h synthesis/engine_defs.h synthesis/sync_include.h synthesis/timeutil.h synthesis/dbitem.h synthesis/blobs.h synthesis/sync_uiapi.h synthesis/admindata.h synthesis/dataconversion.h synthesis/syerror.h synthesis/UI_util.h synthesis/target_options.h
 
-# Configuration header files are searched in this order:
-# - Targets/ReleasedProducts/autotools: files only used when compiling with autotools
-# - Targets/ReleasedProducts/[clientEngine_opensource_linux|SDK]: files also used with Synthesis Linux makefile
+# versioning for *all* libs
 #
-# Always included first via -include:
-# - config.h: configure result (top directory)
-# - Targets/ReleasedProducts/clientEngine_opensource_linux/clientengine_demo_x86_linux_prefix.h
-#
-# Included as needed:
-# - define.h: hard-coded SyncML Toolkit config (from search path above)
-libsynthesis_la_SOURCES = sysync/binfileimplclient.cpp \
-	sysync/syncclientbase.h sysync/sysync_b64.cpp \
-	sysync/sysync_md5.cpp sysync/sysync_b64.h \
-	sysync/syncml_globs.h sysync/stdlogicagent.cpp \
-	sysync/syncappbase.cpp sysync/customimplds.cpp \
-	sysync/syncsession.h sysync/syncclient.cpp sysync/syncitem.cpp \
-	sysync/textitemtype.cpp sysync/textitemtype.h \
-	sysync/localengineds.h sysync/syncexception.cpp \
-	sysync/clientprovisioning_inc.h sysync/global_progress.h \
-	sysync/textprofile.cpp sysync/stringutils.cpp \
-	sysync/customimplagent.cpp sysync/debuglogger.cpp \
-	sysync/vtimezone.cpp sysync/iso8601.h \
-	sysync/vcalendaritemtype.cpp sysync/scriptcontext.h \
-	sysync/syncitemtype.h sysync/smltk_precomp.h \
-	sysync/sysync_globs.h sysync/sysync_debug.h \
-	sysync/syncsessiondispatch.h sysync/san.cpp \
-	sysync/sysync_utils.cpp sysync/mimediritemtype.h \
-	sysync/dataobjtype.cpp sysync/multifielditem.cpp \
-	sysync/sysync_precomp_xpt.h sysync/iso8601.cpp \
-	sysync/syncclientbase.cpp sysync/itemfield.h \
-	sysync/syncserver.h sysync/remotedatastore.h \
-	sysync/engineentry.h sysync/itemfield.cpp sysync/stringutils.h \
-	sysync/lineartime.h sysync/syncml_tk.h \
-	sysync/mimediritemtype.cpp sysync/configelement.h \
-	sysync/clientautosync_inc.cpp sysync/binfilebase.cpp \
-	sysync/synccommand.cpp sysync/mimedirprofile.h \
-	sysync/tz_table.h sysync/binfileimplds.cpp \
-	sysync/sysync_crc16.cpp sysync/simpleitem.h sysync/timezones.h \
-	sysync/sysync_precomp.h sysync/sysync.h \
-	sysync/binfileimplclient.h sysync/syncitem.h \
-	sysync/localengineds.cpp sysync/dataobjtype.h \
-	sysync/customimplagent.h sysync/synccommand.h \
-	sysync/binfilebase.h sysync/textprofile.h \
-	sysync/vcarditemtype.h sysync/binfileimplds.h \
-	sysync/vcalendaritemtype.h sysync/syncexception.h sysync/san.h \
-	sysync/multifielditemtype.cpp sysync/lineartime.cpp \
-	sysync/clientautosync_inc.h sysync/debuglogger.h \
-	sysync/smltk_precomp_xpt.h sysync/syncsession.cpp \
-	sysync/multifielditemtype.h sysync/stdlogicds.h \
-	sysync/rrules.h sysync/remotedatastore.cpp \
-	sysync/engineentry.cpp sysync/simpleitem.cpp \
-	sysync/superdatastore.h sysync/uiapi.h \
-	sysync/vcarditemtype.cpp sysync/engineinterface.cpp \
-	sysync/syncappbase.h sysync/syncclient.h sysync/sysync_crc16.h \
-	sysync/syncdatastore.cpp sysync/multifielditem.h \
-	sysync/scriptcontext.cpp sysync/syncitemtype.cpp \
-	sysync/stdlogicds.cpp sysync/vtimezone.h sysync/uiapi.cpp \
-	sysync/dataconversion.cpp sysync/timezones.cpp \
-	sysync/engineinterface.h sysync/sysync_md5.h \
-	sysync/superdatastore.cpp sysync/sysync_utils.h \
-	sysync/customimplds.h sysync/rrules.cpp \
-	sysync/configelement.cpp sysync/syserial.h \
-	sysync/syncdatastore.h sysync/mimedirprofile.cpp \
-	sysync/stdlogicagent.h DB_interfaces/odbc_db/odbcapids.cpp \
-	DB_interfaces/odbc_db/odbcapiagent.h \
-	DB_interfaces/odbc_db/odbcapiagent.cpp \
-	DB_interfaces/odbc_db/odbcdb_precomp.h \
-	DB_interfaces/odbc_db/odbcapids.h \
-	DB_interfaces/odbc_db/odbcdb.h DB_interfaces/api_db/plugindb.h \
-	DB_interfaces/api_db/dbapi.h \
-	DB_interfaces/api_db/pluginapiagent.cpp \
-	DB_interfaces/api_db/dbapi_include.h \
-	DB_interfaces/api_db/sync_dbapiconnect.h \
-	DB_interfaces/api_db/pluginapiagent.h \
-	DB_interfaces/api_db/sync_dbapiconnect.cpp \
-	DB_interfaces/api_db/pluginapids.cpp \
-	DB_interfaces/api_db/plugindb_precomp.h \
-	DB_interfaces/api_db/dbapi.cpp \
-	DB_interfaces/api_db/DLL_interface.h \
-	DB_interfaces/api_db/DLL_interface.cpp \
-	DB_interfaces/api_db/pluginapids.h \
-	sysync_SDK/Sources/SDK_util.h sysync_SDK/Sources/prefix_file.h \
-	sysync_SDK/Sources/sync_dbapi.h \
-	sysync_SDK/Sources/enginemodulebase.h \
-	sysync_SDK/Sources/SDK_support.h \
-	sysync_SDK/Sources/sync_declarations.h \
-	sysync_SDK/Sources/sync_dbapidef.h \
-	sysync_SDK/Sources/generic_types.h \
-	sysync_SDK/Sources/engine_defs.h \
-	sysync_SDK/Sources/sync_include.h \
-	sysync_SDK/Sources/SDK_support.cpp \
-	sysync_SDK/Sources/SDK_util.c \
-	sysync_SDK/Sources/enginemodulebase.cpp \
-	sysync_SDK/Sources/sync_uiapi.h \
-	sysync_SDK/Sources/dataconversion.h \
-	sysync_SDK/Sources/syerror.h \
-	Transport_interfaces/engine/engine_client_precomp.h \
-	Transport_interfaces/engine/engineclientbase.cpp \
-	Transport_interfaces/engine/engineclientbase.h \
-	Transport_interfaces/engine/engine_client.h \
-	platform_adapters/sysync_glob_vars.h \
-	platform_adapters/configfiles.h platform_adapters/binfile.cpp \
-	platform_adapters/sysyncinit.cpp platform_adapters/profiling.h \
-	platform_adapters/linux/platform_DLL.cpp \
-	platform_adapters/linux/profiling.cpp \
-	platform_adapters/linux/platform_exec.h \
-	platform_adapters/linux/configfiles.cpp \
-	platform_adapters/linux/platform_time.cpp \
-	platform_adapters/linux/platform_exec.c \
-	platform_adapters/linux/platform_headers.h \
-	platform_adapters/linux/platform_timezones.cpp \
-	platform_adapters/linux/platform_time.h \
-	platform_adapters/binfile.h \
-	platform_adapters/platform_thread.h \
-	platform_adapters/platform_DLL.h \
-	platform_adapters/unix_common/platform_pipe.c \
-	platform_adapters/unix_common/platform_file.cpp \
-	platform_adapters/unix_common/platform_thread.cpp \
-	platform_adapters/unix_common/platform_pipe.h \
-	platform_adapters/unix_common/platform_mutex.cpp \
-	platform_adapters/platform_file.h \
-	platform_adapters/platform_headers.h \
-	platform_adapters/platform_mutex.h \
-	syncapps/clientEngine_custom/clientengine_custom_Base.h \
-	syncapps/clientEngine_custom/clientengine_custom_Base.cpp \
-	syncapps/clientEngine_custom/product_options.h \
-	syncapps/clientEngine_custom/clientengine_custom_precomp.h \
-	syncapps/clientEngine_custom/clientengine_custom.h \
-	$(am__append_2)
-libsynthesis_la_CPPFLAGS = -I$(srcdir)/sysync_SDK/Sources
-LIBSYNTHESIS_CFLAGS = -include $(top_builddir)/config.h -include \
-	$(srcdir)/Targets/ReleasedProducts/clientEngine_opensource_linux/clientengine_demo_x86_linux_prefix.h \
-	-I$(srcdir)/Targets/ReleasedProducts/clientEngine_autotools/ \
-	-I$(srcdir)/Targets/ReleasedProducts/clientEngine_opensource_linux/ \
-	-I$(srcdir)/platform_adapters/linux/ \
-	-I$(srcdir)/platform_adapters/unix_common/ \
-	-I$(srcdir)/platform_adapters/ \
-	-I$(srcdir)/syncapps/clientEngine_custom/ -I$(srcdir)/sysync/ \
-	-I$(srcdir)/Transport_interfaces/engine/ -I$(srcdir)/ \
-	-I$(srcdir)/syncml_tk/src/sml/inc/ \
-	-I$(srcdir)/syncml_tk/src/sml/lib/inc/ \
-	-I$(srcdir)/syncml_tk/src/sml/lib/ \
-	-I$(srcdir)/syncml_tk/src/sml/mgr/inc/ \
-	-I$(srcdir)/syncml_tk/src/sml/mgr/ \
-	-I$(srcdir)/syncml_tk/src/sml/wsm/inc/ \
-	-I$(srcdir)/syncml_tk/src/sml/xlt/inc \
-	-I$(srcdir)/syncml_tk/src/sml/xlt/all \
-	-I$(srcdir)/DB_interfaces/odbc_db/ \
-	-I$(srcdir)/DB_interfaces/api_db/ \
-	-I$(srcdir)/sysync_SDK/Sources/ $(PCRE_CFLAGS) \
-	$(SQLITE3_CFLAGS) $(ZLIB_CFLAGS) $(XMLPARSE_CFLAGS) \
-	$(LIBICAL_CFLAGS) $(LIBECAL_CFLAGS) $(am__append_1) \
-	$(am__append_4)
-libsynthesis_la_CFLAGS = $(LIBSYNTHESIS_CFLAGS)
-libsynthesis_la_CXXFLAGS = $(LIBSYNTHESIS_CFLAGS)
-libsynthesis_la_LIBADD = $(PCRE_LIBS) $(SQLITE3_LIBS) $(XMLPARSE_LIBS) $(LIBICAL_LIBS) $(LIBECAL_LIBS) libsmltk.la -lz
-
-# versioning:
 # CURRENT - most recent interface version
 # REVISION - minor version number of that interface implementation
 # AGE - number of previous interface versions supported in addition
@@ -642,31 +485,106 @@ libsynthesis_la_LIBADD = $(PCRE_LIBS) $(SQLITE3_LIBS) $(XMLPARSE_LIBS) $(LIBICAL
 # incompatible way, increment CURRENT and reset AGE and REVISION to
 # zero. When fixing something without interface change, increment
 # REVISION.
-ENGINE_CURRENT = 2
+ENGINE_CURRENT = 3
 ENGINE_REVISION = 0
-ENGINE_AGE = 2
+ENGINE_AGE = 3
+CLEANFILES = 
+EXTRA_DIST = $(am__append_1)
+lib_LTLIBRARIES = libsmltk.la libsynthesis.la libsynthesissdk.la libsynthesisstubs.la
+nobase_include_HEADERS = synthesis/sysync_b64.h synthesis/enginemodulebridge.h synthesis/SDK_util.h synthesis/prefix_file.h synthesis/sync_dbapi.h synthesis/enginemodulebase.h synthesis/SDK_support.h synthesis/stringutil.h synthesis/sync_declarations.h synthesis/sync_dbapidef.h synthesis/generic_types.h synthesis/engine_defs.h synthesis/sync_include.h synthesis/timeutil.h synthesis/dbitem.h synthesis/san.h synthesis/blobs.h synthesis/sync_uiapi.h synthesis/admindata.h synthesis/dataconversion.h synthesis/sysync_md5.h synthesis/syerror.h synthesis/UI_util.h synthesis/target_options.h
+
+# Configuration header files are searched in this order:
+# - Targets/ReleasedProducts/autotools: files only used when compiling with autotools
+# - Targets/ReleasedProducts/[combiEngine_opensource_linux|serverEngine_opensource_linux|SDK]: files also used with Synthesis Linux makefile
+#
+# Always included first via -include:
+# - config.h: configure result (top directory)
+# - Targets/ReleasedProducts/combiEngine_opensource_linux/clientengine_demo_x86_linux_prefix.h resp. Targets/ReleasedProducts/serverEngine_opensource_linux/serverengine_opensource_linux_prefix.h
+#
+# Included as needed:
+# - define.h: hard-coded SyncML Toolkit config (from search path above)
+libsynthesis_la_SOURCES = sysync/binfileimplclient.cpp sysync/syncclientbase.h sysync/syncagent.cpp sysync/syncml_globs.h sysync/stdlogicagent.cpp sysync/syncappbase.cpp sysync/customimplds.cpp sysync/syncsession.h sysync/syncitem.cpp sysync/textitemtype.cpp sysync/textitemtype.h sysync/localengineds.h sysync/syncexception.cpp sysync/clientprovisioning_inc.h sysync/global_progress.h sysync/textprofile.cpp sysync/stringutils.cpp sysync/customimplagent.cpp sysync/debuglogger.cpp sysync/vtimezone.cpp sysync/iso8601.h sysync/vcalendaritemtype.cpp sysync/scriptcontext.h sysync/syncitemtype.h sysync/smltk_precomp.h sysync/sysync_globs.h sysync/sysync_debug.h sysync/syncsessiondispatch.h sysync/sysync_utils.cpp sysync/mimediritemtype.h sysync/dataobjtype.cpp sysync/multifielditem.cpp sysync/sysync_precomp_xpt.h sysync/iso8601.cpp sysync/syncclientbase.cpp sysync/itemfield.h sysync/remotedatastore.h sysync/engineentry.h sysync/itemfield.cpp sysync/stringutils.h sysync/lineartime.h sysync/syncml_tk.h sysync/mimediritemtype.cpp sysync/configelement.h sysync/clientautosync_inc.cpp sysync/binfilebase.cpp sysync/synccommand.cpp sysync/mimedirprofile.h sysync/tz_table.h sysync/binfileimplds.cpp sysync/sysync_crc16.cpp sysync/simpleitem.h sysync/timezones.h sysync/sysync_precomp.h sysync/sysync.h sysync/binfileimplclient.h sysync/syncitem.h sysync/localengineds.cpp sysync/dataobjtype.h sysync/customimplagent.h sysync/synccommand.h sysync/binfilebase.h sysync/textprofile.h sysync/vcarditemtype.h sysync/binfileimplds.h sysync/vcalendaritemtype.h sysync/syncexception.h sysync/multifielditemtype.cpp sysync/lineartime.cpp sysync/clientautosync_inc.h sysync/debuglogger.h sysync/smltk_precomp_xpt.h sysync/syncsession.cpp sysync/multifielditemtype.h sysync/stdlogicds.h sysync/rrules.h sysync/remotedatastore.cpp sysync/engineentry.cpp sysync/simpleitem.cpp sysync/superdatastore.h sysync/uiapi.h sysync/vcarditemtype.cpp sysync/engineinterface.cpp sysync/syncappbase.h sysync/sysync_crc16.h sysync/syncdatastore.cpp sysync/multifielditem.h sysync/scriptcontext.cpp sysync/syncitemtype.cpp sysync/stdlogicds.cpp sysync/vtimezone.h sysync/uiapi.cpp sysync/syncagent.h sysync/dataconversion.cpp sysync/timezones.cpp sysync/engineinterface.h sysync/superdatastore.cpp sysync/sysync_utils.h sysync/customimplds.h sysync/rrules.cpp sysync/configelement.cpp sysync/syserial.h sysync/syncdatastore.h sysync/mimedirprofile.cpp sysync/stdlogicagent.h DB_interfaces/odbc_db/odbcapids.cpp DB_interfaces/odbc_db/odbcapiagent.h DB_interfaces/odbc_db/odbcapiagent.cpp DB_interfaces/odbc_db/odbcdb_precomp.h DB_interfaces/odbc_db/odbcapids.h DB_interfaces/odbc_db/odbcdb.h DB_interfaces/api_db/plugindb.h DB_interfaces/api_db/dbapi.h DB_interfaces/api_db/pluginapiagent.cpp DB_interfaces/api_db/dbapi_include.h DB_interfaces/api_db/sync_dbapiconnect.h DB_interfaces/api_db/pluginapiagent.h DB_interfaces/api_db/sync_dbapiconnect.cpp DB_interfaces/api_db/pluginapids.cpp DB_interfaces/api_db/plugindb_precomp.h DB_interfaces/api_db/dbapi.cpp DB_interfaces/api_db/DLL_interface.h DB_interfaces/api_db/DLL_interface.cpp DB_interfaces/api_db/pluginapids.h sysync_SDK/Sources/sysync_b64.cpp sysync_SDK/Sources/sysync_md5.cpp sysync_SDK/Sources/sysync_b64.h sysync_SDK/Sources/SDK_util.h sysync_SDK/Sources/prefix_file.h sysync_SDK/Sources/sync_dbapi.h sysync_SDK/Sources/enginemodulebase.h sysync_SDK/Sources/SDK_support.h sysync_SDK/Sources/sync_declarations.h sysync_SDK/Sources/sync_dbapidef.h sysync_SDK/Sources/generic_types.h sysync_SDK/Sources/engine_defs.h sysync_SDK/Sources/sync_include.h sysync_SDK/Sources/SDK_support.cpp sysync_SDK/Sources/SDK_util.c sysync_SDK/Sources/dbitem.h sysync_SDK/Sources/dbitem.cpp sysync_SDK/Sources/blobs.h sysync_SDK/Sources/enginemodulebase.cpp sysync_SDK/Sources/sync_uiapi.h sysync_SDK/Sources/admindata.h sysync_SDK/Sources/dataconversion.h sysync_SDK/Sources/admindata.cpp sysync_SDK/Sources/blobs.cpp sysync_SDK/Sources/sysync_md5.h sysync_SDK/Sources/syerror.h Transport_interfaces/engine/engine_client_precomp.h Transport_interfaces/engine/enginesessiondispatch.h Transport_interfaces/engine/engine_server_precomp.h Transport_interfaces/engine/enginesessiondispatch.cpp Transport_interfaces/engine/engine_server.h Transport_interfaces/engine/engineclientbase.cpp Transport_interfaces/engine/engineclientbase.h Transport_interfaces/engine/engine_client.h platform_adapters/sysync_glob_vars.h platform_adapters/configfiles.h platform_adapters/binfile.cpp platform_adapters/sysyncinit.cpp platform_adapters/profiling.h platform_adapters/linux/platform_DLL.cpp platform_adapters/linux/profiling.cpp platform_adapters/linux/platform_exec.h platform_adapters/linux/configfiles.cpp platform_adapters/linux/platform_time.cpp platform_adapters/linux/platform_exec.c platform_adapters/linux/platform_headers.h platform_adapters/linux/platform_timezones.cpp platform_adapters/linux/platform_time.h platform_adapters/binfile.h platform_adapters/platform_thread.h platform_adapters/platform_DLL.h platform_adapters/unix_common/platform_pipe.c platform_adapters/unix_common/platform_file.cpp platform_adapters/unix_common/platform_pipe.h platform_adapters/unix_common/platform_mutex.cpp platform_adapters/platform_file.h platform_adapters/platform_headers.h platform_adapters/platform_mutex.h syncapps/clientEngine_custom/clientengine_custom_Base.h syncapps/clientEngine_custom/clientengine_custom_Base.cpp syncapps/clientEngine_custom/product_options.h syncapps/clientEngine_custom/clientengine_custom_precomp.h syncapps/clientEngine_custom/clientengine_custom.h syncapps/serverEngine_custom/serverengine_custom.h syncapps/serverEngine_custom/serverengine_custom_Base.cpp syncapps/serverEngine_custom/serverengine_custom_Base.h syncapps/serverEngine_custom/combi_product_options.h syncapps/serverEngine_custom/product_options.h syncapps/serverEngine_custom/serverengine_custom_precomp.h sysync_SDK/DB_Interfaces/text_db/sync_dbapi_text.cpp \
+	$(XMLPARSE_SOURCES)
+
+libsynthesis_la_CPPFLAGS = -I$(srcdir)/sysync_SDK/Sources
+libsynthesis_la_CFLAGS = \
+	-include $(top_builddir)/config.h \
+	-include $(srcdir)/Targets/ReleasedProducts/combiEngine_opensource_linux/combiengine_opensource_linux_prefix.h \
+	-I$(srcdir)/Targets/ReleasedProducts/clientEngine_autotools/ \
+	-I$(srcdir)/Targets/ReleasedProducts/combiEngine_opensource_linux/ \
+	-I$(srcdir)/platform_adapters/linux/ \
+	-I$(srcdir)/platform_adapters/unix_common/ \
+	-I$(srcdir)/platform_adapters/ \
+	-I$(srcdir)/syncapps/clientEngine_custom/ \
+	-I$(srcdir)/syncapps/serverEngine_custom/ \
+	-I$(srcdir)/sysync/ \
+	-I$(srcdir)/Transport_interfaces/engine/ \
+	-I$(srcdir)/ \
+	-I$(srcdir)/syncml_tk/src/sml/inc/ \
+	-I$(srcdir)/syncml_tk/src/sml/lib/inc/ \
+	-I$(srcdir)/syncml_tk/src/sml/lib/ \
+	-I$(srcdir)/syncml_tk/src/sml/mgr/inc/ \
+	-I$(srcdir)/syncml_tk/src/sml/mgr/ \
+	-I$(srcdir)/syncml_tk/src/sml/wsm/inc/ \
+	-I$(srcdir)/syncml_tk/src/sml/xlt/inc \
+	-I$(srcdir)/syncml_tk/src/sml/xlt/all \
+	-I$(srcdir)/DB_interfaces/odbc_db/ \
+	-I$(srcdir)/DB_interfaces/api_db/ \
+	-I$(srcdir)/sysync_SDK/Sources/ \
+	$(PCRE_CFLAGS) \
+	$(SQLITE3_CFLAGS) \
+	$(ZLIB_CFLAGS) \
+	$(XMLPARSE_CFLAGS) \
+	$(XMLPARSE_CFLAGS_BUILTIN) \
+	$(LIBICAL_CFLAGS) \
+	$(LIBECAL_CFLAGS)
+
+libsynthesis_la_CXXFLAGS = $(libsynthesis_la_CFLAGS)
+libsynthesis_la_LIBADD = $(PCRE_LIBS) $(SQLITE3_LIBS) $(XMLPARSE_LIBS) $(LIBICAL_LIBS) $(LIBECAL_LIBS) libsmltk.la -lz
 libsynthesis_la_LDFLAGS = -version-info $(ENGINE_CURRENT):$(ENGINE_REVISION):$(ENGINE_AGE) \
 	-Wl,--version-script=$(srcdir)/synthesis-linker.map
 
 libsynthesis_la_DEPENDENCIES = $(srcdir)/synthesis-linker.map libsmltk.la
-libsynthesissdk_la_LIBADD = libsynthesis.la
+# add path to xmlparse.h which includes the system's xmltok/xmlparse.h
+@COND_XMLPARSE_FALSE@XMLPARSE_CFLAGS_BUILTIN = -I$(srcdir)/Targets/ReleasedProducts/clientEngine_autotools/systemxml
+@COND_XMLPARSE_TRUE@XMLPARSE_CFLAGS_BUILTIN = -I$(srcdir)/expat -I$(srcdir)/expat/xmltok -I$(srcdir)/expat/xmlparse
+@COND_XMLPARSE_TRUE@XMLPARSE_SOURCES = \
+@COND_XMLPARSE_TRUE@	expat/xmlparse/xmlparse.c \
+@COND_XMLPARSE_TRUE@	expat/xmlparse/xmlparse.h \
+@COND_XMLPARSE_TRUE@	expat/xmltok/ascii.h \
+@COND_XMLPARSE_TRUE@	expat/xmltok/asciitab.h \
+@COND_XMLPARSE_TRUE@	expat/xmltok/iasciitab.h \
+@COND_XMLPARSE_TRUE@	expat/xmltok/latin1tab.h \
+@COND_XMLPARSE_TRUE@	expat/xmltok/nametab.h \
+@COND_XMLPARSE_TRUE@	expat/xmltok/utf8tab.h \
+@COND_XMLPARSE_TRUE@	expat/xmltok/xmldef.h \
+@COND_XMLPARSE_TRUE@	expat/xmltok/xmlrole.c \
+@COND_XMLPARSE_TRUE@	expat/xmltok/xmlrole.h \
+@COND_XMLPARSE_TRUE@	expat/xmltok/xmltok.c \
+@COND_XMLPARSE_TRUE@	expat/xmltok/xmltok.h \
+@COND_XMLPARSE_TRUE@	expat/xmltok/xmltok_impl.h
+
 libsynthesissdk_la_LDFLAGS = -static
-libsynthesissdk_la_SOURCES = synthesis/enginemodulebridge.h \
-	synthesis/SDK_util.h synthesis/prefix_file.h \
-	synthesis/sync_dbapi.h synthesis/enginemodulebase.h \
-	synthesis/SDK_support.h synthesis/stringutil.h \
-	synthesis/sync_declarations.h synthesis/sync_dbapidef.h \
-	synthesis/generic_types.h synthesis/engine_defs.h \
-	synthesis/sync_include.h synthesis/timeutil.h \
-	synthesis/dbitem.h synthesis/blobs.h synthesis/sync_uiapi.h \
-	synthesis/admindata.h synthesis/dataconversion.h \
-	synthesis/syerror.h synthesis/UI_util.h $(am__append_5) \
-	$(am__append_6)
+libsynthesissdk_la_SOURCES = synthesis/sysync_b64.h \
+	synthesis/enginemodulebridge.h synthesis/SDK_util.h \
+	synthesis/prefix_file.h synthesis/sync_dbapi.h \
+	synthesis/enginemodulebase.h synthesis/SDK_support.h \
+	synthesis/stringutil.h synthesis/sync_declarations.h \
+	synthesis/sync_dbapidef.h synthesis/generic_types.h \
+	synthesis/engine_defs.h synthesis/sync_include.h \
+	synthesis/timeutil.h synthesis/dbitem.h synthesis/san.h \
+	synthesis/blobs.h synthesis/sync_uiapi.h synthesis/admindata.h \
+	synthesis/dataconversion.h synthesis/sysync_md5.h \
+	synthesis/syerror.h synthesis/UI_util.h $(am__append_2) \
+	$(am__append_3)
 libsynthesissdk_la_CPPFLAGS = \
 	-D_GNU_SOURCE=1 \
 	-I$(srcdir)/sysync_SDK/Sources \
 	-I$(srcdir)/Targets/ReleasedProducts/SDK
 
+libsynthesisstubs_la_LDFLAGS = -static
+libsynthesisstubs_la_SOURCES = sysync_SDK/Sources/enginestubs.c
+libsynthesisstubs_la_CPPFLAGS = $(libsynthesissdk_la_CPPFLAGS)
 
 # libsmltk: compiled just like libsynthesis
 libsmltk_la_SOURCES = syncml_tk/src/sml/inc/smlmetinfdtd.h \
@@ -715,8 +633,8 @@ libsmltk_la_SOURCES = syncml_tk/src/sml/inc/smlmetinfdtd.h \
 	syncml_tk/src/sml/xlt/all/xlttagtbl.h \
 	syncml_tk/src/sml/xlt/all/xltdec.c \
 	syncml_tk/src/sml/xlt/all/xltdevinf.h
-libsmltk_la_CFLAGS = $(LIBSYNTHESIS_CFLAGS)
-libsmltk_la_CXXFLAGS = $(LIBSYNTHESIS_CFLAGS)
+libsmltk_la_CFLAGS = $(libsynthesis_la_CFLAGS)
+libsmltk_la_CXXFLAGS = $(libsmltk_la_CFLAGS)
 
 # versioning: same as of engine! changes in libsmltk are not tracked separately.
 libsmltk_la_LDFLAGS = -version-info $(ENGINE_CURRENT):$(ENGINE_REVISION):$(ENGINE_AGE) \
@@ -789,6 +707,8 @@ libsynthesis.la: $(libsynthesis_la_OBJECTS) $(libsynthesis_la_DEPENDENCIES)
 	$(libsynthesis_la_LINK) -rpath $(libdir) $(libsynthesis_la_OBJECTS) $(libsynthesis_la_LIBADD) $(LIBS)
 libsynthesissdk.la: $(libsynthesissdk_la_OBJECTS) $(libsynthesissdk_la_DEPENDENCIES) 
 	$(libsynthesissdk_la_LINK) -rpath $(libdir) $(libsynthesissdk_la_OBJECTS) $(libsynthesissdk_la_LIBADD) $(LIBS)
+libsynthesisstubs.la: $(libsynthesisstubs_la_OBJECTS) $(libsynthesisstubs_la_DEPENDENCIES) 
+	$(libsynthesisstubs_la_LINK) -rpath $(libdir) $(libsynthesisstubs_la_OBJECTS) $(libsynthesisstubs_la_LIBADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -821,10 +741,12 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-DLL_interface.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-SDK_support.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-SDK_util.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-admindata.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-binfile.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-binfilebase.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-binfileimplclient.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-binfileimplds.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-blobs.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-clientautosync_inc.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-clientengine_custom_Base.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-configelement.Plo@am__quote@
@@ -834,11 +756,13 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-dataconversion.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-dataobjtype.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-dbapi.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-dbitem.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-debuglogger.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-engineclientbase.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-engineentry.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-engineinterface.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-enginemodulebase.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-enginesessiondispatch.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-iso8601.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-itemfield.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-lineartime.Plo@am__quote@
@@ -854,7 +778,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-platform_file.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-platform_mutex.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-platform_pipe.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-platform_thread.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-platform_time.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-platform_timezones.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-pluginapiagent.Plo@am__quote@
@@ -862,16 +785,17 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-profiling.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-remotedatastore.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-rrules.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-san.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-scriptcontext.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-serverengine_custom_Base.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-simpleitem.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-stdlogicagent.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-stdlogicds.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-stringutils.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-superdatastore.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-sync_dbapi_text.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-sync_dbapiconnect.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-syncagent.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-syncappbase.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-syncclient.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-syncclientbase.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-synccommand.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesis_la-syncdatastore.Plo@am__quote@
@@ -897,13 +821,14 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesissdk_la-SDK_support.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesissdk_la-SDK_util.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesissdk_la-UI_util.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesissdk_la-admindata.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesissdk_la-blobs.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesissdk_la-dbitem.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesissdk_la-enginemodulebase.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesissdk_la-enginemodulebridge.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesissdk_la-san.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesissdk_la-stringutil.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesissdk_la-sysync_b64.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesissdk_la-sysync_md5.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesissdk_la-timeutil.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsynthesisstubs_la-enginestubs.Plo@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -1129,6 +1054,13 @@ libsynthesissdk_la-SDK_util.lo: sysync_SDK/Sources/SDK_util.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libsynthesissdk_la-SDK_util.lo `test -f 'sysync_SDK/Sources/SDK_util.c' || echo '$(srcdir)/'`sysync_SDK/Sources/SDK_util.c
 
+libsynthesisstubs_la-enginestubs.lo: sysync_SDK/Sources/enginestubs.c
+@am__fastdepCC_TRUE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesisstubs_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libsynthesisstubs_la-enginestubs.lo -MD -MP -MF $(DEPDIR)/libsynthesisstubs_la-enginestubs.Tpo -c -o libsynthesisstubs_la-enginestubs.lo `test -f 'sysync_SDK/Sources/enginestubs.c' || echo '$(srcdir)/'`sysync_SDK/Sources/enginestubs.c
+@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/libsynthesisstubs_la-enginestubs.Tpo $(DEPDIR)/libsynthesisstubs_la-enginestubs.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='sysync_SDK/Sources/enginestubs.c' object='libsynthesisstubs_la-enginestubs.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesisstubs_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libsynthesisstubs_la-enginestubs.lo `test -f 'sysync_SDK/Sources/enginestubs.c' || echo '$(srcdir)/'`sysync_SDK/Sources/enginestubs.c
+
 .cpp.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
@@ -1157,19 +1089,12 @@ libsynthesis_la-binfileimplclient.lo: sysync/binfileimplclient.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesis_la-binfileimplclient.lo `test -f 'sysync/binfileimplclient.cpp' || echo '$(srcdir)/'`sysync/binfileimplclient.cpp
 
-libsynthesis_la-sysync_b64.lo: sysync/sysync_b64.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesis_la-sysync_b64.lo -MD -MP -MF $(DEPDIR)/libsynthesis_la-sysync_b64.Tpo -c -o libsynthesis_la-sysync_b64.lo `test -f 'sysync/sysync_b64.cpp' || echo '$(srcdir)/'`sysync/sysync_b64.cpp
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesis_la-sysync_b64.Tpo $(DEPDIR)/libsynthesis_la-sysync_b64.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync/sysync_b64.cpp' object='libsynthesis_la-sysync_b64.lo' libtool=yes @AMDEPBACKSLASH@
+libsynthesis_la-syncagent.lo: sysync/syncagent.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesis_la-syncagent.lo -MD -MP -MF $(DEPDIR)/libsynthesis_la-syncagent.Tpo -c -o libsynthesis_la-syncagent.lo `test -f 'sysync/syncagent.cpp' || echo '$(srcdir)/'`sysync/syncagent.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesis_la-syncagent.Tpo $(DEPDIR)/libsynthesis_la-syncagent.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync/syncagent.cpp' object='libsynthesis_la-syncagent.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesis_la-sysync_b64.lo `test -f 'sysync/sysync_b64.cpp' || echo '$(srcdir)/'`sysync/sysync_b64.cpp
-
-libsynthesis_la-sysync_md5.lo: sysync/sysync_md5.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesis_la-sysync_md5.lo -MD -MP -MF $(DEPDIR)/libsynthesis_la-sysync_md5.Tpo -c -o libsynthesis_la-sysync_md5.lo `test -f 'sysync/sysync_md5.cpp' || echo '$(srcdir)/'`sysync/sysync_md5.cpp
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesis_la-sysync_md5.Tpo $(DEPDIR)/libsynthesis_la-sysync_md5.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync/sysync_md5.cpp' object='libsynthesis_la-sysync_md5.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesis_la-sysync_md5.lo `test -f 'sysync/sysync_md5.cpp' || echo '$(srcdir)/'`sysync/sysync_md5.cpp
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesis_la-syncagent.lo `test -f 'sysync/syncagent.cpp' || echo '$(srcdir)/'`sysync/syncagent.cpp
 
 libsynthesis_la-stdlogicagent.lo: sysync/stdlogicagent.cpp
 @am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesis_la-stdlogicagent.lo -MD -MP -MF $(DEPDIR)/libsynthesis_la-stdlogicagent.Tpo -c -o libsynthesis_la-stdlogicagent.lo `test -f 'sysync/stdlogicagent.cpp' || echo '$(srcdir)/'`sysync/stdlogicagent.cpp
@@ -1191,13 +1116,6 @@ libsynthesis_la-customimplds.lo: sysync/customimplds.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync/customimplds.cpp' object='libsynthesis_la-customimplds.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesis_la-customimplds.lo `test -f 'sysync/customimplds.cpp' || echo '$(srcdir)/'`sysync/customimplds.cpp
-
-libsynthesis_la-syncclient.lo: sysync/syncclient.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesis_la-syncclient.lo -MD -MP -MF $(DEPDIR)/libsynthesis_la-syncclient.Tpo -c -o libsynthesis_la-syncclient.lo `test -f 'sysync/syncclient.cpp' || echo '$(srcdir)/'`sysync/syncclient.cpp
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesis_la-syncclient.Tpo $(DEPDIR)/libsynthesis_la-syncclient.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync/syncclient.cpp' object='libsynthesis_la-syncclient.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesis_la-syncclient.lo `test -f 'sysync/syncclient.cpp' || echo '$(srcdir)/'`sysync/syncclient.cpp
 
 libsynthesis_la-syncitem.lo: sysync/syncitem.cpp
 @am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesis_la-syncitem.lo -MD -MP -MF $(DEPDIR)/libsynthesis_la-syncitem.Tpo -c -o libsynthesis_la-syncitem.lo `test -f 'sysync/syncitem.cpp' || echo '$(srcdir)/'`sysync/syncitem.cpp
@@ -1261,13 +1179,6 @@ libsynthesis_la-vcalendaritemtype.lo: sysync/vcalendaritemtype.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync/vcalendaritemtype.cpp' object='libsynthesis_la-vcalendaritemtype.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesis_la-vcalendaritemtype.lo `test -f 'sysync/vcalendaritemtype.cpp' || echo '$(srcdir)/'`sysync/vcalendaritemtype.cpp
-
-libsynthesis_la-san.lo: sysync/san.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesis_la-san.lo -MD -MP -MF $(DEPDIR)/libsynthesis_la-san.Tpo -c -o libsynthesis_la-san.lo `test -f 'sysync/san.cpp' || echo '$(srcdir)/'`sysync/san.cpp
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesis_la-san.Tpo $(DEPDIR)/libsynthesis_la-san.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync/san.cpp' object='libsynthesis_la-san.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesis_la-san.lo `test -f 'sysync/san.cpp' || echo '$(srcdir)/'`sysync/san.cpp
 
 libsynthesis_la-sysync_utils.lo: sysync/sysync_utils.cpp
 @am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesis_la-sysync_utils.lo -MD -MP -MF $(DEPDIR)/libsynthesis_la-sysync_utils.Tpo -c -o libsynthesis_la-sysync_utils.lo `test -f 'sysync/sysync_utils.cpp' || echo '$(srcdir)/'`sysync/sysync_utils.cpp
@@ -1542,6 +1453,20 @@ libsynthesis_la-DLL_interface.lo: DB_interfaces/api_db/DLL_interface.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesis_la-DLL_interface.lo `test -f 'DB_interfaces/api_db/DLL_interface.cpp' || echo '$(srcdir)/'`DB_interfaces/api_db/DLL_interface.cpp
 
+libsynthesis_la-sysync_b64.lo: sysync_SDK/Sources/sysync_b64.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesis_la-sysync_b64.lo -MD -MP -MF $(DEPDIR)/libsynthesis_la-sysync_b64.Tpo -c -o libsynthesis_la-sysync_b64.lo `test -f 'sysync_SDK/Sources/sysync_b64.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/sysync_b64.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesis_la-sysync_b64.Tpo $(DEPDIR)/libsynthesis_la-sysync_b64.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/Sources/sysync_b64.cpp' object='libsynthesis_la-sysync_b64.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesis_la-sysync_b64.lo `test -f 'sysync_SDK/Sources/sysync_b64.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/sysync_b64.cpp
+
+libsynthesis_la-sysync_md5.lo: sysync_SDK/Sources/sysync_md5.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesis_la-sysync_md5.lo -MD -MP -MF $(DEPDIR)/libsynthesis_la-sysync_md5.Tpo -c -o libsynthesis_la-sysync_md5.lo `test -f 'sysync_SDK/Sources/sysync_md5.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/sysync_md5.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesis_la-sysync_md5.Tpo $(DEPDIR)/libsynthesis_la-sysync_md5.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/Sources/sysync_md5.cpp' object='libsynthesis_la-sysync_md5.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesis_la-sysync_md5.lo `test -f 'sysync_SDK/Sources/sysync_md5.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/sysync_md5.cpp
+
 libsynthesis_la-SDK_support.lo: sysync_SDK/Sources/SDK_support.cpp
 @am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesis_la-SDK_support.lo -MD -MP -MF $(DEPDIR)/libsynthesis_la-SDK_support.Tpo -c -o libsynthesis_la-SDK_support.lo `test -f 'sysync_SDK/Sources/SDK_support.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/SDK_support.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesis_la-SDK_support.Tpo $(DEPDIR)/libsynthesis_la-SDK_support.Plo
@@ -1549,12 +1474,40 @@ libsynthesis_la-SDK_support.lo: sysync_SDK/Sources/SDK_support.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesis_la-SDK_support.lo `test -f 'sysync_SDK/Sources/SDK_support.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/SDK_support.cpp
 
+libsynthesis_la-dbitem.lo: sysync_SDK/Sources/dbitem.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesis_la-dbitem.lo -MD -MP -MF $(DEPDIR)/libsynthesis_la-dbitem.Tpo -c -o libsynthesis_la-dbitem.lo `test -f 'sysync_SDK/Sources/dbitem.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/dbitem.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesis_la-dbitem.Tpo $(DEPDIR)/libsynthesis_la-dbitem.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/Sources/dbitem.cpp' object='libsynthesis_la-dbitem.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesis_la-dbitem.lo `test -f 'sysync_SDK/Sources/dbitem.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/dbitem.cpp
+
 libsynthesis_la-enginemodulebase.lo: sysync_SDK/Sources/enginemodulebase.cpp
 @am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesis_la-enginemodulebase.lo -MD -MP -MF $(DEPDIR)/libsynthesis_la-enginemodulebase.Tpo -c -o libsynthesis_la-enginemodulebase.lo `test -f 'sysync_SDK/Sources/enginemodulebase.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/enginemodulebase.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesis_la-enginemodulebase.Tpo $(DEPDIR)/libsynthesis_la-enginemodulebase.Plo
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/Sources/enginemodulebase.cpp' object='libsynthesis_la-enginemodulebase.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesis_la-enginemodulebase.lo `test -f 'sysync_SDK/Sources/enginemodulebase.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/enginemodulebase.cpp
+
+libsynthesis_la-admindata.lo: sysync_SDK/Sources/admindata.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesis_la-admindata.lo -MD -MP -MF $(DEPDIR)/libsynthesis_la-admindata.Tpo -c -o libsynthesis_la-admindata.lo `test -f 'sysync_SDK/Sources/admindata.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/admindata.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesis_la-admindata.Tpo $(DEPDIR)/libsynthesis_la-admindata.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/Sources/admindata.cpp' object='libsynthesis_la-admindata.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesis_la-admindata.lo `test -f 'sysync_SDK/Sources/admindata.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/admindata.cpp
+
+libsynthesis_la-blobs.lo: sysync_SDK/Sources/blobs.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesis_la-blobs.lo -MD -MP -MF $(DEPDIR)/libsynthesis_la-blobs.Tpo -c -o libsynthesis_la-blobs.lo `test -f 'sysync_SDK/Sources/blobs.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/blobs.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesis_la-blobs.Tpo $(DEPDIR)/libsynthesis_la-blobs.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/Sources/blobs.cpp' object='libsynthesis_la-blobs.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesis_la-blobs.lo `test -f 'sysync_SDK/Sources/blobs.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/blobs.cpp
+
+libsynthesis_la-enginesessiondispatch.lo: Transport_interfaces/engine/enginesessiondispatch.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesis_la-enginesessiondispatch.lo -MD -MP -MF $(DEPDIR)/libsynthesis_la-enginesessiondispatch.Tpo -c -o libsynthesis_la-enginesessiondispatch.lo `test -f 'Transport_interfaces/engine/enginesessiondispatch.cpp' || echo '$(srcdir)/'`Transport_interfaces/engine/enginesessiondispatch.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesis_la-enginesessiondispatch.Tpo $(DEPDIR)/libsynthesis_la-enginesessiondispatch.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Transport_interfaces/engine/enginesessiondispatch.cpp' object='libsynthesis_la-enginesessiondispatch.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesis_la-enginesessiondispatch.lo `test -f 'Transport_interfaces/engine/enginesessiondispatch.cpp' || echo '$(srcdir)/'`Transport_interfaces/engine/enginesessiondispatch.cpp
 
 libsynthesis_la-engineclientbase.lo: Transport_interfaces/engine/engineclientbase.cpp
 @am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesis_la-engineclientbase.lo -MD -MP -MF $(DEPDIR)/libsynthesis_la-engineclientbase.Tpo -c -o libsynthesis_la-engineclientbase.lo `test -f 'Transport_interfaces/engine/engineclientbase.cpp' || echo '$(srcdir)/'`Transport_interfaces/engine/engineclientbase.cpp
@@ -1619,13 +1572,6 @@ libsynthesis_la-platform_file.lo: platform_adapters/unix_common/platform_file.cp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesis_la-platform_file.lo `test -f 'platform_adapters/unix_common/platform_file.cpp' || echo '$(srcdir)/'`platform_adapters/unix_common/platform_file.cpp
 
-libsynthesis_la-platform_thread.lo: platform_adapters/unix_common/platform_thread.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesis_la-platform_thread.lo -MD -MP -MF $(DEPDIR)/libsynthesis_la-platform_thread.Tpo -c -o libsynthesis_la-platform_thread.lo `test -f 'platform_adapters/unix_common/platform_thread.cpp' || echo '$(srcdir)/'`platform_adapters/unix_common/platform_thread.cpp
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesis_la-platform_thread.Tpo $(DEPDIR)/libsynthesis_la-platform_thread.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='platform_adapters/unix_common/platform_thread.cpp' object='libsynthesis_la-platform_thread.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesis_la-platform_thread.lo `test -f 'platform_adapters/unix_common/platform_thread.cpp' || echo '$(srcdir)/'`platform_adapters/unix_common/platform_thread.cpp
-
 libsynthesis_la-platform_mutex.lo: platform_adapters/unix_common/platform_mutex.cpp
 @am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesis_la-platform_mutex.lo -MD -MP -MF $(DEPDIR)/libsynthesis_la-platform_mutex.Tpo -c -o libsynthesis_la-platform_mutex.lo `test -f 'platform_adapters/unix_common/platform_mutex.cpp' || echo '$(srcdir)/'`platform_adapters/unix_common/platform_mutex.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesis_la-platform_mutex.Tpo $(DEPDIR)/libsynthesis_la-platform_mutex.Plo
@@ -1640,6 +1586,20 @@ libsynthesis_la-clientengine_custom_Base.lo: syncapps/clientEngine_custom/client
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesis_la-clientengine_custom_Base.lo `test -f 'syncapps/clientEngine_custom/clientengine_custom_Base.cpp' || echo '$(srcdir)/'`syncapps/clientEngine_custom/clientengine_custom_Base.cpp
 
+libsynthesis_la-serverengine_custom_Base.lo: syncapps/serverEngine_custom/serverengine_custom_Base.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesis_la-serverengine_custom_Base.lo -MD -MP -MF $(DEPDIR)/libsynthesis_la-serverengine_custom_Base.Tpo -c -o libsynthesis_la-serverengine_custom_Base.lo `test -f 'syncapps/serverEngine_custom/serverengine_custom_Base.cpp' || echo '$(srcdir)/'`syncapps/serverEngine_custom/serverengine_custom_Base.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesis_la-serverengine_custom_Base.Tpo $(DEPDIR)/libsynthesis_la-serverengine_custom_Base.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='syncapps/serverEngine_custom/serverengine_custom_Base.cpp' object='libsynthesis_la-serverengine_custom_Base.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesis_la-serverengine_custom_Base.lo `test -f 'syncapps/serverEngine_custom/serverengine_custom_Base.cpp' || echo '$(srcdir)/'`syncapps/serverEngine_custom/serverengine_custom_Base.cpp
+
+libsynthesis_la-sync_dbapi_text.lo: sysync_SDK/DB_Interfaces/text_db/sync_dbapi_text.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesis_la-sync_dbapi_text.lo -MD -MP -MF $(DEPDIR)/libsynthesis_la-sync_dbapi_text.Tpo -c -o libsynthesis_la-sync_dbapi_text.lo `test -f 'sysync_SDK/DB_Interfaces/text_db/sync_dbapi_text.cpp' || echo '$(srcdir)/'`sysync_SDK/DB_Interfaces/text_db/sync_dbapi_text.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesis_la-sync_dbapi_text.Tpo $(DEPDIR)/libsynthesis_la-sync_dbapi_text.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/DB_Interfaces/text_db/sync_dbapi_text.cpp' object='libsynthesis_la-sync_dbapi_text.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesis_la-sync_dbapi_text.lo `test -f 'sysync_SDK/DB_Interfaces/text_db/sync_dbapi_text.cpp' || echo '$(srcdir)/'`sysync_SDK/DB_Interfaces/text_db/sync_dbapi_text.cpp
+
 libsynthesissdk_la-timeutil.lo: sysync_SDK/Sources/timeutil.cpp
 @am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-timeutil.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-timeutil.Tpo -c -o libsynthesissdk_la-timeutil.lo `test -f 'sysync_SDK/Sources/timeutil.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/timeutil.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesissdk_la-timeutil.Tpo $(DEPDIR)/libsynthesissdk_la-timeutil.Plo
@@ -1647,19 +1607,19 @@ libsynthesissdk_la-timeutil.lo: sysync_SDK/Sources/timeutil.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-timeutil.lo `test -f 'sysync_SDK/Sources/timeutil.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/timeutil.cpp
 
+libsynthesissdk_la-san.lo: sysync_SDK/Sources/san.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-san.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-san.Tpo -c -o libsynthesissdk_la-san.lo `test -f 'sysync_SDK/Sources/san.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/san.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesissdk_la-san.Tpo $(DEPDIR)/libsynthesissdk_la-san.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/Sources/san.cpp' object='libsynthesissdk_la-san.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-san.lo `test -f 'sysync_SDK/Sources/san.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/san.cpp
+
 libsynthesissdk_la-enginemodulebridge.lo: sysync_SDK/Sources/enginemodulebridge.cpp
 @am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-enginemodulebridge.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-enginemodulebridge.Tpo -c -o libsynthesissdk_la-enginemodulebridge.lo `test -f 'sysync_SDK/Sources/enginemodulebridge.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/enginemodulebridge.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesissdk_la-enginemodulebridge.Tpo $(DEPDIR)/libsynthesissdk_la-enginemodulebridge.Plo
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/Sources/enginemodulebridge.cpp' object='libsynthesissdk_la-enginemodulebridge.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-enginemodulebridge.lo `test -f 'sysync_SDK/Sources/enginemodulebridge.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/enginemodulebridge.cpp
-
-libsynthesissdk_la-dbitem.lo: sysync_SDK/Sources/dbitem.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-dbitem.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-dbitem.Tpo -c -o libsynthesissdk_la-dbitem.lo `test -f 'sysync_SDK/Sources/dbitem.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/dbitem.cpp
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesissdk_la-dbitem.Tpo $(DEPDIR)/libsynthesissdk_la-dbitem.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/Sources/dbitem.cpp' object='libsynthesissdk_la-dbitem.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-dbitem.lo `test -f 'sysync_SDK/Sources/dbitem.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/dbitem.cpp
 
 libsynthesissdk_la-UI_util.lo: sysync_SDK/Sources/UI_util.cpp
 @am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-UI_util.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-UI_util.Tpo -c -o libsynthesissdk_la-UI_util.lo `test -f 'sysync_SDK/Sources/UI_util.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/UI_util.cpp
@@ -1675,19 +1635,19 @@ libsynthesissdk_la-stringutil.lo: sysync_SDK/Sources/stringutil.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-stringutil.lo `test -f 'sysync_SDK/Sources/stringutil.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/stringutil.cpp
 
-libsynthesissdk_la-admindata.lo: sysync_SDK/Sources/admindata.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-admindata.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-admindata.Tpo -c -o libsynthesissdk_la-admindata.lo `test -f 'sysync_SDK/Sources/admindata.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/admindata.cpp
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesissdk_la-admindata.Tpo $(DEPDIR)/libsynthesissdk_la-admindata.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/Sources/admindata.cpp' object='libsynthesissdk_la-admindata.lo' libtool=yes @AMDEPBACKSLASH@
+libsynthesissdk_la-sysync_b64.lo: sysync_SDK/Sources/sysync_b64.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-sysync_b64.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-sysync_b64.Tpo -c -o libsynthesissdk_la-sysync_b64.lo `test -f 'sysync_SDK/Sources/sysync_b64.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/sysync_b64.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesissdk_la-sysync_b64.Tpo $(DEPDIR)/libsynthesissdk_la-sysync_b64.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/Sources/sysync_b64.cpp' object='libsynthesissdk_la-sysync_b64.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-admindata.lo `test -f 'sysync_SDK/Sources/admindata.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/admindata.cpp
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-sysync_b64.lo `test -f 'sysync_SDK/Sources/sysync_b64.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/sysync_b64.cpp
 
-libsynthesissdk_la-blobs.lo: sysync_SDK/Sources/blobs.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-blobs.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-blobs.Tpo -c -o libsynthesissdk_la-blobs.lo `test -f 'sysync_SDK/Sources/blobs.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/blobs.cpp
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesissdk_la-blobs.Tpo $(DEPDIR)/libsynthesissdk_la-blobs.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/Sources/blobs.cpp' object='libsynthesissdk_la-blobs.lo' libtool=yes @AMDEPBACKSLASH@
+libsynthesissdk_la-sysync_md5.lo: sysync_SDK/Sources/sysync_md5.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-sysync_md5.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-sysync_md5.Tpo -c -o libsynthesissdk_la-sysync_md5.lo `test -f 'sysync_SDK/Sources/sysync_md5.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/sysync_md5.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesissdk_la-sysync_md5.Tpo $(DEPDIR)/libsynthesissdk_la-sysync_md5.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/Sources/sysync_md5.cpp' object='libsynthesissdk_la-sysync_md5.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-blobs.lo `test -f 'sysync_SDK/Sources/blobs.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/blobs.cpp
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-sysync_md5.lo `test -f 'sysync_SDK/Sources/sysync_md5.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/sysync_md5.cpp
 
 libsynthesissdk_la-SDK_support.lo: sysync_SDK/Sources/SDK_support.cpp
 @am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-SDK_support.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-SDK_support.Tpo -c -o libsynthesissdk_la-SDK_support.lo `test -f 'sysync_SDK/Sources/SDK_support.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/SDK_support.cpp
@@ -1926,10 +1886,10 @@ $(srcdir)/Makefile.am: $(srcdir)/Makefile.am.in $(srcdir)/gen-makefile-am.sh
 # sysync_SDK/Sources (shared between engine and SDK) or
 # sysync_SDK/SDK (only in SDK). We patch the files so that
 # they include their own files via #include "synthesis/..."
-vpath %.cpp $(srcdir)/sysync_SDK/Sources $(srcdir)/sysync_SDK/SDK # $(srcdir)/Targets/ReleasedProducts/clientEngine_opensource_linux $(srcdir)/syncapps/clientEngine_custom $(srcdir)/sysync $(srcdir)/platform_adapters $(srcdir)
-vpath %.c $(srcdir)/sysync_SDK/Sources $(srcdir)/sysync_SDK/SDK # $(srcdir)/Targets/ReleasedProducts/clientEngine_opensource_linux $(srcdir)/syncapps/clientEngine_custom $(srcdir)/sysync $(srcdir)/platform_adapters $(srcdir)
-vpath %.h $(srcdir)/sysync_SDK/Sources $(srcdir)/sysync_SDK/SDK # $(srcdir)/Targets/ReleasedProducts/clientEngine_opensource_linux $(srcdir)/syncapps/clientEngine_custom $(srcdir)/sysync $(srcdir)/platform_adapters $(srcdir)
-synthesis/enginemodulebridge.h synthesis/SDK_util.h synthesis/prefix_file.h synthesis/sync_dbapi.h synthesis/enginemodulebase.h synthesis/SDK_support.h synthesis/stringutil.h synthesis/sync_declarations.h synthesis/sync_dbapidef.h synthesis/generic_types.h synthesis/engine_defs.h synthesis/sync_include.h synthesis/timeutil.h synthesis/dbitem.h synthesis/blobs.h synthesis/sync_uiapi.h synthesis/admindata.h synthesis/dataconversion.h synthesis/syerror.h synthesis/UI_util.h: synthesis/%: %
+vpath %.cpp $(srcdir)/sysync_SDK/Sources $(srcdir)/sysync_SDK/SDK
+vpath %.c $(srcdir)/sysync_SDK/Sources $(srcdir)/sysync_SDK/SDK
+vpath %.h $(srcdir)/sysync_SDK/Sources $(srcdir)/sysync_SDK/SDK
+synthesis/sysync_b64.h synthesis/enginemodulebridge.h synthesis/SDK_util.h synthesis/prefix_file.h synthesis/sync_dbapi.h synthesis/enginemodulebase.h synthesis/SDK_support.h synthesis/stringutil.h synthesis/sync_declarations.h synthesis/sync_dbapidef.h synthesis/generic_types.h synthesis/engine_defs.h synthesis/sync_include.h synthesis/timeutil.h synthesis/dbitem.h synthesis/san.h synthesis/blobs.h synthesis/sync_uiapi.h synthesis/admindata.h synthesis/dataconversion.h synthesis/sysync_md5.h synthesis/syerror.h synthesis/UI_util.h: synthesis/%: %
 	mkdir -p synthesis
 	sed -e 's;# *include  *";#include "synthesis/;' -e 's/defined(HAVE_STDINT_H)/1/' $< >$@
 

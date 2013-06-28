@@ -40,16 +40,21 @@ std::string PrettyPrintSyncMode(SyncMode mode, bool userVisible)
     case SYNC_NONE:
         return userVisible ? "disabled" : "SYNC_NONE";
     case SYNC_TWO_WAY:
+    case SA_SYNC_TWO_WAY:
         return userVisible ? "two-way" : "SYNC_TWO_WAY";
     case SYNC_SLOW:
         return userVisible ? "slow" : "SYNC_SLOW";
     case SYNC_ONE_WAY_FROM_CLIENT:
+    case SA_SYNC_ONE_WAY_FROM_CLIENT:
         return userVisible ? "one-way-from-client" : "SYNC_ONE_WAY_FROM_CLIENT";
     case SYNC_REFRESH_FROM_CLIENT:
+    case SA_SYNC_REFRESH_FROM_CLIENT:
         return userVisible ? "refresh-from-client" : "SYNC_REFRESH_FROM_CLIENT";
     case SYNC_ONE_WAY_FROM_SERVER:
+    case SA_SYNC_ONE_WAY_FROM_SERVER:
         return userVisible ? "one-way-from-server" : "SYNC_ONE_WAY_FROM_SERVER";
     case SYNC_REFRESH_FROM_SERVER:
+    case SA_SYNC_REFRESH_FROM_SERVER:
         return userVisible ? "refresh-from-server" : "SYNC_REFRESH_FROM_SERVER";
     default:
         std::stringstream res;
@@ -59,27 +64,48 @@ std::string PrettyPrintSyncMode(SyncMode mode, bool userVisible)
     }
 }
 
-SyncMode StringToSyncMode(const std::string &mode)
+SyncMode StringToSyncMode(const std::string &mode, bool serverAlerted)
 {
     if (boost::iequals(mode, "slow") || boost::iequals(mode, "SYNC_SLOW")) {
+        if (serverAlerted) {
+            //No server initiated slow sync, fallback to two way sync
+            return SA_SYNC_TWO_WAY;
+        }
         return SYNC_SLOW;
     } else if (boost::iequals(mode, "two-way") || boost::iequals(mode, "SYNC_TWO_WAY")) {
-        return SYNC_TWO_WAY;
+        return serverAlerted ?SA_SYNC_TWO_WAY: SYNC_TWO_WAY;
     } else if (boost::iequals(mode, "refresh-from-server") || boost::iequals(mode, "SYNC_REFRESH_FROM_SERVER")) {
-        return SYNC_REFRESH_FROM_SERVER;
+        return serverAlerted? SA_SYNC_REFRESH_FROM_SERVER: SYNC_REFRESH_FROM_SERVER;
     } else if (boost::iequals(mode, "refresh-from-client") || boost::iequals(mode, "SYNC_REFRESH_FROM_CLIENT")) {
-        return SYNC_REFRESH_FROM_CLIENT;
+        return serverAlerted? SA_SYNC_REFRESH_FROM_CLIENT: SYNC_REFRESH_FROM_CLIENT;
     } else if (boost::iequals(mode, "one-way-from-server") || boost::iequals(mode, "SYNC_ONE_WAY_FROM_SERVER")) {
-        return SYNC_REFRESH_FROM_SERVER;
+        return serverAlerted? SA_SYNC_ONE_WAY_FROM_SERVER: SYNC_ONE_WAY_FROM_SERVER;
     } else if (boost::iequals(mode, "one-way-from-client") || boost::iequals(mode, "SYNC_ONE_WAY_FROM_CLIENT")) {
-        return SYNC_REFRESH_FROM_CLIENT;
+        return serverAlerted? SA_SYNC_ONE_WAY_FROM_CLIENT: SYNC_ONE_WAY_FROM_CLIENT;
     } else if (boost::iequals(mode, "disabled") || boost::iequals(mode, "SYNC_NONE")) {
         return SYNC_NONE;
     } else {
-        return SYNC_MODE_MAX;
+        return SYNC_INVALID;
     }
 }
 
+
+ContentType StringToContentType(const std::string &type) {
+    if (boost::iequals (type, "text/x-vcard") || boost::iequals (type, "text/x-vcard:2.1")) {
+        return WSPCTC_XVCARD;
+    } else if (boost::iequals (type, "text/vcard") ||boost::iequals (type, "text/vcard:3.0")) {
+        return WSPCTC_VCARD;
+    } else if (boost::iequals (type, "text/x-vcalendar") ||boost::iequals (type, "text/x-vcalendar:1.0")
+              ||boost::iequals (type, "text/x-calendar") || boost::iequals (type, "text/x-calendar:1.0")) {
+        return WSPCTC_XVCALENDAR;
+    } else if (boost::iequals (type, "text/calendar") ||boost::iequals (type, "text/calendar:2.0")) {
+        return WSPCTC_ICALENDAR;
+    } else if (boost::iequals (type, "text/plain") ||boost::iequals (type, "text/plain:1.0")) {
+        return WSPCTC_TEXT_PLAIN;
+    } else {
+        return WSPCTC_UNKNOWN;
+    }
+}
 
 namespace {
     const char * const locNames[] = { "local", "remote", NULL };

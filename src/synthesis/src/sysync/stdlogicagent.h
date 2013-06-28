@@ -18,11 +18,7 @@
 
 // includes
 #include "sysync.h"
-#ifdef SYSYNC_CLIENT
-#include "syncclient.h"
-#else
-#include "syncserver.h"
-#endif
+#include "syncagent.h"
 #include "localengineds.h"
 
 
@@ -32,33 +28,21 @@ namespace sysync {
 
 
 class TStdLogicAgent:
-  #ifdef SYSYNC_CLIENT
-  public TSyncClient
-  #else
-  public TSyncServer
-  #endif
+  public TSyncAgent
 {
-  #ifdef SYSYNC_CLIENT
-  typedef TSyncClient inherited;
-  #else
-  typedef TSyncServer inherited;
-  #endif
+  typedef TSyncAgent inherited;
 public:
-  #ifdef SYSYNC_CLIENT
-  TStdLogicAgent(TSyncClientBase *aClientBaseP, const char *aSessionID);
-  #else
-  TStdLogicAgent(TSyncAppBase *aAppBaseP, TSyncSessionHandle *aSessionHandleP, const char *aSessionID);
-  #endif
+  TStdLogicAgent(TSyncAppBase *aAppBaseP, TSyncSessionHandle *aSessionHandleP, cAppCharP aSessionID);
   virtual ~TStdLogicAgent();
   virtual void TerminateSession(void); // Terminate session, like destructor, but without actually destructing object itself
   virtual void ResetSession(void); // Resets session (but unlike TerminateSession, session might be re-used)
   void InternalResetSession(void); // static implementation for calling through virtual destructor and virtual ResetSession();
   // user authentication
   #ifndef SYSYNC_CLIENT
-  // - server should implement it, so we make it abstract here again (altough there is
+  // - server-only build should implement it, so we make it abstract here again (altough there is
   //   an implementation for simpleauth in session.
   virtual bool SessionLogin(const char *aUserName, const char *aAuthString, TAuthSecretTypes aAuthStringType, const char *aDeviceID) = 0;
-  #endif
+  #endif // not SYSYNC_CLIENT
 }; // TStdLogicAgent
 
 

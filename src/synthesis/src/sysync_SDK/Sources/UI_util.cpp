@@ -10,6 +10,9 @@
  *
  */
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
 
 #include "prefix_file.h"
 #include  "UI_util.h"
@@ -96,7 +99,8 @@ static bool IsLib( cAppCharP name )
 
 
 // Connect SyncML engine
-TSyError UI_Connect( UI_Call_In &aCI, appPointer &aDLL, cAppCharP aEngineName,
+TSyError UI_Connect( UI_Call_In &aCI, appPointer &aDLL, bool &aIsServer,
+                                                        cAppCharP aEngineName,
                                                         CVersion  aPrgVersion,
                                                         uInt16    aDebugFlags )
 {
@@ -115,6 +119,7 @@ TSyError UI_Connect( UI_Call_In &aCI, appPointer &aDLL, cAppCharP aEngineName,
                                                   uInt16    aDebugFlags );
   GetCEProc fConnectEngine= NULL;
 
+  aIsServer = false;
   do {
     aCI = NULL; // no such structure available at the beginning
     aDLL= NULL;
@@ -129,19 +134,37 @@ TSyError UI_Connect( UI_Call_In &aCI, appPointer &aDLL, cAppCharP aEngineName,
     } // if
 
     if (IsLib( name.c_str() )) {
-      #ifdef DBAPI_LINKED
+      if (name == "[]") {
+#ifdef DBAPI_LINKED
         fConnectEngine= SYSYNC_EXTERNAL(ConnectEngine);
-      #endif
+#endif
+      } else if (name == "[server:]") {
+        aIsServer=true;
+#ifdef DBAPI_SRV_LINKED
+        fConnectEngine= SySync_srv_ConnectEngine;
+#endif
+      }
 
       break;
     } // if
-                         name+= DLL_Suffix;
-        err= ConnectDLL( name.c_str(), aDLL ); // try with suffix first
+
+    cAppCharP prefix = "server:";
+    size_t prefixlen = strlen(prefix);
+    if (name.size() > prefixlen &&
+        !name.compare(0, prefixlen, prefix)) {
+      // ignore prefix and if we find the lib, look for different entry points
+      aIsServer=true;
+      name = name.substr(prefixlen);
+      SyFName= "SySync_srv_ConnectEngine";
+      FName=        "srv_ConnectEngine";
+    }
+
+    err= ConnectDLL( name.c_str(), aDLL ); // try with name directly
     if (dbg) printf( "modu='%s' err=%d\n", name.c_str(), err );
 
     if (err) {
-                         name= aEngineName;
-        err= ConnectDLL( name.c_str(), aDLL ); // then try directly
+                         name+= DLL_Suffix;
+        err= ConnectDLL( name.c_str(), aDLL ); // try with suffix next
     } // if
 
     if (dbg) printf( "modu='%s' err=%d\n", name.c_str(), err );
@@ -171,7 +194,7 @@ TSyError UI_Connect( UI_Call_In &aCI, appPointer &aDLL, cAppCharP aEngineName,
 } // UI_Connect
 
 
-TSyError UI_Disconnect( UI_Call_In aCI, appPointer aDLL )
+TSyError UI_Disconnect( UI_Call_In aCI, appPointer aDLL, bool aIsServer )
 {
   // Always search for BOTH names, independently of environment
   cAppCharP SyFName= "SySync_DisconnectEngine";
@@ -184,12 +207,23 @@ TSyError UI_Disconnect( UI_Call_In aCI, appPointer aDLL )
 
   do {
     if (aDLL==NULL) {
-      #ifdef DBAPI_LINKED
+      if (aIsServer) {
+#ifdef DBAPI_LINKED
         fDisconnectEngine= SYSYNC_EXTERNAL(DisconnectEngine);
-      #endif
+#endif
+      } else {
+#ifdef DBAPI_SRV_LINKED
+        fDisconnectEngine= SySync_srv_DisconnectEngine;
+#endif
+      }
 
       break;
     } // if
+
+    if (aIsServer) {
+      SyFName = "SySync_srv_DisconnectEngine";
+      FName = "srv_DisconnectEngine";
+    }
 
     cAppCharP                 fN= SyFName;
     err=      DLL_Func( aDLL, fN,   fFunc );
@@ -226,7 +260,8 @@ TSyError UI_CreateContext( CContext &uContext, cAppCharP aEngineName,
 {
   TSyError err;
   UIContext*           uc= new UIContext;
-  err=     UI_Connect( uc->uCI, uc->uDLL, aEngineName, aPrgVersion, aDebugFlags );
+  bool isServer;
+  err=     UI_Connect( uc->uCI, uc->uDLL, isServer, aEngineName, aPrgVersion, aDebugFlags );
                        uc->uName=         aEngineName;
   DEBUG_DB           ( uc->uCI, MyMod,"UI_CreateContext", "'%s'", uc->uName.c_str() );
   uContext=  (CContext)uc;

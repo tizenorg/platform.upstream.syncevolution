@@ -21,10 +21,10 @@ namespace sysync {
 
 
 // factory function implementation - declared in TEngineInterface
-ENGINE_IF_CLASS *newEngine(void)
+ENGINE_IF_CLASS *newClientEngine(void)
 {
   return new TCustomClientEngineInterface;
-} // newEngine
+} // newClientEngine
 
 
 

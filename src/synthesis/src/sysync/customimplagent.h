@@ -39,7 +39,7 @@ extern const TFuncTable CustomDSFuncTable1;
 // - define count here as derivates will access the funcdefs table directly
 const int numCustomAgentFuncs=14;
 extern const TBuiltInFuncDef CustomAgentFuncDefs[numCustomAgentFuncs];
-#ifndef BASED_ON_BINFILE_CLIENT
+#ifndef BINFILE_ALWAYS_ACTIVE
   const int numCustomAgentAndDSFuncs=5;
 #else
   const int numCustomAgentAndDSFuncs=3;
@@ -95,18 +95,14 @@ class TScriptContext;
 class TCustomAgentConfig:
   #ifdef BASED_ON_BINFILE_CLIENT
   public TBinfileClientConfig
-  #elif defined(SYSYNC_CLIENT)
-  public TClientConfig
   #else
-  public TServerConfig
+  public TAgentConfig
   #endif
 {
   #ifdef BASED_ON_BINFILE_CLIENT
   typedef TBinfileClientConfig inherited;
-  #elif defined(SYSYNC_CLIENT)
-  typedef TClientConfig inherited;
   #else
-  typedef TServerConfig inherited;
+  typedef TAgentConfig inherited;
   #endif
 public:
   TCustomAgentConfig(TConfigElement *aParentElement);
@@ -164,11 +160,7 @@ class TCustomImplAgent:
   typedef TStdLogicAgent inherited;
   #endif
 public:
-  #ifdef SYSYNC_CLIENT
-  TCustomImplAgent(TSyncClientBase *aSyncClientBaseP, const char *aSessionID);
-  #else
-  TCustomImplAgent(TSyncAppBase *aAppBaseP, TSyncSessionHandle *aSessionHandleP, const char *aSessionID);
-  #endif
+  TCustomImplAgent(TSyncAppBase *aAppBaseP, TSyncSessionHandle *aSessionHandleP, cAppCharP aSessionID);
   virtual ~TCustomImplAgent();
   virtual void TerminateSession(void); // Terminate session, like destructor, but without actually destructing object itself
   virtual void ResetSession(void); // Resets session (but unlike TerminateSession, session might be re-used)
@@ -184,8 +176,12 @@ public:
   virtual localstatus InitializeTunnelSession(cAppCharP aDatastoreName);
   virtual TLocalEngineDS *getTunnelDS();
   #endif
-  // Login and device management only if not based on binfile client
   #ifndef BASED_ON_BINFILE_CLIENT
+  // if binfiles are not compiled in, they are always inactive (otherwise binfileclient parent defines this method)
+  bool binfilesActive(void) { return false; };  
+  #endif
+  // Login and device management only if not exclusively based on binfile client
+  #ifndef BINFILE_ALWAYS_ACTIVE
   // - login for this session
   virtual bool SessionLogin(const char *aUserName, const char *aAuthString, TAuthSecretTypes aAuthStringType, const char *aDeviceID);
   // - clean up after all login activity is over (including finishscript)
@@ -214,7 +210,7 @@ protected:
   // - remote device is analyzed, eventually save status
   virtual void remoteAnalyzed(void) { /* NOP at this level */ };
   // script contexts
-  #endif // BASED_ON_BINFILE_CLIENT
+  #endif // BINFILE_ALWAYS_ACTIVE
   #ifdef SCRIPT_SUPPORT
   TScriptContext *fAgentContext;
   #endif // SCRIPT_SUPPORT

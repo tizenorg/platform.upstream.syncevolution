@@ -281,13 +281,8 @@ void TPluginAgentConfig::localResolve(bool aLastPass)
 // ===============
 
 
-#ifdef SYSYNC_CLIENT
-TPluginApiAgent::TPluginApiAgent(TSyncClientBase *aSyncClientBaseP, const char *aSessionID) :
-  inherited(aSyncClientBaseP, aSessionID),
-#else
-TPluginApiAgent::TPluginApiAgent(TSyncAppBase *aAppBaseP, TSyncSessionHandle *aSessionHandleP, const char *aSessionID) :
+TPluginApiAgent::TPluginApiAgent(TSyncAppBase *aAppBaseP, TSyncSessionHandle *aSessionHandleP, cAppCharP aSessionID) :
   inherited(aAppBaseP, aSessionHandleP, aSessionID),
-#endif
   fPluginAgentConfigP(NULL),
   fApiLocked(false)
 {
@@ -397,7 +392,7 @@ lineartime_t TPluginApiAgent::getDatabaseNowAs(timecontext_t aTimecontext)
 
 
 
-#ifndef SYSYNC_CLIENT
+#ifdef SYSYNC_SERVER
 
 // info about requested auth type
 TAuthTypes TPluginApiAgent::requestedAuthType(void)
@@ -405,7 +400,7 @@ TAuthTypes TPluginApiAgent::requestedAuthType(void)
   // if not checking via api, let inherited decide
   if (!fPluginAgentConfigP->fApiSessionAuth) return inherited::requestedAuthType();
   // get default
-  TAuthTypes auth = TSyncServer::requestedAuthType();
+  TAuthTypes auth = TSyncAgent::requestedAuthType();
   // depending on possibilities of used module, we need to enforce basic
   int pwmode=fDBApiSession.PasswordMode();
   if (pwmode==Password_ClrText_IN || (pwmode==Password_MD5_OUT && getSyncMLVersion()<syncml_vers_1_1)) {
@@ -466,7 +461,7 @@ void TPluginApiAgent::getNextNonce(const char *aDeviceID, string &aNextNonce)
 #endif // SYSYNC_CLIENT
 
 
-#ifndef BASED_ON_BINFILE_CLIENT
+#ifndef BINFILE_ALWAYS_ACTIVE
 
 
 // check device related stuff
@@ -492,10 +487,12 @@ void TPluginApiAgent::CheckDevice(const char *aDeviceID)
     TSyError sta = fDBApiSession.CheckDevice(aDeviceID,deviceKey,lastNonce);
     if (sta!=LOCERR_OK)
       SYSYNC_THROW(TSyncException("TPluginApiAgent: checkdevice failed",sta));
-    #ifndef SYSYNC_CLIENT
-    // save last nonce
-    fLastNonce = lastNonce.c_str();
-    #endif
+    #ifdef SYSYNC_SERVER
+    if (IS_SERVER) {
+      // save last nonce
+      fLastNonce = lastNonce.c_str();
+    }
+    #endif // SYSYNC_SERVER
     // device "key" is set to deviceID. Plugin internally maintains its key needed for storing Nonce or DevInf
     fDeviceKey = deviceKey.c_str();
   } // if device table implemented in ApiDB
@@ -590,9 +587,22 @@ bool TPluginApiAgent::CheckLogin(const char *aOriginalUserName, const char *aMod
   }
   // api auth required
   TDB_Api_Str userKey;
+  TDB_Api_Str dbSecret;
   int pwmode = fDBApiSession.PasswordMode();
+  // check anonymous login
+  if (aAuthStringType==sectyp_anonymous) {
+  	if (pwmode==Password_ClrText_IN || pwmode==Password_MD5_Nonce_IN) {
+    	// modes that pass in credential string - pass empty credential string to signal "anonymous"
+	    authok = fDBApiSession.Login(aModifiedUserName,"",userKey)==LOCERR_OK;
+    }
+    else {
+    	// modes that get credential string from API - check that API returns empty string to signal "anonymous" login is ok
+	    authok = fDBApiSession.Login(aModifiedUserName,dbSecret,userKey)==LOCERR_OK;
+      authok = authok && dbSecret.empty(); // returned secret must be empty to allow anonymous login
+    }
+  }
   // check if we can auth at all
-  if (pwmode == Password_ClrText_IN) {
+  else if (pwmode == Password_ClrText_IN) {
     // we can auth only if we have a cleartext password from the remote
     if (aAuthStringType!=sectyp_clearpass) return false; // auth not possible
     // login with clear text password
@@ -604,23 +614,22 @@ bool TPluginApiAgent::CheckLogin(const char *aOriginalUserName, const char *aMod
     authok = fDBApiSession.Login(aModifiedUserName,aAuthString,userKey)==LOCERR_OK;
   }
   else {
-    TDB_Api_Str dbSecret;
     if (pwmode == Password_MD5_OUT) {
       // if the database has MD5, we can auth basic and SyncML 1.1 MD5, but not SyncML 1.0 MD5
       if (aAuthStringType==sectyp_md5_V10) return false; // auth with SyncML 1.0 MD5 not possible
     }
     // get Secret and preliminary authok (w/o password check yet) from database
-    authok= fDBApiSession.Login(aModifiedUserName,dbSecret,userKey)==LOCERR_OK;
+    authok = fDBApiSession.Login(aModifiedUserName,dbSecret,userKey)==LOCERR_OK;
     if (authok) {
       // check secret
       if (pwmode == Password_ClrText_OUT) {
         // we have the clear text password, check against what was transmitted from remote
-        authok=checkAuthPlain(aOriginalUserName,dbSecret.c_str(),nonce.c_str(),aAuthString,aAuthStringType);
+        authok = checkAuthPlain(aOriginalUserName,dbSecret.c_str(),nonce.c_str(),aAuthString,aAuthStringType);
       }
       else {
         // whe have the MD5 of user:password, check against what was transmitted from remote
         // Note: this can't work with non-V1.1 type creds
-        authok=checkAuthMD5(aOriginalUserName,dbSecret.c_str(),nonce.c_str(),aAuthString,aAuthStringType);
+        authok = checkAuthMD5(aOriginalUserName,dbSecret.c_str(),nonce.c_str(),aAuthString,aAuthStringType);
       }
     }
   }
@@ -645,7 +654,7 @@ bool TPluginApiAgent::CheckLogin(const char *aOriginalUserName, const char *aMod
   }
 } // TPluginApiAgent::CheckLogin
 
-#endif // not BASED_ON_BINFILE_CLIENT
+#endif // not BINFILE_ALWAYS_ACTIVE
 
 
 // - logout api
@@ -661,7 +670,7 @@ void TPluginApiAgent::LogoutApi(void)
 
 
 
-#ifndef SYSYNC_CLIENT
+#ifdef SYSYNC_SERVER
 
 void TPluginApiAgent::RequestEnded(bool &aHasData)
 {
@@ -685,16 +694,17 @@ void TPluginApiAgent::RequestEnded(bool &aHasData)
 
 #ifdef SYSYNC_CLIENT
 
-TSyncClient *TPluginAgentConfig::CreateClientSession(const char *aSessionID)
+TSyncAgent *TPluginAgentConfig::CreateClientSession(const char *aSessionID)
 {
   // return appropriate client session
-  MP_RETURN_NEW(TPluginApiAgent,DBG_HOT,"TPluginApiAgent",TPluginApiAgent(static_cast<TSyncClientBase *>(getSyncAppBase()),aSessionID));
+  MP_RETURN_NEW(TPluginApiAgent,DBG_HOT,"TPluginApiAgent",TPluginApiAgent(getSyncAppBase(),NULL,aSessionID));
 } // TPluginAgentConfig::CreateClientSession
 
+#endif
 
-#else
+#ifdef SYSYNC_SERVER
 
-TSyncServer *TPluginAgentConfig::CreateServerSession(TSyncSessionHandle *aSessionHandle, const char *aSessionID)
+TSyncAgent *TPluginAgentConfig::CreateServerSession(TSyncSessionHandle *aSessionHandle, const char *aSessionID)
 {
   // return XML2GO or ODBC-server session
   MP_RETURN_NEW(TPluginApiAgent,DBG_HOT,"TPluginApiAgent",TPluginApiAgent(getSyncAppBase(),aSessionHandle,aSessionID));

@@ -1185,7 +1185,6 @@ bool TTextProfileHandler::generateContent(TMultiFieldItem &aItem, TLineMapDefini
             aString+="\x0D\x0A";
             // - simply append string
             if (attfldP) {
-              string s;
               attfldP->getAsString(s);
               appendUTF8ToString(
                 s.c_str(),

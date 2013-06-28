@@ -70,9 +70,14 @@ class ConfigTree {
     /** ensure that all changes are saved persistently */
     virtual void flush() = 0;
 
-    /** remove all configuration nodes and (if based on files)
-        directories created for them, if empty after file removal */
-    virtual void remove() = 0;
+    /**
+     * Remove all configuration nodes below and including a certain
+     * path and (if based on files) directories created for them, if
+     * empty after file removal.
+     *
+     * The nodes must not be in use for this to work.
+     */
+    virtual void remove(const string &path) = 0;
 
     /** a string identifying the root of the configuration - exact meaning varies */
     virtual string getRootPath() const = 0;
@@ -84,7 +89,8 @@ class ConfigTree {
     enum PropertyType {
         visible,   /**< visible configuration properties */
         hidden,    /**< hidden read/write properties */
-        other      /**< additional node selected via otherID */
+        other,     /**< additional node selected via otherID */
+        server,    /**< yet another additional node, similar to other */
     };
 
     /**
@@ -94,8 +100,8 @@ class ConfigTree {
      *
      * @param path      a relative path with / as separator
      * @param type      selects which fork of that path is to be opened
-     *                  (visible, hidden, change tracking)
-     * @param otherId   an additional string to be attached to the other
+     *                  (visible, hidden, change tracking, server)
+     * @param otherId   an additional string to be attached to the 'other' or 'server'
      *                  node's name (allows having multiple different such
      *                  nodes); an empty string is allowed
      */

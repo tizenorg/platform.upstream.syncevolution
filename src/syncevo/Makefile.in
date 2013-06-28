@@ -36,6 +36,11 @@ build_triplet = @build@
 host_triplet = @host@
 @ENABLE_UNIT_TESTS_TRUE@am__append_1 = $(CPPUNIT_CXXFLAGS)
 @ENABLE_UNIT_TESTS_TRUE@am__append_2 = $(CPPUNIT_LDFLAGS)
+@ENABLE_OBEX_TRUE@am__append_3 = ObexTransportAgent.h ObexTransportAgent.cpp
+@ENABLE_OBEX_TRUE@am__append_4 = $(LIBOPENOBEX_LIBS)
+@ENABLE_OBEX_TRUE@am__append_5 = $(LIBOPENOBEX_CFLAGS)
+@ENABLE_BLUETOOTH_TRUE@@ENABLE_OBEX_TRUE@am__append_6 = $(BLUEZ_LIBS)
+@ENABLE_BLUETOOTH_TRUE@@ENABLE_OBEX_TRUE@am__append_7 = $(BLUEZ_CFLAGS)
 subdir = src/syncevo
 DIST_COMMON = $(libsyncevolution_include_HEADERS) \
 	$(srcdir)/Makefile.am $(srcdir)/Makefile.in \
@@ -60,15 +65,37 @@ libLTLIBRARIES_INSTALL = $(INSTALL)
 LTLIBRARIES = $(lib_LTLIBRARIES)
 am__DEPENDENCIES_1 =
 @ENABLE_UNIT_TESTS_TRUE@am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
-am__DEPENDENCIES_3 = $(am__DEPENDENCIES_2)
-libsyncevolution_la_DEPENDENCIES = $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_3)
-am__objects_1 = libsyncevolution_la-eds_abi_wrapper.lo \
+@ENABLE_OBEX_TRUE@am__DEPENDENCIES_3 = $(am__DEPENDENCIES_1)
+@ENABLE_BLUETOOTH_TRUE@@ENABLE_OBEX_TRUE@am__DEPENDENCIES_4 = $(am__DEPENDENCIES_1)
+am__DEPENDENCIES_5 = $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3) \
+	$(am__DEPENDENCIES_4)
+am__libsyncevolution_la_SOURCES_DIST = ConfigTree.h ConfigNode.h \
+	HashConfigNode.h VolatileConfigNode.h VolatileConfigTree.h \
+	SmartPtr.h eds_abi_wrapper.h eds_abi_wrapper.cpp SyncML.h \
+	SyncML.cpp SynthesisEngine.h SynthesisEngine.cpp Logging.h \
+	Logging.cpp LogStdout.h LogStdout.cpp LogRedirect.h \
+	LogRedirect.cpp TransportAgent.h TransportAgent.cpp \
+	CurlTransportAgent.h CurlTransportAgent.cpp \
+	SoupTransportAgent.h SoupTransportAgent.cpp util.cpp util.h \
+	Cmdline.cpp Cmdline.h SyncSource.h SyncSource.cpp \
+	SynthesisDBPlugin.cpp SyncEvolutionXML.c SyncContext.h \
+	SyncContext.cpp SyncConfig.h SyncConfig.cpp \
+	DevNullConfigNode.h MultiplexConfigNode.h \
+	MultiplexConfigNode.cpp FilterConfigNode.h \
+	FilterConfigNode.cpp SafeConfigNode.h SafeConfigNode.cpp \
+	PrefixConfigNode.h PrefixConfigNode.cpp FileConfigNode.h \
+	FileConfigNode.cpp FileConfigTree.h FileConfigTree.cpp \
+	TrackingSyncSource.h TrackingSyncSource.cpp \
+	ObexTransportAgent.h ObexTransportAgent.cpp
+@ENABLE_OBEX_TRUE@am__objects_1 =  \
+@ENABLE_OBEX_TRUE@	libsyncevolution_la-ObexTransportAgent.lo
+am__objects_2 = libsyncevolution_la-eds_abi_wrapper.lo \
 	libsyncevolution_la-SyncML.lo \
 	libsyncevolution_la-SynthesisEngine.lo \
 	libsyncevolution_la-Logging.lo \
 	libsyncevolution_la-LogStdout.lo \
 	libsyncevolution_la-LogRedirect.lo \
+	libsyncevolution_la-TransportAgent.lo \
 	libsyncevolution_la-CurlTransportAgent.lo \
 	libsyncevolution_la-SoupTransportAgent.lo \
 	libsyncevolution_la-util.lo libsyncevolution_la-Cmdline.lo \
@@ -77,13 +104,14 @@ am__objects_1 = libsyncevolution_la-eds_abi_wrapper.lo \
 	libsyncevolution_la-SyncEvolutionXML.lo \
 	libsyncevolution_la-SyncContext.lo \
 	libsyncevolution_la-SyncConfig.lo \
+	libsyncevolution_la-MultiplexConfigNode.lo \
 	libsyncevolution_la-FilterConfigNode.lo \
 	libsyncevolution_la-SafeConfigNode.lo \
 	libsyncevolution_la-PrefixConfigNode.lo \
 	libsyncevolution_la-FileConfigNode.lo \
 	libsyncevolution_la-FileConfigTree.lo \
-	libsyncevolution_la-TrackingSyncSource.lo
-am_libsyncevolution_la_OBJECTS = $(am__objects_1)
+	libsyncevolution_la-TrackingSyncSource.lo $(am__objects_1)
+am_libsyncevolution_la_OBJECTS = $(am__objects_2)
 libsyncevolution_la_OBJECTS = $(am_libsyncevolution_la_OBJECTS)
 libsyncevolution_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) \
@@ -111,7 +139,7 @@ CXXLINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
 SOURCES = $(libsyncevolution_la_SOURCES)
-DIST_SOURCES = $(libsyncevolution_la_SOURCES)
+DIST_SOURCES = $(am__libsyncevolution_la_SOURCES_DIST)
 pkgconfigDATA_INSTALL = $(INSTALL_DATA)
 DATA = $(pkgconfig_DATA)
 libsyncevolution_includeHEADERS_INSTALL = $(INSTALL_HEADER)
@@ -131,6 +159,8 @@ AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BACKEND_CPPFLAGS = @BACKEND_CPPFLAGS@
 BACKEND_DEFINES = @BACKEND_DEFINES@
+BLUEZ_CFLAGS = @BLUEZ_CFLAGS@
+BLUEZ_LIBS = @BLUEZ_LIBS@
 BOOST_CPPFLAGS = @BOOST_CPPFLAGS@
 BOOST_LDFLAGS = @BOOST_LDFLAGS@
 CATALOGS = @CATALOGS@
@@ -138,7 +168,6 @@ CATOBJEXT = @CATOBJEXT@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
-CLEAN_CLIENT_SRC = @CLEAN_CLIENT_SRC@
 CORE_LDADD_DEP = @CORE_LDADD_DEP@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
@@ -151,8 +180,10 @@ CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DATADIRNAME = @DATADIRNAME@
 DBUS_BINDING_TOOL = @DBUS_BINDING_TOOL@
+DBUS_CFLAGS = @DBUS_CFLAGS@
 DBUS_GLIB_CFLAGS = @DBUS_GLIB_CFLAGS@
 DBUS_GLIB_LIBS = @DBUS_GLIB_LIBS@
+DBUS_LIBS = @DBUS_LIBS@
 DBUS_SERVICES_DIR = @DBUS_SERVICES_DIR@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
@@ -179,11 +210,7 @@ GLIB_GENMARSHAL = @GLIB_GENMARSHAL@
 GLIB_LIBS = @GLIB_LIBS@
 GMOFILES = @GMOFILES@
 GMSGFMT = @GMSGFMT@
-GOBJECT_CFLAGS = @GOBJECT_CFLAGS@
-GOBJECT_LIBS = @GOBJECT_LIBS@
 GREP = @GREP@
-GTHREAD_CFLAGS = @GTHREAD_CFLAGS@
-GTHREAD_LIBS = @GTHREAD_LIBS@
 GTK_BUILDER_CONV = @GTK_BUILDER_CONV@
 GUI_CFLAGS = @GUI_CFLAGS@
 GUI_DESKTOP_FILES = @GUI_DESKTOP_FILES@
@@ -207,6 +234,8 @@ KEYRING_LIBS = @KEYRING_LIBS@
 LDFLAGS = @LDFLAGS@
 LIBEXECDIR = @LIBEXECDIR@
 LIBOBJS = @LIBOBJS@
+LIBOPENOBEX_CFLAGS = @LIBOPENOBEX_CFLAGS@
+LIBOPENOBEX_LIBS = @LIBOPENOBEX_LIBS@
 LIBS = @LIBS@
 LIBSOUP_CFLAGS = @LIBSOUP_CFLAGS@
 LIBSOUP_LIBS = @LIBSOUP_LIBS@
@@ -214,8 +243,6 @@ LIBTOOL = @LIBTOOL@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
-MCALB_CFLAGS = @MCALB_CFLAGS@
-MCALB_LIBS = @MCALB_LIBS@
 MKDIR_P = @MKDIR_P@
 MKINSTALLDIRS = @MKINSTALLDIRS@
 MODIFY_SYNCCOMPARE = @MODIFY_SYNCCOMPARE@
@@ -246,14 +273,17 @@ STRIP = @STRIP@
 
 # applies to sources in SyncEvolution repository, but not
 # the Funambol C++ client library
-SYNCEVOLUTION_CXXFLAGS = @SYNCEVOLUTION_CXXFLAGS@ $(am__append_1)
-SYNCEVOLUTION_LDADD = @SYNCEVOLUTION_LDADD@ $(am__append_2)
+SYNCEVOLUTION_CXXFLAGS = @SYNCEVOLUTION_CXXFLAGS@ $(am__append_1) \
+	$(am__append_5) $(am__append_7)
+SYNCEVOLUTION_LDADD = @SYNCEVOLUTION_LDADD@ $(am__append_2) \
+	$(am__append_4) $(am__append_6)
 SYNCEVOLUTION_LOCALEDIR = @SYNCEVOLUTION_LOCALEDIR@
 SYNCSOURCES = @SYNCSOURCES@
 SYNTHESIS = @SYNTHESIS@
 SYNTHESISSRC = @SYNTHESISSRC@
 SYNTHESIS_CFLAGS = @SYNTHESIS_CFLAGS@
 SYNTHESIS_DEP = @SYNTHESIS_DEP@
+SYNTHESIS_ENGINE = @SYNTHESIS_ENGINE@
 SYNTHESIS_LIB = @SYNTHESIS_LIB@
 SYNTHESIS_LIBS = @SYNTHESIS_LIBS@
 SYNTHESIS_SRC = @SYNTHESIS_SRC@
@@ -265,8 +295,6 @@ UNIQUE_LIBS = @UNIQUE_LIBS@
 USE_NLS = @USE_NLS@
 VERSION = @VERSION@
 XGETTEXT = @XGETTEXT@
-XMLRPC_CFLAGS = @XMLRPC_CFLAGS@
-XMLRPC_LIBS = @XMLRPC_LIBS@
 XSLT = @XSLT@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
@@ -324,72 +352,22 @@ top_srcdir = @top_srcdir@
 AM_CPPFLAGS = @BACKEND_CPPFLAGS@ @GLIB_CFLAGS@ -I$(top_srcdir)/test -I$(top_srcdir)/src -DSYNCEVO_BACKEND=\"$(backendsearchdir)\"
 MAINTAINERCLEANFILES = Makefile.in
 lib_LTLIBRARIES = libsyncevolution.la
-SYNCEVOLUTION_SOURCES = \
-	ConfigTree.h \
-	ConfigNode.h \
-	HashConfigNode.h \
-	VolatileConfigNode.h \
-	VolatileConfigTree.h \
-        SmartPtr.h \
-	eds_abi_wrapper.h \
-	eds_abi_wrapper.cpp \
-	\
-	SyncML.h \
-	SyncML.cpp \
-	\
-	SynthesisEngine.h \
-	SynthesisEngine.cpp \
-	\
-	Logging.h \
-	Logging.cpp \
-	LogStdout.h \
-	LogStdout.cpp \
-	LogRedirect.h \
-	LogRedirect.cpp \
-	\
-	TransportAgent.h \
-	CurlTransportAgent.h \
-	CurlTransportAgent.cpp \
-	\
-	SoupTransportAgent.h \
-	SoupTransportAgent.cpp \
-	\
-	util.cpp \
-	util.h \
-        \
-	Cmdline.cpp \
-        Cmdline.h \
-	\
-        SyncSource.h \
-        SyncSource.cpp \
-	\
-	SynthesisDBPlugin.cpp \
-	\
-	SyncEvolutionXML.c \
-        SyncContext.h \
-	SyncContext.cpp \
-	\
-	SyncConfig.h \
-	SyncConfig.cpp \
-	\
-	FilterConfigNode.h \
-	FilterConfigNode.cpp \
-	\
-	SafeConfigNode.h \
-	SafeConfigNode.cpp \
-	\
-	PrefixConfigNode.h \
-	PrefixConfigNode.cpp \
-	\
-	FileConfigNode.h \
-	FileConfigNode.cpp \
-	\
-	FileConfigTree.h \
-	FileConfigTree.cpp \
-	\
-	TrackingSyncSource.h \
-	TrackingSyncSource.cpp
-
+SYNCEVOLUTION_SOURCES = ConfigTree.h ConfigNode.h HashConfigNode.h \
+	VolatileConfigNode.h VolatileConfigTree.h SmartPtr.h \
+	eds_abi_wrapper.h eds_abi_wrapper.cpp SyncML.h SyncML.cpp \
+	SynthesisEngine.h SynthesisEngine.cpp Logging.h Logging.cpp \
+	LogStdout.h LogStdout.cpp LogRedirect.h LogRedirect.cpp \
+	TransportAgent.h TransportAgent.cpp CurlTransportAgent.h \
+	CurlTransportAgent.cpp SoupTransportAgent.h \
+	SoupTransportAgent.cpp util.cpp util.h Cmdline.cpp Cmdline.h \
+	SyncSource.h SyncSource.cpp SynthesisDBPlugin.cpp \
+	SyncEvolutionXML.c SyncContext.h SyncContext.cpp SyncConfig.h \
+	SyncConfig.cpp DevNullConfigNode.h MultiplexConfigNode.h \
+	MultiplexConfigNode.cpp FilterConfigNode.h \
+	FilterConfigNode.cpp SafeConfigNode.h SafeConfigNode.cpp \
+	PrefixConfigNode.h PrefixConfigNode.cpp FileConfigNode.h \
+	FileConfigNode.cpp FileConfigTree.h FileConfigTree.cpp \
+	TrackingSyncSource.h TrackingSyncSource.cpp $(am__append_3)
 libsyncevolution_includedir = $(includedir)/syncevo
 libsyncevolution_include_HEADERS = \
 	declarations.h \
@@ -416,6 +394,7 @@ libsyncevolution_la_SOURCES = $(SYNCEVOLUTION_SOURCES)
 libsyncevolution_la_LIBADD = @EPACKAGE_LIBS@ @GLIB_LIBS@ $(SYNTHESIS_LIBS) $(TRANSPORT_LIBS) @LIBS@ $(SYNCEVOLUTION_LDADD)
 libsyncevolution_la_CXXFLAGS = $(TRANSPORT_CFLAGS) $(SYNCEVOLUTION_CXXFLAGS) $(SYNTHESIS_CFLAGS)
 libsyncevolution_la_CPPFLAGS = $(AM_CPPFLAGS) -DTEMPLATE_DIR=\""$(datadir)/syncevolution/templates"\" -DLIBDIR=\""$(libdir)"\"
+libsyncevolution_la_DEPENDENCIES = $(SYNTHESIS_DEP)
 @ENABLE_MODULES_FALSE@libsyncevolution_la_LDFLAGS = -static
 @ENABLE_MODULES_TRUE@libsyncevolution_la_LDFLAGS = 
 all: all-am
@@ -497,6 +476,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-LogRedirect.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-LogStdout.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-Logging.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-MultiplexConfigNode.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-ObexTransportAgent.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-PrefixConfigNode.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-SafeConfigNode.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-SoupTransportAgent.Plo@am__quote@
@@ -508,6 +489,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-SynthesisDBPlugin.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-SynthesisEngine.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-TrackingSyncSource.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-TransportAgent.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-eds_abi_wrapper.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-util.Plo@am__quote@
 
@@ -602,6 +584,13 @@ libsyncevolution_la-LogRedirect.lo: LogRedirect.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -c -o libsyncevolution_la-LogRedirect.lo `test -f 'LogRedirect.cpp' || echo '$(srcdir)/'`LogRedirect.cpp
 
+libsyncevolution_la-TransportAgent.lo: TransportAgent.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -MT libsyncevolution_la-TransportAgent.lo -MD -MP -MF $(DEPDIR)/libsyncevolution_la-TransportAgent.Tpo -c -o libsyncevolution_la-TransportAgent.lo `test -f 'TransportAgent.cpp' || echo '$(srcdir)/'`TransportAgent.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsyncevolution_la-TransportAgent.Tpo $(DEPDIR)/libsyncevolution_la-TransportAgent.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='TransportAgent.cpp' object='libsyncevolution_la-TransportAgent.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -c -o libsyncevolution_la-TransportAgent.lo `test -f 'TransportAgent.cpp' || echo '$(srcdir)/'`TransportAgent.cpp
+
 libsyncevolution_la-CurlTransportAgent.lo: CurlTransportAgent.cpp
 @am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -MT libsyncevolution_la-CurlTransportAgent.lo -MD -MP -MF $(DEPDIR)/libsyncevolution_la-CurlTransportAgent.Tpo -c -o libsyncevolution_la-CurlTransportAgent.lo `test -f 'CurlTransportAgent.cpp' || echo '$(srcdir)/'`CurlTransportAgent.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsyncevolution_la-CurlTransportAgent.Tpo $(DEPDIR)/libsyncevolution_la-CurlTransportAgent.Plo
@@ -658,6 +647,13 @@ libsyncevolution_la-SyncConfig.lo: SyncConfig.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -c -o libsyncevolution_la-SyncConfig.lo `test -f 'SyncConfig.cpp' || echo '$(srcdir)/'`SyncConfig.cpp
 
+libsyncevolution_la-MultiplexConfigNode.lo: MultiplexConfigNode.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -MT libsyncevolution_la-MultiplexConfigNode.lo -MD -MP -MF $(DEPDIR)/libsyncevolution_la-MultiplexConfigNode.Tpo -c -o libsyncevolution_la-MultiplexConfigNode.lo `test -f 'MultiplexConfigNode.cpp' || echo '$(srcdir)/'`MultiplexConfigNode.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsyncevolution_la-MultiplexConfigNode.Tpo $(DEPDIR)/libsyncevolution_la-MultiplexConfigNode.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='MultiplexConfigNode.cpp' object='libsyncevolution_la-MultiplexConfigNode.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -c -o libsyncevolution_la-MultiplexConfigNode.lo `test -f 'MultiplexConfigNode.cpp' || echo '$(srcdir)/'`MultiplexConfigNode.cpp
+
 libsyncevolution_la-FilterConfigNode.lo: FilterConfigNode.cpp
 @am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -MT libsyncevolution_la-FilterConfigNode.lo -MD -MP -MF $(DEPDIR)/libsyncevolution_la-FilterConfigNode.Tpo -c -o libsyncevolution_la-FilterConfigNode.lo `test -f 'FilterConfigNode.cpp' || echo '$(srcdir)/'`FilterConfigNode.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsyncevolution_la-FilterConfigNode.Tpo $(DEPDIR)/libsyncevolution_la-FilterConfigNode.Plo
@@ -699,6 +695,13 @@ libsyncevolution_la-TrackingSyncSource.lo: TrackingSyncSource.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='TrackingSyncSource.cpp' object='libsyncevolution_la-TrackingSyncSource.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -c -o libsyncevolution_la-TrackingSyncSource.lo `test -f 'TrackingSyncSource.cpp' || echo '$(srcdir)/'`TrackingSyncSource.cpp
+
+libsyncevolution_la-ObexTransportAgent.lo: ObexTransportAgent.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -MT libsyncevolution_la-ObexTransportAgent.lo -MD -MP -MF $(DEPDIR)/libsyncevolution_la-ObexTransportAgent.Tpo -c -o libsyncevolution_la-ObexTransportAgent.lo `test -f 'ObexTransportAgent.cpp' || echo '$(srcdir)/'`ObexTransportAgent.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsyncevolution_la-ObexTransportAgent.Tpo $(DEPDIR)/libsyncevolution_la-ObexTransportAgent.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ObexTransportAgent.cpp' object='libsyncevolution_la-ObexTransportAgent.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -c -o libsyncevolution_la-ObexTransportAgent.lo `test -f 'ObexTransportAgent.cpp' || echo '$(srcdir)/'`ObexTransportAgent.cpp
 
 mostlyclean-libtool:
 	-rm -f *.lo

@@ -49,13 +49,12 @@ typedef TSyError localstatus;
 #define DEFAULT_CLIENTSESSIONTIMEOUT 20 // 20 seconds
 
 // - log file format: datastore
-#ifdef SYSYNC_CLIENT
-  #define DEFAULT_LOG_LABELS "SyncEndTime\tUser\tSyncMLVers\tStatus\tSynctype\tSessionID\tRemote ID\tRemote Name\tRemote VersInfo\tDatastore\tLocAdded\tLocUpdated\tLocDeleted\tLocErrors\tRemAdded\tRemUpdated\tRemDeleted\tRemErrors\tBytesOut\tBytesIn\n\n"
-  #define DEFAULT_LOG_FORMAT "%seT\t%U\t%syV\t%sS\t%tS\t%iS\t%iR\t%nR\t%vR\t%nD\t%laI\t%luI\t%ldI\t%leI\t%raI\t%ruI\t%rdI\t%reI\t%doB\t%diB\n"
-#else
-  #define DEFAULT_LOG_LABELS "SyncEndTime\tUser\tSyncMLVers\tStatus\tSynctype\tSessionID\tRemote ID\tRemote Name\tRemote VersInfo\tDatastore\tLocAdded\tLocUpdated\tLocDeleted\tLocErrors\tRemAdded\tRemUpdated\tRemDeleted\tRemErrors\tSlowSyncMatches\tServerWon\tClientWon\tDuplicated\tBytesOut\tBytesIn\tSessionBytesOut\tSessionBytesIn\n\n"
-  #define DEFAULT_LOG_FORMAT "%seT\t%U\t%syV\t%sS\t%tS\t%iS\t%iR\t%nR\t%vR\t%nD\t%laI\t%luI\t%ldI\t%leI\t%raI\t%ruI\t%rdI\t%reI\t%smI\t%scI\t%ccI\t%dcI\t%doB\t%diB\t%toB\t%tiB\n"
-#endif
+//   - client
+#define DEFAULT_LOG_LABELS_CLIENT "SyncEndTime\tUser\tSyncMLVers\tStatus\tSynctype\tSessionID\tRemote ID\tRemote Name\tRemote VersInfo\tDatastore\tLocAdded\tLocUpdated\tLocDeleted\tLocErrors\tRemAdded\tRemUpdated\tRemDeleted\tRemErrors\tBytesOut\tBytesIn\n\n"
+#define DEFAULT_LOG_FORMAT_CLIENT "%seT\t%U\t%syV\t%sS\t%tS\t%iS\t%iR\t%nR\t%vR\t%nD\t%laI\t%luI\t%ldI\t%leI\t%raI\t%ruI\t%rdI\t%reI\t%doB\t%diB\n"
+//   - server
+#define DEFAULT_LOG_LABELS_SERVER "SyncEndTime\tUser\tSyncMLVers\tStatus\tSynctype\tSessionID\tRemote ID\tRemote Name\tRemote VersInfo\tDatastore\tLocAdded\tLocUpdated\tLocDeleted\tLocErrors\tRemAdded\tRemUpdated\tRemDeleted\tRemErrors\tSlowSyncMatches\tServerWon\tClientWon\tDuplicated\tBytesOut\tBytesIn\tSessionBytesOut\tSessionBytesIn\n\n"
+#define DEFAULT_LOG_FORMAT_SERVER "%seT\t%U\t%syV\t%sS\t%tS\t%iS\t%iR\t%nR\t%vR\t%nD\t%laI\t%luI\t%ldI\t%leI\t%raI\t%ruI\t%rdI\t%reI\t%smI\t%scI\t%ccI\t%dcI\t%doB\t%diB\t%toB\t%tiB\n"
 
 // - defines debug mask that is active by default
 #define DEFAULT_DEBUG DBG_NORMAL
@@ -130,44 +129,13 @@ typedef TSyError localstatus;
 #define CONFIG_READ_BUFSIZ 3048 // size of buffer for XML config reading
 
 
-/*
-// - maximum size of SyncML toolkit memory usage
-#ifndef SML_WORKSPACEMEM
-  // if not specified in target_options, use defaults
-  // NOTE: most clients and servers use the defaults, so be careful when changing here!
-  #ifdef SYSYNC_CLIENT
-    // client
-    //#define SML_MAXTOOLKITMEM 1000000 // 1 Megs for now
-    #define SML_WORKSPACEMEM 40000 // 40k now for DS 1.2 (we had 20k before 3.x)
-  #else
-    // server
-    //#define SML_MAXTOOLKITMEM 0 // unlimited for now
-    #define SML_WORKSPACEMEM 100000 // 100k workspace per default
-  #endif
-#endif
-
-// message size and object size constraints (0 for none)
-#ifndef SYNCML_MAXMSGSIZE
-  #define SYNCML_MAXMSGSIZE (SML_WORKSPACEMEM/2) // half of workspace size
-#endif
-#ifndef SYNCML_MAXOBJSIZE
-  #define SYNCML_MAXOBJSIZE 4000000 // 4MB should be enough
-#endif
-#if SYNCML_MAXOBJSIZE<SML_WORKSPACEMEM*2/3
-  #warning "SYNCML_MAXOBJSIZE probably too small (smaller than 2/3 of message)"
-#endif
-#if (SYNCML_MAXMSGSIZE>=SML_WORKSPACEMEM*3/4) && (SML_WORKSPACEMEM-SYNCML_MAXMSGSIZE<10000)
-  #warning "SYNCML_MAXMSGSIZE probably too big"
-#endif
-*/
-
 // Max message size
 #ifndef DEFAULT_MAXMSGSIZE
-  #ifdef SYSYNC_CLIENT
-    // client
+  #ifndef SYSYNC_SERVER
+    // only client
     #define DEFAULT_MAXMSGSIZE 20000 // 20k now for DS 1.2 (we had 10k before 3.x)
   #else
-    // server
+    // server (or server and client)
     #define DEFAULT_MAXMSGSIZE 50000 // 50k should be enough
   #endif
 #endif
@@ -183,10 +151,10 @@ typedef TSyError localstatus;
 #define SYSYNC_SERVER_DEVID "SySync Server"
 #define SYSYNC_CLIENT_DEVID "SySync Client"
 #ifndef SYNCML_SERVER_DEVTYP
-  #define SYNCML_SERVER_DEVTYP "server"; // could also be "workstation"
+  #define SYNCML_SERVER_DEVTYP "server" // could also be "workstation"
 #endif
 #ifndef SYNCML_CLIENT_DEVTYP
-  #define SYNCML_CLIENT_DEVTYP "workstation"; // general case, could also be "handheld" or "pda"...
+  #define SYNCML_CLIENT_DEVTYP "workstation" // general case, could also be "handheld" or "pda"...
 #endif
 
 // SyncML SyncCap mask bits

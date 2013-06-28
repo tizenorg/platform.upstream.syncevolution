@@ -43,6 +43,7 @@ class SyncSource;
 
 struct SuspendFlags
 {
+    /** SIGINT twice within this amount of seconds aborts the sync */
     static const time_t ABORT_INTERVAL = 2; 
     enum CLIENT_STATE
     {
@@ -53,7 +54,16 @@ struct SuspendFlags
     }state;
     time_t last_suspend;
 
-    SuspendFlags():state(CLIENT_NORMAL),last_suspend(0)
+    /**
+     * Simple string to print in SyncContext::printSignals().
+     * Set by SyncContext::handleSignal() when updating the
+     * global state. There's a slight race condition: if
+     * messages are set more quickly than they are printed,
+     * only the last message is printed.
+     */
+    const char *message;
+
+SuspendFlags():state(CLIENT_NORMAL),last_suspend(0),message(NULL)
     {}
 };
 
@@ -69,11 +79,18 @@ struct SuspendFlags
  */
 class SyncContext : public SyncConfig, public ConfigUserInterface {
     const string m_server;
-    const set<string> m_sources;
-    const bool m_doLogging;
+    bool m_doLogging;
     bool m_quiet;
     bool m_dryrun;
 
+    bool m_serverMode;
+    std::string m_sessionID;
+    SharedBuffer m_initialMessage;
+    string m_initialMessageType;
+    string m_syncDeviceID;
+
+    
+    boost::shared_ptr<TransportAgent> m_agent;
     /**
      * flags for suspend and abort
      */
@@ -84,6 +101,23 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
      * used for error handling in throwError() on the iPhone
      */
     static SourceList *m_sourceListPtr;
+
+    /**
+     * a pointer to the active SyncContext instance if one exists;
+     * set by sync() and/or SwapContext
+     */
+    static SyncContext *m_activeContext;
+    class SwapContext {
+        SyncContext *m_oldContext;
+    public:
+        SwapContext(SyncContext *newContext) :
+            m_oldContext(SyncContext::m_activeContext) {
+            SyncContext::m_activeContext = newContext;
+        }
+        ~SwapContext() {
+            SyncContext::m_activeContext = m_oldContext;
+        }
+    };
 
     /**
      * Connection to the Synthesis engine. Always valid in a
@@ -115,15 +149,18 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
 
   public:
     /**
+     * SyncContext using a volatile config
+     * and no logging.
+     */
+    SyncContext();
+
+    /**
      * @param server     identifies the server config to be used
      * @param doLogging  write additional log and datatbase files about the sync
      */
     SyncContext(const string &server,
-                        bool doLogging = false,
-                        const set<string> &sources = set<string>());
+                bool doLogging = false);
     ~SyncContext();
-
-    using SyncConfig::savePassword;
 
     bool getQuiet() { return m_quiet; }
     void setQuiet(bool quiet) { m_quiet = quiet; }
@@ -131,7 +168,35 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
     bool getDryRun() { return m_dryrun; }
     void setDryRun(bool dryrun) { m_dryrun = dryrun; }
 
-    static SuspendFlags& getSuspendFlags() {return s_flags;}
+    /** only for server: device ID of peer */
+    void setSyncDeviceID(const std::string &deviceID) { m_syncDeviceID = deviceID; }
+    std::string getSyncDeviceID() const { return m_syncDeviceID; }
+
+    /** read-only access to suspend and abort state */
+    static const SuspendFlags &getSuspendFlags() { return s_flags; }
+
+    /*
+     * Use initSAN as the first step is sync() if this is a server alerted sync.
+     * Prepare the san package and send the SAN request to the peer in retry
+     * times. Returns false if failed to get a valid client sync request
+     * otherwise put the client sync request into m_initialMessage which will
+     * be used to initalze the server via initServer(), then continue sync() to
+     * start the real sync serssion.
+     */
+    bool initSAN (int retry = 3);
+
+    /**
+     * Initializes the session so that it runs as SyncML server once
+     * sync() is called. For this to work the first client message
+     * must be available already.
+     *
+     * @param sessionID    session ID to be used by server
+     * @param data         content of initial message sent by the client
+     * @param messageType  content type set by the client
+     */
+    void initServer(const std::string &sessionID,
+                    SharedBuffer data,
+                    const std::string &messageType);
 
     /**
      * Executes the sync, throws an exception in case of failure.
@@ -141,6 +206,35 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
      * @return overall sync status, for individual sources see report
      */
     SyncMLStatus sync(SyncReport *report = NULL);
+
+    /** result of analyzeSyncMLMessage() */
+    struct SyncMLMessageInfo {
+        std::string m_deviceID;
+
+        /** a string representation of the whole structure for debugging */
+        std::string toString() { return std::string("deviceID ") + m_deviceID; }
+    };
+
+    /**
+     * Instead or executing a sync, analyze the initial message
+     * without changing any local data. Returns once the LocURI =
+     * device ID of the client is known.
+     *
+     * @return device ID, empty if not in data
+     */
+    static SyncMLMessageInfo
+        analyzeSyncMLMessage(const char *data, size_t len,
+                             const std::string &messageType);
+
+    /**
+     * Convenience function, to be called inside a catch() block of
+     * (or for) the sync.
+     *
+     * Rethrows the exception to determine what it is, then logs it
+     * as an error and returns a suitable error code (usually a general
+     * STATUS_DATASTORE_FAILURE).
+     */
+    SyncMLStatus handleException();
 
     /**
      * Determines the log directory of the previous sync (either in
@@ -249,14 +343,14 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
     static SyncSource *findSource(const char *name);
 
     /**
-     * intercept config filters
+     * Find the active sync context for the given session.
      *
-     * This call removes the "sync" source property and remembers
-     * it separately because it has to be applied to only the active
-     * sync sources; the generic config handling code would apply
-     * it to all sources.
+     * @param sessionName      chosen by SyncEvolution and passed to
+     *                         Synthesis engine, which calls us back
+     *                         with it in SyncEvolution_Session_CreateContext()
+     * @return context or NULL if not found
      */
-    virtual void setConfigFilter(bool sync, const FilterConfigNode::ConfigFilter &filter);
+    static SyncContext *findContext(const char *sessionName);
 
     SharedEngine getEngine() { return m_engine; }
     const SharedEngine getEngine() const { return m_engine; }
@@ -268,6 +362,25 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
      * Handle for active session, may be NULL.
      */
     SharedSession getSession() { return m_session; }
+
+    /**
+     * sync() installs signal handlers for SIGINT and SIGTERM if no
+     * handler was installed already. SIGINT will try to suspend.
+     * Sending the signal again quickly (typically done by pressing
+     * CTRL-C twice) will abort. SIGTERM will abort the running sync
+     * immediately.
+     *
+     * If a handler was installed already, the caller is responsible
+     * for calling this function if this kind of SIGINT/SIGTERM
+     * handling is desired.
+     */
+    static void handleSignal(int signal);
+
+    /**
+     * Once a signal was received, all future calls to sync() will
+     * react to it unless this function is called first.
+     */
+    static void resetSignals() { s_flags = SuspendFlags(); }
 
   protected:
     /** exchange active Synthesis engine */
@@ -477,7 +590,10 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
      *
      * @return true if user wants to abort
      */
-    virtual bool checkForAbort() { return (s_flags.state == SuspendFlags::CLIENT_ABORT);}
+    virtual bool checkForAbort() {
+        printSignals();
+        return (s_flags.state == SuspendFlags::CLIENT_ABORT);
+    }
 
     /**
      * Called to find out whether user wants to suspend sync.
@@ -485,9 +601,20 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
      * Same as checkForAbort(), but the session is finished
      * gracefully so that it can be resumed.
      */
-    virtual bool checkForSuspend() { return (s_flags.state == SuspendFlags::CLIENT_SUSPEND);}
+    virtual bool checkForSuspend() {
+        printSignals();
+        return (s_flags.state == SuspendFlags::CLIENT_SUSPEND);
+    }
 
  private:
+    /** initialize members as part of constructors */
+    void init();
+
+    /**
+     * generate XML configuration and (re)initialize engine with it
+     */
+    void initEngine(bool logXML);
+
     /**
      * the code common to init() and status():
      * populate source list with active sources and open
@@ -506,16 +633,19 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
     SyncMLStatus doSync();
 
     /**
-     * iterate over files mentioned in getSSLServerCertificates()
-     * and return name of first one which is found, empty string
-     * if none
+     * directory for Synthesis client binfiles or
+     * Synthesis server textdb files, unique for each
+     * peer
      */
-    std::string findSSLServerCertificate();
+    string getSynthesisDatadir() { return getRootPath() + "/.synthesis"; }
 
     /**
-     * override sync mode of all active sync sources if set
+     * handleSignals() is called in a signal handler,
+     * which can only call reentrant functions. Our
+     * logging code is not reentrant and thus has
+     * to be called outside of the signal handler.
      */
-    string m_overrideMode;
+    static void printSignals();
 
     // total retry duration
     int m_retryDuration;

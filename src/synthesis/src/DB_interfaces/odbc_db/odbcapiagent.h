@@ -313,11 +313,12 @@ protected:
   #endif
   #ifdef SYSYNC_CLIENT
   // create appropriate session (=agent) for this client
-  virtual TSyncClient *CreateClientSession(const char *aSessionID);
-  #else
+  virtual TSyncAgent *CreateClientSession(const char *aSessionID);
+  #endif
 public:
+  #ifdef SYSYNC_SERVER
   // create appropriate session (=agent) for this server
-  virtual TSyncServer *CreateServerSession(TSyncSessionHandle *aSessionHandle, const char *aSessionID);
+  virtual TSyncAgent *CreateServerSession(TSyncSessionHandle *aSessionHandle, const char *aSessionID);
   #endif
 }; // TOdbcAgentConfig
 
@@ -330,11 +331,7 @@ class TODBCApiAgent: public TCustomImplAgent
   friend class TODBCAgentFuncs;
   typedef TCustomImplAgent inherited;
 public:
-  #ifdef SYSYNC_CLIENT
-  TODBCApiAgent(TSyncClientBase *aSyncClientBaseP, const char *aSessionID);
-  #else
-  TODBCApiAgent(TSyncAppBase *aAppBaseP, TSyncSessionHandle *aSessionHandleP, const char *aSessionID);
-  #endif
+  TODBCApiAgent(TSyncAppBase *aAppBaseP, TSyncSessionHandle *aSessionHandleP, cAppCharP aSessionID);
   virtual ~TODBCApiAgent();
   virtual void TerminateSession(void); // Terminate session, like destructor, but without actually destructing object itself
   virtual void ResetSession(void); // Resets session (but unlike TerminateSession, session might be re-used)
@@ -342,14 +339,14 @@ public:
   #ifdef HAS_SQL_ADMIN
   // Note: %%% for now, login is supported by ODBC only
   // user authentication
-  #ifndef SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
   // - return auth type to be requested from remote
   virtual TAuthTypes requestedAuthType(void); // avoids MD5 when it cannot be checked
   // - get next nonce string top be sent to remote party for subsequent MD5 auth
   virtual void getNextNonce(const char *aDeviceID, string &aNextNonce);
   // - get nonce string, which is expected to be used by remote party for MD5 auth.
   virtual void getAuthNonce(const char *aDeviceID, string &aAuthNonce);
-  #endif // SYSYNC_CLIENT
+  #endif // SYSYNC_SERVER
   // - clean up after all login activity is over (including finishscript)
   virtual void LoginCleanUp(void);
   #endif // HAS_SQL_ADMIN
@@ -571,7 +568,7 @@ protected:
   // - remote device is analyzed, eventually save status
   virtual void remoteAnalyzed(void);
   #endif // HAS_SQL_ADMIN
-  #ifndef SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
   // - request end, used to clean up
   virtual void RequestEnded(bool &aHasData);
   #endif

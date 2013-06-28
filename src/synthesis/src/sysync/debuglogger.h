@@ -78,6 +78,7 @@ public:
   string fIndentString; ///< indent string
   string fCustomPrefix; ///< custom prefix (different xml header or html with different styles for example)
   string fCustomSuffix; ///< custom suffix (should match prefix)
+  string fBasename; ///< the initial part of the log file name, can override the hard-coded TARGETID (empty if unset)
   bool fSeparateMsgs; ///< separate message lines (needed especially in XML to avoid unformatted PCDATA block)
   bool fTimestampStructure; ///< include timestamp for structure elements (blocks)
   bool fTimestampForAll; ///< include timestamp information for every message

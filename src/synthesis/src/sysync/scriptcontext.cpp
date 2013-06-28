@@ -497,6 +497,23 @@ public:
   }; // func_DateOnly
 
 
+  // timestamp TIMEONLY(timestamp atime)
+  // returns a floating(!) time-only of the given timestamp
+  static void func_TimeOnly(TItemField *&aTermP, TScriptContext *aFuncContextP)
+  {
+    TTimestampField *tsP = static_cast<TTimestampField *>(aFuncContextP->getLocalVar(0));
+
+    // get timestamp as dateonly
+    timecontext_t tctx;
+    lineartime_t ts;
+    ts = tsP->getTimestampAs(TCTX_UNKNOWN | TCTX_TIMEONLY, &tctx);
+    // assign it to result (but do NOT pass in tctx, as it might contain a zone
+    // but we need it as floating to make dates comparable
+    static_cast<TTimestampField *>(aTermP)->setTimestampAndContext(ts,TCTX_TIMEONLY|TCTX_UNKNOWN);
+  }; // func_TimeOnly
+
+
+
   // integer ISDURATION(timestamp atime)
   // returns true if given timestamp is a duration value
   static void func_IsDuration(TItemField *&aTermP, TScriptContext *aFuncContextP)
@@ -522,7 +539,7 @@ public:
 
 
   // timestamp POINTINTIME(timestamp atime)
-  // returns the timestamp as a point in time (i.e. not duration)
+  // returns the timestamp as a point in time (i.e. not duration and not dateonly/timeonly)
   static void func_PointInTime(TItemField *&aTermP, TScriptContext *aFuncContextP)
   {
     TTimestampField *tsP = static_cast<TTimestampField *>(aFuncContextP->getLocalVar(0));
@@ -531,8 +548,8 @@ public:
     timecontext_t tctx;
     lineartime_t ts;
     ts = tsP->getTimestampAs(TCTX_UNKNOWN, &tctx);
-    // assign it to result with duration flag cleared
-    static_cast<TTimestampField *>(aTermP)->setTimestampAndContext(ts,tctx & (~TCTX_DURATION));
+    // assign it to result with duration and dateonly flag cleared
+    static_cast<TTimestampField *>(aTermP)->setTimestampAndContext(ts,tctx & (~(TCTX_DURATION+TCTX_DATEONLY+TCTX_TIMEONLY)));
   }; // func_PointInTime
 
 
@@ -2157,6 +2174,7 @@ const TBuiltInFuncDef BuiltInFuncDefs[] = {
   { "SETUSERTIMEZONE", TBuiltinStdFuncs::func_SetUserTimezone, fty_none, 1, param_oneVariant },
   { "ISDATEONLY", TBuiltinStdFuncs::func_IsDateOnly, fty_integer, 1, param_oneTimestamp },
   { "DATEONLY", TBuiltinStdFuncs::func_DateOnly, fty_timestamp, 1, param_oneTimestamp },
+  { "TIMEONLY", TBuiltinStdFuncs::func_TimeOnly, fty_timestamp, 1, param_oneTimestamp },
   { "ISDURATION", TBuiltinStdFuncs::func_IsDuration, fty_integer, 1, param_oneTimestamp },
   { "DURATION", TBuiltinStdFuncs::func_Duration, fty_timestamp, 1, param_oneTimestamp },
   { "POINTINTIME", TBuiltinStdFuncs::func_PointInTime, fty_timestamp, 1, param_oneTimestamp },

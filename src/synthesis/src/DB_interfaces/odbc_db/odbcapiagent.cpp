@@ -19,6 +19,10 @@
 #include "odbcapids.h"
 #include "odbcapiagent.h"
 
+#ifdef SYSYNC_TOOL
+#include "syncsessiondispatch.h"
+#endif
+
 namespace sysync {
 
 
@@ -39,7 +43,7 @@ int execSQL(int argc, const char *argv[])
   const char *sql = NULL;
 
   // show only one row by default
-  long maxrows=1;
+  sInt32 maxrows=1;
 
   // check for argument
   if (argc<1) {
@@ -567,14 +571,6 @@ public:
     #ifdef ODBCAPI_SUPPORT
     try {
       agentP->commitAndCloseScriptStatement();
-      /*
-      if (agentP->fScriptStatement!=SQL_NULL_HANDLE) {
-        // only commit if we have used a statement at all in scripts
-        SafeSQLFreeHandle(SQL_HANDLE_STMT,agentP->fScriptStatement);
-        agentP->fScriptStatement=SQL_NULL_HANDLE;
-        SafeSQLEndTran(SQL_HANDLE_DBC,agentP->getODBCConnectionHandle(),SQL_COMMIT);
-      }
-      */
     }
     catch (exception &e) {
       POBJDEBUGPRINTFX(aFuncContextP->getSession(),DBG_ERROR,(
@@ -817,14 +813,20 @@ void TOdbcAgentConfig::localResolve(bool aLastPass)
     #ifdef HAS_SQL_ADMIN
     if (fClearTextPw && fMD5UserPass)
       throw TConfigParseException("only one of 'cleartextpw' and 'md5userpass' can be set");
-    #ifndef SYSYNC_CLIENT
-    if (fAutoNonce && !fClearTextPw && !fMD5UserPass)
-      throw TConfigParseException("if 'autononce' is set, 'cleartextpw' or 'md5userpass' MUST be set as well");
-    #endif
+    #ifdef SYSYNC_SERVER
+    if (IS_SERVER) {
+      if (fAutoNonce && !fClearTextPw && !fMD5UserPass)
+        throw TConfigParseException("if 'autononce' is set, 'cleartextpw' or 'md5userpass' MUST be set as well");
+    }
+    #endif // SYSYNC_SERVER
     #ifdef SYSYNC_CLIENT
-    if (fNoLocalDBLogin && !fUserKeySQL.empty())
-      throw TConfigParseException("'nolocaldblogin' is not allowed when 'userkeysql' is defined");
-    #endif
+    if (IS_CLIENT) {
+      #ifndef NO_LOCAL_DBLOGIN
+      if (fNoLocalDBLogin && !fUserKeySQL.empty())
+        throw TConfigParseException("'nolocaldblogin' is not allowed when 'userkeysql' is defined");
+      #endif
+    }
+    #endif // SYSYNC_CLIENT
     #endif // HAS_SQL_ADMIN
     #endif // ODBCAPI_SUPPORT
   }
@@ -852,33 +854,29 @@ void TOdbcAgentConfig::ResolveAPIScripts(void)
 /* public TODBCApiAgent members */
 
 
-#ifdef SYSYNC_CLIENT
-TODBCApiAgent::TODBCApiAgent(TSyncClientBase *aSyncClientBaseP, const char *aSessionID) :
-  TCustomImplAgent(aSyncClientBaseP, aSessionID),
-#else
-TODBCApiAgent::TODBCApiAgent(TSyncAppBase *aAppBaseP, TSyncSessionHandle *aSessionHandleP, const char *aSessionID) :
-  TCustomImplAgent(aAppBaseP, aSessionHandleP, aSessionID),
-#endif
-  fConfigP(NULL)
+// private init routine for both client and server constructor
+TODBCApiAgent::TODBCApiAgent(TSyncAppBase *aAppBaseP, TSyncSessionHandle *aSessionHandleP, cAppCharP aSessionID) :
+  TCustomImplAgent(aAppBaseP, aSessionHandleP, aSessionID)
+{
+	// init basics
   #ifdef ODBCAPI_SUPPORT
-  ,fODBCConnectionHandle(SQL_NULL_HANDLE)
-  ,fODBCEnvironmentHandle(SQL_NULL_HANDLE)
+  fODBCConnectionHandle = SQL_NULL_HANDLE;
+  fODBCEnvironmentHandle = SQL_NULL_HANDLE;
   #ifdef SCRIPT_SUPPORT
-  ,fScriptStatement(SQL_NULL_HANDLE)
-  ,fAfterConnectContext(NULL)
+  fScriptStatement = SQL_NULL_HANDLE;
+  fAfterConnectContext = NULL;
   #endif
   #endif // ODBCAPI_SUPPORT
-{
   // get config for agent and save direct link to agent config for easy reference
   fConfigP = static_cast<TOdbcAgentConfig *>(getRootConfig()->fAgentConfigP);
   // Note: Datastores are already created from config
-  #ifdef SCRIPT_SUPPORT
   #ifdef ODBCAPI_SUPPORT
-  // - rebuild afterconnect script
-  TScriptContext::rebuildContext(getSyncAppBase(),fConfigP->fAfterConnectScript,fAfterConnectContext,this,true);
   // - assign default DB connection string and password
   fSessionDBConnStr = fConfigP->fDBConnStr;
   fSessionDBPassword = fConfigP->fPassword;
+  #ifdef SCRIPT_SUPPORT
+  // - rebuild afterconnect script
+  TScriptContext::rebuildContext(getSyncAppBase(),fConfigP->fAfterConnectScript,fAfterConnectContext,this,true);
   #endif
   #endif
 } // TODBCApiAgent::TODBCApiAgent
@@ -1708,16 +1706,18 @@ bool TODBCApiAgent::ParseParamSubst(
 // do generic substitutions
 void TODBCApiAgent::DoSQLSubstitutions(string &aSQL)
 {
-  #ifndef BASED_ON_BINFILE_CLIENT
-  // substitute: %u = userkey
-  StringSubst(aSQL,"%u",fUserKey,2,fConfigP->fDataCharSet,fConfigP->fDataLineEndMode,fConfigP->fQuotingMode);
-  // substitute: %d = devicekey
-  StringSubst(aSQL,"%d",fDeviceKey,2,fConfigP->fDataCharSet,fConfigP->fDataLineEndMode,fConfigP->fQuotingMode);
-  #ifdef SCRIPT_SUPPORT
-  // substitute: %C = domain name (such as company selector)
-  StringSubst(aSQL,"%C",fDomainName,2,fConfigP->fDataCharSet,fConfigP->fDataLineEndMode,fConfigP->fQuotingMode);
-  #endif
-  #endif
+  #ifndef BINFILE_ALWAYS_ACTIVE
+  if (!binfilesActive()) {
+    // substitute: %u = userkey
+    StringSubst(aSQL,"%u",fUserKey,2,fConfigP->fDataCharSet,fConfigP->fDataLineEndMode,fConfigP->fQuotingMode);
+    // substitute: %d = devicekey
+    StringSubst(aSQL,"%d",fDeviceKey,2,fConfigP->fDataCharSet,fConfigP->fDataLineEndMode,fConfigP->fQuotingMode);
+    #ifdef SCRIPT_SUPPORT
+    // substitute: %C = domain name (such as company selector)
+    StringSubst(aSQL,"%C",fDomainName,2,fConfigP->fDataCharSet,fConfigP->fDataLineEndMode,fConfigP->fQuotingMode);
+    #endif
+  }
+  #endif // not BINFILE_ALWAYS_ACTIVE
   #ifdef SCRIPT_SUPPORT
   // substitute %sv(sessionvarname) = session variable by name
   string::size_type i=0;
@@ -1958,7 +1958,7 @@ SQLHDBC TODBCApiAgent::getODBCConnectionHandle(void)
       throw;
     }
   }
-  PDEBUGPRINTFX(DBG_DBAPI+DBG_EXOTIC,("Session: using connection handle 0x%lX",(uInt32)fODBCConnectionHandle));
+  PDEBUGPRINTFX(DBG_DBAPI+DBG_EXOTIC,("Session: using connection handle 0x%lX",(uIntArch)fODBCConnectionHandle));
   return fODBCConnectionHandle;
 } // TODBCApiAgent::getODBCConnectionHandle
 
@@ -1971,13 +1971,6 @@ SQLHDBC TODBCApiAgent::pullODBCConnectionHandle(void)
   #ifdef SCRIPT_SUPPORT
   // make sure eventual script statement gets disposed, as connection is now owned by datastore
   commitAndCloseScriptStatement();
-  /*
-  if (fScriptStatement!=SQL_NULL_HANDLE) {
-    PDEBUGPRINTFX(DBG_DBAPI+DBG_EXOTIC,("Script statement exists, connection pulled into DS -> closing the script statement now"));
-    SafeSQLFreeHandle(SQL_HANDLE_STMT,fScriptStatement);
-    fScriptStatement=SQL_NULL_HANDLE;
-  }
-  */
   #endif
   return connhandle;
 } // TODBCApiAgent::pullODBCConnectionHandle
@@ -3420,12 +3413,12 @@ lineartime_t TODBCApiAgent::getDatabaseNowAs(timecontext_t aTimecontext)
 } // TODBCApiAgent::getDatabaseNowAs
 
 
-#ifndef SYSYNC_CLIENT
+#ifdef SYSYNC_SERVER
 
 // info about requested auth type
 TAuthTypes TODBCApiAgent::requestedAuthType(void)
 {
-  TAuthTypes auth = TSyncServer::requestedAuthType();
+  TAuthTypes auth = TSyncAgent::requestedAuthType();
 
   // make sure that we don't request MD5 if we cannot check it:
   // either we need plain text passwords in the DB or SyncML V1.1 MD5 schema
@@ -3513,7 +3506,7 @@ void TODBCApiAgent::getNextNonce(const char *aDeviceID, string &aNextNonce)
   }
 } // TODBCApiAgent::getNextNonce
 
-#endif // not SYSYNC_CLIENT
+#endif // SYSYNC_SERVER
 
 
 #ifdef HAS_SQL_ADMIN
@@ -3572,10 +3565,12 @@ void TODBCApiAgent::CheckDevice(const char *aDeviceID)
             throw TSyncException("Fatal: inserted device record cannot be found again");
           }
           PDEBUGPRINTFX(DBG_ADMIN,("Unknown device '%.30s', creating new record",aDeviceID));
-          #ifndef SYSYNC_CLIENT
-          // device does not exist yet
-          fLastNonce.erase();
-          #endif
+          if (IS_SERVER) {
+          	#ifdef SYSYNC_SERVER
+            // device does not exist yet
+            fLastNonce.erase();
+            #endif
+          }
           // create new device
           SafeSQLCloseCursor(statement);
           // - get SQL
@@ -3609,18 +3604,23 @@ void TODBCApiAgent::CheckDevice(const char *aDeviceID)
           // - device key
           getColumnValueAsString(statement,1,fDeviceKey,chs_ascii);
           // - nonce
-          #ifdef SYSYNC_CLIENT
-          string dummy;
-          getColumnValueAsString(statement,2,dummy,chs_ascii);
-          #else
-          getColumnValueAsString(statement,2,fLastNonce,chs_ascii);
-          #endif
+          if (IS_CLIENT) {
+            string dummy;
+            getColumnValueAsString(statement,2,dummy,chs_ascii);
+          }
+          else {
+          	#ifdef SYSYNC_SERVER
+	          getColumnValueAsString(statement,2,fLastNonce,chs_ascii);
+            #endif
+          }
           // - done for now
           SafeSQLCloseCursor(statement);
           PDEBUGPRINTFX(DBG_ADMIN,("Device '%.30s' found, fDeviceKey='%.30s'",aDeviceID,fDeviceKey.c_str()));
-          #ifndef SYSYNC_CLIENT
-          DEBUGPRINTFX(DBG_ADMIN,("Last nonce saved for device='%.30s'",fLastNonce.c_str()));
-          #endif
+          if (IS_SERVER) {
+            #ifdef SYSYNC_SERVER
+	          DEBUGPRINTFX(DBG_ADMIN,("Last nonce saved for device='%.30s'",fLastNonce.c_str()));
+	          #endif
+          }
           break;
         }
       } while (true); // do until device found or created new
@@ -3869,7 +3869,7 @@ void TODBCApiAgent::remoteAnalyzed(void)
 
 
 
-#ifndef SYSYNC_CLIENT
+#ifdef SYSYNC_SERVER
 
 void TODBCApiAgent::RequestEnded(bool &aHasData)
 {
@@ -3887,7 +3887,7 @@ void TODBCApiAgent::RequestEnded(bool &aHasData)
   #endif
 } // TODBCApiAgent::RequestEnded
 
-#endif
+#endif // SYSYNC_SERVER
 
 
 // factory methods of Agent config
@@ -3895,16 +3895,17 @@ void TODBCApiAgent::RequestEnded(bool &aHasData)
 
 #ifdef SYSYNC_CLIENT
 
-TSyncClient *TOdbcAgentConfig::CreateClientSession(const char *aSessionID)
+TSyncAgent *TOdbcAgentConfig::CreateClientSession(const char *aSessionID)
 {
   // return appropriate client session
-  MP_RETURN_NEW(TODBCApiAgent,DBG_HOT,"TODBCApiAgent",TODBCApiAgent(static_cast<TSyncClientBase *>(getSyncAppBase()),aSessionID));
+  MP_RETURN_NEW(TODBCApiAgent,DBG_HOT,"TODBCApiAgent",TODBCApiAgent(getSyncAppBase(),NULL,aSessionID));
 } // TOdbcAgentConfig::CreateClientSession
 
+#endif
 
-#else
+#ifdef SYSYNC_SERVER
 
-TSyncServer *TOdbcAgentConfig::CreateServerSession(TSyncSessionHandle *aSessionHandle, const char *aSessionID)
+TSyncAgent *TOdbcAgentConfig::CreateServerSession(TSyncSessionHandle *aSessionHandle, const char *aSessionID)
 {
   // return XML2GO or ODBC-server session
   MP_RETURN_NEW(TODBCApiAgent,DBG_HOT,"TODBCApiAgent",TODBCApiAgent(getSyncAppBase(),aSessionHandle,aSessionID));

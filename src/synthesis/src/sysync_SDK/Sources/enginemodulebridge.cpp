@@ -28,6 +28,7 @@ namespace sysync {
 // --------------------------------------------------------------
 TEngineModuleBridge::TEngineModuleBridge() {
   fDLL= NULL;
+  fIsServer= false;
 } // constructor
 
 
@@ -40,7 +41,7 @@ TEngineModuleBridge::~TEngineModuleBridge() {
 // --------------------------------------------------------------
 TSyError TEngineModuleBridge::Init()
 {
-  TSyError err= UI_Connect( fCI, fDLL, fEngineName.c_str(), fPrgVersion, fDebugFlags );
+  TSyError err= UI_Connect( fCI, fDLL, fIsServer, fEngineName.c_str(), fPrgVersion, fDebugFlags );
   return   err;
 } // Init
 
@@ -48,7 +49,7 @@ TSyError TEngineModuleBridge::Init()
 TSyError TEngineModuleBridge::Term()
 {
   TSyError   err= LOCERR_OK;
-  if (fCI) { err= UI_Disconnect( fCI, fDLL ); fCI= NULL; }
+  if (fCI) { err= UI_Disconnect( fCI, fDLL, fIsServer ); fCI= NULL; }
   return     err;
 } // Term
 

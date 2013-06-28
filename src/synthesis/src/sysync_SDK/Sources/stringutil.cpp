@@ -231,7 +231,11 @@ sInt16 HexStrToUIntPtr( cAppCharP aStr, uIntPtr &aIntPtr, sInt16 aMaxDigits )
   #if __WORDSIZE == 64
     return HexStrToULongLong( aStr, aIntPtr, aMaxDigits );
   #else
-    return HexStrToULong    ( aStr, aIntPtr, aMaxDigits );
+    uInt32                            v= (uInt32)aIntPtr;
+    sInt16 rslt= HexStrToULong( aStr, v, aMaxDigits );
+    aIntPtr=                 (uIntPtr)v;
+    
+    return rslt;
   #endif
 } // HexStrToUIntPtr
 

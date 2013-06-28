@@ -46,6 +46,7 @@
 
 #if defined MACOSX
 	#define ENGINE_ENTRY ENTRY_C
+	#define ENGINE_ENTRY_CXX
 	
 	#ifdef __GNUC__
 	  #define ENTRY_ATTR __attribute__((visibility("default")))
@@ -56,20 +57,28 @@
   /* Visual Studio 2005 requires a specific entry point definition */
   /* This definition is empty for all other platforms */
   #define ENGINE_ENTRY ENTRY_C _declspec(dllexport)
+  #define ENGINE_ENTRY_CXX ENGINE_ENTRY
   #define ENTRY_ATTR
 #else
 	#define ENGINE_ENTRY ENTRY_C
+	#define ENGINE_ENTRY_CXX
 	#define ENTRY_ATTR
 #endif
 
 /* compose name of external symbols with C binding:
- * by default use parameter as-is (backwards compatibility),
+ * by default use parameter as-is (backwards compatibility) for client,
+ * and use "SySync_srv_" prefix for server.
+ * Newer builds usually use "SySync_" as prefix for client entry points.
  * can be changed in any file that is included before
  * this file
  */
 #ifndef SYSYNC_EXTERNAL
 # define SYSYNC_EXTERNAL(_x) _x
 # define SYSYNC_PREFIX ""
+#endif
+#ifndef SYSYNC_EXTERNAL_SRV
+# define SYSYNC_EXTERNAL_SRV(_x) SySync_srv_ ## _x
+# define SYSYNC_PREFIX_SRV "SySync_srv_"
 #endif
 
 #ifdef __cplusplus
@@ -152,8 +161,8 @@ enum Version {
   VP_CB_Version11        = 0x01050200,
   /** V1.6.0.X : Tunnel support                                  */
   VP_Tunnel              = 0x01060000,
-  /** V1.6.0.X : Current version, use 'Plugin_Version()'         */
-  VP_CurrentVersion      = 0x01060000,
+  /** V1.6.1.X : Current version, use 'Plugin_Version()'         */
+  VP_CurrentVersion      = 0x01060100,
 
   /** -------- : Bad/undefined version                           */
   VP_BadVersion          = 0xffffffff,
@@ -633,7 +642,7 @@ typedef TSyError (*DisconnectEngine_Func)	( UI_Call_In  aCI );
 
 
 
-/* Entry point for connecting the SyncML engine from outside */
+/* Entry point for connecting the SyncML engine as client from outside */
  ENGINE_ENTRY TSyError SYSYNC_EXTERNAL(ConnectEngine)
                                           ( UI_Call_In *aCI,
                                             CVersion   *aEngVersion,
@@ -647,9 +656,29 @@ typedef TSyError (*DisconnectEngine_Func)	( UI_Call_In  aCI );
                                             CVersion    aPrgVersion,
                                             uInt16      aDebugFlags ) ENTRY_ATTR;
 
-/* Entry point for disconnecting the engine at the end */
+/* Entry point for connecting the SyncML engine as server from outside */
+ ENGINE_ENTRY TSyError SYSYNC_EXTERNAL_SRV(ConnectEngine)
+                                          ( UI_Call_In *aCI,
+                                            CVersion   *aEngVersion,
+                                            CVersion    aPrgVersion,
+                                            uInt16      aDebugFlags ) ENTRY_ATTR;
+
+ ENGINE_ENTRY TSyError SYSYNC_EXTERNAL_SRV(ConnectEngineS)
+                                          ( UI_Call_In  aCI,
+                                            uInt16      aCallbackVersion,
+                                            CVersion   *aEngVersion,
+                                            CVersion    aPrgVersion,
+                                            uInt16      aDebugFlags ) ENTRY_ATTR;
+
+
+/* Entry point for disconnecting the client engine at the end */
  ENGINE_ENTRY TSyError SYSYNC_EXTERNAL(DisconnectEngine)
                                           ( UI_Call_In  aCI         ) ENTRY_ATTR;
+
+/* Entry point for disconnecting the client engine at the end */
+ ENGINE_ENTRY TSyError SYSYNC_EXTERNAL_SRV(DisconnectEngine)
+                                          ( UI_Call_In  aCI         ) ENTRY_ATTR;
+
 
 
 #ifdef __cplusplus

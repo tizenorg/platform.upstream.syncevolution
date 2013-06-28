@@ -14,7 +14,7 @@
 // general includes (SyncML tookit, windows, Clib)
 #include "sysync.h"
 #include "syncappbase.h"
-#include "syncserver.h"
+#include "syncagent.h"
 
 
 
@@ -22,7 +22,7 @@ namespace sysync {
 
 // forward declarations
 class TSyncSession;
-class TSyncServer;
+class TSyncAgent;
 class TSyncSessionDispatch;
 
 
@@ -31,7 +31,7 @@ class TSyncSessionDispatch;
 class TSyncSessionHandle {
 public:
   // the session
-  TSyncServer * fSessionP;
+  TSyncAgent * fSessionP;
   // the app base
   TSyncAppBase * fAppBaseP;
   // - used for counting session for session limiting
@@ -114,7 +114,7 @@ public:
   sInt32 numSessions(void) { return fSessions.size(); };
   #ifdef SYSYNC_TOOL
   // get or create a session for use with the diagnostic tool
-  TSyncServer *getSySyToolSession(void);
+  TSyncAgent *getSySyToolSession(void);
   #endif
 protected:
   // must be implemented in derived class to make access to
@@ -126,7 +126,7 @@ protected:
   TSyncSessionHandle *RemoveSession(TSyncSession *aSessionP) throw();
   // remove and kill session
   // Note: may not be called when session list is already locked
-  void KillServerSession(TSyncServer *aSessionP, uInt16 aStatusCode, const char *aMsg=NULL, uInt32 aErrorCode=0); // by pointer
+  void KillServerSession(TSyncAgent *aSessionP, uInt16 aStatusCode, const char *aMsg=NULL, uInt32 aErrorCode=0); // by pointer
   void KillSessionByInstance(InstanceID_t aSmlWorkspaceID, uInt16 aStatusCode, const char *aMsg=NULL, uInt32 aErrorCode=0); // by SyncML toolkit instance ID
   // Handle exception happening while decoding commands for a session
   virtual Ret_t HandleDecodingException(TSyncSession *aSessionP, const char *aRoutine, exception *aExceptionP=NULL);

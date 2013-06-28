@@ -44,40 +44,15 @@ struct SyncSourceParams {
     /**
      * @param    name        the name needed by SyncSource
      * @param    nodes       a set of config nodes to be used by this source
-     * @param    changeId    a unique string constructed from an ID for SyncEvolution
-     *                       and the URL/database we synchronize against; can be
-     *                       used to do change tracking for that combination of
-     *                       peers
      */
     SyncSourceParams(const string &name,
-                     const SyncSourceNodes &nodes,
-                     const string &changeId) :
-    m_name(name),
-        m_nodes(nodes),
-        m_changeId(stripChangeId(changeId))
+                     const SyncSourceNodes &nodes = SyncSourceNodes()) :
+        m_name(name),
+        m_nodes(nodes)
     {}
 
-    const string m_name;
-    const SyncSourceNodes m_nodes;
-    const string m_changeId;
-
-    /** remove special characters from change ID */
-    static string stripChangeId(const string changeId) {
-        string strippedChangeId = changeId;
-        size_t offset = 0;
-        while (offset < strippedChangeId.size()) {
-            switch (strippedChangeId[offset]) {
-            case ':':
-            case '/':
-            case '\\':
-                strippedChangeId.erase(offset, 1);
-                break;
-            default:
-                offset++;
-            }
-        }
-        return strippedChangeId;
-    }
+    string m_name;
+    SyncSourceNodes m_nodes;
 };
 
 /**
@@ -412,14 +387,12 @@ struct ClientTestConfig{
  * exchange format can register one configuration for each format, but
  * not registering any configuration is also okay.
  *
- * *Using* the registered tests depends on the CPPUnit test framework.
- * *Registering* does not. Therefore backends should always register *
- * *themselves for testing and leave it to the test runner
- * "client-test" whether tests are really executed.
- *
- * Unit tests are different. They create hard dependencies on CPPUnit
- * inside the code that contains them, and thus should be encapsulated
- * inside #ifdef ENABLE_UNIT_TESTS checks.
+ * This code depends on the C++ client library test framework and
+ * therefore CPPUnit. To avoid a hard dependency on that in the normal
+ * "syncevolution" binary, the actual usage of the test Config class
+ * is limited to the *Register.cpp files when compiling them for
+ * inclusion in the "client-test" binary, i.e., they are protected by
+ * #ifdef ENABLE_UNIT_TESTS.
  *
  * Sync sources have to work stand-alone without a full SyncClient
  * configuration for all local tests. The minimal configuration prepared
@@ -658,6 +631,12 @@ class SyncSourceBase : public Logger {
      */
     virtual SDKInterface *getSynthesisAPI() const = 0;
 
+    /**
+     * Prepare the sync source for usage inside a SyncML server.  To
+     * be called directly after creating the source, if at all.
+     */
+    virtual void enableServerMode() = 0;
+    virtual bool serverModeEnabled() const = 0;
 
  protected:
     struct SynthesisInfo {
@@ -864,6 +843,41 @@ class SyncSource : virtual public SyncSourceBase, public SyncSourceConfig, publi
         typedef sysync::TSyError (DeleteItem_t)(sysync::cItemID aID);
         boost::function<DeleteItem_t> m_deleteItem;
         /**@}*/
+
+
+        /**
+         * Synthesis administration callbacks. For documentation see the
+         * Synthesis API specification (PDF and/or sync_dbapi.h).
+         *
+         * Implementing this is *optional* in clients. In the Synthesis client
+         * engine, the "binfiles" module provides these calls without SyncEvolution
+         * doing anything.
+         *
+         * In the Synthesis server engine, the
+         * SyncSource::enableServerMode() call must install an
+         * implementation, like the one from SyncSourceAdmin.
+         */
+        /**@{*/
+        typedef sysync::TSyError (LoadAdminData_t)(const char *aLocDB,
+                                                   const char *aRemDB,
+                                                   char **adminData);
+        boost::function<LoadAdminData_t> m_loadAdminData;
+
+        typedef sysync::TSyError (SaveAdminData_t)(const char *adminData);
+        boost::function<SaveAdminData_t> m_saveAdminData;
+
+        typedef bool (ReadNextMapItem_t)(sysync::MapID mID, bool aFirst);
+        boost::function<ReadNextMapItem_t> m_readNextMapItem;
+
+        typedef sysync::TSyError (InsertMapItem_t)(sysync::cMapID mID);
+        boost::function<InsertMapItem_t> m_insertMapItem;
+
+        typedef sysync::TSyError (UpdateMapItem_t)(sysync::cMapID mID);
+        boost::function<UpdateMapItem_t> m_updateMapItem;
+
+        typedef sysync::TSyError (DeleteMapItem_t)(sysync::cMapID mID);
+        boost::function<DeleteMapItem_t> m_deleteMapItem;
+        /**@}*/
     };
     const Operations &getOperations() { return m_operations; }
         
@@ -932,6 +946,12 @@ class SyncSource : virtual public SyncSourceBase, public SyncSourceConfig, publi
      */
     static string backendsDebug();
 
+    /**
+     * Mime type a backend provides by default, this is used to alert the
+     * remote peer in SAN during server alerted sync.
+     */
+    virtual const char *getPeerMimeType() const =0;
+
     /* implementation of SyncSourceBase */
     virtual const char * getName() const { return SyncSourceConfig::getName(); }
     virtual long getNumDeleted() const { return m_numDeleted; }
@@ -959,6 +979,85 @@ class SyncSource : virtual public SyncSourceBase, public SyncSourceConfig, publi
      * the engine is running.
      */
     std::vector<sysync::SDK_InterfaceType *> m_synthesisAPI;
+};
+
+/**
+ * A SyncSource with no pure virtual functions.
+ */
+class DummySyncSource : public SyncSource
+{
+ public:
+    DummySyncSource(const SyncSourceParams &params) :
+       SyncSource(params) {}
+
+    DummySyncSource(const std::string &name) :
+       SyncSource(SyncSourceParams(name)) {}
+
+    virtual Databases getDatabases() { return Databases(); }
+    virtual void open() {}
+    virtual void close() {}
+    virtual void getSynthesisInfo(SynthesisInfo &info,
+                                  XMLConfigFragments &fragments) {}
+    virtual void enableServerMode() {}
+    virtual bool serverModeEnabled() const { return false; }
+    virtual const char *getPeerMimeType() const {return "";} 
+};
+
+/**
+ * Virtual SyncSources
+ */
+class VirtualSyncSource : public DummySyncSource 
+{
+public:
+    VirtualSyncSource(const SyncSourceParams &params) :
+       DummySyncSource(params) {}
+
+    std::string getDataTypeSupport() {
+        string datatypes;
+        SourceType sourceType = getSourceType();
+        string type = sourceType.m_format;
+
+        if (type.empty()) {
+            return "";
+        } else if (type == "text/x-vcard:2.1" || type == "text/x-vcard") {
+            datatypes =
+                "        <use datatype='vCard21' mode='rw' preferred='yes'/>\n";
+            if (!sourceType.m_forceFormat) {
+                datatypes +=
+                    "        <use datatype='vCard30' mode='rw'/>\n";
+            }
+        } else if (type == "text/vcard:3.0" || type == "text/vcard") {
+            datatypes =
+                "        <use datatype='vCard30' mode='rw' preferred='yes'/>\n";
+            if (!sourceType.m_forceFormat) {
+                datatypes +=
+                    "        <use datatype='vCard21' mode='rw'/>\n";
+            }
+        } else if (type == "text/x-vcalendar:1.0" || type == "text/x-vcalendar" 
+                  || type == "text/x-calendar:1.0" || type == "text/x-calendar") {
+            datatypes =
+                "        <use datatype='vcalendar10' mode='rw' preferred='yes'/>\n";
+            if (!sourceType.m_forceFormat) {
+                datatypes +=
+                    "        <use datatype='icalendar20' mode='rw'/>\n";
+            }
+        } else if (type == "text/calendar:2.0" || type == "text/calendar") {
+            datatypes =
+                "        <use datatype='icalendar20' mode='rw' preferred='yes'/>\n";
+            if (!sourceType.m_forceFormat) {
+                datatypes +=
+                    "        <use datatype='vcalendar10' mode='rw'/>\n";
+            }
+        } else if (type == "text/plain:1.0" || type == "text/plain") {
+            // note10 are the same as note11, so ignore force format
+            datatypes =
+                "        <use datatype='note10' mode='rw' preferred='yes'/>\n"
+                "        <use datatype='note11' mode='rw'/>\n";
+        } else {
+            throwError(string("configured MIME type not supported: ") + type);
+        }
+        return datatypes;
+    }
 };
 
 /**
@@ -1406,6 +1505,47 @@ class SyncSourceLogging : public virtual SyncSourceBase
                                 const boost::function<SyncSource::Operations::DeleteItem_t> &parent);
 };
 
+/**
+ * Implements Load/SaveAdminData and MapItem handling in a SyncML
+ * server. Uses a single property for the admin data in the "internal"
+ * node and a complete node for the map items.
+ */
+class SyncSourceAdmin : public virtual SyncSourceBase
+{
+    boost::shared_ptr<ConfigNode> m_configNode;
+    std::string m_adminPropertyName;
+    boost::shared_ptr<ConfigNode> m_mappingNode;
+
+    ConfigProps m_mapping;
+    ConfigProps::const_iterator m_mappingIterator;
+
+    sysync::TSyError loadAdminData(const char *aLocDB,
+                                   const char *aRemDB,
+                                   char **adminData);
+    sysync::TSyError saveAdminData(const char *adminData);
+    bool readNextMapItem(sysync::MapID mID, bool aFirst);
+    sysync::TSyError insertMapItem(sysync::cMapID mID);
+    sysync::TSyError updateMapItem(sysync::cMapID mID);
+    sysync::TSyError deleteMapItem(sysync::cMapID mID);
+    void flush();
+
+    void resetMap();
+    void mapid2entry(sysync::cMapID mID, string &key, string &value);
+    void entry2mapid(const string &key, const string &value, sysync::MapID mID);
+
+ public:
+    /** flexible initialization */
+    void init(SyncSource::Operations &ops,
+              const boost::shared_ptr<ConfigNode> &config,
+              const std::string adminPropertyName,
+              const boost::shared_ptr<ConfigNode> &mapping);
+
+    /**
+     * simpler initialization, using the default placement of data
+     * inside the SyncSourceConfig base class
+     */
+    void init(SyncSource::Operations &ops, SyncSource *source);
+};
 
 /**
  * This is an interface definition that is expected by the client-test

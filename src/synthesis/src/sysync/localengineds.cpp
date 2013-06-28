@@ -15,14 +15,11 @@
 // includes
 #include "prefix_file.h"
 #include "sysync.h"
-#include "syncappbase.h"
 #include "localengineds.h"
+#include "syncappbase.h"
 #include "scriptcontext.h"
 #include "superdatastore.h"
-
-#ifdef SYSYNC_CLIENT
-#include "syncclient.h"
-#endif
+#include "syncagent.h"
 
 
 using namespace sysync;
@@ -475,7 +472,7 @@ public:
     int daysbefore = aFuncContextP->getLocalVar(0)->getAsInteger();
     int daysafter = aFuncContextP->getLocalVar(1)->getAsInteger();
     // depending on SyncML version, create a SINCE/BEFORE filter or use the /dr(x,y) syntax
-    if (dsP->getSession()->getSyncMLVersion()>=syncml_vers_1_2 && static_cast<TSyncClient *>(dsP->getSession())->fServerHasSINCEBEFORE) {
+    if (dsP->getSession()->getSyncMLVersion()>=syncml_vers_1_2 && static_cast<TSyncAgent *>(dsP->getSession())->fServerHasSINCEBEFORE) {
       // use the SINCE/BEFORE syntax
       // BEFORE&EQ;20070808T000000Z&AND;SINCE&EQ;20070807T000000Z
       lineartime_t now = getSystemNowAs(TCTX_UTC,aFuncContextP->getSessionZones());
@@ -767,7 +764,7 @@ bool TTypeSupportConfig::localStartElement(const char *aElementName, const char 
         }
 				else
 	      	return fail("bad value for 'preferred'");
-      }      
+      }
     }
     // now add datatype
     if (preferred) {
@@ -866,7 +863,7 @@ void TLocalDSConfig::clear(void)
   fReportUpdates=true;
   fDeleteWins=false; // replace wins over delete by default
   fResendFailing=true; // resend failing items in next session by default
-  #ifndef SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
   fTryUpdateDeleted=false; // no attempt to update already deleted items (assuming they are invisible only)
   fAlwaysSendLocalID=false; // off as it used to be not SCTS conformant (but would give clients chances to remap IDs)
   #endif
@@ -924,7 +921,7 @@ bool TLocalDSConfig::localStartElement(const char *aElementName, const char **aA
     expectBool(fDeleteWins);
   else if (strucmp(aElementName,"resendfailing")==0)
     expectBool(fResendFailing);
-  #ifndef SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
   else if (strucmp(aElementName,"tryupdatedeleted")==0)
     expectBool(fTryUpdateDeleted);
   else if (strucmp(aElementName,"alwayssendlocalid")==0)
@@ -1155,14 +1152,15 @@ void TLocalEngineDS::InternalResetDataStore(void)
   fPendingAddMaps.clear();
   fUnconfirmedMaps.clear();
   fLastSessionMaps.clear();
-  #else
+  #endif
+  #ifdef SYSYNC_SERVER
   fTempGUIDMap.clear();
   #endif
 
 	/// Init type negotiation
   /// - for sending data
   fLocalSendToRemoteTypeP = NULL;
-  fRemoteReceiveFromLocalTypeP = NULL;  
+  fRemoteReceiveFromLocalTypeP = NULL;
   /// - for receiving data
   fLocalReceiveFromRemoteTypeP = NULL;
   fRemoteSendToLocalTypeP = NULL;
@@ -1237,7 +1235,7 @@ void TLocalEngineDS::InternalResetDataStore(void)
   fRemoteItemsUpdated=0;
   fRemoteItemsDeleted=0;
   fRemoteItemsError=0;
-  #ifndef SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
   // - conflicts
   fConflictsServerWins=0;
   fConflictsClientWins=0;
@@ -1421,21 +1419,23 @@ TTypeVariantDescriptor TLocalEngineDS::getVariantDescForType(TSyncItemType *aIte
 // - called when a item in the sync set changes its localID (due to local DB internals)
 void TLocalEngineDS::dsLocalIdHasChanged(const char *aOldID, const char *aNewID)
 {
-  #ifndef SYSYNC_CLIENT
-  // make sure remapped localIDs get updated as well
-  TStringToStringMap::iterator pos;
-  for (pos=fTempGUIDMap.begin(); pos!=fTempGUIDMap.end(); pos++) {
-    if (pos->second == aOldID) {
-      // update ID
-      pos->second = aNewID;
-      break;
+  #ifdef SYSYNC_SERVER
+  if (IS_SERVER) {
+    // make sure remapped localIDs get updated as well
+    TStringToStringMap::iterator pos;
+    for (pos=fTempGUIDMap.begin(); pos!=fTempGUIDMap.end(); pos++) {
+      if (pos->second == aOldID) {
+        // update ID
+        pos->second = aNewID;
+        break;
+      }
     }
   }
-  #endif
+  #endif // SYSYNC_SERVER
 } // TLocalEngineDS::dsLocalIdHasChanged
 
 
-#ifndef SYSYNC_CLIENT
+#ifdef SYSYNC_SERVER
 
 // for received GUIDs (Map command), obtain real GUID (might be temp GUID due to maxguidsize restrictions)
 void TLocalEngineDS::obtainRealLocalID(string &aLocalID)
@@ -1467,7 +1467,7 @@ void TLocalEngineDS::adjustLocalIDforSize(string &aLocalID, sInt32 maxguidsize, 
     if (aLocalID.length()+prefixsize>(uInt32)maxguidsize) { //BCPPB needed unsigned cast
       // real GUID is too long, we need to create a temp
       string tempguid;
-      StringObjPrintf(tempguid,"#%ld",fTempGUIDMap.size()+1); // as list only grows, we have unique tempuids for sure
+      StringObjPrintf(tempguid,"#%lu",(unsigned long)fTempGUIDMap.size()+1); // as list only grows, we have unique tempuids for sure
       fTempGUIDMap[tempguid]=aLocalID;
       PDEBUGPRINTFX(DBG_DATA,(
         "translated realLocalID='%s' to tempLocalID='%s'",
@@ -1479,7 +1479,7 @@ void TLocalEngineDS::adjustLocalIDforSize(string &aLocalID, sInt32 maxguidsize, 
   }
 } // TLocalEngineDS::adjustLocalIDforSize
 
-#endif
+#endif // SYSYNC_SERVER
 
 
 // set Sync types needed for sending local data to remote DB
@@ -1890,7 +1890,6 @@ const char *TLocalEngineDS::parseOption(
   #ifdef OBJECT_FILTERING
   if (strucmp(aOptName,"fi")==0) {
     if (!aArguments) return NULL;
-    bool filterok=false; // assume invalid
     // make sync set filter expression
     string f;
     aArguments=parseFilterCGI(aArguments,fLocalSendToRemoteTypeP,f); // if type being used for sending to remote is known here, use it
@@ -1904,7 +1903,6 @@ const char *TLocalEngineDS::parseOption(
   #ifdef SYNCML_TAF_SUPPORT
   else if (strucmp(aOptName,"tf")==0) {
     if (!aArguments) return NULL;
-    bool filterok=false; // assume invalid
     // make temporary filter (or TAF) expression
     aArguments=parseFilterCGI(aArguments,fLocalSendToRemoteTypeP,fTargetAddressFilter); // if type being used for sending to remote is known here, use it
     // Note: TAF filters are always evaluated internally as we need all SyncSet records
@@ -1957,15 +1955,15 @@ const char *TLocalEngineDS::parseOption(
   }
   else
   #endif
-  #ifndef SYSYNC_CLIENT
-  if (!aArguments && strucmp(aOptName,"slow")==0) {
+  #ifdef SYSYNC_SERVER
+  if (IS_SERVER && !aArguments && strucmp(aOptName,"slow")==0) {
     // force a slow sync
     PDEBUGPRINTFX(DBG_HOT,("Slowsync forced by CGI-option in db path"));
     fForceSlowSync=true;
     return (const char *)1; // non-zero
   }
   else
-  #endif
+  #endif // SYSYNC_SERVER
   if (aArguments && strucmp(aOptName,"o")==0) {
     // datastore options
     // - find end of arguments
@@ -2230,7 +2228,7 @@ TAlertCommand *TLocalEngineDS::engProcessSyncAlert(
     // NOTE for client case:
     //   ALL instantiated datastores have already sent an Alert to the server by now here
 
-    // check DS 1.2 filter
+    // check DS 1.2 <filter>
     sta = engProcessDS12Filter(aTargetFilter);
     if (sta != LOCERR_OK) {
       aStatusCommand.setStatusCode(sta);
@@ -2249,10 +2247,10 @@ TAlertCommand *TLocalEngineDS::engProcessSyncAlert(
         return NULL; // error in options
       }
     }
-    #ifndef SYSYNC_CLIENT
-    // server case: initially we are not in refresh only mode. Alert code or alert script could change this
-    fRefreshOnly=false;
-    #endif
+    if (IS_SERVER) {
+      // server case: initially we are not in refresh only mode. Alert code or alert script could change this
+      fRefreshOnly=false;
+    }
 
     // save it for suspend and reference in scripts
     fAlertCode=aAlertCode;
@@ -2267,52 +2265,59 @@ TAlertCommand *TLocalEngineDS::engProcessSyncAlert(
     aAlertCode=fAlertCode; // get eventually modified version back (SETALERTCODE)
     #endif
     // if we process a sync alert now, we haven't started sync or map generation
-    #ifndef SYSYNC_CLIENT
-    // server case: forget Temp GUID mapping
-    fTempGUIDMap.clear(); // forget all previous temp GUID mappings
+    #ifdef SYSYNC_SERVER
+    if (IS_SERVER) {
+      // server case: forget Temp GUID mapping
+      fTempGUIDMap.clear(); // forget all previous temp GUID mappings
+    }
     #endif
     // save remote's next anchor for saving at end of session
     fNextRemoteAnchor = aNextRemoteAnchor;
     // get target info in case we are server
-    #ifndef SYSYNC_CLIENT
-    // now get anchor info out of database
-    // - make sure other anchor variables are set
-    sta = engInitSyncAnchors(
-      aIdentifyingTargetURI, // use processed form, not as sent by remote
-      aSourceURI
-    );
-    if (sta!=LOCERR_OK) {
-      // error getting anchors
-      aStatusCommand.setStatusCode(syncmlError(sta));
-      PDEBUGPRINTFX(DBG_ERROR,("Could not get Sync Anchor info, status=%hd",sta));
-      return NULL; // no alert to send back
+    #ifdef SYSYNC_SERVER
+    if (IS_SERVER) {
+      // now get anchor info out of database
+      // - make sure other anchor variables are set
+      sta = engInitSyncAnchors(
+        aIdentifyingTargetURI, // use processed form, not as sent by remote
+        aSourceURI
+      );
+      if (sta!=LOCERR_OK) {
+        // error getting anchors
+        aStatusCommand.setStatusCode(syncmlError(sta));
+        PDEBUGPRINTFX(DBG_ERROR,("Could not get Sync Anchor info, status=%hd",sta));
+        return NULL; // no alert to send back
+      }
+      // Server ok until here
+      PDEBUGPRINTFX(DBG_PROTO,(
+        "Saved Last Remote Client Anchor='%s', received <last> Remote Client Anchor='%s' (must match for normal sync)",
+        fLastRemoteAnchor.c_str(),
+        aLastRemoteAnchor
+      ));
+      PDEBUGPRINTFX(DBG_PROTO,(
+        "Received <next> Remote Client Anchor='%s' (to be compared with <last> in NEXT session)",
+        fNextRemoteAnchor.c_str()
+      ));
+      PDEBUGPRINTFX(DBG_PROTO,(
+        "(Saved) Last Local Server Anchor='%s', (generated) Next Local Server Anchor='%s' (sent to client as <last>/<next> in <alert>)",
+        fLastLocalAnchor.c_str(),
+        fNextLocalAnchor.c_str()
+      ));
     }
-    // Server ok until here
-    PDEBUGPRINTFX(DBG_PROTO,(
-      "Saved Last Remote Client Anchor='%s', received <last> Remote Client Anchor='%s' (must match for normal sync)",
-      fLastRemoteAnchor.c_str(),
-      aLastRemoteAnchor
-    ));
-    PDEBUGPRINTFX(DBG_PROTO,(
-      "Received <next> Remote Client Anchor='%s' (to be compared with <last> in NEXT session)",
-      fNextRemoteAnchor.c_str()
-    ));
-    PDEBUGPRINTFX(DBG_PROTO,(
-      "(Saved) Last Local Server Anchor='%s', (generated) Next Local Server Anchor='%s' (sent to client as <last>/<next> in <alert>)",
-      fLastLocalAnchor.c_str(),
-      fNextLocalAnchor.c_str()
-    ));
-    #else
-    // Client ok until here
-    PDEBUGPRINTFX(DBG_PROTO,(
-      "Saved Last Remote Server Anchor='%s', received <last> Remote Server Anchor='%s' (must match for normal sync)",
-      fLastRemoteAnchor.c_str(),
-      aLastRemoteAnchor
-    ));
-    PDEBUGPRINTFX(DBG_PROTO,(
-      "Received <next> Remote Server Anchor='%s' (to be compared with <last> in NEXT session)",
-      fNextRemoteAnchor.c_str()
-    ));
+    #endif
+    #ifdef SYSYNC_CLIENT
+    if (IS_CLIENT) {
+      // Client ok until here
+      PDEBUGPRINTFX(DBG_PROTO,(
+        "Saved Last Remote Server Anchor='%s', received <last> Remote Server Anchor='%s' (must match for normal sync)",
+        fLastRemoteAnchor.c_str(),
+        aLastRemoteAnchor
+      ));
+      PDEBUGPRINTFX(DBG_PROTO,(
+        "Received <next> Remote Server Anchor='%s' (to be compared with <last> in NEXT session)",
+        fNextRemoteAnchor.c_str()
+      ));
+    }
     #endif
     PDEBUGPRINTFX(DBG_PROTO,(
       "(Saved) fResumeAlertCode = %hd (valid for >DS 1.2 only)",
@@ -2321,29 +2326,31 @@ TAlertCommand *TLocalEngineDS::engProcessSyncAlert(
     // Now check for resume
     // - default to what was actually alerted
     uInt16 effectiveAlertCode=aAlertCode;
-    #ifndef SYSYNC_CLIENT
-    // - check if resuming server session
-    fResuming=false;
-    if (aAlertCode==225) {
-      if (fSessionP->getSyncMLVersion()<syncml_vers_1_2) {
-        aStatusCommand.setStatusCode(406);
-        ADDDEBUGITEM(aStatusCommand,"Resume not supported in SyncML prior to 1.2");
-        PDEBUGPRINTFX(DBG_ERROR,("Resume not supported in SyncML prior to 1.2"));
-        return NULL;
-      }
-      // Resume requested
-      if (fResumeAlertCode==0 || !dsResumeSupportedInDB()) {
-        // cannot resume, suggest a normal sync (in case anchors do not match, this will become a 508 below)
-        aStatusCommand.setStatusCode(509); // cannot resume, override
-        effectiveAlertCode=200; // suggest normal sync
-        ADDDEBUGITEM(aStatusCommand,"Cannot resume, suggesting a normal sync");
-        PDEBUGPRINTFX(DBG_ERROR,("Cannot resume, suggesting a normal sync"));
-      }
-      else {
-        // we can resume, use the saved alert code
-        effectiveAlertCode=fResumeAlertCode;
-        PDEBUGPRINTFX(DBG_HOT,("Alerted to resume previous session, Switching to alert Code = %hd",fResumeAlertCode));
-        fResuming=true;
+    #ifdef SYSYNC_SERVER
+    if (IS_SERVER) {
+      // - check if resuming server session
+      fResuming=false;
+      if (aAlertCode==225) {
+        if (fSessionP->getSyncMLVersion()<syncml_vers_1_2) {
+          aStatusCommand.setStatusCode(406);
+          ADDDEBUGITEM(aStatusCommand,"Resume not supported in SyncML prior to 1.2");
+          PDEBUGPRINTFX(DBG_ERROR,("Resume not supported in SyncML prior to 1.2"));
+          return NULL;
+        }
+        // Resume requested
+        if (fResumeAlertCode==0 || !dsResumeSupportedInDB()) {
+          // cannot resume, suggest a normal sync (in case anchors do not match, this will become a 508 below)
+          aStatusCommand.setStatusCode(509); // cannot resume, override
+          effectiveAlertCode=200; // suggest normal sync
+          ADDDEBUGITEM(aStatusCommand,"Cannot resume, suggesting a normal sync");
+          PDEBUGPRINTFX(DBG_ERROR,("Cannot resume, suggesting a normal sync"));
+        }
+        else {
+          // we can resume, use the saved alert code
+          effectiveAlertCode=fResumeAlertCode;
+          PDEBUGPRINTFX(DBG_HOT,("Alerted to resume previous session, Switching to alert Code = %hd",fResumeAlertCode));
+          fResuming=true;
+        }
       }
     }
     #endif
@@ -2356,30 +2363,30 @@ TAlertCommand *TLocalEngineDS::engProcessSyncAlert(
       //       changes to two-way, as it might be that we have sent the server
       //       a two-way alert even if we want fromserver due to compatibility with
       //       servers that cannot do fromserver.
-      #ifndef SYSYNC_CLIENT
-      // - Server always obeys what client requests (that is, if alertscript does not modify it)
-      sta = setSyncModeFromAlertCode(effectiveAlertCode,false); // as server
-      #else
-      // - for client, check that server can't switch to a client writing mode
-      //   (we had a case when mobical did that for a user and erased all his data)
-      TSyncModes prevMode = fSyncMode; // remember previous mode
-      sta = setSyncModeFromAlertCode(effectiveAlertCode,true); // as client
-      if (prevMode==smo_fromclient && fSyncMode!=smo_fromclient) {
-        // server tries to switch to a mode that could be writing data to the client
-        // - forbidden
-        sta=403;
-        aStatusCommand.setStatusCode(syncmlError(sta));
-        ADDDEBUGITEM(aStatusCommand,"Server may not write to client");
-        PDEBUGPRINTFX(DBG_ERROR,("From-Client only: Server may not alert mode that writes client data (%hd) - blocked",effectiveAlertCode));
-        // - also abort sync of this datastore without chance to resume, as this problem might
-        //   originate from a resume attempt, which the server
-        //   tried to convert to a normal or slow sync. With cancelling the resume here, we make sure
-        //   next sync will start over and sending the desired (one-way) sync mode again.
-        engAbortDataStoreSync(sta, false, false); // remote problem, not resumable
-      }
-      else
-      #endif
-      {
+      if (IS_SERVER) {
+        // - Server always obeys what client requests (that is, if alertscript does not modify it)
+        sta = setSyncModeFromAlertCode(effectiveAlertCode,false); // as server
+      } // server
+      else {
+        // - for client, check that server can't switch to a client writing mode
+        //   (we had a case when mobical did that for a user and erased all his data)
+        TSyncModes prevMode = fSyncMode; // remember previous mode
+        sta = setSyncModeFromAlertCode(effectiveAlertCode,true); // as client
+        if (prevMode==smo_fromclient && fSyncMode!=smo_fromclient) {
+          // server tries to switch to a mode that could be writing data to the client
+          // - forbidden
+          sta=403;
+          aStatusCommand.setStatusCode(syncmlError(sta));
+          ADDDEBUGITEM(aStatusCommand,"Server may not write to client");
+          PDEBUGPRINTFX(DBG_ERROR,("From-Client only: Server may not alert mode that writes client data (%hd) - blocked",effectiveAlertCode));
+          // - also abort sync of this datastore without chance to resume, as this problem might
+          //   originate from a resume attempt, which the server
+          //   tried to convert to a normal or slow sync. With cancelling the resume here, we make sure
+          //   next sync will start over and sending the desired (one-way) sync mode again.
+          engAbortDataStoreSync(sta, false, false); // remote problem, not resumable
+        }
+      } // client
+      if (!isAborted()) {
         if (sta!=LOCERR_OK) {
           // Sync type not supported
           // - go back to idle
@@ -2393,11 +2400,12 @@ TAlertCommand *TLocalEngineDS::engProcessSyncAlert(
     if (sta==LOCERR_OK) {
       // Sync type supported
       // - set new state to alerted
-      #ifdef SYSYNC_CLIENT
-      changeState(dssta_clientalerted,true); // force it
-      #else
-      changeState(dssta_serveralerted,true); // force it
-      #endif
+      if (IS_CLIENT) {
+	      changeState(dssta_clientalerted,true); // force it
+      }
+      else {
+	      changeState(dssta_serveralerted,true); // force it
+      }
       // - datastore state is now dss_alerted
       PDEBUGPRINTFX(DBG_HOT,(
         "Alerted (code=%hd) for %s%s %s%s%s ",
@@ -2424,10 +2432,10 @@ TAlertCommand *TLocalEngineDS::engProcessSyncAlert(
       if (
         (
           (
-            (!fLastRemoteAnchor.empty() && 
+            (!fLastRemoteAnchor.empty() &&
             	( (fLastRemoteAnchor==aLastRemoteAnchor)
                 #ifdef SYSYNC_CLIENT
-                || (fSessionP->fLenientMode)
+                || (fSessionP->fLenientMode && IS_CLIENT)
                 #endif
               )
             ) || // either anchors must match (or lenient mode for client)...
@@ -2437,18 +2445,20 @@ TAlertCommand *TLocalEngineDS::engProcessSyncAlert(
         )
         || fSlowSync // if slow sync is requested by the remote anyway, we don't need to be in sync anyway, so just go on
       ) {
-      	if (fLastRemoteAnchor!=aLastRemoteAnchor && fSessionP->fLenientMode) {
+      	if (!(fLastRemoteAnchor==aLastRemoteAnchor) && fSessionP->fLenientMode) {
         	PDEBUGPRINTFX(DBG_ERROR,("Warning - remote anchor mismatch but tolerated in lenient mode"));
         }
         // sync state ok or Slow sync requested anyway:
-        #ifndef SYSYNC_CLIENT
-        // we can generate Alert with same code as sent
-        // %%% Note: this is not entirely clear, as SCTS sends
-        //     corresponding SERVER ALERTED code back.
-        //     Specs suggest that we send the code back unmodified
-        uInt16 alertCode = getSyncStateAlertCode(fServerAlerted);
-        alertcmdP = new TAlertCommand(fSessionP,this,alertCode);
-        fAlertCode=alertCode; // save it for reference in scripts and for suspend/resume
+        #ifdef SYSYNC_SERVER
+        if (IS_SERVER) {
+          // we can generate Alert with same code as sent
+          // %%% Note: this is not entirely clear, as SCTS sends
+          //     corresponding SERVER ALERTED code back.
+          //     Specs suggest that we send the code back unmodified
+          uInt16 alertCode = getSyncStateAlertCode(fServerAlerted);
+          alertcmdP = new TAlertCommand(fSessionP,this,alertCode);
+          fAlertCode=alertCode; // save it for reference in scripts and for suspend/resume
+        }
         #endif
       }
       else {
@@ -2464,84 +2474,89 @@ TAlertCommand *TLocalEngineDS::engProcessSyncAlert(
         // NOTE: if client detected slow-sync not before here, status 508 alone
         //       (without another Alert 201 sent to the server) is sufficient for
         //       server to switch to slow sync.
-        #ifndef SYSYNC_CLIENT
-        // generate Alert for Slow sync
-        alertcmdP = new TAlertCommand(fSessionP,this,alertCode);
-        #endif
+        if (IS_SERVER) {
+          // generate Alert for Slow sync
+          alertcmdP = new TAlertCommand(fSessionP,this,alertCode);
+        }
       }
       // Now we are alerted for a sync
       // - reset item counters
       fItemsSent = 0;
       fItemsReceived = 0;
-      #ifndef SYSYNC_CLIENT
-      // Server case
-      // - show info
-      PDEBUGPRINTFX(DBG_HOT,(
-        "ALERTED from client for %s%s%s Sync",
-        fResuming ? "resumed " : "",
-        fSlowSync ? "slow" : "normal",
-        fFirstTimeSync ? " first time" : ""
-      ));
-      // server: add Item with Anchors and URIs
-      SmlItemPtr_t itemP = newItem();
-      // - anchors
-      itemP->meta=newMetaAnchor(fNextLocalAnchor.c_str(),fLastLocalAnchor.c_str());
-      // - MaxObjSize here again to make SCTS happy
-      if (
-        (fSessionP->getRootConfig()->fLocalMaxObjSize>0) &&
-        (fSessionP->getSyncMLVersion()>=syncml_vers_1_1)
-      ) {
-        // SyncML 1.1 has object size and we need to put it here for SCTS
-        smlPCDataToMetInfP(itemP->meta)->maxobjsize=newPCDataLong(
-          fSessionP->getRootConfig()->fLocalMaxObjSize
+      #ifdef SYSYNC_SERVER
+      if (IS_SERVER) {
+        // Server case
+        // - show info
+        PDEBUGPRINTFX(DBG_HOT,(
+          "ALERTED from client for %s%s%s Sync",
+          fResuming ? "resumed " : "",
+          fSlowSync ? "slow" : "normal",
+          fFirstTimeSync ? " first time" : ""
+        ));
+        // server: add Item with Anchors and URIs
+        SmlItemPtr_t itemP = newItem();
+        // - anchors
+        itemP->meta=newMetaAnchor(fNextLocalAnchor.c_str(),fLastLocalAnchor.c_str());
+        // - MaxObjSize here again to make SCTS happy
+        if (
+          (fSessionP->getRootConfig()->fLocalMaxObjSize>0) &&
+          (fSessionP->getSyncMLVersion()>=syncml_vers_1_1)
+        ) {
+          // SyncML 1.1 has object size and we need to put it here for SCTS
+          smlPCDataToMetInfP(itemP->meta)->maxobjsize=newPCDataLong(
+            fSessionP->getRootConfig()->fLocalMaxObjSize
+          );
+        }
+        // - URIs (reversed from what was received in Alert)
+        itemP->source=newLocation(aTargetURI); // use unprocessed form as sent by remote
+        itemP->target=newLocation(aSourceURI);
+        // - add to alert command
+        alertcmdP->addItem(itemP);
+        // - set new state, alert now answered
+        changeState(dssta_serveransweredalert,true); // force it
+      } // server case
+      #endif // SYSYNC_SERVER
+      #ifdef SYSYNC_CLIENT
+      if (IS_CLIENT) {
+        // Client case
+        // - now sync mode is stable (late switch to slowsync has now occurred if any)
+        changeState(dssta_syncmodestable,true);
+        // - show info
+        PDEBUGPRINTFX(DBG_HOT,(
+          "ALERTED from server for %s%s%s Sync",
+          fResuming ? "resumed " : "",
+          fSlowSync ? "slow" : "normal",
+          fFirstTimeSync ? " first time" : ""
+        ));
+        #ifdef PROGRESS_EVENTS
+        // - progress event
+        OBJ_PROGRESS_EVENT(
+          fSessionP->getSyncAppBase(),
+          pev_alerted,
+          fDSConfigP,
+          fSlowSync ? (fFirstTimeSync ? 2 : 1) : 0,
+          fResuming ? 1 : 0,
+          fSyncMode
         );
-      }
-      // - URIs (reversed from what was received in Alert)
-      itemP->source=newLocation(aTargetURI); // use unprocessed form as sent by remote
-      itemP->target=newLocation(aSourceURI);
-      // - add to alert command
-      alertcmdP->addItem(itemP);
-      // - set new state, alert now answered
-      changeState(dssta_serveransweredalert,true); // force it
-      #else
-      // Client case
-      // - now sync mode is stable (late switch to slowsync has now occurred if any)
-      changeState(dssta_syncmodestable,true);
-      // - show info
-      PDEBUGPRINTFX(DBG_HOT,(
-        "ALERTED from server for %s%s%s Sync",
-        fResuming ? "resumed " : "",
-        fSlowSync ? "slow" : "normal",
-        fFirstTimeSync ? " first time" : ""
-      ));
-      #ifdef PROGRESS_EVENTS
-      // - progress event
-      OBJ_PROGRESS_EVENT(
-        fSessionP->getSyncAppBase(),
-        pev_alerted,
-        fDSConfigP,
-        fSlowSync ? (fFirstTimeSync ? 2 : 1) : 0,
-        fResuming ? 1 : 0,
-        fSyncMode
-      );
-      #endif // PROGRESS_EVENTS
-      //%%% To make client-side filtering work, determining send/receive types must be done
-    	//    before loading the sync set.
-      //		Therefore these two init steps are now in the new engInitForClientSync() routine, which is now called
-      //    in syncclient.cpp immediately before starting to generate sync commands.
-      //    (Alternatively, engInitForSyncOps() could be placed here before switching to dssta_dataaccessstarted.
-      //    Tried that, works, but has the disadvantage that in case server sends devInf after answering alerts,
-      //    type resolution would fail or be forced to blind flight)
-      /*
-      // - prepare engine for sync (determining types)
-      // - let local datastore (derived DB-specific class) prepare for sync
-      sta = changeState(dssta_dataaccessstarted);
-      if (sta==LOCERR_OK && isStarted(false)) {
-        // already started now, change state
-        sta = changeState(dssta_syncsetready);
-      }
-      */
-      #endif // client Case
+        #endif // PROGRESS_EVENTS
+        //%%% To make client-side filtering work, determining send/receive types must be done
+        //    before loading the sync set.
+        //		Therefore these two init steps are now in the new engInitForClientSync() routine, which is now called
+        //    in syncclient.cpp immediately before starting to generate sync commands.
+        //    (Alternatively, engInitForSyncOps() could be placed here before switching to dssta_dataaccessstarted.
+        //    Tried that, works, but has the disadvantage that in case server sends devInf after answering alerts,
+        //    type resolution would fail or be forced to blind flight)
+        /*
+        // - prepare engine for sync (determining types)
+        // - let local datastore (derived DB-specific class) prepare for sync
+        sta = changeState(dssta_dataaccessstarted);
+        if (sta==LOCERR_OK && isStarted(false)) {
+          // already started now, change state
+          sta = changeState(dssta_syncsetready);
+        }
+        */
+      } // client Case
+      #endif // SYSYNC_CLIENT
     }
     // clear partial item if we definitely know we are not resuming
     if (!fResuming) {
@@ -2557,9 +2572,9 @@ TAlertCommand *TLocalEngineDS::engProcessSyncAlert(
     // save name how remote adresses local database
     // (for sending same URI back in own Sync)
     fRemoteViewOfLocalURI = aTargetURI; // save it
-    #ifndef SYSYNC_CLIENT
-    fRemoteDBPath = aSourceURI;
-    #endif
+    if (IS_SERVER) {
+	    fRemoteDBPath = aSourceURI;
+    }
     if (sta!=LOCERR_OK) {
       // no alert command
       if (alertcmdP) delete alertcmdP;
@@ -2582,26 +2597,27 @@ TAlertCommand *TLocalEngineDS::engProcessSyncAlert(
 bool TLocalEngineDS::engHandleAlertStatus(TSyError aStatusCode)
 {
   bool handled=false;
-  #ifdef SYSYNC_CLIENT
-  // for client, make sure we have just sent the alert
-  if (!testState(dssta_clientsentalert,true)) return false; // cannot switch if server not alerted
-  // anyway, we have seen the status
-  changeState(dssta_clientalertstatused,true); // force it
-  #else
-  // for server, check if client did combined init&sync
-  if (fLocalDSState>=dssta_syncmodestable) {
-    // must be combined init&sync
-    if (aStatusCode!=200) {
-      // everything except ok is not allowed here
-      PDEBUGPRINTFX(DBG_ERROR,("In combined init&sync, Alert status must be ok (but is %hd)",aStatusCode));
-      dsAbortDatastoreSync(400,false); // remote problem
+  if (IS_CLIENT) {
+    // for client, make sure we have just sent the alert
+    if (!testState(dssta_clientsentalert,true)) return false; // cannot switch if server not alerted
+    // anyway, we have seen the status
+    changeState(dssta_clientalertstatused,true); // force it
+	}
+  else {
+    // for server, check if client did combined init&sync
+    if (fLocalDSState>=dssta_syncmodestable) {
+      // must be combined init&sync
+      if (aStatusCode!=200) {
+        // everything except ok is not allowed here
+        PDEBUGPRINTFX(DBG_ERROR,("In combined init&sync, Alert status must be ok (but is %hd)",aStatusCode));
+        dsAbortDatastoreSync(400,false); // remote problem
+      }
+      // aborted or not, status is handled
+      return true;
     }
-    // aborted or not, status is handled
-    return true;
-  }
-  // normal case with separate init: we need to have answered the alert here
-  if (!testState(dssta_serveransweredalert,true)) return false; // cannot switch if server not alerted
-  #endif
+    // normal case with separate init: we need to have answered the alert here
+    if (!testState(dssta_serveransweredalert,true)) return false; // cannot switch if server not alerted
+  } // server case
   // now check status code
   if (aStatusCode==508) {
     // remote party needs slow sync
@@ -2618,31 +2634,27 @@ bool TLocalEngineDS::engHandleAlertStatus(TSyError aStatusCode)
   else if (aStatusCode==200) {
     handled=true;
   }
-  #ifdef SYSYNC_CLIENT
-  // check for resume override by server
-  if (!handled && fResuming) {
-    // we have requested resume
-    if (aStatusCode==509) {
-      // resume not accepted by server, but overridden by another sync type
-      fResuming=false;
-      PDEBUGPRINTFX(DBG_ERROR,("engHandleAlertStatus: Server rejected Resume"));
-      handled=true;
+  if (IS_CLIENT) {
+    // check for resume override by server
+    if (!handled && fResuming) {
+      // we have requested resume
+      if (aStatusCode==509) {
+        // resume not accepted by server, but overridden by another sync type
+        fResuming=false;
+        PDEBUGPRINTFX(DBG_ERROR,("engHandleAlertStatus: Server rejected Resume"));
+        handled=true;
+      }
     }
   }
-  #else
-  // if we have handled it here, sync mode is now stable
-  if (handled) {
-    // if we get that far, sync mode for server is now stable AND we can receive cached maps
-    changeState(dssta_syncmodestable,true); // force it, sync mode is now stable, no further changes are possible
+  else {
+    // if we have handled it here, sync mode is now stable
+    if (handled) {
+      // if we get that far, sync mode for server is now stable AND we can receive cached maps
+      changeState(dssta_syncmodestable,true); // force it, sync mode is now stable, no further changes are possible
+    }
   }
-  #endif
   // no other status codes are supported at the datastore level
   if (!handled && aStatusCode>=400) {
-    /** @deprecated no longer needed because we are never dssta_idle here
-    #ifdef SYSYNC_CLIENT
-    fState=dss_alerted; // normally, we are still dss_idle here. But we want an explicit abort, so pretend we were alerted
-    #endif
-    */
     engAbortDataStoreSync(aStatusCode, false); // remote problem
     handled=true;
   }
@@ -2721,12 +2733,12 @@ localstatus TLocalEngineDS::engInitForSyncOps(
         LocalReceiveFromRemoteTypeP = LocalSendToRemoteTypeP;
       }
       else {
-      	// no specific "blind" preference, use my own normally preferred types 
+      	// no specific "blind" preference, use my own normally preferred types
 	      LocalSendToRemoteTypeP = getPreferredTxItemType(); // send in preferred tx type of local datastore
 	      LocalReceiveFromRemoteTypeP = getPreferredRxItemType(); // receive in preferred rx type of local datastore
       }
 			// same type on both end (as only local type exists)
-      RemoteReceiveFromLocalTypeP = LocalSendToRemoteTypeP; // same on both end       
+      RemoteReceiveFromLocalTypeP = LocalSendToRemoteTypeP; // same on both end
       RemoteSendToLocalTypeP = LocalReceiveFromRemoteTypeP; // same on both end (as only local type exists)
       // create "remote" datastore with matching properties to local one
       PDEBUGPRINTFX(DBG_ERROR,("Warning: No DevInf for remote datastore, running blind sync attempt"));
@@ -2872,24 +2884,27 @@ bool TLocalEngineDS::engGenerateSyncCommands(
   PDEBUGBLOCKFMT(("SyncGen","Now generating sync commands","datastore=%s",getName()));
   bool finished=false;
   #ifdef SYSYNC_CLIENT
-  finished = logicGenerateSyncCommandsAsClient(aNextMessageCommands, aInterruptedCommandP, aLocalIDPrefix);
-  #else
-  finished = logicGenerateSyncCommandsAsServer(aNextMessageCommands, aInterruptedCommandP, aLocalIDPrefix);
+  if (IS_CLIENT)
+	  finished = logicGenerateSyncCommandsAsClient(aNextMessageCommands, aInterruptedCommandP, aLocalIDPrefix);
+  #endif
+  #ifdef SYSYNC_SERVER
+  if (IS_SERVER)
+	  finished = logicGenerateSyncCommandsAsServer(aNextMessageCommands, aInterruptedCommandP, aLocalIDPrefix);
   #endif
   // change state when finished
   if (finished) {
     changeState(dssta_syncgendone,true);
-    #ifdef SYSYNC_CLIENT
-    // from client only skips to clientmapssent without any server communication
-    // (except if we are in old synthesis-compatible mode which runs from-client-only
-    // with empty sync-from-server and map phases.
-    if (getSyncMode()==smo_fromclient && !fSessionP->fCompleteFromClientOnly) {
-      // data access ends with all sync commands generated in from-client-only
-      PDEBUGPRINTFX(DBG_PROTO,("From-Client-Only sync: skipping directly to end of map phase now"));
-      changeState(dssta_dataaccessdone,true);
-      changeState(dssta_clientmapssent,true);
+    if (IS_CLIENT) {
+      // from client only skips to clientmapssent without any server communication
+      // (except if we are in old synthesis-compatible mode which runs from-client-only
+      // with empty sync-from-server and map phases.
+      if (getSyncMode()==smo_fromclient && !fSessionP->fCompleteFromClientOnly) {
+        // data access ends with all sync commands generated in from-client-only
+        PDEBUGPRINTFX(DBG_PROTO,("From-Client-Only sync: skipping directly to end of map phase now"));
+        changeState(dssta_dataaccessdone,true);
+        changeState(dssta_clientmapssent,true);
+      }
     }
-    #endif
   }
   PDEBUGPRINTFX(DBG_DATA,(
     "engGenerateSyncCommands ended, state='%s', sync generation %sdone",
@@ -2933,7 +2948,7 @@ bool TLocalEngineDS::engHandleSyncOpStatus(TStatusCommand *aStatusCmdP,TSyncOpCo
   // just need to look at the first item's target and source
   const char *localID = aSyncOpCmdP->getSourceLocalID();
   const char *remoteID = aSyncOpCmdP->getTargetRemoteID();
-  #ifndef SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
   string realLocID;
   #endif
   if (localID) {
@@ -2944,11 +2959,13 @@ bool TLocalEngineDS::engHandleSyncOpStatus(TStatusCommand *aStatusCmdP,TSyncOpCo
       localID = fAsSubDatastoreOf->removeSubDSPrefix(localID,this);
     }
     #endif
-    #ifndef SYSYNC_CLIENT
-    // for server only: convert to internal representation
-    realLocID=localID;
-    obtainRealLocalID(realLocID);
-    localID=realLocID.c_str();
+    #ifdef SYSYNC_SERVER
+    if (IS_SERVER) {
+      // for server only: convert to internal representation
+      realLocID=localID;
+      obtainRealLocalID(realLocID);
+      localID=realLocID.c_str();
+    }
     #endif
   }
   // handle special cases for Add/Replace/Delete
@@ -2967,9 +2984,7 @@ bool TLocalEngineDS::engHandleSyncOpStatus(TStatusCommand *aStatusCmdP,TSyncOpCo
       else if (
         statuscode==418 &&
         (isResuming()
-        #ifdef SYSYNC_CLIENT
-        || isSlowSync()
-        #endif
+        || (isSlowSync() && IS_CLIENT)
         )
       ) {
         // "Already exists"/418 is acceptable...
@@ -2999,8 +3014,8 @@ bool TLocalEngineDS::engHandleSyncOpStatus(TStatusCommand *aStatusCmdP,TSyncOpCo
     // case sop_copy: break;
     case sop_wants_replace:
     case sop_replace:
-      #ifndef SYSYNC_CLIENT
-      if (statuscode==404 || statuscode==410) {
+      #ifdef SYSYNC_SERVER
+      if (IS_SERVER && (statuscode==404 || statuscode==410)) {
         // obviously, remote item that we wanted to change does not exist any more.
         // Instead of aborting the session we'll just remove the map item for that
         // server item, such that it will be re-added in the next sync session
@@ -3028,7 +3043,7 @@ bool TLocalEngineDS::engHandleSyncOpStatus(TStatusCommand *aStatusCmdP,TSyncOpCo
         dsConfirmItemOp(sop_replace,localID,remoteID,true); // ok as replace
       }
       #ifdef SYSYNC_CLIENT
-      else if (isSlowSync() && statuscode==418) {
+      else if (IS_CLIENT && (isSlowSync() && statuscode==418)) {
         // "Already exists"/418 is acceptable as client in slow sync because some
         // servers use it instead of 200/419 for slow sync match
         PDEBUGPRINTFX(DBG_ERROR,("Warning: received 418 for for replace during slow sync - treat it as ok (200), but don't count as update"));
@@ -3559,14 +3574,14 @@ SmlDevInfDatastorePtr_t TLocalEngineDS::newDevInfDatastore(bool aAsServer, bool 
   //   (this is to allow /dsname/foldername with clients that expect the
   //   devInf to contain exactly the same full path as name, like newer Nokias)
   string dotname;
-  #ifndef SYSYNC_CLIENT
-  if (testState(dssta_serveralerted,false) && fSessionP->fDSPathInDevInf) {
+  #ifdef SYSYNC_SERVER
+  if (IS_SERVER && testState(dssta_serveralerted,false) && fSessionP->fDSPathInDevInf) {
     // server and already alerted - use datastore spec as sent from remote, minus CGI, as relative spec
     dotname = URI_RELPREFIX;
     dotname += fSessionP->SessionRelativeURI(fRemoteViewOfLocalURI.c_str());
     if (!fSessionP->fDSCgiInDevInf) {
       // remove CGI
-      int n=dotname.find("?");
+      string::size_type n=dotname.find("?");
       if (n!=string::npos)
         dotname.resize(n); // remove CGI
     }
@@ -3621,8 +3636,8 @@ SmlDevInfDatastorePtr_t TLocalEngineDS::newDevInfDatastore(bool aAsServer, bool 
   // - SyncML DS 1.2 filters
   datastoreP->filterrx=NULL;
   datastoreP->filtercap=NULL;
-  #if defined(OBJECT_FILTERING) && !defined(SYSYNC_CLIENT)
-  if (fDSConfigP->fDS12FilterSupport && fSessionP->getSyncMLVersion()>=syncml_vers_1_2) {
+  #ifdef OBJECT_FILTERING
+  if (IS_SERVER && fDSConfigP->fDS12FilterSupport && fSessionP->getSyncMLVersion()>=syncml_vers_1_2) {
     // Show Filter info in 1.2 devInf if this is not a client
     // - FilterRx constant
     datastoreP->filterrx = SML_NEW(SmlDevInfXmitList_t);
@@ -3649,7 +3664,7 @@ SmlDevInfDatastorePtr_t TLocalEngineDS::newDevInfDatastore(bool aAsServer, bool 
       datastoreP->filtercap->data->propname=filterprops;
     }
   }
-  #endif
+  #endif // OBJECT_FILTERING
   // - Sync capabilities of this datastore
   datastoreP->synccap=newDevInfSyncCap(getSyncCapMask());
   // return it
@@ -3709,15 +3724,17 @@ bool TLocalEngineDS::engProcessSyncCmd(
     // all alert and alert status must be done by now, sync mode must be stable
     CONSOLEPRINTF(("- Starting Sync with Datastore '%s', %s sync",fRemoteViewOfLocalURI.c_str(),fSlowSync ? "slow" : "normal"));
     startingNow = true; // initiating start now
-    #ifndef SYSYNC_CLIENT
-    // - let local datastore (derived DB-specific class) prepare for sync
-    localstatus sta = changeState(dssta_dataaccessstarted);
-    if (sta!=LOCERR_OK) {
-      // abort session (old comment: %%% aborting datastore only does not work, will loop, why? %%%)
-      aStatusCommand.setStatusCode(syncmlError(sta));
-      PDEBUGPRINTFX(DBG_ERROR,("TLocalEngineDS::engProcessSyncCmd: could not change state to dsssta_dataaccessstarted -> abort"));
-      engAbortDataStoreSync(sta,true); // local problem
-      return false;
+    #ifdef SYSYNC_SERVER
+    if (IS_SERVER) {
+      // - let local datastore (derived DB-specific class) prepare for sync
+      localstatus sta = changeState(dssta_dataaccessstarted);
+      if (sta!=LOCERR_OK) {
+        // abort session (old comment: %%% aborting datastore only does not work, will loop, why? %%%)
+        aStatusCommand.setStatusCode(syncmlError(sta));
+        PDEBUGPRINTFX(DBG_ERROR,("TLocalEngineDS::engProcessSyncCmd: could not change state to dsssta_dataaccessstarted -> abort"));
+        engAbortDataStoreSync(sta,true); // local problem
+        return false;
+      }
     }
     #endif
   }
@@ -3727,19 +3744,20 @@ bool TLocalEngineDS::engProcessSyncCmd(
     // queue <sync> command if datastore is not yet started already
     if (engIsStarted(!startingNow)) { // wait only if start was already initiated
       // - is now initialized
-      #ifndef SYSYNC_CLIENT
-      // - for server, make the sync set ready now (as engine is now started)
-      changeState(dssta_syncsetready,true); // force it
-      #else
-      // - for client, we need at least dssta_syncgendone (sync set has been ready long ago, we've already sent changes to server!)
-      if (!testState(dssta_syncgendone)) {
-        // bad sequence of commands (<sync> from server too early!)
-        aStatusCommand.setStatusCode(400);
-        PDEBUGPRINTFX(DBG_ERROR,("TLocalEngineDS::engProcessSyncCmd: client received SYNC before sending SYNC complete"));
-        engAbortDataStoreSync(400,false,false); // remote problem, not resumable
-        return false;
+      if (IS_SERVER) {
+        // - for server, make the sync set ready now (as engine is now started)
+        changeState(dssta_syncsetready,true); // force it
       }
-      #endif
+      else {
+        // - for client, we need at least dssta_syncgendone (sync set has been ready long ago, we've already sent changes to server!)
+        if (!testState(dssta_syncgendone)) {
+          // bad sequence of commands (<sync> from server too early!)
+          aStatusCommand.setStatusCode(400);
+          PDEBUGPRINTFX(DBG_ERROR,("TLocalEngineDS::engProcessSyncCmd: client received SYNC before sending SYNC complete"));
+          engAbortDataStoreSync(400,false,false); // remote problem, not resumable
+          return false;
+        }
+      }
       PDEBUGPRINTFX(DBG_HOT,(
         "- Started %s Sync (first <sync> command)",
         fSlowSync ? "slow" : "normal"
@@ -3786,7 +3804,7 @@ bool TLocalEngineDS::engProcessSyncCmdEnd(bool &aQueueForLater)
 } // TLocalEngineDS::engProcessSyncCmdEnd
 
 
-#ifndef SYSYNC_CLIENT
+#ifdef SYSYNC_SERVER
 
 // server case: called whenever outgoing Message of Sync Package starts
 void TLocalEngineDS::engServerStartOfSyncMessage(void)
@@ -3845,26 +3863,29 @@ void TLocalEngineDS::engEndOfSyncFromRemote(bool aEndOfAllSyncCommands)
   if (testState(dssta_syncsetready)) {
     if (aEndOfAllSyncCommands) {
       // we are at end of sync-data-from-remote for THIS datastore
-      #ifdef SYSYNC_CLIENT
-      // - we are done with <Sync> from server, that is, data access is done now
-      changeState(dssta_dataaccessdone,true); // force it
-      #else
-      // - server has seen all client modifications now
-      // Note: in case of the simulated-empty-sync-hack in action, we
-      //       allow that we are already in server_sync_gen_started and
-      //       won't try to force down to dssta_serverseenclientmods
-      if (!fSessionP->fFakeFinalFlag || getDSState()<dssta_serverseenclientmods) {
-        // under normal circumstances, wee need dssta_serverseenclientmods here
-        changeState(dssta_serverseenclientmods,true); // force it
+      if (IS_CLIENT) {
+        // - we are done with <Sync> from server, that is, data access is done now
+        changeState(dssta_dataaccessdone,true); // force it
       }
       else {
-        // hack exception
-        PDEBUGPRINTFX(DBG_ERROR,("Warning: simulated </final> active - allowing state>server_seen_client_mods"));
+        // - server has seen all client modifications now
+        // Note: in case of the simulated-empty-sync-hack in action, we
+        //       allow that we are already in server_sync_gen_started and
+        //       won't try to force down to dssta_serverseenclientmods
+        if (!fSessionP->fFakeFinalFlag || getDSState()<dssta_serverseenclientmods) {
+          // under normal circumstances, wee need dssta_serverseenclientmods here
+          changeState(dssta_serverseenclientmods,true); // force it
+        }
+        else {
+          // hack exception
+          PDEBUGPRINTFX(DBG_ERROR,("Warning: simulated </final> active - allowing state>server_seen_client_mods"));
+        }
       }
-      #endif
     }
-    #ifndef SYSYNC_CLIENT
-    engServerStartOfSyncMessage();
+    #ifdef SYSYNC_SERVER
+    if (IS_SERVER) {
+	    engServerStartOfSyncMessage();
+    }
     #endif
     // now do final things
     if (testState(dssta_dataaccessdone,true)) {
@@ -4091,19 +4112,21 @@ void TLocalEngineDS::DoLogSubstitutions(string &aLog,bool aPlaintext)
   StringSubst(aLog,"%leI",fLocalItemsError,4);
   // %leI remotely not accepted Items (got error from remote, local will resend them later)
   StringSubst(aLog,"%reI",fRemoteItemsError,4);
-  #ifndef SYSYNC_CLIENT
-  // %smI Slowsync matched Items
-  StringSubst(aLog,"%smI",fSlowSyncMatches,4);
-  // %scI Server won Conflicts
-  StringSubst(aLog,"%scI",fConflictsServerWins,4);
-  // %ccI Client won Conflicts
-  StringSubst(aLog,"%ccI",fConflictsClientWins,4);
-  // %dcI Conflicts with duplications
-  StringSubst(aLog,"%dcI",fConflictsDuplicated,4);
-  // %tiB total incoming bytes
-  StringSubst(aLog,"%tiB",fSessionP->getIncomingBytes(),4);
-  // %toB total outgoing bytes
-  StringSubst(aLog,"%toB",fSessionP->getOutgoingBytes(),4);
+  #ifdef SYSYNC_SERVER
+  if (IS_SERVER) {
+    // %smI Slowsync matched Items
+    StringSubst(aLog,"%smI",fSlowSyncMatches,4);
+    // %scI Server won Conflicts
+    StringSubst(aLog,"%scI",fConflictsServerWins,4);
+    // %ccI Client won Conflicts
+    StringSubst(aLog,"%ccI",fConflictsClientWins,4);
+    // %dcI Conflicts with duplications
+    StringSubst(aLog,"%dcI",fConflictsDuplicated,4);
+    // %tiB total incoming bytes
+    StringSubst(aLog,"%tiB",fSessionP->getIncomingBytes(),4);
+    // %toB total outgoing bytes
+    StringSubst(aLog,"%toB",fSessionP->getOutgoingBytes(),4);
+  }
   #endif
   // %niB net incoming data bytes for this datastore
   StringSubst(aLog,"%diB",fIncomingDataBytes,4);
@@ -4268,20 +4291,23 @@ void TLocalEngineDS::showStatistics(void)
   else {
     // successful: show statistics on console
     CONSOLEPRINTF(("  =================================================="));
-    #ifndef SYSYNC_CLIENT
-    CONSOLEPRINTF(("                               on Server   on Client"));
-    #else
-    CONSOLEPRINTF(("                               on Client   on Server"));
-    #endif
+    if (IS_SERVER) {
+	    CONSOLEPRINTF(("                               on Server   on Client"));
+    }
+    else {
+	    CONSOLEPRINTF(("                               on Client   on Server"));
+    }
     CONSOLEPRINTF(("  Added:                       %9ld   %9ld",fLocalItemsAdded,fRemoteItemsAdded));
     CONSOLEPRINTF(("  Deleted:                     %9ld   %9ld",fLocalItemsDeleted,fRemoteItemsDeleted));
     CONSOLEPRINTF(("  Updated:                     %9ld   %9ld",fLocalItemsUpdated,fRemoteItemsUpdated));
     CONSOLEPRINTF(("  Rejected with error:         %9ld   %9ld",fLocalItemsError,fRemoteItemsError));
-    #ifndef SYSYNC_CLIENT
-    CONSOLEPRINTF(("  SlowSync Matches:            %9ld",fSlowSyncMatches));
-    CONSOLEPRINTF(("  Server won Conflicts:        %9ld",fConflictsServerWins));
-    CONSOLEPRINTF(("  Client won Conflicts:        %9ld",fConflictsClientWins));
-    CONSOLEPRINTF(("  Conflicts with Duplication:  %9ld",fConflictsDuplicated));
+    #ifdef SYSYNC_SERVER
+    if (IS_SERVER) {
+      CONSOLEPRINTF(("  SlowSync Matches:            %9ld",fSlowSyncMatches));
+      CONSOLEPRINTF(("  Server won Conflicts:        %9ld",fConflictsServerWins));
+      CONSOLEPRINTF(("  Client won Conflicts:        %9ld",fConflictsClientWins));
+      CONSOLEPRINTF(("  Conflicts with Duplication:  %9ld",fConflictsDuplicated));
+    }
     #endif
   }
   CONSOLEPRINTF((""));
@@ -4289,9 +4315,11 @@ void TLocalEngineDS::showStatistics(void)
   OBJ_PROGRESS_EVENT(fSessionP->getSyncAppBase(),pev_dsstats_l,fDSConfigP,fLocalItemsAdded,fLocalItemsUpdated,fLocalItemsDeleted);
   OBJ_PROGRESS_EVENT(fSessionP->getSyncAppBase(),pev_dsstats_r,fDSConfigP,fRemoteItemsAdded,fRemoteItemsUpdated,fRemoteItemsDeleted);
   OBJ_PROGRESS_EVENT(fSessionP->getSyncAppBase(),pev_dsstats_e,fDSConfigP,fLocalItemsError,fRemoteItemsError,0);
-  #ifndef SYSYNC_CLIENT
-  OBJ_PROGRESS_EVENT(fSessionP->getSyncAppBase(),pev_dsstats_s,fDSConfigP,fSlowSyncMatches,0,0);
-  OBJ_PROGRESS_EVENT(fSessionP->getSyncAppBase(),pev_dsstats_c,fDSConfigP,fConflictsServerWins,fConflictsClientWins,fConflictsDuplicated);
+  #ifdef SYSYNC_SERVER
+  if (IS_SERVER) {
+    OBJ_PROGRESS_EVENT(fSessionP->getSyncAppBase(),pev_dsstats_s,fDSConfigP,fSlowSyncMatches,0,0);
+    OBJ_PROGRESS_EVENT(fSessionP->getSyncAppBase(),pev_dsstats_c,fDSConfigP,fConflictsServerWins,fConflictsClientWins,fConflictsDuplicated);
+  }
   #endif
   // NOTE: pev_dsstats_d should remain the last log data event sent (as it terminates collecting data in some GUIs)
   OBJ_PROGRESS_EVENT(fSessionP->getSyncAppBase(),pev_dsstats_d,fDSConfigP,fOutgoingDataBytes,fIncomingDataBytes,fRemoteItemsError);
@@ -4305,20 +4333,23 @@ void TLocalEngineDS::showStatistics(void)
   if (PDEBUGTEST(DBG_HOT)) {
     string stats =
              "==================================================\n";
-    #ifndef SYSYNC_CLIENT
-    stats += "                             on Server   on Client\n";
-    #else
-    stats += "                             on Client   on Server\n";
-    #endif
+    if (IS_SERVER) {
+	    stats += "                             on Server   on Client\n";
+    }
+    else {
+	    stats += "                             on Client   on Server\n";
+    }
     StringObjAppendPrintf(stats,"Added:                       %9ld   %9ld\n",(long)fLocalItemsAdded,(long)fRemoteItemsAdded);
     StringObjAppendPrintf(stats,"Deleted:                     %9ld   %9ld\n",(long)fLocalItemsDeleted,(long)fRemoteItemsDeleted);
     StringObjAppendPrintf(stats,"Updated:                     %9ld   %9ld\n",(long)fLocalItemsUpdated,(long)fRemoteItemsUpdated);
     StringObjAppendPrintf(stats,"Rejected with error:         %9ld   %9ld\n\n",(long)fLocalItemsError,(long)fRemoteItemsError);
-    #ifndef SYSYNC_CLIENT
-    StringObjAppendPrintf(stats,"SlowSync Matches:            %9ld\n",fSlowSyncMatches);
-    StringObjAppendPrintf(stats,"Server won Conflicts:        %9ld\n",fConflictsServerWins);
-    StringObjAppendPrintf(stats,"Client won Conflicts:        %9ld\n",fConflictsClientWins);
-    StringObjAppendPrintf(stats,"Conflicts with Duplication:  %9ld\n\n",fConflictsDuplicated);
+    #ifdef SYSYNC_SERVER
+    if (IS_SERVER) {
+      StringObjAppendPrintf(stats,"SlowSync Matches:            %9ld\n",(long)fSlowSyncMatches);
+      StringObjAppendPrintf(stats,"Server won Conflicts:        %9ld\n",(long)fConflictsServerWins);
+      StringObjAppendPrintf(stats,"Client won Conflicts:        %9ld\n",(long)fConflictsClientWins);
+      StringObjAppendPrintf(stats,"Conflicts with Duplication:  %9ld\n\n",(long)fConflictsDuplicated);
+    }
     #endif
     StringObjAppendPrintf(stats,"Content Data Bytes sent:     %9ld\n",(long)fOutgoingDataBytes);
     StringObjAppendPrintf(stats,"Content Data Bytes received: %9ld\n\n",(long)fIncomingDataBytes);
@@ -4349,20 +4380,23 @@ TSyncOpCommand *TLocalEngineDS::newSyncOpCommand(
   // make sure item does not have stuff it is not allowed to have
   // %%% SCTS does not like SourceURI in Replace and Delete commands sent to Client
   // there are the only ones allowed to carry a GUID
-  #ifndef SYSYNC_CLIENT
-  // Server: commands only have remote IDs, except add which only has target ID
-  if (syncop==sop_add || syncop==sop_wants_add)
-    aSyncItemP->clearRemoteID(); // no remote ID
-  else {
-    if (!fDSConfigP->fAlwaysSendLocalID) {
-      // only if localID may not be included in all syncops
-      aSyncItemP->clearLocalID(); // no local ID
+  if (IS_SERVER) {
+  	#ifdef SYSYNC_SERVER
+    // Server: commands only have remote IDs, except add which only has target ID
+    if (syncop==sop_add || syncop==sop_wants_add)
+      aSyncItemP->clearRemoteID(); // no remote ID
+    else {
+      if (!fDSConfigP->fAlwaysSendLocalID) {
+        // only if localID may not be included in all syncops
+        aSyncItemP->clearLocalID(); // no local ID
+      }
     }
+    #endif
   }
-  #else
-  // Client: all commands only have local IDs
-  aSyncItemP->clearRemoteID(); // no remote ID
-  #endif
+  else {
+    // Client: all commands only have local IDs
+    aSyncItemP->clearRemoteID(); // no remote ID
+  }
   #ifdef SYSYNC_TARGET_OPTIONS
   // init item generation variables
   fItemSizeLimit=fSizeLimit;
@@ -4627,10 +4661,15 @@ bool TLocalEngineDS::engProcessRemoteItem(
 )
 {
   #ifdef SYSYNC_CLIENT
-  return engProcessRemoteItemAsClient(syncitemP,aStatusCommand); // status, must be set to correct status code (ok / error)
-  #else
-  return engProcessRemoteItemAsServer(syncitemP,aStatusCommand); // status, must be set to correct status code (ok / error)
+  if (IS_CLIENT)
+	  return engProcessRemoteItemAsClient(syncitemP,aStatusCommand); // status, must be set to correct status code (ok / error)
   #endif
+  #ifdef SYSYNC_SERVER
+  if (IS_SERVER)
+	  return engProcessRemoteItemAsServer(syncitemP,aStatusCommand); // status, must be set to correct status code (ok / error)
+  #endif
+  // neither
+  return false;
 } // TLocalEngineDS::engProcessRemoteItem
 
 
@@ -4837,7 +4876,7 @@ bool TLocalEngineDS::engProcessSyncOpItem(
 } // TLocalEngineDS::engProcessSyncOpItem
 
 
-#ifndef SYSYNC_CLIENT
+#ifdef SYSYNC_SERVER
 
 
 // Server Case
@@ -5779,9 +5818,11 @@ void TLocalEngineDS::engRequestEnded(void)
   }
 } // TLocalEngineDS::engRequestEnded
 
+#endif // SYSYNC_SERVER
 
 
-#else
+
+#ifdef SYSYNC_CLIENT
 
 // Client Case
 // ===========
@@ -6177,7 +6218,7 @@ bool TLocalEngineDS::isAddFromLastSession(cAppCharP aRemoteID)
 // - called to generate Map items
 //   Returns true if now finished for this datastore
 //   also sets fState to dss_done when finished
-bool TLocalEngineDS::engGenerateMapItems(TMapCommand *aMapCommandP)
+bool TLocalEngineDS::engGenerateMapItems(TMapCommand *aMapCommandP, cAppCharP aLocalIDPrefix)
 {
   #ifdef USE_SML_EVALUATION
   sInt32 leavefree = fSessionP->getNotUsableBufferBytes();
@@ -6193,6 +6234,10 @@ bool TLocalEngineDS::engGenerateMapItems(TMapCommand *aMapCommandP)
     // add item
     string locID = (*pos).first;
     dsFinalizeLocalID(locID); // make sure we have the permanent version in case datastore implementation did deliver temp IDs
+    // add local ID prefix, if any
+    if (aLocalIDPrefix && *aLocalIDPrefix)
+      locID.insert(0,aLocalIDPrefix);
+    // add it to map command
     aMapCommandP->addMapItem(locID.c_str(),(*pos).second.c_str());
     // check if we could send this command
     #ifdef USE_SML_EVALUATION
@@ -6250,7 +6295,9 @@ bool TLocalEngineDS::engGenerateMapItems(TMapCommand *aMapCommandP)
 } // TLocalEngineDS::engGenerateMapItems
 
 
-#endif // SYSYNC_CLIENT
+#endif // SYSYNC_SERVER
+
+
 
 // - called to mark an already generated (but probably not sent or not yet statused) item
 //   as "to-be-resumed", by localID or remoteID (latter only in server case).
@@ -6265,9 +6312,9 @@ void TLocalEngineDS::engMarkItemForResume(cAppCharP aLocalID, cAppCharP aRemoteI
     aLocalID = fAsSubDatastoreOf->removeSubDSPrefix(aLocalID, this);
   }
   #endif
-  #ifndef SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
   // Now mark for resume
-  if (aLocalID && *aLocalID) {
+  if (IS_SERVER && aLocalID && *aLocalID) {
     // localID can be a translated localid at this point (for adds), so check for it
     string localid=aLocalID;
     obtainRealLocalID(localid);
@@ -6298,8 +6345,8 @@ void TLocalEngineDS::engMarkItemForResend(cAppCharP aLocalID, cAppCharP aRemoteI
   // maxobjsize restrictions.
   fRemoteItemsError++;
   // now mark for resend
-  #ifndef SYSYNC_CLIENT
-  if (aLocalID && *aLocalID) {
+  #ifdef SYSYNC_SERVER
+  if (IS_SERVER && aLocalID && *aLocalID) {
     // localID can be a translated localid at this point (for adds), so check for it
     string localid=aLocalID;
     obtainRealLocalID(localid);

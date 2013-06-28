@@ -29,15 +29,39 @@
 #include <syncevo/declarations.h>
 SE_BEGIN_CXX
 
+/** alert Codes used at the synchronization initialization */
 enum SyncMode {
+    /** unset or disabled */
     SYNC_NONE,
-    SYNC_TWO_WAY,
-    SYNC_SLOW,
-    SYNC_ONE_WAY_FROM_CLIENT,
-    SYNC_REFRESH_FROM_CLIENT,
-    SYNC_ONE_WAY_FROM_SERVER,
-    SYNC_REFRESH_FROM_SERVER,
-    SYNC_MODE_MAX
+
+    SYNC_FIRST = 200,
+    SYNC_TWO_WAY = 200,
+    SYNC_SLOW = 201,
+    SYNC_ONE_WAY_FROM_CLIENT = 202,
+    SYNC_REFRESH_FROM_CLIENT = 203,
+    SYNC_ONE_WAY_FROM_SERVER = 204,
+    SYNC_REFRESH_FROM_SERVER = 205,
+
+    /** used by Server Alerted Sync **/
+    SA_SYNC_TWO_WAY = 206,
+    SA_SYNC_ONE_WAY_FROM_CLIENT = 207,
+    SA_SYNC_REFRESH_FROM_CLIENT = 208,
+    SA_SYNC_ONE_WAY_FROM_SERVER = 209,
+    SA_SYNC_REFRESH_FROM_SERVER = 210,
+    
+    SYNC_LAST = 220,
+    /** error situation (in contrast to SYNC_NONE) */
+    SYNC_INVALID = 255
+};
+
+/* According to OMNA WSP Content Type Numbers*/
+enum ContentType {
+    WSPCTC_TEXT_PLAIN = 0x03,
+    WSPCTC_XVCALENDAR = 0x06,
+    WSPCTC_XVCARD = 0x07,
+    WSPCTC_ICALENDAR = 0x0305,
+    WSPCTC_VCARD = 0x0309,
+    WSPCTC_UNKNOWN =0xFFFFFF
 };
 
 /**
@@ -50,7 +74,12 @@ std::string PrettyPrintSyncMode(SyncMode mode, bool userVisible = true);
 /**
  * Parse user-visible mode names.
  */
-SyncMode StringToSyncMode(const std::string &str);
+SyncMode StringToSyncMode(const std::string &str, bool serverAlerted = false);
+
+/*
+ * Parse string based content type to WSPCTC encoded binary code
+ */
+ContentType StringToContentType (const std::string &str);
 
 /**
  * result of SyncML operations, same codes as in HTTP and the Synthesis engine

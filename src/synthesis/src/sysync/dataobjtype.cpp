@@ -22,6 +22,7 @@
 
 using namespace sysync;
 
+namespace sysync {
 
 const char* BeginCDATA=          "<![CDATA[";
 const char*   EndCDATA= "]]>";
@@ -966,7 +967,7 @@ bool TDataObjType::copyCTCapInfoFrom(TSyncItemType &aSourceItem)
 } // TDataObjType::copyCTCapInfoFrom
 
 
-
+} // namespace sysync
 
 /* end of TDataObjType implementation */
 // eof

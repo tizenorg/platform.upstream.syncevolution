@@ -51,7 +51,7 @@ void TMultiFieldTypeConfig::clear(void)
   fOutgoingScript.erase();
   fFilterInitScript.erase();
   fPostFetchFilterScript.erase();
-  #ifndef SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
   fCompareScript.erase();
   fMergeScript.erase();
   #endif
@@ -104,7 +104,7 @@ public:
 
 
 
-  #ifndef SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
 
   // void ECHOITEM(string syncop)
   // creates a duplicate of the processed item to be sent back to sender with the specified syncop
@@ -312,7 +312,7 @@ const TBuiltInFuncDef DataTypeFuncDefs[] = {
   { "SIZELIMIT", TMFTypeFuncs::func_Limit, fty_integer, 0, NULL },
   { "SETSIZELIMIT", TMFTypeFuncs::func_SetLimit, fty_none, 1, param_IntArg },
   #endif
-  #ifndef SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
   { "ECHOITEM", TMFTypeFuncs::func_EchoItem, fty_none, 1, param_StrArg },
   { "CONFLICTSTRATEGY", TMFTypeFuncs::func_ConflictStrategy, fty_none, 1, param_StrArg },
   { "FORCECONFLICT", TMFTypeFuncs::func_ForceConflict, fty_none, 0, NULL },
@@ -394,7 +394,7 @@ bool TMultiFieldTypeConfig::localStartElement(const char *aElementName, const ch
     expectScript(fFilterInitScript,aLine,&DataTypeFuncTable);
   else if (strucmp(aElementName,"filterscript")==0)
     expectScript(fPostFetchFilterScript,aLine,&DataTypeFuncTable);
-  #ifndef SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
   else if (strucmp(aElementName,"comparescript")==0)
     expectScript(fCompareScript,aLine,&DataTypeFuncTable);
   else if (strucmp(aElementName,"mergescript")==0)
@@ -431,7 +431,7 @@ void TMultiFieldTypeConfig::localResolve(bool aLastPass)
       TScriptContext::resolveScript(getSyncAppBase(),fFilterInitScript,sccP,fFieldListP);
       TScriptContext::resolveScript(getSyncAppBase(),fPostFetchFilterScript,sccP,fFieldListP);
       // - compare and merge scripts
-      #ifndef SYSYNC_CLIENT
+      #ifdef SYSYNC_SERVER
       TScriptContext::resolveScript(getSyncAppBase(),fCompareScript,sccP,fFieldListP);
       TScriptContext::resolveScript(getSyncAppBase(),fMergeScript,sccP,fFieldListP);
       #endif
@@ -572,7 +572,7 @@ void TMultiFieldItemType::initDataTypeUse(TLocalEngineDS *aDatastoreP, bool aFor
   TScriptContext::rebuildContext(cfgP->getSyncAppBase(),cfgP->fFilterInitScript,*ctxPP,fSessionP);
   TScriptContext::rebuildContext(cfgP->getSyncAppBase(),cfgP->fPostFetchFilterScript,*ctxPP,fSessionP);
   // - compare and merge scripts
-  #ifndef SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
   TScriptContext::rebuildContext(cfgP->getSyncAppBase(),cfgP->fCompareScript,*ctxPP,fSessionP);
   TScriptContext::rebuildContext(cfgP->getSyncAppBase(),cfgP->fMergeScript,*ctxPP,fSessionP);
   #endif
@@ -688,7 +688,7 @@ bool TMultiFieldItemType::checkItem(TMultiFieldItem &aItem, TLocalEngineDS *aDat
 } // TMultiFieldItemType::checkItem
 
 
-#ifndef SYSYNC_CLIENT
+#ifdef SYSYNC_SERVER
 
 // compare two items
 sInt16 TMultiFieldItemType::compareItems(
@@ -796,7 +796,7 @@ void TMultiFieldItemType::mergeItems(
   #endif
 } // TMultiFieldItemType::mergeItems
 
-#endif // server only
+#endif // SYSYNC_SERVER
 
 
 // helper to create same-typed instance via base class

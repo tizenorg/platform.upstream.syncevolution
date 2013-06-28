@@ -9,6 +9,9 @@
 /* addressbook available */
 #undef ENABLE_ADDRESSBOOK
 
+/* define if bluez library is available */
+#undef ENABLE_BLUETOOTH
+
 /* libebook available */
 #undef ENABLE_EBOOK
 
@@ -17,9 +20,6 @@
 
 /* file available */
 #undef ENABLE_FILE
-
-/* enable integration tests inside the final library */
-#undef ENABLE_INTEGRATION_TESTS
 
 /* enable libcurl transport */
 #undef ENABLE_LIBCURL
@@ -30,14 +30,14 @@
 /* enable Maemo hacks */
 #undef ENABLE_MAEMO
 
-/* Maemo 5 calendar available */
-#undef ENABLE_MAEMO_CALENDAR
-
 /* enable dynamically opening sync source backends */
 #undef ENABLE_MODULES
 
 /* always defined to indicate that i18n is enabled */
 #undef ENABLE_NLS
+
+/* define if openobex library is available */
+#undef ENABLE_OBEX
 
 /* sqlite available */
 #undef ENABLE_SQLITE
@@ -45,14 +45,20 @@
 /* enable SSL certificate check in server templates */
 #undef ENABLE_SSL_CERTIFICATE_CHECK
 
+/* SyncML client support available */
+#undef ENABLE_SYNCML_CLIENT
+
+/* SyncML engines are linked directly */
+#undef ENABLE_SYNCML_LINKED
+
+/* SyncML server support available */
+#undef ENABLE_SYNCML_SERVER
+
 /* enable single-app-instance functionality */
 #undef ENABLE_UNIQUE
 
 /* enable unit tests inside the library's source code */
 #undef ENABLE_UNIT_TESTS
-
-/* XMLRPC available */
-#undef ENABLE_XMLRPC
 
 /* avoid hard dependency on Evolution shared objects */
 #undef EVOLUTION_COMPATIBILITY
@@ -135,6 +141,9 @@
 /* compiling for iPhone */
 #undef IPHONE
 
+/* Define to 1 if you need the dbus_watch_get_unix_fd() function. */
+#undef NEED_DBUS_WATCH_GET_UNIX_FD
+
 /* Name of package */
 #undef PACKAGE
 
@@ -165,7 +174,7 @@
 /* define if gnome keyring should be used in dbus service */
 #undef USE_GNOME_KEYRING
 
-/* Use the MUX widget library */
+/* Use Moblin UI widgets */
 #undef USE_MOBLIN_UX
 
 /* Version number of package */

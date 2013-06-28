@@ -27,7 +27,7 @@ namespace sysync {
 class TRemoteDataStore: public TSyncDataStore
 {
   typedef TSyncDataStore inherited;
-  friend class TSyncServer;
+  friend class TSyncAgent;
 private:
   void init(void); // internal init
   void InternalResetDataStore(void); // reset for re-use without re-creation

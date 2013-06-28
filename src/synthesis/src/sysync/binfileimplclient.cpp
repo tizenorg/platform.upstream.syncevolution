@@ -34,7 +34,7 @@ namespace sysync {
   #error "this is here for Q&D testing with outlook client only"
 #endif
 // factory function implementation - declared in TEngineInterface
-ENGINE_IF_CLASS *newEngine(void)
+ENGINE_IF_CLASS *newClientEngine(void)
 {
   return new TBinfileEngineInterface;
 } // newEngine
@@ -56,7 +56,7 @@ TSyncAppBase *TBinfileEngineInterface::newSyncAppBase(void)
 // create appropriate root key
 TSettingsKeyImpl *TBinfileEngineInterface::newSettingsRootKey(void)
 {
-  return new TBinfileClientRootKey(this); // return base class which can return some engine infos
+  return new TBinfileAgentRootKey(this); // return base class which can return some engine infos
 } // TBinfileEngineInterface::newSettingsRootKey
 
 
@@ -1144,26 +1144,67 @@ TSyError TBinfileLogsKey::DeleteSubkey(sInt32 aID)
 } // TBinfileLogsKey::DeleteSubkey
 
 
+
+// Binfile Agent root key
+// ----------------------
+
+// Constructor
+TBinfileAgentRootKey::TBinfileAgentRootKey(TEngineInterface *aEngineInterfaceP) :
+  inherited(aEngineInterfaceP)
+{
+} // TBinfileAgentRootKey::TBinfileAgentRootKey
+
+
+// open subkey by name (not by path!)
+// - this is the actual implementation
+TSyError TBinfileAgentRootKey::OpenSubKeyByName(
+  TSettingsKeyImpl *&aSettingsKeyP,
+  cAppCharP aName, stringSize aNameSize,
+  uInt16 aMode
+) {
+  if (strucmp(aName,"profiles",aNameSize)==0) {
+    // allow accessing profiles only for active binfiles
+    if (
+      static_cast<TBinfileClientConfig *>(
+        fEngineInterfaceP->getSyncAppBase()->getRootConfig()->fAgentConfigP
+      )->fBinfilesActive
+    ) {
+      aSettingsKeyP = new TBinfileProfilesKey(fEngineInterfaceP);
+    }
+    else {
+      // cannot access profiles of inactive binfile layer
+      return LOCERR_WRONGUSAGE;
+    }
+  }
+  else if (strucmp(aName,"synclogs",aNameSize)==0)
+    aSettingsKeyP = new TBinfileLogsKey(fEngineInterfaceP);
+  else
+    return inherited::OpenSubKeyByName(aSettingsKeyP,aName,aNameSize,aMode);
+  // opened a key
+  return LOCERR_OK;
+} // TBinfileAgentRootKey::OpenSubKeyByName
+
+
 // Client runtime settings key
 // ---------------------------
 
 
 // Constructor
-TBinFileClientParamsKey::TBinFileClientParamsKey(TEngineInterface *aEngineInterfaceP, TSyncClient *aClientSessionP) :
+TBinFileAgentParamsKey::TBinFileAgentParamsKey(TEngineInterface *aEngineInterfaceP, TSyncAgent *aClientSessionP) :
   inherited(aEngineInterfaceP,aClientSessionP)
 {
-} // TBinFileClientParamsKey::TBinFileClientParamsKey
+} // TBinFileAgentParamsKey::TBinFileAgentParamsKey
 
 
 // open subkey by name (not by path!)
-TSyError TBinFileClientParamsKey::OpenSubKeyByName(
+TSyError TBinFileAgentParamsKey::OpenSubKeyByName(
   TSettingsKeyImpl *&aSettingsKeyP,
   cAppCharP aName, stringSize aNameSize,
   uInt16 aMode
 ) {
   if (strucmp(aName,"profile",aNameSize)==0) {
     // get binfileclient session pointer
-    TBinfileImplClient *bfclientP = static_cast<TBinfileImplClient *>(fClientSessionP);
+    TBinfileImplClient *bfclientP = static_cast<TBinfileImplClient *>(fAgentP);
     // opens current session's active profile
     aSettingsKeyP = new TBinfileProfileKey(
       fEngineInterfaceP,
@@ -1176,7 +1217,7 @@ TSyError TBinFileClientParamsKey::OpenSubKeyByName(
     return inherited::OpenSubKeyByName(aSettingsKeyP,aName,aNameSize,aMode);
   // opened a key
   return LOCERR_OK;
-} // TBinFileClientParamsKey::OpenSubKeyByName
+} // TBinFileAgentParamsKey::OpenSubKeyByName
 
 
 #endif // ENGINEINTERFACE_SUPPORT
@@ -1188,7 +1229,7 @@ TSyError TBinFileClientParamsKey::OpenSubKeyByName(
 // ======
 
 TBinfileClientConfig::TBinfileClientConfig(TConfigElement *aParentElement) :
-  TClientConfig("BinFileDBClient",aParentElement)
+  TAgentConfig("BinFileDBClient",aParentElement)
 {
 } // TBinfileClientConfig::TBinfileClientConfig
 
@@ -1202,6 +1243,8 @@ TBinfileClientConfig::~TBinfileClientConfig()
 // init defaults
 void TBinfileClientConfig::clear(void)
 {
+	// Only active in clients by default
+	fBinfilesActive = IS_CLIENT;
   #ifndef HARDCODED_CONFIG
   // init defaults
   fBinFilesPath.erase();
@@ -1223,6 +1266,8 @@ bool TBinfileClientConfig::localStartElement(const char *aElementName, const cha
     expectMacroString(fBinFilesPath);
   else if (strucmp(aElementName,"binfilelog")==0)
     expectBool(fBinFileLog);
+  else if (strucmp(aElementName,"binfilesactive")==0)
+    expectBool(fBinfilesActive);
   // - none known here
   else
     return inherited::localStartElement(aElementName,aAttributes,aLine);
@@ -1378,47 +1423,53 @@ void TBinfileClientConfig::getBinFilesPath(string &aPath)
 // open settings databases
 localstatus TBinfileClientConfig::openSettingsDatabases(bool aDoLoose)
 {
-  // safe for calling more than once
-  if (fProfileBinFile.isOpen() && fTargetsBinFile.isOpen())
-    return LOCERR_OK; // already open - ok
-  // open profile and targets databases
-  // - get base path
-  string basepath;
-  getBinFilesPath(basepath);
-  string usedpath;
-  bool newprofiles=false;
-  bferr err;
-  // - profiles
-  usedpath=basepath + PROFILE_DB_NAME;
-  fProfileBinFile.setFileInfo(usedpath.c_str(),PROFILE_DB_VERSION,PROFILE_DB_ID,sizeof(TBinfileDBSyncProfile));
-  err = fProfileBinFile.open(0,NULL,profileUpdateFunc);
-  if (err!=BFE_OK) {
-    // create new one or overwrite incompatible one if allowed
-    if (aDoLoose || err!=BFE_BADVERSION) {
-      err=fProfileBinFile.create(sizeof(TBinfileDBSyncProfile),0,NULL,true);
-      newprofiles=true;
-    }
-    else {
-      // would create new file due to bad (newer or non-upgradeable older) version
-      return LOCERR_CFGPARSE; // this is kind of a config parsing error
-    }
+	if (!fBinfilesActive) {
+  	// databases can be opened only with active binfiles layer
+  	return LOCERR_WRONGUSAGE;
   }
-  // - targets
-  usedpath=basepath + TARGETS_DB_NAME;
-  fTargetsBinFile.setFileInfo(usedpath.c_str(),TARGETS_DB_VERSION,TARGETS_DB_ID,sizeof(TBinfileDBSyncTarget));
-  err = fTargetsBinFile.open(0,NULL,targetUpdateFunc);
-  if (err!=BFE_OK || newprofiles) {
-    // create new one or overwrite incompatible one
-    // also ALWAYS create new targets if we HAVE created new profiles
-    if (aDoLoose || newprofiles || err!=BFE_BADVERSION) {
-      err=fTargetsBinFile.create(sizeof(TBinfileDBSyncTarget),0,NULL,true);
+  else {
+    // safe for calling more than once
+    if (fProfileBinFile.isOpen() && fTargetsBinFile.isOpen())
+      return LOCERR_OK; // already open - ok
+    // open profile and targets databases
+    // - get base path
+    string basepath;
+    getBinFilesPath(basepath);
+    string usedpath;
+    bool newprofiles=false;
+    bferr err;
+    // - profiles
+    usedpath=basepath + PROFILE_DB_NAME;
+    fProfileBinFile.setFileInfo(usedpath.c_str(),PROFILE_DB_VERSION,PROFILE_DB_ID,sizeof(TBinfileDBSyncProfile));
+    err = fProfileBinFile.open(0,NULL,profileUpdateFunc);
+    if (err!=BFE_OK) {
+      // create new one or overwrite incompatible one if allowed
+      if (aDoLoose || err!=BFE_BADVERSION) {
+        err=fProfileBinFile.create(sizeof(TBinfileDBSyncProfile),0,NULL,true);
+        newprofiles=true;
+      }
+      else {
+        // would create new file due to bad (newer or non-upgradeable older) version
+        return LOCERR_CFGPARSE; // this is kind of a config parsing error
+      }
     }
-    else {
-      // would create new file due to bad (newer or non-upgradeable older) version
-      return LOCERR_CFGPARSE; // this is kind of a config parsing error
+    // - targets
+    usedpath=basepath + TARGETS_DB_NAME;
+    fTargetsBinFile.setFileInfo(usedpath.c_str(),TARGETS_DB_VERSION,TARGETS_DB_ID,sizeof(TBinfileDBSyncTarget));
+    err = fTargetsBinFile.open(0,NULL,targetUpdateFunc);
+    if (err!=BFE_OK || newprofiles) {
+      // create new one or overwrite incompatible one
+      // also ALWAYS create new targets if we HAVE created new profiles
+      if (aDoLoose || newprofiles || err!=BFE_BADVERSION) {
+        err=fTargetsBinFile.create(sizeof(TBinfileDBSyncTarget),0,NULL,true);
+      }
+      else {
+        // would create new file due to bad (newer or non-upgradeable older) version
+        return LOCERR_CFGPARSE; // this is kind of a config parsing error
+      }
     }
+	  return err;
   }
-  return err;
 } // TBinfileClientConfig::openSettingsDatabases
 
 
@@ -1448,9 +1499,11 @@ localstatus TBinfileClientConfig::loadVarConfig(bool aDoLoose)
 {
   // let inherited to it's stuff
   localstatus err=inherited::loadVarConfig(aDoLoose);
-  // now do my own stuf
-  if (err==LOCERR_OK) {
-    err=openSettingsDatabases(aDoLoose);
+  if (fBinfilesActive) {
+    // now do my own stuff
+    if (err==LOCERR_OK) {
+      err=openSettingsDatabases(aDoLoose);
+    }
   }
   // return status
   return err;
@@ -1461,10 +1514,12 @@ localstatus TBinfileClientConfig::loadVarConfig(bool aDoLoose)
 // save app state (such as settings in datastore configs etc.)
 void TBinfileClientConfig::saveAppState(void)
 {
-  // close and re-open the settings binfiles to make sure their
-  // contents is permanently saved
-  closeSettingsDatabases();
-  openSettingsDatabases(false);
+	if (fBinfilesActive) {
+    // close and re-open the settings binfiles to make sure their
+    // contents is permanently saved
+    closeSettingsDatabases();
+    openSettingsDatabases(false);
+  }
 } // TBinfileClientConfig::saveAppState
 
 
@@ -2267,12 +2322,12 @@ void TBinfileClientConfig::cleanChangeLogForDBname(cAppCharP aDBName)
 /* public TBinfileImplClient members */
 
 
-TBinfileImplClient::TBinfileImplClient(TSyncClientBase *aSyncClientBaseP, const char *aSessionID) :
-  TStdLogicAgent(aSyncClientBaseP, aSessionID),
+TBinfileImplClient::TBinfileImplClient(TSyncAppBase *aSyncAppBaseP, TSyncSessionHandle *aSyncSessionHandleP, cAppCharP aSessionID) :
+  TStdLogicAgent(aSyncAppBaseP, aSyncSessionHandleP, aSessionID),
   fConfigP(NULL)
 {
   // get config for agent
-  TRootConfig *rootcfgP = aSyncClientBaseP->getRootConfig();
+  TRootConfig *rootcfgP = aSyncAppBaseP->getRootConfig();
   // - save direct link to agent config for easy reference
   fConfigP = static_cast<TBinfileClientConfig *>(rootcfgP->fAgentConfigP);
   // - make profile invalid
@@ -2292,7 +2347,7 @@ TBinfileImplClient::~TBinfileImplClient()
 // Terminate session
 void TBinfileImplClient::TerminateSession()
 {
-  if (!fTerminated) {
+  if (!fTerminated && fConfigP->fBinfilesActive) {
     // save profile changes
     if (fProfileIndex>=0 && fProfileDirty) {
       fConfigP->fProfileBinFile.updateRecord(fProfileIndex,&fProfile);
@@ -2325,7 +2380,7 @@ void TBinfileImplClient::SetProfileSelector(uInt32 aProfileSelector)
 /// @brief Get new session key to access details of this session
 appPointer TBinfileImplClient::newSessionKey(TEngineInterface *aEngineInterfaceP)
 {
-  return new TBinFileClientParamsKey(aEngineInterfaceP,this);
+  return new TBinFileAgentParamsKey(aEngineInterfaceP,this);
 } // TBinfileImplClient::newSessionKey
 
 #endif // ENGINEINTERFACE_SUPPORT
@@ -2345,8 +2400,10 @@ void TBinfileImplClient::InternalResetSession(void)
 // Virtual version
 void TBinfileImplClient::ResetSession(void)
 {
-  // do my own stuff
-  InternalResetSession();
+	if (fConfigP->fBinfilesActive) {
+    // do my own stuff
+    InternalResetSession();
+  }
   // let ancestor do its stuff
   TStdLogicAgent::ResetSession();
 } // TBinfileImplClient::ResetSession
@@ -2357,8 +2414,8 @@ void TBinfileImplClient::ResetSession(void)
 //   last info here.
 void TBinfileImplClient::loadRemoteParams(void)
 {
-  if (fProfileIndex<0) {
-    // no profile loaded, let ancestor handle case
+  if (!fConfigP->fBinfilesActive || fProfileIndex<0) {
+    // not active or no profile loaded, let ancestor handle case
     TStdLogicAgent::loadRemoteParams();
   }
   else {
@@ -2387,7 +2444,7 @@ void TBinfileImplClient::loadRemoteParams(void)
 // - save remote connect params for use in next session (if descendant implements it)
 void TBinfileImplClient::saveRemoteParams(void)
 {
-  if (fProfileIndex>=0) {
+  if (fConfigP->fBinfilesActive && fProfileIndex>=0) {
     // save values to profile
     // - SyncML version (save it only if it is "better" than what we knew so far)
     if (fSyncMLVersion > fProfile.lastSyncMLVersion) {
@@ -2405,7 +2462,7 @@ void TBinfileImplClient::saveRemoteParams(void)
 // check remote devinf to detect special behaviour needed for some servers.
 localstatus TBinfileImplClient::checkRemoteSpecifics(SmlDevInfDevInfPtr_t aDevInfP)
 {
-  if (aDevInfP) {
+  if (fConfigP->fBinfilesActive && aDevInfP) {
     // check for some specific servers we KNOW they need special treatment
     uInt8 setFlags = 0;
     uInt8 clearFlags = 0;
@@ -2464,18 +2521,20 @@ localstatus TBinfileImplClient::checkRemoteSpecifics(SmlDevInfDevInfPtr_t aDevIn
 // generates custom PUT in case IPP/DMU is enabled to request settings
 void TBinfileImplClient::issueCustomGetPut(bool aGotDevInf, bool aSentDevInf)
 {
-  // get autosync PUT req string
-  string req;
-  fConfigP->autosync_get_putrequest(req);
-  // now create a PUT
-  if (!req.empty()) {
-    TPutCommand *putcommandP = new TPutCommand(this);
-    putcommandP->setMeta(newMetaType(IPP_PARAMS_ITEM_METATYPE));
-    SmlItemPtr_t putItemP = putcommandP->addSourceLocItem(IPP_PARAMS_LOCURI_REQ);
-    // - add data to item
-    putItemP->data = newPCDataString(req.c_str());
-    putcommandP->allowFailure(); // do not abort session in case server does not understand the command
-    ISSUE_COMMAND_ROOT(this,putcommandP);
+	if (fConfigP->fBinfilesActive) {
+    // get autosync PUT req string
+    string req;
+    fConfigP->autosync_get_putrequest(req);
+    // now create a PUT
+    if (!req.empty()) {
+      TPutCommand *putcommandP = new TPutCommand(this);
+      putcommandP->setMeta(newMetaType(IPP_PARAMS_ITEM_METATYPE));
+      SmlItemPtr_t putItemP = putcommandP->addSourceLocItem(IPP_PARAMS_LOCURI_REQ);
+      // - add data to item
+      putItemP->data = newPCDataString(req.c_str());
+      putcommandP->allowFailure(); // do not abort session in case server does not understand the command
+      ISSUE_COMMAND_ROOT(this,putcommandP);
+    }
   }
   // let ancestors issue their custom gets and puts, if any
   inherited::issueCustomGetPut(aGotDevInf, aSentDevInf);
@@ -2487,53 +2546,59 @@ void TBinfileImplClient::issueCustomGetPut(bool aGotDevInf, bool aSentDevInf)
 // handler of custom IPP/DMU put and result commands
 void TBinfileImplClient::processPutResultItem(bool aIsPut, const char *aLocUri, TSmlCommand *aPutResultsCommandP, SmlItemPtr_t aPutResultsItemP, TStatusCommand &aStatusCommand)
 {
-  #ifdef IPP_SUPPORT
-  // check for DMU specials
-  if (strucmp(relativeURI(aLocUri),relativeURI(IPP_PARAMS_LOCURI_CFG))==0) {
-    // get DMU string
-    const char *ippstring = smlItemDataToCharP(aPutResultsItemP);
-    PDEBUGPRINTFX(DBG_HOT,("received IPP config string: %s",ippstring));
-    // process it
-    string tag,value;
-    while (ippstring && *ippstring) {
-      ippstring=nextTag(ippstring,tag,value);
-      // set ipp params in current profile
-      fConfigP->ipp_setparam(tag.c_str(),value.c_str(),fProfile.ippSettings);
-      // make sure autosync profile copy gets updated as well
-      if (fConfigP->fAutosyncProfileLastidx==fProfileIndex) {
-        fConfigP->fAutosyncProfile = fProfile; // copy profile into autosync
-        fConfigP->autosync_condchanged(); // do immediately check settings at next autosync step
+	if (fConfigP->fBinfilesActive) {
+    #ifdef IPP_SUPPORT
+    // check for DMU specials
+    if (strucmp(relativeURI(aLocUri),relativeURI(IPP_PARAMS_LOCURI_CFG))==0) {
+      // get DMU string
+      const char *ippstring = smlItemDataToCharP(aPutResultsItemP);
+      PDEBUGPRINTFX(DBG_HOT,("received IPP config string: %s",ippstring));
+      // process it
+      string tag,value;
+      while (ippstring && *ippstring) {
+        ippstring=nextTag(ippstring,tag,value);
+        // set ipp params in current profile
+        fConfigP->ipp_setparam(tag.c_str(),value.c_str(),fProfile.ippSettings);
+        // make sure autosync profile copy gets updated as well
+        if (fConfigP->fAutosyncProfileLastidx==fProfileIndex) {
+          fConfigP->fAutosyncProfile = fProfile; // copy profile into autosync
+          fConfigP->autosync_condchanged(); // do immediately check settings at next autosync step
+        }
+        // make sure profile gets saved
+        fProfileDirty=true;
       }
-      // make sure profile gets saved
-      fProfileDirty=true;
+      // is ok
+      aStatusCommand.setStatusCode(200); // is ok
+      aStatusCommand.dontSend(); // ..but do not send it (%%% as session would then end with error 9999)
     }
-    // is ok
-    aStatusCommand.setStatusCode(200); // is ok
-    aStatusCommand.dontSend(); // ..but do not send it (%%% as session would then end with error 9999)
+    else
+    #endif
+    #ifdef SETTINGS_PROVISIONING_VIA_PUT
+    // check for provisioning strings arriving via PUT command
+    if (strucmp(relativeURI(aLocUri),relativeURI(SETTINGS_LOCURI_CFG))==0) {
+      // get provisioning string
+      const char *provstring = smlItemDataToCharP(aPutResultsItemP);
+      PDEBUGPRINTFX(DBG_HOT,("received settings provisioning string: %s",provstring));
+      // process it
+      // - but first save current profile
+      fConfigP->writeProfile(fProfileIndex,fProfile);
+      // - now modify profile (may include the current profile)
+      sInt32 activeprofile;
+      bool provok = fConfigP->executeProvisioningString(provstring, activeprofile);
+      // - reload current profile (eventually modified)
+      fConfigP->getProfile(fProfileIndex,fProfile);
+      // is ok
+      aStatusCommand.setStatusCode(provok ? 200 : 400); // ok or bad request
+      aStatusCommand.dontSend(); // ..but do not send it (%%% as session would then end with error 9999)
+    }
+    else
+    #endif
+    {
+      // let ancestors process it
+      inherited::processPutResultItem(aIsPut,aLocUri,aPutResultsCommandP,aPutResultsItemP,aStatusCommand);
+    }
   }
-  else
-  #endif
-  #ifdef SETTINGS_PROVISIONING_VIA_PUT
-  // check for provisioning strings arriving via PUT command
-  if (strucmp(relativeURI(aLocUri),relativeURI(SETTINGS_LOCURI_CFG))==0) {
-    // get provisioning string
-    const char *provstring = smlItemDataToCharP(aPutResultsItemP);
-    PDEBUGPRINTFX(DBG_HOT,("received settings provisioning string: %s",provstring));
-    // process it
-    // - but first save current profile
-    fConfigP->writeProfile(fProfileIndex,fProfile);
-    // - now modify profile (may include the current profile)
-    sInt32 activeprofile;
-    bool provok = fConfigP->executeProvisioningString(provstring, activeprofile);
-    // - reload current profile (eventually modified)
-    fConfigP->getProfile(fProfileIndex,fProfile);
-    // is ok
-    aStatusCommand.setStatusCode(provok ? 200 : 400); // ok or bad request
-    aStatusCommand.dontSend(); // ..but do not send it (%%% as session would then end with error 9999)
-  }
-  else
-  #endif
-  {
+  else {
     // let ancestors process it
     inherited::processPutResultItem(aIsPut,aLocUri,aPutResultsCommandP,aPutResultsItemP,aStatusCommand);
   }
@@ -2563,229 +2628,231 @@ const char * const Protocol_Names[num_transp_protos] = {
 localstatus TBinfileImplClient::SelectProfile(uInt32 aProfileSelector, bool aAutoSyncSession)
 {
   uInt32 recidx,maxidx;
-  
   // detect special tunnel session's selection
   bool tunnel = aProfileSelector==TUNNEL_PROFILE_ID;
-  if (tunnel) {
-  	aProfileSelector=DEFAULT_PROFILE_ID;
-  }
-  // Note: profile database has already been opened in config resolve()
-  if (aProfileSelector==DEFAULT_PROFILE_ID) {
-    // default is first one
-    aProfileSelector=0;
-  }
-  // try to load profile
-  if (fConfigP->fProfileBinFile.readRecord(aProfileSelector,&fProfile)!=BFE_OK)
-    goto defaultprofile; // use default
-  // Now we have the profile
-  fProfileIndex=aProfileSelector;
-  fRemotepartyID=fProfile.profileID;
-  // Set session parameters
-  #ifdef SYNCML_ENCODING_OVERRIDE
-  fEncoding = SYNCML_ENCODING_OVERRIDE; // we use a globally defined encoding
-  #else
-  fEncoding = fProfile.encoding; // we use the profile's encoding
-  #endif
+	// select profile if active
+	if (fConfigP->fBinfilesActive) {  
+    if (tunnel) {
+      aProfileSelector=DEFAULT_PROFILE_ID;
+    }
+    // Note: profile database has already been opened in config resolve()
+    if (aProfileSelector==DEFAULT_PROFILE_ID) {
+      // default is first one
+      aProfileSelector=0;
+    }
+    // try to load profile
+    if (fConfigP->fProfileBinFile.readRecord(aProfileSelector,&fProfile)!=BFE_OK)
+      goto defaultprofile; // use default
+    // Now we have the profile
+    fProfileIndex=aProfileSelector;
+    fRemotepartyID=fProfile.profileID;
+    // Set session parameters
+    #ifdef SYNCML_ENCODING_OVERRIDE
+    fEncoding = SYNCML_ENCODING_OVERRIDE; // we use a globally defined encoding
+    #else
+    fEncoding = fProfile.encoding; // we use the profile's encoding
+    #endif
 
-  #ifdef HARD_CODED_SERVER_URI
-  // - Hard coded base URL of server
-  fRemoteURI=DEFAULT_SERVER_URI; // always use fixed URI
-  #else
-  // - configured URL
-  //   check config-level fixed URI first
-  if (!fConfigP->fServerURI.empty()) {
-    // override server URL from fixed value in config
-    fRemoteURI = fConfigP->fServerURI; // config
-    if (strucmp(fProfile.serverURI,fRemoteURI.c_str())!=0) {
-      PDEBUGPRINTFX(DBG_ERROR,("Warning - <serverurl> config overrides/overwrites server URL in profile"));
-      // re-adjust profile
-      AssignCString(fProfile.serverURI, fConfigP->fServerURI.c_str(), maxurisiz); // copy predefined URI back into profile
-      fProfile.readOnlyFlags |= rdonly_URI; // make it read-only
+    #ifdef HARD_CODED_SERVER_URI
+    // - Hard coded base URL of server
+    fRemoteURI=DEFAULT_SERVER_URI; // always use fixed URI
+    #else
+    // - configured URL
+    //   check config-level fixed URI first
+    if (!fConfigP->fServerURI.empty()) {
+      // override server URL from fixed value in config
+      fRemoteURI = fConfigP->fServerURI; // config
+      if (strucmp(fProfile.serverURI,fRemoteURI.c_str())!=0) {
+        PDEBUGPRINTFX(DBG_ERROR,("Warning - <serverurl> config overrides/overwrites server URL in profile"));
+        // re-adjust profile
+        AssignCString(fProfile.serverURI, fConfigP->fServerURI.c_str(), maxurisiz); // copy predefined URI back into profile
+        fProfile.readOnlyFlags |= rdonly_URI; // make it read-only
+      }
     }
-  }
-  else {
-    // use URL from profile
-    fRemoteURI=fProfile.serverURI;
-  }
-  #endif // not HARD_CODED_SERVER_URI
-  // check for URI that is a template and need inserts:
-  size_t n;
-  // - %%% check future other inserts here, \u should be last because if there's no \u, standard
-  //   CUSTOM_URI_SUFFIX mechanism may apply in else branch
-  // - \u for URIpath
-  n = fRemoteURI.find("\\u");
-  if (n!=string::npos) {
-  	// URIPath may only not contain any special chars that might help to inject different server URLs
-    string up = fProfile.URIpath;
-    if (up.find_first_of(":/?.&=%,;")!=string::npos)
-    	fRemoteURI.erase(n, 2); // no insert, invalid chars in URIpath
-    else
-	  	fRemoteURI.replace(n, 2, up); // insert URIPath instead of \u
-  }
-  #ifdef CUSTOM_URI_SUFFIX
-  else {
-  	// Only if original URI is not a template
-    // - append custom URI suffix stored in serverURI field of profile (if one is set)
-    if (*(fProfile.URIpath))
-    {
-      // - append delimiter first if one defined (CUSTOM_URI_SUFFIX not NULL)
-      const char *p=CUSTOM_URI_SUFFIX;
-      if (p) fRemoteURI.append(p);
-      // - now append custom URI suffix
-      fRemoteURI.append(fProfile.URIpath);
+    else {
+      // use URL from profile
+      fRemoteURI=fProfile.serverURI;
     }
-  }
-  #endif // CUSTOM_URI_SUFFIX
-  #ifdef PROTOCOL_SELECTOR
-  fRemoteURI.insert(0,Protocol_Names[fProfile.protocol]);
-  fNoCRCPrefixLen=strlen(Protocol_Names[fProfile.protocol]);
-  #endif // PROTOCOL_SELECTOR
-  fServerUser=fProfile.serverUser;
-  getUnmangled(fServerPassword,fProfile.serverPassword,maxupwsiz);
-  // - HTTP auth
-  fTransportUser=fProfile.transportUser;
-  getUnmangled(fTransportPassword,fProfile.transportPassword,maxupwsiz);
-  // - proxy
-  fSocksHost.erase(); // default to none
-  fProxyHost.erase();
-  fProxyUser.erase();
-  fProxyPassword.erase();
-  #ifdef PROXY_SUPPORT
-  if (fProfile.useProxy)
-  {
-    fSocksHost=fProfile.socksHost;
-    fProxyHost=fProfile.proxyHost;
-    fProxyUser=fProfile.proxyUser;
-    getUnmangled(fProxyPassword,fProfile.proxyPassword,maxupwsiz);;
-    PDEBUGPRINTFX(DBG_TRANSP,("Sync Profile contains active proxy settings: http=%s, socks=%s, proxyuser=%s",fProxyHost.c_str(), fSocksHost.c_str(), fProxyUser.c_str()));
-  }
-  #endif // PROXY_SUPPORT
-  // check for forced legacy mode
-  fLegacyMode = fProfile.profileFlags & PROFILEFLAG_LEGACYMODE;
-  // check for lenient mode
-  fLenientMode = fProfile.profileFlags & PROFILEFLAG_LENIENTMODE;
-  // - get and increment session ID and save for next session
-  //   Note: as auth retries will increment the ID as well, we inc by 5
-  //         to avoid repeating the ID too soon
-  fProfile.sessionID+=5;
-  fProfileDirty=true;
-  fClientSessionNo=fProfile.sessionID;
-  // Note: loadRemoteParams will fetch the cached params from fProfile
-  // Reset session after profile change (especially fRemoteURI)
-  // and also remove any datastores we might have
-  ResetAndRemoveDatastores();
-  // in case of tunnel, don't touch datastores
-  if (tunnel) return LOCERR_OK;
-  // Now iterate trough associated target records and create datastores
-  maxidx=fConfigP->fTargetsBinFile.getNumRecords();
-  TBinfileDBSyncTarget target;
-  for (recidx=0; recidx<maxidx; recidx++) {
-    // - get record
-    if (fConfigP->fTargetsBinFile.readRecord(recidx,&target)==BFE_OK) {
-      // check if this one of my targets
-      if (target.remotepartyID == fRemotepartyID)
+    #endif // not HARD_CODED_SERVER_URI
+    // check for URI that is a template and need inserts:
+    size_t n;
+    // - %%% check future other inserts here, \u should be last because if there's no \u, standard
+    //   CUSTOM_URI_SUFFIX mechanism may apply in else branch
+    // - \u for URIpath
+    n = fRemoteURI.find("\\u");
+    if (n!=string::npos) {
+      // URIPath may only not contain any special chars that might help to inject different server URLs
+      string up = fProfile.URIpath;
+      if (up.find_first_of(":/?.&=%,;")!=string::npos)
+        fRemoteURI.erase(n, 2); // no insert, invalid chars in URIpath
+      else
+        fRemoteURI.replace(n, 2, up); // insert URIPath instead of \u
+    }
+    #ifdef CUSTOM_URI_SUFFIX
+    else {
+      // Only if original URI is not a template
+      // - append custom URI suffix stored in serverURI field of profile (if one is set)
+      if (*(fProfile.URIpath))
       {
-        // get datastore config
-        TBinfileDSConfig *binfiledscfgP = static_cast<TBinfileDSConfig *>(
-          getSessionConfig()->getLocalDS(target.dbname)
-        );
-        // check if we have config and if this DS is available now (profile.dsAvailFlags, DSFLAGS_ALWAYS_AVAILABLE, evtl. license...)
-        if (binfiledscfgP && binfiledscfgP->isAvailable(&fProfile)) {
-          // check if this DB must be synced
-          bool syncit=false;
-          #ifdef AUTOSYNC_SUPPORT
-          if (aAutoSyncSession) {
-            // target enable status is not relevant, but autosync alert is
-            syncit =
-              binfiledscfgP->fAutosyncForced ||
-              (binfiledscfgP->fAutosyncAlerted && target.enabled);
-          }
-          else {
-            // normal session
-            syncit = target.enabled && target.remoteDBpath[0]!=0; // and remote DB path specified
-            binfiledscfgP->fAutosyncAlerted=false; // this is NOT an autosync session
-            binfiledscfgP->fAutosyncForced=false;
-          }
-          #else
-          syncit = target.enabled && target.remoteDBpath[0]!=0; // and remote DB path specified
-          #endif
-          if (syncit)
-          {
-            TBinfileImplDS *binfiledsP=NULL;
-            if (binfiledscfgP) {
-              // create datastore
-              binfiledsP = static_cast<TBinfileImplDS *>(binfiledscfgP->newLocalDataStore(this));
+        // - append delimiter first if one defined (CUSTOM_URI_SUFFIX not NULL)
+        const char *p=CUSTOM_URI_SUFFIX;
+        if (p) fRemoteURI.append(p);
+        // - now append custom URI suffix
+        fRemoteURI.append(fProfile.URIpath);
+      }
+    }
+    #endif // CUSTOM_URI_SUFFIX
+    #ifdef PROTOCOL_SELECTOR
+    fRemoteURI.insert(0,Protocol_Names[fProfile.protocol]);
+    fNoCRCPrefixLen=strlen(Protocol_Names[fProfile.protocol]);
+    #endif // PROTOCOL_SELECTOR
+    fServerUser=fProfile.serverUser;
+    getUnmangled(fServerPassword,fProfile.serverPassword,maxupwsiz);
+    // - HTTP auth
+    fTransportUser=fProfile.transportUser;
+    getUnmangled(fTransportPassword,fProfile.transportPassword,maxupwsiz);
+    // - proxy
+    fSocksHost.erase(); // default to none
+    fProxyHost.erase();
+    fProxyUser.erase();
+    fProxyPassword.erase();
+    #ifdef PROXY_SUPPORT
+    if (fProfile.useProxy)
+    {
+      fSocksHost=fProfile.socksHost;
+      fProxyHost=fProfile.proxyHost;
+      fProxyUser=fProfile.proxyUser;
+      getUnmangled(fProxyPassword,fProfile.proxyPassword,maxupwsiz);;
+      PDEBUGPRINTFX(DBG_TRANSP,("Sync Profile contains active proxy settings: http=%s, socks=%s, proxyuser=%s",fProxyHost.c_str(), fSocksHost.c_str(), fProxyUser.c_str()));
+    }
+    #endif // PROXY_SUPPORT
+    // check for forced legacy mode
+    fLegacyMode = fProfile.profileFlags & PROFILEFLAG_LEGACYMODE;
+    // check for lenient mode
+    fLenientMode = fProfile.profileFlags & PROFILEFLAG_LENIENTMODE;
+    // - get and increment session ID and save for next session
+    //   Note: as auth retries will increment the ID as well, we inc by 5
+    //         to avoid repeating the ID too soon
+    fProfile.sessionID+=5;
+    fProfileDirty=true;
+    fClientSessionNo=fProfile.sessionID;
+    // Note: loadRemoteParams will fetch the cached params from fProfile
+    // Reset session after profile change (especially fRemoteURI)
+    // and also remove any datastores we might have
+    ResetAndRemoveDatastores();
+    // in case of tunnel, don't touch datastores
+    if (tunnel) return LOCERR_OK;
+    // Now iterate trough associated target records and create datastores
+    maxidx=fConfigP->fTargetsBinFile.getNumRecords();
+    TBinfileDBSyncTarget target;
+    for (recidx=0; recidx<maxidx; recidx++) {
+      // - get record
+      if (fConfigP->fTargetsBinFile.readRecord(recidx,&target)==BFE_OK) {
+        // check if this one of my targets
+        if (target.remotepartyID == fRemotepartyID)
+        {
+          // get datastore config
+          TBinfileDSConfig *binfiledscfgP = static_cast<TBinfileDSConfig *>(
+            getSessionConfig()->getLocalDS(target.dbname)
+          );
+          // check if we have config and if this DS is available now (profile.dsAvailFlags, DSFLAGS_ALWAYS_AVAILABLE, evtl. license...)
+          if (binfiledscfgP && binfiledscfgP->isAvailable(&fProfile)) {
+            // check if this DB must be synced
+            bool syncit=false;
+            #ifdef AUTOSYNC_SUPPORT
+            if (aAutoSyncSession) {
+              // target enable status is not relevant, but autosync alert is
+              syncit =
+                binfiledscfgP->fAutosyncForced ||
+                (binfiledscfgP->fAutosyncAlerted && target.enabled);
             }
-            if (binfiledsP) {
-              // copy target info to datastore for later access during sync
-              binfiledsP->fTargetIndex=recidx;
-              binfiledsP->fTarget=target;
-              // determine sync mode / flags to use
-              TSyncModes myMode;
-              bool mySlow;
-              #ifdef AUTOSYNC_SUPPORT
-              if (aAutoSyncSession && binfiledscfgP->fAutosyncAlertCode!=0) {
-                // syncmode provided from auto sync alert (e.g. SAN)
-                bool myIsSA;
-                TLocalEngineDS::getSyncModeFromAlertCode(
-                  binfiledscfgP->fAutosyncAlertCode,
+            else {
+              // normal session
+              syncit = target.enabled && target.remoteDBpath[0]!=0; // and remote DB path specified
+              binfiledscfgP->fAutosyncAlerted=false; // this is NOT an autosync session
+              binfiledscfgP->fAutosyncForced=false;
+            }
+            #else
+            syncit = target.enabled && target.remoteDBpath[0]!=0; // and remote DB path specified
+            #endif
+            if (syncit)
+            {
+              TBinfileImplDS *binfiledsP=NULL;
+              if (binfiledscfgP) {
+                // create datastore
+                binfiledsP = static_cast<TBinfileImplDS *>(binfiledscfgP->newLocalDataStore(this));
+              }
+              if (binfiledsP) {
+                // copy target info to datastore for later access during sync
+                binfiledsP->fTargetIndex=recidx;
+                binfiledsP->fTarget=target;
+                // determine sync mode / flags to use
+                TSyncModes myMode;
+                bool mySlow;
+                #ifdef AUTOSYNC_SUPPORT
+                if (aAutoSyncSession && binfiledscfgP->fAutosyncAlertCode!=0) {
+                  // syncmode provided from auto sync alert (e.g. SAN)
+                  bool myIsSA;
+                  TLocalEngineDS::getSyncModeFromAlertCode(
+                    binfiledscfgP->fAutosyncAlertCode,
+                    myMode,
+                    mySlow,
+                    myIsSA
+                  );
+                }
+                else
+                #endif
+                {
+                  // take it from config
+                  myMode = target.syncmode;
+                  mySlow = target.forceSlowSync;
+                }
+                // clean change logs if...
+                // ...this is the only profile
+                // ...this is NOT a resumable session (resumable not necessarily means that it WILL be resumed)
+                // ...we're about to slow sync
+                if (mySlow && target.resumeAlertCode==0 && fConfigP->fProfileBinFile.getNumRecords()==1) {
+                  fConfigP->cleanChangeLogForDBname(target.dbname);
+                }
+                // set non-BinFile specific parameters (note that this call might
+                // be to a derivate which uses additional info from fTarget to set sync params)
+                binfiledsP->dsSetClientSyncParams(
                   myMode,
                   mySlow,
-                  myIsSA
+                  target.remoteDBpath,
+                  NULL, // DB user
+                  NULL, // DB password
+                  NULL, // local path extension
+                  // %%% add filters here later!!!
+                  NULL, // filter query
+                  false // filter inclusive
                 );
+                // prepare local datastore (basic init can be done here) and check availability
+                if (binfiledsP->localDatastorePrep()) {
+                  // add to datastores for this sync
+                  fLocalDataStores.push_back(binfiledsP);
+                }
+                else {
+                  // silently discard (do not sync it)
+                  PDEBUGPRINTFX(DBG_ERROR,("Local Database for datastore '%s' prepares not ok -> not synced",binfiledsP->getName()));
+                  // show event (alerted for no database)
+                  OBJ_PROGRESS_EVENT(
+                    getSyncAppBase(),
+                    pev_error,
+                    binfiledscfgP,
+                    LOCERR_LOCDBNOTRDY,0,0
+                  );
+                  delete binfiledsP;
+                }
               }
-              else
-              #endif
-              {
-                // take it from config
-                myMode = target.syncmode;
-                mySlow = target.forceSlowSync;
-              }
-              // clean change logs if...
-              // ...this is the only profile
-              // ...this is NOT a resumable session (resumable not necessarily means that it WILL be resumed)
-              // ...we're about to slow sync
-              if (mySlow && target.resumeAlertCode==0 && fConfigP->fProfileBinFile.getNumRecords()==1) {
-                fConfigP->cleanChangeLogForDBname(target.dbname);
-              }
-              // set non-BinFile specific parameters (note that this call might
-              // be to a derivate which uses additional info from fTarget to set sync params)
-              binfiledsP->dsSetClientSyncParams(
-                myMode,
-                mySlow,
-                target.remoteDBpath,
-                NULL, // DB user
-                NULL, // DB password
-                NULL, // local path extension
-                // %%% add filters here later!!!
-                NULL, // filter query
-                false // filter inclusive
-              );
-              // prepare local datastore (basic init can be done here) and check availability
-              if (binfiledsP->localDatastorePrep()) {
-                // add to datastores for this sync
-                fLocalDataStores.push_back(binfiledsP);
-              }
-              else {
-                // silently discard (do not sync it)
-                PDEBUGPRINTFX(DBG_ERROR,("Local Database for datastore '%s' prepares not ok -> not synced",binfiledsP->getName()));
-                // show event (alerted for no database)
-                OBJ_PROGRESS_EVENT(
-                  getSyncAppBase(),
-                  pev_error,
-                  binfiledscfgP,
-                  LOCERR_LOCDBNOTRDY,0,0
-                );
-                delete binfiledsP;
-              }
-            }
-          } // if target DB enabled for sync
-        } // if we have a datastore config for this target
-      } // if target belongs to this profile
-    } // if we can read the target record
-  } // for all target records
-  // ok if at least one datastore enabled
-  return fLocalDataStores.size()>0 && fRemoteURI.size()>0 ? LOCERR_OK : LOCERR_NOCFG;
+            } // if target DB enabled for sync
+          } // if we have a datastore config for this target
+        } // if target belongs to this profile
+      } // if we can read the target record
+    } // for all target records
+    // ok if at least one datastore enabled
+    return fLocalDataStores.size()>0 && fRemoteURI.size()>0 ? LOCERR_OK : LOCERR_NOCFG;
+  } // active
 defaultprofile:
   return inherited::SelectProfile(aProfileSelector, aAutoSyncSession);
 } // TBinfileImplClient::SelectProfile

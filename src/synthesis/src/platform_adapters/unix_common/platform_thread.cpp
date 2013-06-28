@@ -28,16 +28,15 @@
 
 namespace sysync {
 
-
 //  get id of the running process
-uInt32 myProcessID() {
-  return (uInt32)getpid();
+uIntArch myProcessID() {
+  return (uIntArch)getpid();
 } // myProcessID
 
 
 // get id of the running thread
-uInt32 myThreadID() {
-  return (uInt32)pthread_self();
+uIntArch myThreadID() {
+  return (uIntArch)pthread_self();
 } // myThreadID
 
 
@@ -96,7 +95,7 @@ TThreadObject::~TThreadObject()
 // contain the platform error code for the failure to start the thread
 bool TThreadObject::launch(
   TThreadFunc aThreadFunc, // the function to execute in the thread
-  uInt32 aThreadFuncParam, // a parameter to pass to the thread
+  uIntArch aThreadFuncParam, // a parameter to pass to the thread
   size_t aStackSize,       // if 0, default stack size is used
   bool aAutoDispose        // if true, the thread object will dispose itself when thread has finished running
 )
@@ -135,8 +134,8 @@ bool TThreadObject::launch(
 } // TThreadObject::launch
 
 
-uInt32 TThreadObject::getid(void) {
-  return (uInt32)fPosixThread;
+uIntArch TThreadObject::getid(void) {
+  return (uIntArch)fPosixThread;
 } // TThreadObject::getid
 
 

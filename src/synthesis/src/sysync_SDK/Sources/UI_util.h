@@ -31,11 +31,13 @@ UIContext* UiC( CContext uContext );
 
 /* Function definitions */
 TSyError UI_Connect    ( UI_Call_In &aCI, 
-                         appPointer &aDLL,     cAppCharP aEngineName,
+                         appPointer &aDLL,
+                         bool &aIsServer,      cAppCharP aEngineName,
                                                CVersion  aPrgVersion,
                                                uInt16    aDebugFlags );
 TSyError UI_Disconnect ( UI_Call_In  aCI, 
-                         appPointer  aDLL );
+                         appPointer  aDLL,
+                         bool aIsServer );
 
 
 TSyError UI_CreateContext( CContext &uContext, cAppCharP aEngineName,

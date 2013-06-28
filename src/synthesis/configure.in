@@ -67,7 +67,7 @@ AC_ARG_WITH(expat,
 if test "$with_xmltok" = "no" && test "$with_expat" = "no"; then
    if test "$have_system_expat" = "yes"; then
       with_expat="yes"
-      XMLPARSE_LIBS="-lexpat" 
+      XMLPARSE_LIBS="-lexpat"
    elif test "$have_system_xmltok" = "yes"; then
       with_xmltok="yes"
       XMLPARSE_LIBS="-lxmlparse"
@@ -109,12 +109,20 @@ AM_CONDITIONAL([COND_XMLPARSE], [test "$with_xmltok" = "builtin"])
 
 AC_CHECK_HEADER(stdint.h)
 
-echo "enable dynamic $enable_shared"
-if test "$enable_shared" = "no"; then
-   AC_DEFINE(UIAPI_LINKED, 1, [libsynthesis.a linked statically])
-   AC_DEFINE(DBAPI_LINKED, 1, [libsynthesis.a linked statically])
-fi
+# the autotools SDK always assumes that it is linked against the engine
+AC_DEFINE(UIAPI_LINKED, 1, [libsynthesis.a linked statically])
+AC_DEFINE(DBAPI_LINKED, 1, [client engine linked statically])
+AC_DEFINE(DBAPI_SRV_LINKED, 1, [server engine linked statically])
+
+# determines which object files are needed in the SDK:
+# if linking statically, some object files are shared with
+# libsynthesis.a
 AM_CONDITIONAL([COND_STATIC], [test "$enable_shared" = "no"])
 
-AC_CONFIG_FILES(Makefile src/Makefile synthesis.pc)
+# Disable unconditionally at the moment. Would add dependency of SDK
+# on SyncML Toolkit.
+AC_DEFINE(WITHOUT_SAN_1_1, 1,
+          [support for Server Alerted Notifications according to SyncML 1.1])
+
+AC_CONFIG_FILES(Makefile src/Makefile synthesis.pc synthesis-sdk.pc)
 AC_OUTPUT

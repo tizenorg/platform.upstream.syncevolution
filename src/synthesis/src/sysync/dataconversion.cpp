@@ -20,10 +20,23 @@ public:
   {}
   virtual bool logicProcessRemoteItem(TSyncItem*, TStatusCommand&, bool&, std::string*) { return false; }
   virtual bool logicRetrieveItemByID(TSyncItem&, TStatusCommand&) { return false; }
+#ifdef SYSYNC_CLIENT
   virtual bool logicGenerateSyncCommandsAsClient(TSmlCommandPContainer&, TSmlCommand*&, const char*) { return false; }
+#endif
+#ifdef SYSYNC_SERVER
+  virtual bool logicGenerateSyncCommandsAsServer(TSmlCommandPContainer &, TSmlCommand * &,
+    const char *) { return false; }
+#endif
   virtual void logicMarkOnlyUngeneratedForResume() {}
   virtual void logicMarkItemForResume(const char*, const char*, bool) {}
   virtual void logicMarkItemForResend(const char*, const char*) {}
+#ifdef SYSYNC_SERVER
+  virtual TSyncItem *getConflictingItemByRemoteID(TSyncItem *syncitemP) { return NULL; }
+  virtual TSyncItem *getMatchingItem(TSyncItem *syncitemP, TEqualityMode aEqMode) { return NULL; }
+  virtual void dontSendItemAsServer(TSyncItem *syncitemP) {}
+  virtual void SendItemAsServer(TSyncItem *aSyncitemP) {}
+  virtual localstatus logicProcessMap(cAppCharP aRemoteID, cAppCharP aLocalID) { return 0; }
+#endif
 };
 
 bool DataConversion(SessionH aSession,

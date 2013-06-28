@@ -1,3 +1,9 @@
+admindata.cpp
+admindata.h
+dbitem.cpp
+dbitem.h
+blobs.cpp
+blobs.h
 enginesessiondispatch.cpp
 syncserver.cpp
 binfile.cpp
@@ -10,5 +16,5 @@ syncclientbase.cpp
 clientprovisioning_inc.cpp
 .*_tables_inc.cpp
 syncsessiondispatch.cpp
+platform_thread.cpp
 enginestubs.c
-sysync/syncserver.cpp

@@ -158,7 +158,7 @@ void SoupTransportAgent::cancel()
       g_main_loop_quit(m_loop.get());
 }
 
-TransportAgent::Status SoupTransportAgent::wait()
+TransportAgent::Status SoupTransportAgent::wait(bool noReply)
 {
     if (!m_failure.empty()) {
         std::string failure;
@@ -167,6 +167,9 @@ TransportAgent::Status SoupTransportAgent::wait()
     }
 
     switch (m_status) {
+    case CLOSED:
+        return CLOSED;
+        break;
     case ACTIVE:
         // block in main loop until our HandleSessionCallback() stops the loop
         g_main_loop_run(m_loop.get());
@@ -250,7 +253,7 @@ void SoupTransportAgent::HandleSessionCallback(SoupSession *session,
 
 gboolean SoupTransportAgent::AbortCallback(gpointer transport)
 {
-    SuspendFlags& s_flags = SyncContext::getSuspendFlags();
+    const SuspendFlags &s_flags = SyncContext::getSuspendFlags();
 
     if (s_flags.state == SuspendFlags::CLIENT_ABORT)
     {

@@ -1,7 +1,10 @@
 /* config.h.in.  Generated from configure.in by autoheader.  */
 
-/* libsynthesis.a linked statically */
+/* client engine linked statically */
 #undef DBAPI_LINKED
+
+/* server engine linked statically */
+#undef DBAPI_SRV_LINKED
 
 /* avoid hard dependency on Evolution shared objects */
 #undef EVOLUTION_COMPATIBILITY
@@ -80,3 +83,6 @@
 
 /* Version number of package */
 #undef VERSION
+
+/* support for Server Alerted Notifications according to SyncML 1.1 */
+#undef WITHOUT_SAN_1_1

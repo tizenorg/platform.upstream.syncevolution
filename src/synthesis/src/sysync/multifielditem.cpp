@@ -869,11 +869,10 @@ bool TMultiFieldItem::processFilter(bool aMakePass, const char *&aPos, const cha
     if (str=="LUID") {
       // this is SyncML-TAF Standard
       // it is also produced by DS 1.2 &LUID; pseudo-identifier
-      #ifdef SYSYNC_CLIENT
-      idfield.setAsString(getLocalID());
-      #else
-      idfield.setAsString(getRemoteID());
-      #endif
+      if (IS_CLIENT)
+	      idfield.setAsString(getLocalID());
+      else
+	      idfield.setAsString(getRemoteID());
       fldP=&idfield;
     }
     else if (str=="LOCALID") {
@@ -881,18 +880,18 @@ bool TMultiFieldItem::processFilter(bool aMakePass, const char *&aPos, const cha
       idfield.setAsString(getLocalID());
       fldP=&idfield;
     }
-    #ifndef SYSYNC_CLIENT
-    else if (str=="GUID") {
+    #ifdef SYSYNC_SERVER
+    else if (IS_SERVER && str=="GUID") {
       // this is a Synthesis extension, added for symmetry to LUID
       idfield.setAsString(getLocalID());
       fldP=&idfield;
     }
-    else if (str=="REMOTEID") {
+    else if (IS_SERVER && str=="REMOTEID") {
       // this is a Synthesis extension
       idfield.setAsString(getRemoteID());
       fldP=&idfield;
     }
-    #endif
+    #endif // SYSYNC_SERVER
     else {
       // must be a field
       if (fItemTypeP)
@@ -1045,7 +1044,7 @@ bool TMultiFieldItem::processFilter(bool aMakePass, const char *&aPos, const cha
 
 #endif
 
-#ifndef SYSYNC_CLIENT
+#ifdef SYSYNC_SERVER
 
 // compare function, returns 0 if equal, 1 if this > aItem, -1 if this < aItem
 sInt16 TMultiFieldItem::compareWith(
@@ -1169,11 +1168,11 @@ sInt16 TMultiFieldItem::standardCompareWith(
             PDEBUGPRINTFX(DBG_DATA+DBG_MATCH,("- not equal because fid=%hd not same in both items:",i));
             getField(i)->getAsString(ds);
             PDEBUGPRINTFX(DBG_DATA+DBG_MATCH+DBG_USERDATA,(
-              "- this item  : '%-0.1000s'",ds.c_str()
+              "- this item  : '%-.1000s'",ds.c_str()
             ));
             aItem.getField(i)->getAsString(ds);
             PDEBUGPRINTFX(DBG_DATA+DBG_MATCH+DBG_USERDATA,(
-              "- other item : '%-0.1000s'",ds.c_str()
+              "- other item : '%-.1000s'",ds.c_str()
             ));
             PDEBUGPRINTFX(DBG_DATA+DBG_MATCH,(
               "- thisItem.CompareWith(otherItem) = %hd",
@@ -1195,7 +1194,7 @@ sInt16 TMultiFieldItem::standardCompareWith(
             if (aDebugShow) {
               PDEBUGPRINTFX(DBG_DATA+DBG_MATCH,(
                 "- Cutoff detected, field considered equal, maxsize(thisitem)=%ld, maxsize(otheritem)=%ld",
-                s1,s2
+                (long)s1,(long)s2
               ));
             }
             #endif
@@ -1325,7 +1324,7 @@ bool TMultiFieldItem::checkItem(TLocalEngineDS *aDatastoreP)
 } // TMultiFieldItem::checkItem
 
 
-#ifndef SYSYNC_CLIENT
+#ifdef SYSYNC_SERVER
 
 // merge this item with specified item.
 // Notes:
@@ -1401,7 +1400,7 @@ void TMultiFieldItem::standardMergeWith(TMultiFieldItem &aItem, bool &aChangedTh
           string ds;
           getFieldRef(i).getAsString(ds);
           PDEBUGPRINTFX(DBG_DATA+DBG_CONFLICT+DBG_USERDATA,(
-            "- assigned value '%" FMT_LENGTH("0.40") "s' to winning (which had nothing assigned here)",
+            "- assigned value '%" FMT_LENGTH(".40") "s' to winning (which had nothing assigned here)",
             FMT_LENGTH_LIMITED(40,ds.c_str())
           ));
           #endif
@@ -1421,7 +1420,7 @@ void TMultiFieldItem::standardMergeWith(TMultiFieldItem &aItem, bool &aChangedTh
               string ds;
               winningField.getAsString(ds);
               PDEBUGPRINTFX(DBG_DATA+DBG_CONFLICT+DBG_USERDATA,(
-                "- copied value '%" FMT_LENGTH("0.40") "s' from loosing to empty winning",
+                "- copied value '%" FMT_LENGTH(".40") "s' from loosing to empty winning",
                 FMT_LENGTH_LIMITED(40,ds.c_str())
               ));
               #endif
@@ -1435,7 +1434,7 @@ void TMultiFieldItem::standardMergeWith(TMultiFieldItem &aItem, bool &aChangedTh
             winningField.getAsString(ds1);
             loosingField.getAsString(ds2);
             PDEBUGPRINTFX(DBG_DATA+DBG_CONFLICT+DBG_USERDATA,(
-              "- try merging winning value '%" FMT_LENGTH("0.40") "s' with loosing value '%" FMT_LENGTH("0.40") "s'",
+              "- try merging winning value '%" FMT_LENGTH(".40") "s' with loosing value '%" FMT_LENGTH(".40") "s'",
               FMT_LENGTH_LIMITED(40,ds1.c_str()),
               FMT_LENGTH_LIMITED(40,ds2.c_str())
             ));
@@ -1445,7 +1444,7 @@ void TMultiFieldItem::standardMergeWith(TMultiFieldItem &aItem, bool &aChangedTh
             #ifdef SYDEBUG
             winningField.getAsString(ds1);
             PDEBUGPRINTFX(DBG_DATA+DBG_CONFLICT+DBG_USERDATA,(
-              "  merged %sthing, winning value is '%" FMT_LENGTH("0.40") "s'",
+              "  merged %sthing, winning value is '%" FMT_LENGTH(".40") "s'",
               aChangedThis ? "some" : "no",
               FMT_LENGTH_LIMITED(40,ds1.c_str())
             ));
@@ -1470,7 +1469,7 @@ void TMultiFieldItem::standardMergeWith(TMultiFieldItem &aItem, bool &aChangedTh
         winningField.getAsString(wfv);
         loosingField.getAsString(lfv);
         PDEBUGPRINTFX(DBG_DATA+DBG_CONFLICT+DBG_USERDATA,(
-          "Winning and loosing Field '%s' not equal: '%" FMT_LENGTH("0.30") "s' <> '%" FMT_LENGTH("0.30") "s'",
+          "Winning and loosing Field '%s' not equal: '%" FMT_LENGTH(".30") "s' <> '%" FMT_LENGTH(".30") "s'",
           fFieldDefinitionsP->fFields[i].TCFG_CSTR(fieldname),
           FMT_LENGTH_LIMITED(30,wfv.c_str()),FMT_LENGTH_LIMITED(30,lfv.c_str())
         ));
@@ -1491,7 +1490,7 @@ void TMultiFieldItem::standardMergeWith(TMultiFieldItem &aItem, bool &aChangedTh
         string ds;
         winningField.getAsString(ds);
         PDEBUGPRINTFX(DBG_DATA+DBG_CONFLICT+DBG_USERDATA,(
-          "- updated fields such that both have same value '%" FMT_LENGTH("0.40") "s'",
+          "- updated fields such that both have same value '%" FMT_LENGTH(".40") "s'",
           FMT_LENGTH_LIMITED(40,ds.c_str())
         ));
         #endif

@@ -130,6 +130,13 @@ uInt32 TSyncDataStore::getDbgMask(void)
 #endif
 
 
+TSyncAppBase *TSyncDataStore::getSyncAppBase(void)
+{
+	return fSessionP ? fSessionP->getSyncAppBase() : NULL;	
+} // TSyncDataStore::getSyncAppBase
+
+
+
 // check if this datastore is accessible with given URI
 // NOTE: URI might include path elements or CGI params that are
 // access options to the database; derived classes might

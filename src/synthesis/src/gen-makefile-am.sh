@@ -14,16 +14,12 @@ enginemodulebridge.h
 stringutil.cpp
 stringutil.h
 target_options.h
+san.cpp
+san.h
 timeutil.cpp
 timeutil.h
 UI_util.cpp
 UI_util.h
-blobs.cpp
-blobs.h
-dbitem.cpp
-dbitem.h
-admindata.cpp
-admindata.h
 EOF
 
 # The distinction between client and server files is not
@@ -44,6 +40,12 @@ EOF
 
 # files needed exclusively for the server engine
 cat > SERVER_FILES <<EOF
+admindata.cpp
+admindata.h
+dbitem.cpp
+dbitem.h
+blobs.cpp
+blobs.h
 enginesessiondispatch.cpp
 syncserver.cpp
 EOF
@@ -53,14 +55,16 @@ cat > EXTRA_FILES <<EOF
 clientprovisioning_inc.cpp
 .*_tables_inc.cpp
 syncsessiondispatch.cpp
+platform_thread.cpp
 enginestubs.c
-sysync/syncserver.cpp
 EOF
 
 # files to be included in libsynthesis
 cat EXTRA_FILES SDK_FILES > EXCLUDE_FILES
 LIBSYNTHESIS_SOURCES=`find ${ENGINE_SOURCES} \
      syncapps/clientEngine_custom \
+     syncapps/serverEngine_custom \
+     sysync_SDK/DB_Interfaces/text_db \
      \( -name '*.cpp' -o -name '*.[ch]' \) |
     grep -v -E -f EXCLUDE_FILES`
 LIBSYNTHESIS_SOURCES=`echo $LIBSYNTHESIS_SOURCES`
@@ -85,8 +89,8 @@ LIBSYNTHESISSDK_SOURCES_ONLY=`echo $LIBSYNTHESISSDK_SOURCES_ONLY`
 # files needed in libsmltk
 LIBSMLTK_SOURCES=`find syncml_tk \
      \( -name '*.cpp' -o -name '*.[ch]' \) \
-     \! \( -path syncml_tk/src/sml/\*/palm/\* -o \
-           -path syncml_tk/src/sml/\*/win/\* \)`
+     \! \( -wholename syncml_tk/src/sml/\*/palm/\* -o \
+           -wholename syncml_tk/src/sml/\*/win/\* \)`
 LIBSMLTK_SOURCES=`echo $LIBSMLTK_SOURCES`
 
 # header files required for using libsynthesissdk,

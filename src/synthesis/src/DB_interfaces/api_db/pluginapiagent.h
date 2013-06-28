@@ -110,10 +110,11 @@ protected:
 public:
   #ifdef SYSYNC_CLIENT
   // create appropriate session (=agent) for this client
-  virtual TSyncClient *CreateClientSession(const char *aSessionID);
-  #else
+  virtual TSyncAgent *CreateClientSession(const char *aSessionID);
+  #endif
+  #ifdef SYSYNC_SERVER
   // create appropriate session (=agent) for this server
-  virtual TSyncServer *CreateServerSession(TSyncSessionHandle *aSessionHandle, const char *aSessionID);
+  virtual TSyncAgent *CreateServerSession(TSyncSessionHandle *aSessionHandle, const char *aSessionID);
   #endif
 }; // TPluginAgentConfig
 
@@ -131,32 +132,28 @@ class TPluginApiAgent :
   typedef TCustomImplAgent inherited;
   #endif
 public:
-  #ifdef SYSYNC_CLIENT
-  TPluginApiAgent(TSyncClientBase *aSyncClientBaseP, const char *aSessionID);
-  #else
-  TPluginApiAgent(TSyncAppBase *aAppBaseP, TSyncSessionHandle *aSessionHandleP, const char *aSessionID);
-  #endif
+  TPluginApiAgent(TSyncAppBase *aAppBaseP, TSyncSessionHandle *aSessionHandleP, cAppCharP aSessionID);
   virtual ~TPluginApiAgent();
   virtual void TerminateSession(void); // Terminate session, like destructor, but without actually destructing object itself
   virtual void ResetSession(void); // Resets session (but unlike TerminateSession, session might be re-used)
   void InternalResetSession(void); // static implementation for calling through virtual destructor and virtual ResetSession();
   // user authentication
-  #ifndef SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
   // - return auth type to be requested from remote
   virtual TAuthTypes requestedAuthType(void); // avoids MD5 when it cannot be checked
   // - get next nonce string top be sent to remote party for subsequent MD5 auth
   virtual void getNextNonce(const char *aDeviceID, string &aNextNonce);
   // - get nonce string, which is expected to be used by remote party for MD5 auth.
   virtual void getAuthNonce(const char *aDeviceID, string &aAuthNonce);
-  #endif
-  #ifndef BASED_ON_BINFILE_CLIENT
+  #endif // SYSYNC_SERVER
+  #ifndef BINFILE_ALWAYS_ACTIVE
   // - check device ID related stuff
   virtual void CheckDevice(const char *aDeviceID);
   // - remote device is analyzed, eventually save status
   virtual void remoteAnalyzed(void);
   // - check login for this session (everything else is done by CustomAgent's SessionLogin)
   virtual bool CheckLogin(const char *aOriginalUserName, const char *aModifiedUserName, const char *aAuthString, TAuthSecretTypes aAuthStringType, const char *aDeviceID);
-  #endif // not BASED_ON_BINFILE_CLIENT
+  #endif // not BINFILE_ALWAYS_ACTIVE
   // - logout
   void LogoutApi(void);
   // current database date & time
@@ -168,7 +165,7 @@ public:
   // get API session object
   TDB_Api_Session *getDBApiSession() { return &fDBApiSession; };
 protected:
-  #ifndef SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
   // - request end, used to clean up
   virtual void RequestEnded(bool &aHasData);
   #endif

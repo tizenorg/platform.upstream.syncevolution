@@ -140,10 +140,10 @@ public:
   bool fReportUpdates;     // if set(normal case), updates of server items will be sent to client (can be set to false for example for emails)
   bool fResendFailing;     // if set, items that receive a failure status from the remote will be resent in the next session (if DS 1.2 suspend marks supported by the DB)
   bool fDeleteWins;        // if set, in a replace/delete conflict the delete wins (also see DELETEWINS())
-  #ifndef SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
   bool fTryUpdateDeleted;  // if set, in a client update with server delete conflict, server tries to update the already deleted item (in case it is just invisible)
   bool fAlwaysSendLocalID; // always send localID to clients (which gives them opportunity to remap IDs on Replace)
-  #endif
+  #endif // SYSYNC_SERVER
   uInt32 fMaxItemsPerMessage; // if >0, limits the number of items sent per SyncML message (useful in case of slow datastores where collecting data might exceed client timeout)
   #ifdef OBJECT_FILTERING
   // filtering
@@ -295,11 +295,7 @@ class TLocalEngineDS: public TSyncDataStore
   friend class TSyncOpCommand;
   friend class TMultiFieldItemType;
   friend class TTextProfileHandler;
-  #ifndef SYSYNC_CLIENT
-  friend class TSyncServer;
-  #else
-  friend class TSyncClient;
-  #endif
+  friend class TSyncAgent;
   #ifdef SUPERDATASTORES
   friend class TSuperDataStore;
   #endif
@@ -349,9 +345,10 @@ protected:
   // - other state info
   bool fFirstTimeSync;          ///< set to true if this is the first sync
   // - item ID lists (maps)
-  #ifndef SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
   TStringToStringMap fTempGUIDMap;      ///< container for temp GUID to real GUID mapping
-  #else
+  #endif
+  #ifdef SYSYNC_CLIENT
   TStringToStringMap fPendingAddMaps;   ///< container for map items to be sent to server: fPendingAddMaps[localid]=remoteid; Note: might contain temporary localIDs that must be converted to final ones before using in <map> or saving with dsFinalizeLocalID()
   TStringToStringMap fUnconfirmedMaps;  ///< container for map items already sent to server, but not yet confirmed: fUnconfirmedMaps[localid]=remoteid;
   TStringToStringMap fLastSessionMaps;  ///< container for map items already confirmed, but still needed for duplicate checking:: fLastSessionMaps[localid]=remoteid;
@@ -469,7 +466,7 @@ protected:
   sInt32 fRemoteItemsDeleted;
   sInt32 fRemoteItemsError; // items that had a remote error (and will be resent later)
   /// }@
-  #ifndef SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
   // @{ conflicts
   sInt32 fConflictsServerWins;
   sInt32 fConflictsClientWins;
@@ -493,16 +490,12 @@ private:
   // - local
   string fLocalDBPath;              ///< client, entire path to the local database, which might include subpaths/CGI to subselect records in the local DB
   // - remote
-  string fRemoteDBPath;             ///< client, path of remote DB, including all CGI params etc.
   string fDBUser;                   ///< client, DB layer user name
   string fDBPassword;               ///< client, DB layer password
   string fRemoteRecordFilterQuery;  ///< client, record level filter query
   bool fRemoteFilterInclusive;      ///< client, inclusive filter flag
-  #else
-  #ifndef MINIMAL_CODE
-  string fRemoteDBPath;             ///< server, path of remote DB, for documentary purposes
-  #endif
-  #endif
+  #endif // SYSYNC_CLIENT
+  string fRemoteDBPath;             ///< server and client, path of remote DB, for documentary purposes
   /// remote datastore involved, valid after processSyncCmdAsServer()
   TRemoteDataStore *fRemoteDatastoreP;
   /// Remote view if local URI
@@ -590,10 +583,8 @@ public:
   TSyncItemType *getLocalReceiveType(void) { return fLocalReceiveFromRemoteTypeP; };    ///< type used by local to receive from remote
   TSyncItemType *getRemoteSendType(void) { return fRemoteSendToLocalTypeP; };           ///< type used by remote to send to local
   TSyncItemType *getRemoteReceiveType(void) { return fRemoteReceiveFromLocalTypeP; };   ///< type used by remote to receive from local
-  #if defined(SYSYNC_CLIENT) || !defined(MINIMAL_CODE)
   /// get remote DB path
   cAppCharP getRemoteDBPath(void) { return fRemoteDBPath.c_str(); };
-  #endif
   #ifdef SYSYNC_CLIENT
   /// get local DB path
   cAppCharP getLocalDBPath(void) { return fLocalDBPath.c_str(); };
@@ -727,20 +718,17 @@ public:
   /// @param[in] aNotYetInMapPackage set if we are still in sync-from-server package
   /// @note usually, client starts sending maps while still receiving syncops from server
   void engClientStartOfMapMessage(bool aNotYetInMapPackage);
-  /// called to generate Map items
-  /// @note Returns true if now finished for this datastore
-  /// @note also sets fState to dss_done when finished
-  SUPERDS_VIRTUAL bool generateMapItems(TMapCommand *aMapCommandP);
   /// Client only: returns number of unsent map items
   SUPERDS_VIRTUAL sInt32 numUnsentMaps(void);
-  #else
+  #endif // SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
   /// server only: called whenever we should start a sync command for all alerted datastores
   /// if not already started
   void engServerStartOfSyncMessage(void);
   /// called to process map commands from client to server
   /// @note aLocalID or aRemoteID can be NULL - which signifies deletion of a map entry
   SUPERDS_VIRTUAL localstatus engProcessMap(cAppCharP aRemoteID, cAppCharP aLocalID);
-  #endif
+  #endif // SYSYNC_SERVER
   /// check is datastore is completely started.
   /// @param[in] aWait if set, call will not return until either started state is reached
   ///   or cannot be reached within the maximally allowed request processing time left.
@@ -782,7 +770,8 @@ public:
     TSyncItem *aSyncItemP, ///< the item to be processed
     TStatusCommand &aStatusCommand ///< status, must be set to correct status code (ok / error)
   );
-  #else
+  #endif
+  #ifdef SYSYNC_SERVER
   bool engProcessRemoteItemAsServer(
     TSyncItem *aSyncItemP, ///< the item to be processed
     TStatusCommand &aStatusCommand ///< status, must be set to correct status code (ok / error)
@@ -797,10 +786,10 @@ public:
   /// called to mark maps confirmed, that is, we have received ok status for them
   #ifdef SYSYNC_CLIENT
   SUPERDS_VIRTUAL void engMarkMapConfirmed(cAppCharP aLocalID, cAppCharP aRemoteID);
-  /// Client only: called to generate Map items
-  /// - Returns true if now finished for this datastore
-  /// - also sets fState to dss_done when finished
-  SUPERDS_VIRTUAL bool engGenerateMapItems(TMapCommand *aMapCommandP);
+  /// called to generate Map items
+  /// @note Returns true if now finished for this datastore
+  /// @note also sets fState to done when finished
+  SUPERDS_VIRTUAL bool engGenerateMapItems(TMapCommand *aMapCommandP, cAppCharP aLocalIDPrefix);
   /// Client only: Check if the remoteid was used by an add command not
   /// fully mapped&confirmed in the previous session
   bool isAddFromLastSession(cAppCharP aRemoteID);
@@ -879,7 +868,7 @@ public:
   #endif
   // get usage variant for a specified type usage
   virtual TTypeVariantDescriptor getVariantDescForType(TSyncItemType *aItemTypeP);
-  #ifndef SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
   /// called at end of request processing in server (derived only by superdatastore)
   SUPERDS_VIRTUAL void engRequestEnded(void);
   /// end map operation (derived class might want to rollback)
@@ -938,7 +927,7 @@ public:
     const char *aRecordFilterQuery = NULL,
     bool aFilterInclusive = false
   );
-  #endif
+  #endif // SYSYNC_CLIENT
 protected:
   /// reset datastore to a re-usable, like new-created state.
   virtual void dsResetDataStore(void) {};
@@ -1001,7 +990,7 @@ protected:
 
   /// get conflict resolution strategy.
   virtual TConflictResolution getConflictStrategy(bool aForSlowSync, bool aForFirstTime=false);
-  #ifndef SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
   /// called to check if conflicting replace command from server exists
   virtual TSyncItem *getConflictingItemByRemoteID(TSyncItem *syncitemP) = 0;
   /// called to check if content-matching item from server exists
@@ -1038,7 +1027,8 @@ protected:
     TSmlCommand * &aInterruptedCommandP,
     const char *aLocalIDPrefix=NULL
   ) = 0;
-  #else
+  #endif
+  #ifdef SYSYNC_SERVER
   /// server: called to generate sync sub-commands to be sent to client
   /// Returns true if now finished for this datastore
   /// also sets fState to dss_syncdone(server)/dss_syncready(client) when finished
@@ -1104,14 +1094,14 @@ private:
   TRuleMatchTypesContainer fRuleMatchItemTypes; // contains rule match item types
   #endif
 protected:
-  #ifndef SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
   /// for sending GUIDs (Add command), generate temp GUID which conforms to maxguidsize of remote datastore if needed
   void adjustLocalIDforSize(string &aLocalID, sInt32 maxguidsize, sInt32 prefixsize);
   /// for received GUIDs (Map command), obtain real GUID (might be temp GUID due to maxguidsize restrictions)
   void obtainRealLocalID(string &aLocalID);
   /// helper to force a conflict (i.e. have a particular item in the sync set)
   TSyncItem *forceConflict(TSyncItem *aSyncItemP);
-  #endif
+  #endif // SYSYNC_SERVER
   /// helper to save resume state either at end of request or explicitly at reception of a "suspend"
   SUPERDS_VIRTUAL localstatus engSaveSuspendState(bool aAnyway);
   /// Returns true if type information is sufficient to create items to be sent to remote party

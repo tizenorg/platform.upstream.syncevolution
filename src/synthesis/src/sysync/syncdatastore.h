@@ -23,6 +23,7 @@ namespace sysync {
 // forward
 class TSyncItemType;
 class TSyncSession;
+class TSyncAppBase;
 
 
 class TSyncDataStore
@@ -90,10 +91,13 @@ public:
   GZones *getSessionZones(void);
   // - return pure relative (item) URI (removes absolute part or ./ prefix)
   virtual const char *DatastoreRelativeURI(const char *aURI) = 0;
+  // - get debug mask/logger
   #ifdef SYDEBUG
   TDebugLogger *getDbgLogger(void);
   uInt32 getDbgMask(void);
   #endif
+  // - get session owner (dispatcher/clientbase)
+  TSyncAppBase *getSyncAppBase(void);  
 protected:
   // obtain new datastore info, returns NULL if none available
   virtual SmlDevInfDatastorePtr_t newDevInfDatastore(bool /* aAsServer */, bool /* aWithoutCTCapProps */) { return NULL; } // no description in base class
@@ -119,10 +123,6 @@ public:
   TSyncItemType *fTxPrefItemTypeP;
   TSyncItemTypePContainer fTxItemTypes;
 protected:
-  /*
-  // devInf <DataStore> representation
-  SmlDevInfDatastorePtr_t fDataStoreDevInfP;
-  */
   // session
   TSyncSession *fSessionP;
   // common (session) Sync capabilities

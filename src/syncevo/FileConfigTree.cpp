@@ -37,8 +37,10 @@
 SE_BEGIN_CXX
 
 FileConfigTree::FileConfigTree(const string &root,
+                               const string &peer,
                                bool oldLayout) :
     m_root(root),
+    m_peer(peer),
     m_oldLayout(oldLayout),
     m_readonly(false)
 {
@@ -46,7 +48,7 @@ FileConfigTree::FileConfigTree(const string &root,
 
 string FileConfigTree::getRootPath() const
 {
-    return normalizePath(m_root);
+    return normalizePath(m_root + "/" + m_peer);
 }
 
 void FileConfigTree::flush()
@@ -74,21 +76,60 @@ static bool rm_filter(const string &path, bool isDir)
             boost::ends_with(path, "/config.txt~") ||
             boost::ends_with(path, "/.other.ini") ||
             boost::ends_with(path, "/.other.ini~") ||
+            boost::ends_with(path, "/.server.ini") ||
+            boost::ends_with(path, "/.server.ini~") ||
             boost::ends_with(path, "/.internal.ini") ||
             boost::ends_with(path, "/.internal.ini~") ||
             path.find("/.synthesis/") != path.npos;
     }
 }
 
-void FileConfigTree::remove()
+void FileConfigTree::remove(const string &path)
 {
-    reset();
-    rm_r(getRootPath(), rm_filter);
+    string fullpath = m_root + "/" + path;
+    clearNodes(fullpath);
+    rm_r(fullpath, rm_filter);
 }
 
 void FileConfigTree::reset()
 {
+    for (NodeCache_t::iterator it = m_nodes.begin();
+         it != m_nodes.end();
+         ++it) {
+        if (it->second.use_count() > 1) {
+            // If the use count is larger than 1, then someone besides
+            // the cache is referencing the node. We cannot force that
+            // other entity to drop the reference, so bail out here.
+            SE_THROW(it->second->getName() +
+                     ": cannot be removed while in use");
+        }
+    }
     m_nodes.clear();
+}
+
+void FileConfigTree::clearNodes(const string &fullpath) 
+{
+    NodeCache_t::iterator it;
+    it = m_nodes.begin();
+    while (it != m_nodes.end()) {
+        const string &key = it->first;
+        if (boost::starts_with(key, fullpath)){
+            /* 'it = m_nodes.erase(it);' doesn't make sense
+             * because 'map::erase' returns 'void' in gcc. But other 
+             * containers like list, vector could work! :( 
+             * Below is STL recommended usage. 
+             */
+            NodeCache_t::iterator erased = it++;
+            if (erased->second.use_count() > 1) {
+                // same check as in reset()
+                SE_THROW(erased->second->getName() +
+                         ": cannot be removed while in use");
+            }
+            m_nodes.erase(erased);
+        } else {
+            ++it;
+        }
+    }
 }
 
 boost::shared_ptr<ConfigNode> FileConfigTree::open(const string &path,
@@ -116,7 +157,8 @@ boost::shared_ptr<ConfigNode> FileConfigTree::open(const string &path,
             filename += ".ini";
         }
     } else {
-        filename = m_oldLayout ? "config.txt" :
+        filename = type == server ? ".server.ini" :
+            m_oldLayout ? "config.txt" :
             type == hidden ? ".internal.ini" :
             "config.ini";
     }
@@ -125,7 +167,7 @@ boost::shared_ptr<ConfigNode> FileConfigTree::open(const string &path,
     NodeCache_t::iterator found = m_nodes.find(fullname);
     if (found != m_nodes.end()) {
         return found->second;
-    } else if(type != other){
+    } else if(type != other && type != server) {
         boost::shared_ptr<ConfigNode> node(new FileConfigNode(fullpath, filename, m_readonly));
         return m_nodes[fullname] = node;
     } else {

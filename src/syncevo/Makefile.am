@@ -38,6 +38,7 @@ SYNCEVOLUTION_SOURCES  = \
 	LogRedirect.cpp \
 	\
 	TransportAgent.h \
+	TransportAgent.cpp \
 	CurlTransportAgent.h \
 	CurlTransportAgent.cpp \
 	\
@@ -61,6 +62,10 @@ SYNCEVOLUTION_SOURCES  = \
 	\
 	SyncConfig.h \
 	SyncConfig.cpp \
+	\
+	DevNullConfigNode.h \
+	MultiplexConfigNode.h \
+	MultiplexConfigNode.cpp \
 	\
 	FilterConfigNode.h \
 	FilterConfigNode.cpp \
@@ -97,6 +102,15 @@ libsyncevolution_include_HEADERS = \
 								  eds_abi_wrapper.h \
 								  SmartPtr.h \
 								  ConfigNode.h 
+if ENABLE_OBEX 
+SYNCEVOLUTION_SOURCES += ObexTransportAgent.h ObexTransportAgent.cpp
+SYNCEVOLUTION_LDADD += $(LIBOPENOBEX_LIBS)
+SYNCEVOLUTION_CXXFLAGS += $(LIBOPENOBEX_CFLAGS)
+if ENABLE_BLUETOOTH
+SYNCEVOLUTION_LDADD += $(BLUEZ_LIBS)
+SYNCEVOLUTION_CXXFLAGS += $(BLUEZ_CFLAGS)
+endif
+endif
 
 pkgconfigdir=$(libdir)/pkgconfig
 pkgconfig_DATA=syncevolution.pc
@@ -107,6 +121,7 @@ libsyncevolution_la_SOURCES = $(SYNCEVOLUTION_SOURCES)
 libsyncevolution_la_LIBADD = @EPACKAGE_LIBS@ @GLIB_LIBS@ $(SYNTHESIS_LIBS) $(TRANSPORT_LIBS) @LIBS@ $(SYNCEVOLUTION_LDADD)
 libsyncevolution_la_CXXFLAGS = $(TRANSPORT_CFLAGS) $(SYNCEVOLUTION_CXXFLAGS) $(SYNTHESIS_CFLAGS)
 libsyncevolution_la_CPPFLAGS = $(AM_CPPFLAGS) -DTEMPLATE_DIR=\""$(datadir)/syncevolution/templates"\" -DLIBDIR=\""$(libdir)"\"
+libsyncevolution_la_DEPENDENCIES = $(SYNTHESIS_DEP)
 
 if ENABLE_MODULES
 libsyncevolution_la_LDFLAGS =

@@ -471,7 +471,7 @@ bool TSuperDataStore::engProcessSyncCmdEnd(bool &aQueueForLater)
 } // TSuperDataStore::engProcessSyncCmdEnd
 
 
-#ifndef SYSYNC_CLIENT
+#ifdef SYSYNC_SERVER
 
 // process map
 localstatus TSuperDataStore::engProcessMap(cAppCharP aRemoteID, cAppCharP aLocalID)
@@ -494,7 +494,7 @@ done:
   return sta;
 } // TSuperDataStore::engProcessMap
 
-#endif
+#endif // SYSYNC_SERVER
 
 
 // called to process incoming item operation
@@ -512,7 +512,7 @@ bool TSuperDataStore::engProcessRemoteItem(
 {
   bool regular=true;
   string datatext;
-  #ifndef SYSYNC_CLIENT
+  #ifdef SYSYNC_SERVER
   TSyncItem *itemcopyP;
   #endif
 
@@ -530,163 +530,180 @@ bool TSuperDataStore::engProcessRemoteItem(
   TSyncOperation sop=syncitemP->getSyncOp();
   string remid;
   TSubDSLinkList::iterator pos;
-  switch (sop) {
-    #ifndef SYSYNC_CLIENT
-    // Server case
-    case sop_wants_replace:
-    case sop_replace:
-    case sop_wants_add:
-    case sop_add:
-      // item has no local ID, we need to apply filters to item data
-      PDEBUGPRINTFX(DBG_DATA,("Checkin subdatastore filters to find where it belongs"));
-      linkP = findSubLinkByData(*syncitemP);
-      if (!linkP) goto nods;
-      PDEBUGPRINTFX(DBG_DATA,(
-        "Found item belongs to subdatastore '%s'",
-        linkP->fDatastoreLinkP->getName()
-      ));
-      // make sure item does not have a local ID (which would be wrong because of prefixes anyway)
-      syncitemP->clearLocalID();
-      // remembert because we might need it below for move-replace
-      remid=syncitemP->getRemoteID();
-      // let subdatastore process
-      regular=linkP->fDatastoreLinkP->engProcessRemoteItem(syncitemP,aStatusCommand);
-      // now check if replace was treated as add, if yes, this indicates
-      // that this might be a move between subdatastores
-      if (
-        (sop==sop_replace || sop==sop_wants_replace) &&
-        !fSlowSync && aStatusCommand.getStatusCode()==201
-      ) {
-        // this is probably a move from another datastore by changing an attribute
-        // that dispatches datastores (such as a vEvent changed to a vToDo)
-        // - so we delete all items with this remote ID in all other datastores
-        PDEBUGPRINTFX(DBG_DATA,("Replace could be a move between subdatastores, trying to delete all items with same remoteID in other subdatastores"));
-        TSubDSLinkList::iterator pos;
-        TStatusCommand substatus(fSessionP);
-        for (pos=fSubDSLinks.begin();pos!=fSubDSLinks.end();pos++) {
-          if (&(*pos) != linkP) {
-            // all but original datastore
-            substatus.setStatusCode(200);
-            itemcopyP = new TSyncItem();
-            // - only remote ID and syncop are relevant, leave everything else empty
-            itemcopyP->setRemoteID(remid.c_str());
-            itemcopyP->setSyncOp(sop_delete);
-            // - now try to delete. This might fail if replace above wasn't a move
-            //   itemcopyP is consumed
-            PDEBUGPRINTFX(DBG_DATA+DBG_DETAILS,(
-              "Trying to delete item with remoteID='%s' from subdatastore '%s'",
-              itemcopyP->getRemoteID(),
-              linkP->fDatastoreLinkP->getName()
-            ));
-            regular=pos->fDatastoreLinkP->engProcessRemoteItem(itemcopyP,substatus);
-            #ifdef SYDEBUG
-            if (regular) {
-              // deleted ok
-              PDEBUGPRINTFX(DBG_DATA,(
-                "Found item in '%s', deleted here (and moved to '%s')",
-                pos->fDatastoreLinkP->getName(),
-                linkP->fDatastoreLinkP->getName()
-              ));
-            }
-            #endif
-          }
-        }
-        PDEBUGPRINTFX(DBG_DATA,("End of (possible) move-replace between subdatastores"));
-        regular=true; // fully ok, no matter if delete above has succeeded or not
-      }
-      goto done;
-    case sop_archive_delete:
-    case sop_soft_delete:
-    case sop_delete:
-    case sop_copy:
-      // item has no local ID AND no data, only a remoteID:
-      // we must try to read item from all subdatastores by remoteID until
-      // one is found
-      // get an empty item of correct type to call logicRetrieveItemByID
-      itemcopyP = getLocalReceiveType()->newSyncItem(getRemoteSendType(),this);
-      // - only remote ID is relevant, leave everything else empty
-      itemcopyP->setRemoteID(syncitemP->getRemoteID());
-      // try to read item from all subdatastores
-      for (pos=fSubDSLinks.begin();pos!=fSubDSLinks.end();pos++) {
-        linkP = &(*pos);
-        // always start with 200
-        aStatusCommand.setStatusCode(200);
-        // now try to read
-        PDEBUGPRINTFX(DBG_DATA+DBG_DETAILS,(
-          "Trying to read item by remoteID='%s' from subdatastore '%s' to see if it is there",
-          itemcopyP->getRemoteID(),
+  #ifdef SYSYNC_SERVER
+  if (IS_SERVER) {
+    switch (sop) {
+      // Server case
+      case sop_wants_replace:
+      case sop_replace:
+      case sop_wants_add:
+      case sop_add:
+        // item has no local ID, we need to apply filters to item data
+        PDEBUGPRINTFX(DBG_DATA,("Checkin subdatastore filters to find where it belongs"));
+        linkP = findSubLinkByData(*syncitemP);
+        if (!linkP) goto nods;
+        PDEBUGPRINTFX(DBG_DATA,(
+          "Found item belongs to subdatastore '%s'",
           linkP->fDatastoreLinkP->getName()
         ));
-        regular=linkP->fDatastoreLinkP->logicRetrieveItemByID(*itemcopyP,aStatusCommand);
-        // must be ok AND not 404 (item not found)
-        if (regular && aStatusCommand.getStatusCode()!=404) {
-          PDEBUGPRINTFX(DBG_DATA,(
-            "Item found in subdatastore '%s', deleting it there",
+        // make sure item does not have a local ID (which would be wrong because of prefixes anyway)
+        syncitemP->clearLocalID();
+        // remembert because we might need it below for move-replace
+        remid=syncitemP->getRemoteID();
+        // let subdatastore process
+        regular=linkP->fDatastoreLinkP->engProcessRemoteItem(syncitemP,aStatusCommand);
+        // now check if replace was treated as add, if yes, this indicates
+        // that this might be a move between subdatastores
+        if (
+          (sop==sop_replace || sop==sop_wants_replace) &&
+          !fSlowSync && aStatusCommand.getStatusCode()==201
+        ) {
+          // this is probably a move from another datastore by changing an attribute
+          // that dispatches datastores (such as a vEvent changed to a vToDo)
+          // - so we delete all items with this remote ID in all other datastores
+          PDEBUGPRINTFX(DBG_DATA,("Replace could be a move between subdatastores, trying to delete all items with same remoteID in other subdatastores"));
+          TStatusCommand substatus(fSessionP);
+          for (pos=fSubDSLinks.begin();pos!=fSubDSLinks.end();pos++) {
+            if (&(*pos) != linkP) {
+              // all but original datastore
+              substatus.setStatusCode(200);
+              itemcopyP = new TSyncItem();
+              // - only remote ID and syncop are relevant, leave everything else empty
+              itemcopyP->setRemoteID(remid.c_str());
+              itemcopyP->setSyncOp(sop_delete);
+              // - now try to delete. This might fail if replace above wasn't a move
+              //   itemcopyP is consumed
+              PDEBUGPRINTFX(DBG_DATA+DBG_DETAILS,(
+                "Trying to delete item with remoteID='%s' from subdatastore '%s'",
+                itemcopyP->getRemoteID(),
+                linkP->fDatastoreLinkP->getName()
+              ));
+              regular=pos->fDatastoreLinkP->engProcessRemoteItem(itemcopyP,substatus);
+              #ifdef SYDEBUG
+              if (regular) {
+                // deleted ok
+                PDEBUGPRINTFX(DBG_DATA,(
+                  "Found item in '%s', deleted here (and moved to '%s')",
+                  pos->fDatastoreLinkP->getName(),
+                  linkP->fDatastoreLinkP->getName()
+                ));
+              }
+              #endif
+            }
+          }
+          PDEBUGPRINTFX(DBG_DATA,("End of (possible) move-replace between subdatastores"));
+          regular=true; // fully ok, no matter if delete above has succeeded or not
+        }
+        goto done;
+      case sop_archive_delete:
+      case sop_soft_delete:
+      case sop_delete:
+      case sop_copy:
+        // item has no local ID AND no data, only a remoteID:
+        // we must try to read item from all subdatastores by remoteID until
+        // one is found
+        // get an empty item of correct type to call logicRetrieveItemByID
+        itemcopyP = getLocalReceiveType()->newSyncItem(getRemoteSendType(),this);
+        // - only remote ID is relevant, leave everything else empty
+        itemcopyP->setRemoteID(syncitemP->getRemoteID());
+        // try to read item from all subdatastores
+        for (pos=fSubDSLinks.begin();pos!=fSubDSLinks.end();pos++) {
+          linkP = &(*pos);
+          // always start with 200
+          aStatusCommand.setStatusCode(200);
+          // now try to read
+          PDEBUGPRINTFX(DBG_DATA+DBG_DETAILS,(
+            "Trying to read item by remoteID='%s' from subdatastore '%s' to see if it is there",
+            itemcopyP->getRemoteID(),
             linkP->fDatastoreLinkP->getName()
           ));
-          // now we can delete or copy, consuming original item
-          regular=linkP->fDatastoreLinkP->engProcessRemoteItem(syncitemP,aStatusCommand);
-          // delete duplicated item as well
-          delete itemcopyP;
-          // done
-          regular=true;
-          goto done;
+          regular=linkP->fDatastoreLinkP->logicRetrieveItemByID(*itemcopyP,aStatusCommand);
+          // must be ok AND not 404 (item not found)
+          if (regular && aStatusCommand.getStatusCode()!=404) {
+            PDEBUGPRINTFX(DBG_DATA,(
+              "Item found in subdatastore '%s', deleting it there",
+              linkP->fDatastoreLinkP->getName()
+            ));
+            // now we can delete or copy, consuming original item
+            regular=linkP->fDatastoreLinkP->engProcessRemoteItem(syncitemP,aStatusCommand);
+            // delete duplicated item as well
+            delete itemcopyP;
+            // done
+            regular=true;
+            goto done;
+          }
         }
-      }
-      // none of the datastores could process this item --> error
-      // - delete duplicated item
-      delete itemcopyP;
-      // - make sure delete reports 200 for incomplete-rollback-datastores
-      if (aStatusCommand.getStatusCode()==404 && sop!=sop_copy) {
-        // not finding an item for delete might be ok for remote...
-        if (fSessionP->getSessionConfig()->fDeletingGoneOK) {
-          // 404/410: item not found, could be because previous aborted session has
-          // already committed deletion of that item -> behave as if delete was ok
-          PDEBUGPRINTFX(DBG_DATA,("to-be-deleted item was not found, but do NOT report %hd",aStatusCommand.getStatusCode()));
-          aStatusCommand.setStatusCode(200);
+        // none of the datastores could process this item --> error
+        // - delete duplicated item
+        delete itemcopyP;
+        // - make sure delete reports 200 for incomplete-rollback-datastores
+        if (aStatusCommand.getStatusCode()==404 && sop!=sop_copy) {
+          // not finding an item for delete might be ok for remote...
+          if (fSessionP->getSessionConfig()->fDeletingGoneOK) {
+            // 404/410: item not found, could be because previous aborted session has
+            // already committed deletion of that item -> behave as if delete was ok
+            PDEBUGPRINTFX(DBG_DATA,("to-be-deleted item was not found, but do NOT report %hd",aStatusCommand.getStatusCode()));
+            aStatusCommand.setStatusCode(200);
+          }
+          // ...but it is a internal irregularity, fall thru to return false
         }
-        // ...but it is a internal irregularity, fall thru to return false
-      }
-      // is an internal irregularity
-      regular=false;
-      goto done;
-    #else
-    // Client case
-    case sop_wants_replace:
-    case sop_replace:
-    case sop_archive_delete:
-    case sop_soft_delete:
-    case sop_delete:
-    case sop_copy:
-      // item has local ID, we can find datastore by prefix
-      linkP = findSubLinkByLocalID(syncitemP->getLocalID());
-      if (!linkP) goto nods;
-      // remove prefix before letting subdatastore process it
-      syncitemP->fLocalID.erase(0,linkP->fDSLinkConfigP->fGUIDPrefix.size());
-      // now let subdatastore process
-      regular=linkP->fDatastoreLinkP->engProcessRemoteItem(syncitemP,aStatusCommand);
-      goto done;
-    case sop_wants_add:
-    case sop_add:
-      // item has no local ID, we need to apply filters to item data
-      linkP = findSubLinkByData(*syncitemP);
-      if (!linkP) goto nods;
-      // make sure item does not have a local ID (which would be wrong because of prefixes anyway)
-      syncitemP->clearLocalID();
-      // let subdatastore process
-      regular=linkP->fDatastoreLinkP->engProcessRemoteItem(syncitemP,aStatusCommand);
-      goto done;
-    #endif
-    default:
-    nods:
-      // no datastore or unknown command, general DB error
-      aStatusCommand.setStatusCode(510);
-      PDEBUGPRINTFX(DBG_ERROR,("TSuperDataStore::processRemoteItem Fatal: Item cannot be processed by any subdatastore"));
-      // consume item
-      delete syncitemP;
-      regular=false;
-      goto done;
-  } // switch
+        // is an internal irregularity
+        regular=false;
+        goto done;
+    case sop_reference_only:
+    case sop_move:
+    case sop_none:
+    case numSyncOperations:
+      // nothing to do or shouldn't happen
+      break;
+    } // switch
+  } // server
+  #endif // SYSYNC_SERVER
+  #ifdef SYSYNC_CLIENT
+  if (IS_CLIENT) {
+    switch (sop) {
+      // Client case
+      case sop_wants_replace:
+      case sop_replace:
+      case sop_archive_delete:
+      case sop_soft_delete:
+      case sop_delete:
+      case sop_copy:
+        // item has local ID, we can find datastore by prefix
+        linkP = findSubLinkByLocalID(syncitemP->getLocalID());
+        if (!linkP) goto nods;
+        // remove prefix before letting subdatastore process it
+        syncitemP->fLocalID.erase(0,linkP->fDSLinkConfigP->fGUIDPrefix.size());
+        // now let subdatastore process
+        regular=linkP->fDatastoreLinkP->engProcessRemoteItem(syncitemP,aStatusCommand);
+        goto done;
+      case sop_wants_add:
+      case sop_add:
+        // item has no local ID, we need to apply filters to item data
+        linkP = findSubLinkByData(*syncitemP);
+        if (!linkP) goto nods;
+        // make sure item does not have a local ID (which would be wrong because of prefixes anyway)
+        syncitemP->clearLocalID();
+        // let subdatastore process
+        regular=linkP->fDatastoreLinkP->engProcessRemoteItem(syncitemP,aStatusCommand);
+        goto done;
+    case sop_reference_only:
+    case sop_move:
+    case sop_none:
+    case numSyncOperations:
+      // nothing to do or shouldn't happen
+      break;
+    } // switch
+  } // client
+  #endif // SYSYNC_CLIENT
+nods:
+  // no datastore or unknown command, general DB error
+  aStatusCommand.setStatusCode(510);
+  PDEBUGPRINTFX(DBG_ERROR,("TSuperDataStore::processRemoteItem Fatal: Item cannot be processed by any subdatastore"));
+  // consume item
+  delete syncitemP;
+  regular=false;
+  goto done;
 done:
   PDEBUGENDBLOCK("SuperProcessItem");
   return regular;
@@ -1063,7 +1080,7 @@ localstatus TSuperDataStore::engSaveSuspendState(bool aAnyway)
 } // TSuperDataStore::engSaveSuspendState
 
 
-#ifndef SYSYNC_CLIENT
+#ifdef SYSYNC_SERVER
 
 /// @brief called at end of request processing, should be used to save suspend state
 /// @note subdatastores don't do anything themselves, to make sure superds can make things happen in correct order
@@ -1142,27 +1159,6 @@ bool TSuperDataStore::engGenerateSyncCommands(
 
 #ifdef SYSYNC_CLIENT
 
-/* %%% not required - engClientStartOfSyncMessage() will be called for all local DS anyway,
-   and superDS will ALWAYS be called after contained subDS, as the superDS's definition
-   is always AFTER the contained subDS's definition in the config
-// called whenever outgoing Message of Sync Package starts
-// - Client will start Sync generation now, which means that subdatastores
-//   just set fSyncGenerationStarted=true (without actually creating a <sync>,
-//   and superdatastore creates a <sync> which will contain all add/delete/replace
-//   from all subdatastores (as generated by generateSyncCommands)
-void TSuperDataStore::engClientStartOfSyncMessage(void)
-{
-  // signal sync start to all subdatastores
-  TSubDSLinkList::iterator pos;
-  for (pos=fSubDSLinks.begin();pos!=fSubDSLinks.end();pos++) {
-    pos->fDatastoreLinkP->engClientStartOfSyncMessage();
-  }
-  // signal it to myself
-  TLocalEngineDS::engClientStartOfSyncMessage();
-} // TSuperDataStore::engClientStartOfSyncMessage
-
-*/
-
 // Client only: returns number of unsent map items
 sInt32 TSuperDataStore::numUnsentMaps(void)
 {
@@ -1183,7 +1179,7 @@ void TSuperDataStore::engMarkMapConfirmed(cAppCharP aLocalID, cAppCharP aRemoteI
   TSubDatastoreLink *linkP = findSubLinkByLocalID(aLocalID);
   if (linkP) {
     // pass to subdatastore with prefix removed
-    linkP->engMarkMapConfirmed(aLocalID+linkP->fDSLinkConfigP->fGUIDPrefix.size(),aRemoteID);
+    linkP->fDatastoreLinkP->engMarkMapConfirmed(aLocalID+linkP->fDSLinkConfigP->fGUIDPrefix.size(),aRemoteID);
   }
 } // TSuperDataStore::engMarkMapConfirmed
 
@@ -1191,10 +1187,7 @@ void TSuperDataStore::engMarkMapConfirmed(cAppCharP aLocalID, cAppCharP aRemoteI
 // - client only: called to generate Map items
 //   Returns true if now finished for this datastore
 //   also sets fState to dss_done when finished
-bool TSuperDataStore::engGenerateMapItems(
-  TMapCommand *aMapCommandP,
-  const char *aLocalIDPrefix
-)
+bool TSuperDataStore::engGenerateMapItems(TMapCommand *aMapCommandP, cAppCharP aLocalIDPrefix)
 {
   TSubDSLinkList::iterator pos=fSubDSLinks.begin();
   bool ok;
@@ -1208,7 +1201,7 @@ bool TSuperDataStore::engGenerateMapItems(
     AssignString(prefix,aLocalIDPrefix);
     prefix.append(fCurrentGenDSPos->fDSLinkConfigP->fGUIDPrefix);
     // generate Map items
-    ok=pos->fDatastoreLinkP->engGenerateMapItems(TMapCommand *aMapCommandP,prefix.c_str());
+    ok=pos->fDatastoreLinkP->engGenerateMapItems(aMapCommandP,prefix.c_str());
     // exit if not yet finished with generating map items for this datastore
     if (!ok) {
       PDEBUGENDBLOCK("MapGenerate");
@@ -1219,22 +1212,26 @@ bool TSuperDataStore::engGenerateMapItems(
   } while(true);
   // done
   // we are done if state is syncdone (no more sync commands will occur)
-  if (fState==dss_syncsend) {
-    PDEBUGPRINTFX(DBG_PROTO,("TSuperDataStore: Finished sending chached Map items from previous session"))
-  }
-  else if (fState==dss_syncdone) {
-    fState=dss_done;
+  if (testState(dssta_dataaccessdone)) {
+    changeState(dssta_clientmapssent,true);
     PDEBUGPRINTFX(DBG_PROTO,("TSuperDataStore: Finished generating Map items, server has finished <sync>, we are done now"))
   }
+  #ifdef SYDEBUG
+  // else if we are not yet dssta_syncgendone -> this is the end of a early pending map send
+  else if (!dbgTestState(dssta_syncgendone)) {
+    PDEBUGPRINTFX(DBG_PROTO,("TSuperDataStore: Finished sending cached Map items from last session"))
+  }
+  // otherwise, we are not really finished with the maps yet (but with the current map command)
   else {
     PDEBUGPRINTFX(DBG_PROTO,("TSuperDataStore: Finished generating Map items for now, but server still sending <Sync>"))
   }
+  #endif
   PDEBUGENDBLOCK("MapGenerate");
   return true;
 } // TSuperDataStore::engGenerateMapItems
 
 
-#endif
+#endif // SYSYNC_CLIENT
 
 
 /* end of TSuperDataStore implementation */

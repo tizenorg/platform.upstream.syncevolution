@@ -62,6 +62,18 @@ class SafeConfigNode : public ConfigNode {
     /* keep underlying methods visible; our own setProperty() would hide them */
     using ConfigNode::setProperty;
 
+    /**
+     * turn str into something which can be used as key or value in ConfigNode
+     * @param allSpaces     escape all spaces, not just those at the start and end
+     * @paramm strictMode   same as in setMode()
+     */
+    static string escape(const string &str, bool allSpaces, bool strictMode);
+    string escape(const string &str) const { return escape(str, false, m_strictMode); }
+
+    /** inverse operation for escape() */
+    static string unescape(const string &str);
+
+
     /* ConfigNode API */
     virtual void flush();
     virtual string readProperty(const string &property) const;
@@ -69,22 +81,15 @@ class SafeConfigNode : public ConfigNode {
                              const string &value,
                              const string &comment = "",
                              const string *defValue = NULL);
-    virtual void readProperties(map<string, string> &props) const;
+    virtual void readProperties(ConfigProps &props) const;
     virtual void removeProperty(const string &property);
     virtual bool exists() const { return m_readOnlyNode->exists(); }
+    virtual void clear() { m_node->clear(); }
 
  private:
     boost::shared_ptr<ConfigNode> m_node;
     boost::shared_ptr<const ConfigNode> m_readOnlyNode;
     bool m_strictMode;
-
-    /**
-     * turn str into something which can be used as key or value in ConfigNode
-     */
-    string escape(const string &str) const;
-
-    /** inverse operation for escape() */
-    string unescape(const string &str) const;
 };
 
 
