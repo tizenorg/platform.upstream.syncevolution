@@ -2290,6 +2290,7 @@ localstatus TPluginApiDS::apiLoadAdminData(
     case mapentry_invalid:
     case mapentry_normal:
     case numMapEntryTypes:
+    default:
       // nothing to do or should not occur
       break;
     }

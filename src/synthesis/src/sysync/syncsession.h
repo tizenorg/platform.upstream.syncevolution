@@ -225,6 +225,8 @@ public:
   bool fShowCTCapProps;
   // default value for flag to send type/size in CTCap for SyncML 1.0 (disable as old clients like S55 crash on this)
   bool fShowTypeSzInCTCap10;
+  // flag to enable SyncEvolution-specific sync mode extensions in outgoing devInf.
+  bool fSyncModeExtensions;
   // default value for sending end date-only values (like DTEND) as last time unit of previous day (i.e. 23:59:59, inclusive)
   // instead of midnight of next day (exclusive, like in iCalendar 2.0)
   bool fVCal10EnddatesSameDay;

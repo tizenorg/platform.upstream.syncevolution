@@ -3957,7 +3957,7 @@ TSyError writeDebugMsg(
 
 
 
-// accessor table for server session key
+// accessor table for session key
 static const TStructFieldInfo ServerParamFieldInfos[] =
 {
   // valName, valType, writable, fieldOffs, valSiz

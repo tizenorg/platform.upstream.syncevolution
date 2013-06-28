@@ -123,6 +123,8 @@ PLUGIN_NS_END
 - (void)debugEndThread;
 // access to CB
 - (DB_Callback)getCB;
+// open a key from root level (same functionality as SyncEngine's newOpenKeyByPath
+- (SettingsKey *)newOpenKeyByPath:(cAppCharP)aPath withMode:(uInt16)aMode err:(TSyError *)aErrP;
 // access to session key
 - (SettingsKey *)newOpenSessionKeyWithMode:(uInt16)aMode err:(TSyError *)aErrP;
 // Context features

@@ -1537,6 +1537,7 @@ localstatus TStdLogicDS::dsBeforeStateChange(TLocalEngineDSState aOldState,TLoca
       sta = startDataWrite();
     }
   } // client
+  #ifdef SYSYNC_SERVER
   if (aNewState==dssta_serverseenclientmods) {
     // Can only happen in server. Implement removal of unmatched items
     // when in caching mode.
@@ -1565,6 +1566,7 @@ localstatus TStdLogicDS::dsBeforeStateChange(TLocalEngineDSState aOldState,TLoca
       }
     }
   }
+  #endif // SYSYNC_SERVER
   if (aNewState==dssta_completed && !isAborted()) {
     // finish writing data now anyway
     endDataWrite();

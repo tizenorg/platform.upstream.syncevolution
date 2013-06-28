@@ -570,6 +570,30 @@ PLUGIN_NS_END
 }
 
 
+// open a key from root level
+- (SettingsKey *)newOpenKeyByPath:(cAppCharP)aPath withMode:(uInt16)aMode err:(TSyError *)aErrP
+{
+  TSyError sta=LOCERR_OK;
+  KeyH newKeyH=NULL;
+  SettingsKey *newKey=nil; // no object by default
+  OpenKeyByPath_Func OpenKeyByPath = fCB->ui.OpenKeyByPath;
+  if (!OpenKeyByPath) {
+    sta=LOCERR_NOTIMP;
+  }
+  else {
+    // open from root (no parent)
+    sta = OpenKeyByPath(fCB,&newKeyH,NULL,aPath,aMode);
+    if (sta==LOCERR_OK) {
+      newKey=[[SettingsKey alloc] initWithCI:fCB andKeyHandle:newKeyH];
+      DBGNSLOG(@"Opened settings key %s : SettingsKey object = 0x%lX",aPath,(intptr_t)newKey);
+    }
+  }
+  if (aErrP) *aErrP=sta;
+  return newKey;
+} // newOpenKeyByPath
+
+
+
 // Dummy implementation - should be overridden in actual DB implementations in subclass
 
 - (sInt32)contextSupportRules:(cAppCharP)aContextRules

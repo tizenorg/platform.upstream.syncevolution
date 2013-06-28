@@ -2088,6 +2088,8 @@ DUMPBIN = @DUMPBIN@
 EASCLIENT_CFLAGS = @EASCLIENT_CFLAGS@
 EASCLIENT_DEPENDENCIES = @EASCLIENT_DEPENDENCIES@
 EASCLIENT_LIBS = @EASCLIENT_LIBS@
+EBOOKCONTACTS_CFLAGS = @EBOOKCONTACTS_CFLAGS@
+EBOOKCONTACTS_LIBS = @EBOOKCONTACTS_LIBS@
 EBOOK_CFLAGS = @EBOOK_CFLAGS@
 EBOOK_LIBS = @EBOOK_LIBS@
 EBOOK_VERSION_CFLAGS = @EBOOK_VERSION_CFLAGS@
@@ -2778,7 +2780,9 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@  -I$(top_srcdir)/src/backends/evolution
 
 @COND_CORE_TRUE@src_backends_evolution_syncecal_la_SOURCES = $(src_backends_evolution_syncecal_src)
-@COND_CORE_TRUE@src_backends_evolution_syncecal_la_LIBADD = $(ECAL_LIBS) $(SYNCEVOLUTION_LIBS) $(GLIB_LIBS) $(GOBJECT_LIBS)
+# $(EBOOKCONTACTS_LIBS) is needed for ESourceBackendSummary, which we
+# use in EvolutionSyncSource and thus in syncecal.
+@COND_CORE_TRUE@src_backends_evolution_syncecal_la_LIBADD = $(ECAL_LIBS) $(EBOOKCONTACTS_LIBS) $(SYNCEVOLUTION_LIBS) $(GLIB_LIBS) $(GOBJECT_LIBS)
 # _GNU_SOURCE and -ldl for libical.c + dlsym():
 @COND_CORE_TRUE@src_backends_evolution_syncecal_la_CPPFLAGS = -D_GNU_SOURCE \
 @COND_CORE_TRUE@  -De_cal_check_timezones=syncevolution_check_timezones \
@@ -2791,7 +2795,7 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@src_backends_evolution_syncecal_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(SYNCEVO_WFLAGS) $(GLIB_CFLAGS) $(GOBJECT_CFLAGS)
 @COND_CORE_TRUE@src_backends_evolution_syncecal_la_DEPENDENCIES = src/syncevo/libsyncevolution.la
 @COND_CORE_TRUE@src_backends_evolution_syncebook_la_SOURCES = $(src_backends_evolution_syncebook_src)
-@COND_CORE_TRUE@src_backends_evolution_syncebook_la_LIBADD = $(EBOOK_LIBS) $(SYNCEVOLUTION_LIBS) $(GLIB_LIBS) $(GOBJECT_LIBS)
+@COND_CORE_TRUE@src_backends_evolution_syncebook_la_LIBADD = $(EBOOK_LIBS) $(EBOOKCONTACTS_LIBS) $(SYNCEVOLUTION_LIBS) $(GLIB_LIBS) $(GOBJECT_LIBS)
 @COND_CORE_TRUE@src_backends_evolution_syncebook_la_LDFLAGS = -module -avoid-version
 @COND_CORE_TRUE@src_backends_evolution_syncebook_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(SYNCEVO_WFLAGS) $(GLIB_CFLAGS) $(GOBJECT_CFLAGS)
 @COND_CORE_TRUE@src_backends_evolution_syncebook_la_CPPFLAGS = $(src_backends_evolution_cppflags)
@@ -3362,7 +3366,7 @@ src_client_test_libs = src/syncevo/libsyncevolution.la \
 # src/syncevo/libsyncevolution.la -> src/syncevo/.libs/libsyncevolution.a -> -Wl,-u...
 src_client_test_undef = $(shell nm $(patsubst %.la,%.a,$(subst /lib,/.libs/lib,$(src_client_test_libs))) | grep funambolAutoRegisterRegistry | sed -e 's/.* /-Wl,-u/' )
 src_client_test_CPPFLAGS = -DHAVE_CONFIG_H -DENABLE_INTEGRATION_TESTS -DENABLE_UNIT_TESTS $(src_cppflags) $(QT_CPPFLAGS)
-src_client_test_CXXFLAGS = @CPPUNIT_CXXFLAGS@ $(PCRECPP_CFLAGS) $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS) $(filter-out -O2 -g -W -Wall, $(QT_CXXFLAGS)) $(SYNCEVO_WFLAGS)
+src_client_test_CXXFLAGS = $(filter-out -O2, @CPPUNIT_CXXFLAGS@ $(PCRECPP_CFLAGS) $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS) $(filter-out -O2 -g -W -Wall, $(QT_CXXFLAGS)) $(SYNCEVO_WFLAGS))
 src_client_test_LDFLAGS = @CPPUNIT_LDFLAGS@  $(src_client_test_undef) $(CORE_LD_FLAGS) $(QT_LDFLAGS)
 src_client_test_LDADD = $(src_client_test_libs) $(CORE_LDADD) $(PCRECPP_LIBS) $(SYNTHESIS_ENGINE) $(QT_LIBS)
 

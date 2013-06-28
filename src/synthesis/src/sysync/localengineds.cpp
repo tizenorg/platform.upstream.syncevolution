@@ -3814,8 +3814,13 @@ SmlDevInfSyncCapPtr_t TLocalEngineDS::newDevInfSyncCap(uInt32 aSyncCapMask)
   //
   // Worse, Nokia phones cancel direct sync sessions with an
   // OBEX error ("Forbidden") when non-standard sync modes
-  // are included in the SyncCap. As a workaround for that
-  // we use the following logic:
+  // are included in the SyncCap.
+  // Event worse, some servers refuse to sync at
+  // all with strange/misleading error codes when extensions are found.
+  // Therefore, this is nothing to be enabled in general,
+  // so it needs to be explicitly enabled in config from
+  // 3.4.0.45 onwards (using <syncmodeextensions>yes</syncmodeextensions>
+  // If it is enabled in config, the following logic is used:
   // - libsynthesis in a SyncML client will always send
   //   all the extended sync modes; with the Funambol
   //   workaround in place that works
@@ -3826,8 +3831,10 @@ SmlDevInfSyncCapPtr_t TLocalEngineDS::newDevInfSyncCap(uInt32 aSyncCapMask)
   //
   // Corresponding code in TRemoteDataStore::setDatastoreDevInf().
   //
-  if (!IS_SERVER ||
-      fSessionP->receivedSyncModeExtensions()) {
+  if (
+    fSessionP->getSessionConfig()->fSyncModeExtensions && // must be enabled in config
+    (!IS_SERVER || fSessionP->receivedSyncModeExtensions()) // and if, server only uses it with clients which have it in their devInf as well
+  ) {
     bool extended=false;
     if (canRestart()) {
       synctypeP=newPCDataString("390001");

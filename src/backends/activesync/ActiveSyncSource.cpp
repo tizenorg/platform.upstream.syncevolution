@@ -32,6 +32,9 @@
 #include <errno.h>
 
 #include <boost/algorithm/string.hpp>
+#include <boost/range/adaptors.hpp>
+
+SE_GOBJECT_TYPE(EasSyncHandler)
 
 /* #include <eas-connection-errors.h> */
 #include <syncevo/declarations.h>
@@ -39,6 +42,7 @@ SE_BEGIN_CXX
 
 void EASItemUnref(EasItemInfo *info) { g_object_unref(&info->parent_instance); }
 void GStringUnref(char *str) { g_free(str); }
+void EASFolderUnref(EasFolder *f) { g_object_unref(&f->parent_instance); }
 
 void ActiveSyncSource::enableServerMode()
 {
@@ -50,26 +54,168 @@ bool ActiveSyncSource::serverModeEnabled() const
     return m_operations.m_loadAdminData;
 }
 
+/* Recursively work out full path name */
+std::string ActiveSyncSource::Collection::fullPath() {
+    if (!pathFound) {
+	if (parentId == "0") {
+	    pathName = name;
+	} else {
+	    pathName = source->m_collections[parentId].fullPath() + "/" + name;
+	}
+	pathFound = true;
+    }
+
+    return pathName;
+}
+
+void ActiveSyncSource::findCollections(const std::string account, const bool force_update)
+{
+    GErrorCXX gerror;
+    EasSyncHandlerCXX handler;
+    EASFoldersCXX folders;
+    
+    if (!m_collections.empty()) {
+	if (!force_update) return;
+	m_collections.clear();
+	m_folderPaths.clear();
+    }
+    
+    /* Fetch the folders */
+    handler = EasSyncHandlerCXX::steal(eas_sync_handler_new(account.c_str()));
+    if (!handler) throwError("findCollections cannot allocate sync handler");
+    
+    if (!eas_sync_handler_get_folder_list (handler,
+					   force_update,
+					   folders,
+					   NULL,
+					   gerror)) {
+	gerror.throwError("fetching folder list");
+    }
+    
+    /* Save the Collections */
+    BOOST_FOREACH(EasFolder *folder, folders) {
+	m_collections[folder->folder_id].collectionId = folder->folder_id;
+	m_collections[folder->folder_id].name = folder->display_name;
+	m_collections[folder->folder_id].parentId = folder->parent_id;
+	m_collections[folder->folder_id].type = folder->type;
+	m_collections[folder->folder_id].source = this;
+    }
+    
+    /* Save the full paths */
+    BOOST_FOREACH(std::string id, m_collections | boost::adaptors::map_keys) {
+	m_folderPaths[m_collections[id].fullPath()] = id;
+    }
+}
+
+int ActiveSyncSource::Collection::getFolderType () {
+    switch (type) {
+    case EAS_FOLDER_TYPE_DEFAULT_INBOX:
+    case EAS_FOLDER_TYPE_DEFAULT_DRAFTS:
+    case EAS_FOLDER_TYPE_DEFAULT_DELETED_ITEMS:
+    case EAS_FOLDER_TYPE_DEFAULT_SENT_ITEMS:
+    case EAS_FOLDER_TYPE_DEFAULT_OUTBOX:
+    case EAS_FOLDER_TYPE_USER_CREATED_MAIL:
+	return EAS_ITEM_MAIL;
+    case EAS_FOLDER_TYPE_DEFAULT_TASKS:
+    case EAS_FOLDER_TYPE_USER_CREATED_TASKS:
+	return EAS_ITEM_TODO;
+    case EAS_FOLDER_TYPE_DEFAULT_CALENDAR:
+    case EAS_FOLDER_TYPE_USER_CREATED_CALENDAR:
+	return EAS_ITEM_CALENDAR;
+    case EAS_FOLDER_TYPE_DEFAULT_CONTACTS:
+    case EAS_FOLDER_TYPE_USER_CREATED_CONTACTS:
+	return EAS_ITEM_CONTACT;
+    case EAS_FOLDER_TYPE_DEFAULT_NOTES:
+    case EAS_FOLDER_TYPE_USER_CREATED_NOTES:
+	//TODO: implement memos
+    case EAS_FOLDER_TYPE_DEFAULT_JOURNAL:
+    case EAS_FOLDER_TYPE_USER_CREATED_JOURNAL:
+    case EAS_FOLDER_TYPE_UNKNOWN:
+    case EAS_FOLDER_TYPE_RECIPIENT_CACHE:
+    default:
+	return -1;
+    }
+}
+
+bool ActiveSyncSource::Collection::collectionIsDefault () {
+    return type == EAS_FOLDER_TYPE_DEFAULT_INBOX ||
+	type == EAS_FOLDER_TYPE_DEFAULT_DRAFTS ||
+	type == EAS_FOLDER_TYPE_DEFAULT_DELETED_ITEMS ||
+	type == EAS_FOLDER_TYPE_DEFAULT_SENT_ITEMS ||
+	type == EAS_FOLDER_TYPE_DEFAULT_OUTBOX ||
+	type == EAS_FOLDER_TYPE_DEFAULT_TASKS ||
+	type == EAS_FOLDER_TYPE_DEFAULT_CALENDAR ||
+	type == EAS_FOLDER_TYPE_DEFAULT_CONTACTS ||
+	type == EAS_FOLDER_TYPE_DEFAULT_NOTES ||
+	type == EAS_FOLDER_TYPE_DEFAULT_JOURNAL;
+}
+
 ActiveSyncSource::Databases ActiveSyncSource::getDatabases()
 {
     Databases result;
-    // empty string always selects the default database
-    result.push_back(Database("", "", true));
+    // do a scan if username is set
+    std::string account = m_context->getSyncUsername();
+
+    if (!account.empty()) {
+
+	findCollections(account, true);
+
+	BOOST_FOREACH(Collection coll, m_collections | boost::adaptors::map_values) {
+	    if (coll.getFolderType() == getEasType()) {
+		result.push_back(Database(coll.pathName, coll.collectionId, coll.collectionIsDefault()));
+	    }
+	}
+
+    } else {
+	result.push_back(Database("to scan, specify --print-databases username=<account> backend=\""+getSourceType().m_backend+"\"",
+                                  ""));
+    }
+
     return result;
 }
 
+std::string ActiveSyncSource::lookupFolder(std::string folder) {
+    // If folder matches a collectionId, use that
+    if (m_collections.find(folder) != m_collections.end()) return folder;
+
+    // If folder begins with /, drop it
+    if (folder[0] == '/') folder.erase(0,1);
+
+    // Lookup folder name
+    if (m_folderPaths.find(folder) != m_folderPaths.end()) return m_folderPaths[folder];
+
+    // Not found
+    return "";
+}
 
 void ActiveSyncSource::open()
 {
     // extract account ID and throw error if missing
     std::string username = m_context->getSyncUsername();
+    std::string folder = getDatabaseID();
     SE_LOG_DEBUG(NULL, NULL,
-                 "using eas sync account %s from config %s",
+                 "using eas sync account %s from config %s with folder %s",
                  username.c_str(),
-                 m_context->getConfigName().c_str());
+                 m_context->getConfigName().c_str(),
+		 folder.c_str());
+
+    if (folder.empty()) { // Most common case is empty string
+	m_folder = folder;
+    } else { // Lookup folder name
+	// Try using cached folder list
+	findCollections(username, false);
+	m_folder = lookupFolder(folder);
+	if (m_folder.empty()) {
+	    // Fetch latest folder list and try again
+	    findCollections(username, true);
+	    m_folder = lookupFolder(folder);
+	}
+	if (m_folder.empty()) {
+	    throwError("could not find folder: "+folder);
+	}
+    }
 
     m_account = username;
-    m_folder = getDatabaseID();
 
     // create handler
     m_handler.set(eas_sync_handler_new(m_account.c_str()), "EAS handler");

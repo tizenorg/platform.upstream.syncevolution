@@ -598,24 +598,26 @@ void TSessionConfig::clear(void)
   fSimpleAuthUser.erase();
   fSimpleAuthPassword.erase();
   // - medium timeout
-  fSessionTimeout=60; // one minute, will be overridden by derived classes
+  fSessionTimeout = 60; // one minute, will be overridden by derived classes
   // - set default maximum SyncML version enabled
-  fMaxSyncMLVersionSupported=MAX_SYNCML_VERSION;
+  fMaxSyncMLVersionSupported = MAX_SYNCML_VERSION;
   // - minimum is 1.0
   fMinSyncMLVersionSupported=syncml_vers_1_0;
   // - accept server-alerted codes by default
-  fAcceptServerAlerted=true;
+  fAcceptServerAlerted = true;
   // - defaults for remote-rule configurable behaviour
-  fUpdateClientDuringSlowsync=false; // do not update client records during slowsync (but do it for first sync!)
-  fUpdateServerDuringSlowsync=false; // do not update server records during NON-FIRST-TIME slowsync (but do it for first sync!)
-  fAllowMessageRetries=true; // generally allow retries
-  fCompleteFromClientOnly=false; // default to standard-compliant behaviour.
-  fRequestMaxTime=0; // no limit by default
-  fRequestMinTime=0; // no minimal request processing delay
+  fUpdateClientDuringSlowsync = false; // do not update client records during slowsync (but do it for first sync!)
+  fUpdateServerDuringSlowsync = false; // do not update server records during NON-FIRST-TIME slowsync (but do it for first sync!)
+  fAllowMessageRetries = true; // generally allow retries
+  fCompleteFromClientOnly = false; // default to standard-compliant behaviour.
+  fRequestMaxTime = 0; // no limit by default
+  fRequestMinTime = 0; // no minimal request processing delay
   // - default value for flag to send property lists in CTCap
-  fShowCTCapProps=true;
+  fShowCTCapProps = true;
   // - default value for flag to send type/size in CTCap for SyncML 1.0 (disable as old clients like S55 crash on this)
-  fShowTypeSzInCTCap10=false;
+  fShowTypeSzInCTCap10 = false;
+  // - sync mode extensions may be needed for SyncEvolution, but are causing troubles with Nokia phones and some servers so these are off by default
+  fSyncModeExtensions = false;
   if (IS_CLIENT) {
     // - Synthesis clients always behaved like that (sending 23:59:59), so we'll keep it as a default
     fVCal10EnddatesSameDay = true;
@@ -759,6 +761,8 @@ bool TSessionConfig::localStartElement(const char *aElementName, const char **aA
     expectBool(fShowCTCapProps);
   else if (strucmp(aElementName,"showtypesizeinctcap10")==0)
     expectBool(fShowTypeSzInCTCap10);
+  else if (strucmp(aElementName,"syncmodeextensions")==0)
+    expectBool(fSyncModeExtensions);
   else if (strucmp(aElementName,"autoenddateinclusive")==0)
     expectBool(fVCal10EnddatesSameDay);
   else if (strucmp(aElementName,"donotfoldcontent")==0)

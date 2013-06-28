@@ -2478,8 +2478,9 @@ bool TSyncOpCommand::execute(void)
           if (thisitemnode->item->data==NULL) {
             PDEBUGPRINTFX(DBG_ERROR,("Chunked item has no <data>"));
             statusCmdP->setStatusCode(412);
-            // do not further process the command, exit item loop
-            break;
+            // do not further process the command, issue status and exit
+            ISSUE_COMMAND_ROOT(fSessionP,statusCmdP);
+            return true; // processed (with error)
           }
           // - return appropriate status
           statusCmdP = newStatusCommand(213); // chunked item accepted and buffered
@@ -2487,8 +2488,9 @@ bool TSyncOpCommand::execute(void)
           if (thisitemnode->next) {
             PDEBUGPRINTFX(DBG_ERROR,("Chunked item had additional items after the chunked one"));
             statusCmdP->setStatusCode(400);
-            // do not further process the command, exit item loop
-            break;
+            // do not further process the command, issue status and exit
+            ISSUE_COMMAND_ROOT(fSessionP,statusCmdP);
+            return true; // processed (with error)
           }
           if (fSessionP->fIncompleteDataCommandP==NULL) {
             // This is the first chunk, save this as the original command (as it contains all meta)
