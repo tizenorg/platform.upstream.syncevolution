@@ -84,7 +84,7 @@ SYNCEVOLUTION_DEP += $(SYNCSOURCES)
 endif
 EXTRA_DIST = shlibs.local Makefile-gen.am $(service_in_files) $(SYNCEVO_DBUS_SERVER_SCRIPT_IN) $(SYNCEVO_DBUS_SERVER_DESKTOP_IN)
 
-TEMPLATE_FILES = templates/README templates/servers/Funambol.ini templates/servers/ScheduleWorld.ini templates/clients/phone/nokia/S60/N85.ini templates/clients/phone/nokia/maemo/n900.ini templates/clients/phone/nokia/S40/7210c.ini templates/clients/SyncEvolution.ini
+TEMPLATE_FILES = templates/README templates/clients/SyncEvolution.ini templates/clients/phone/nokia/S40/7210c.ini templates/clients/phone/nokia/S60/N85.ini templates/clients/phone/nokia/maemo/n900.ini templates/servers/Funambol.ini templates/servers/ScheduleWorld.ini
 templatedir = $(datadir)/syncevolution/
 
 # synccompare is created by replacing its 'import Algorithm::Diff;'

@@ -246,12 +246,12 @@ am__nobase_dist_doc_DATA_DIST = testcases/lcs/file1.txt \
 	.patch,,$(subst $(srcdir)/../test/,,$(TEST_FILES_PATCHES)))
 nobase_dist_docDATA_INSTALL = $(install_sh_DATA)
 am__nobase_dist_template_DATA_DIST = templates/README \
-	templates/servers/Funambol.ini \
-	templates/servers/ScheduleWorld.ini \
+	templates/clients/SyncEvolution.ini \
+	templates/clients/phone/nokia/S40/7210c.ini \
 	templates/clients/phone/nokia/S60/N85.ini \
 	templates/clients/phone/nokia/maemo/n900.ini \
-	templates/clients/phone/nokia/S40/7210c.ini \
-	templates/clients/SyncEvolution.ini
+	templates/servers/Funambol.ini \
+	templates/servers/ScheduleWorld.ini
 nobase_dist_templateDATA_INSTALL = $(install_sh_DATA)
 serviceDATA_INSTALL = $(INSTALL_DATA)
 DATA = $(autostart_DATA) $(nobase_dist_doc_DATA) \
@@ -515,7 +515,7 @@ SYNCEVOLUTION_DEP = $(am__append_14)
 EXTRA_DIST = shlibs.local Makefile-gen.am $(service_in_files) \
 	$(SYNCEVO_DBUS_SERVER_SCRIPT_IN) \
 	$(SYNCEVO_DBUS_SERVER_DESKTOP_IN) $(am__append_15)
-TEMPLATE_FILES = templates/README templates/servers/Funambol.ini templates/servers/ScheduleWorld.ini templates/clients/phone/nokia/S60/N85.ini templates/clients/phone/nokia/maemo/n900.ini templates/clients/phone/nokia/S40/7210c.ini templates/clients/SyncEvolution.ini
+TEMPLATE_FILES = templates/README templates/clients/SyncEvolution.ini templates/clients/phone/nokia/S40/7210c.ini templates/clients/phone/nokia/S60/N85.ini templates/clients/phone/nokia/maemo/n900.ini templates/servers/Funambol.ini templates/servers/ScheduleWorld.ini
 templatedir = $(datadir)/syncevolution/
 CORE_SOURCES = $(am__append_16)
 

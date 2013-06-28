@@ -70,7 +70,8 @@ LIBSYNTHESIS_SOURCES=`find ${ENGINE_SOURCES} \
      syncapps/serverEngine_custom \
      sysync_SDK/DB_Interfaces/text_db \
      \( -name '*.cpp' -o -name '*.[ch]' \) |
-    grep -v -E -f EXCLUDE_FILES`
+    grep -v -E -f EXCLUDE_FILES |
+    sort`
 LIBSYNTHESIS_SOURCES=`echo $LIBSYNTHESIS_SOURCES`
 
 # files to be included in both libsynthesis and libsynthesissdk;
@@ -79,7 +80,8 @@ LIBSYNTHESIS_SOURCES=`echo $LIBSYNTHESIS_SOURCES`
 cat SERVER_FILES CLIENT_FILES EXTRA_FILES > EXCLUDE_FILES
 LIBSYNTHESISSDK_SOURCES_BOTH=`find sysync_SDK/Sources \
      \( -name '*.cpp' -o -name '*.c' \) |
-    grep -v -E -f EXCLUDE_FILES`
+    grep -v -E -f EXCLUDE_FILES |
+    sort`
 LIBSYNTHESISSDK_SOURCES_BOTH=`echo $LIBSYNTHESISSDK_SOURCES_BOTH`
 
 # files only needed in libsynthesissdk
@@ -87,19 +89,21 @@ cat SERVER_FILES CLIENT_FILES EXTRA_FILES > EXCLUDE_FILES
 LIBSYNTHESISSDK_SOURCES_ONLY=`find sysync_SDK/Sources \
      \( -name '*.cpp' -o -name '*.c' \) |
     grep -E -f SDK_FILES |
-    grep -v -E -f EXCLUDE_FILES`
+    grep -v -E -f EXCLUDE_FILES |
+    sort`
 LIBSYNTHESISSDK_SOURCES_ONLY=`echo $LIBSYNTHESISSDK_SOURCES_ONLY`
 
 # files needed in libsmltk
 LIBSMLTK_SOURCES=`find syncml_tk \
      \( -name '*.cpp' -o -name '*.[ch]' \) \
      \! \( -path syncml_tk/src/sml/\*/palm/\* -o \
-           -path syncml_tk/src/sml/\*/win/\* \)`
+           -path syncml_tk/src/sml/\*/win/\* \) |
+     sort`
 LIBSMLTK_SOURCES=`echo $LIBSMLTK_SOURCES`
 
 # header files required for using libsynthesissdk,
 # with "synthesis/" prefix
-LIBSYNTHESISSDK_HEADERS=`find sysync_SDK/Sources -name '*.h' | sed -e 's;.*/;synthesis/;'`
+LIBSYNTHESISSDK_HEADERS=`find sysync_SDK/Sources -name '*.h' | sed -e 's;.*/;synthesis/;' | sort`
 LIBSYNTHESISSDK_HEADERS=`echo $LIBSYNTHESISSDK_HEADERS`
 
 sed -e "s;@LIBSYNTHESIS_SOURCES@;$LIBSYNTHESIS_SOURCES;" \
