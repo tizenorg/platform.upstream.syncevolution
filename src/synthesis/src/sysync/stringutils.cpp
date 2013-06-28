@@ -489,7 +489,9 @@ sInt16 HexStrToUShort(const char *aStr, uInt16 &aShort, sInt16 aMaxDigits)
   char c;
   sInt16 n=0;
   aShort=0;
-  while (aStr && (c=*aStr++) && (n<aMaxDigits)) {
+  //firstly check aMaxDigits to avoid accessing invalid value of 'aStr'
+  //This will cause a memory warning checked by valgrind
+  while ((n<aMaxDigits) && aStr && (c=*aStr++)) {
     if (!isxdigit(c)) break;
     aShort<<=4;
     aShort+=(toupper(c)-0x30);

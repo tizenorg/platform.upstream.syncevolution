@@ -54,7 +54,7 @@ extern "C" void SessionLogDebugBlock(void *aCallbackRef, const char *aTag, const
   if (aCallbackRef) {
     bool collapsed=false;
     if (aTag && aTag[0]=='-') { aTag++; collapsed=true; }
-    static_cast<TSyncSession *>(aCallbackRef)->getDbgLogger()->DebugOpenBlock(aTag,aDesc,collapsed,"%s",aAttrText);
+    static_cast<TSyncSession *>(aCallbackRef)->getDbgLogger()->DebugOpenBlock(TDBG_LOCATION_NONE aTag,aDesc,collapsed,"%s",aAttrText);
   }
 } // SessionLogDebugBlock
 
@@ -63,7 +63,7 @@ extern "C" void SessionLogDebugEndBlock(void *aCallbackRef, const char *aTag)
 {
   if (aCallbackRef) {
     if (aTag && aTag[0]=='-') aTag++;
-    static_cast<TSyncSession *>(aCallbackRef)->getDbgLogger()->DebugCloseBlock(aTag);
+    static_cast<TSyncSession *>(aCallbackRef)->getDbgLogger()->DebugCloseBlock(TDBG_LOCATION_NONE aTag);
   }
 } // SessionLogDebugEndBlock
 

@@ -632,7 +632,7 @@ const TBuiltInFuncDef ODBCAgentAndDSFuncDefs[] = {
 };
 
 
-#ifdef BASED_ON_BINFILE_CLIENT
+#ifdef BINFILE_ALWAYS_ACTIVE
 
 // Binfile based version just has the SQL access functions
 

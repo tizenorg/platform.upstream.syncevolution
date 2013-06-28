@@ -73,7 +73,7 @@ public:
           fldP->setAsInteger(fint);
           return fldP;
         }
-      }    
+      }
     }
     // no such field, return an unassigned field
     fldP=newItemField(fty_none, aFuncContextP->getSessionZones());
@@ -303,6 +303,8 @@ void TBinfileDSConfig::initTarget(
   bool aEnabled // enabled?
 )
 {
+  //set to zeros to avoid memory warnings
+  memset(&aTarget, 0, sizeof(aTarget));
   // link to the profile
   aTarget.remotepartyID=aRemotepartyID;
   // enabled or not?
@@ -602,11 +604,12 @@ bool TBinfileImplDS::openChangeLog(void)
   changelogname += getName();
   changelogname += CHANGELOG_DB_SUFFIX;
   fChangeLog.setFileInfo(changelogname.c_str(),CHANGELOG_DB_VERSION,CHANGELOG_DB_ID,sizeof(TChangeLogEntry));
-  if (fChangeLog.open(sizeof(TChangeLogHeader),&fChgLogHeader,changelogUpdateFunc)!=BFE_OK) { 
+  if (fChangeLog.open(sizeof(TChangeLogHeader),&fChgLogHeader,changelogUpdateFunc)!=BFE_OK) {
     // create new change log or overwrite incompatible one
     // - init changelog header fields
     fChgLogHeader.modcount=0;
-  	AssignCString(fChgLogHeader.lastChangeCheckIdentifier,NULL,0);
+    //set all bytes to zero to avoid memory warnings
+    memset(fChgLogHeader.lastChangeCheckIdentifier, 0, changeIndentifierMaxLen);
   	fChgLogHeader.lastChangeCheck = noLinearTime;
     // - create new changelog
     fChangeLog.create(sizeof(TChangeLogEntry),sizeof(TChangeLogHeader),&fChgLogHeader,true);
@@ -708,6 +711,8 @@ localstatus TBinfileImplDS::changeLogPreflight(bool &aValidChangelog)
   uInt32 seen=0;
   uInt32 logindex;
   TChangeLogEntry newentry;
+  //set zeros to avoid memory warnings
+  memset(&newentry, 0, sizeof(newentry));
   TSyncItem *itemP = NULL;
   localid_out_t itemLocalID;
   uInt16 dataCRC = 0;
@@ -785,9 +790,7 @@ localstatus TBinfileImplDS::changeLogPreflight(bool &aValidChangelog)
   while (foundone) {
     // report event to allow progress display, use existing number as approx for total # of items
     ++seen;
-    #ifdef PROGRESS_EVENTS
-    fSessionP->getSyncAppBase()->NotifyProgressEvent(pev_preparing,getDSConfig(),seen,numexistinglogentries);
-    #endif
+    DB_PROGRESS_EVENT(this,pev_preparing,seen,numexistinglogentries,0);
     // process now
     bool chgentryexists=false; // none found yet
     // - get local ID
@@ -802,9 +805,9 @@ localstatus TBinfileImplDS::changeLogPreflight(bool &aValidChangelog)
     }
     else {
       // without CRC, we have got the ID into itemLocalID already
-      localid=LOCALID_OUT_TO_IN(itemLocalID);    
+      localid=LOCALID_OUT_TO_IN(itemLocalID);
     }
-    #endif // not RECORDHASH_FROM_DBAPI    
+    #endif // not RECORDHASH_FROM_DBAPI
     // show item info found in DB
     #ifdef SYDEBUG
     string sl;
@@ -814,7 +817,7 @@ localstatus TBinfileImplDS::changeLogPreflight(bool &aValidChangelog)
       PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_EXOTIC,("changeLogPreflight: seen=%ld, NOC=%ld : localid=%s, dataCRC=0x%04hX",(long)seen,(long)fNumberOfLocalChanges,sl.c_str(),dataCRC));
       #else
       PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_EXOTIC,("changeLogPreflight: seen=%ld, NOC=%ld : localid=%s",(long)seen,(long)fNumberOfLocalChanges,sl.c_str()));
-      #endif    
+      #endif
     }
     else {
       PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI,(
@@ -899,7 +902,7 @@ localstatus TBinfileImplDS::changeLogPreflight(bool &aValidChangelog)
           existingentries[logindex].modcount=fCurrentModCount; // update modification count
           // this is a local change for this session
           fNumberOfLocalChanges++; // for suspend: those that detect a change here were modified AFTER last suspend, so always count them
-          
+
         }
       }
       else {
@@ -1011,7 +1014,7 @@ localstatus TBinfileImplDS::changeLogPreflight(bool &aValidChangelog)
     }
   }
   #endif
-  fChangeLog.updateRecord(0,existingentries,numexistinglogentries);  
+  fChangeLog.updateRecord(0,existingentries,numexistinglogentries);
   aValidChangelog=true;
   DEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_EXOTIC,("changeLogPreflight: seen=%ld, fNumberOfLocalChanges=%ld",(long)seen,(long)fNumberOfLocalChanges));
 done:
@@ -1065,7 +1068,7 @@ localstatus TBinfileImplDS::loadTarget(bool aCreateIfMissing, cAppCharP aRemoteD
       uInt32 ti;
       targetsBinFileP->newRecord(ti,&fTarget);
       fTargetIndex = ti;
-      return LOCERR_OK; // created and loaded now    
+      return LOCERR_OK; // created and loaded now
     }
     return 404; // not found
   }
@@ -1092,7 +1095,7 @@ sInt32 TBinfileImplDS::getNumberOfChanges(void)
   // otherwise, let base class handle it (server and client w/o binfile)
   return inherited::getNumberOfChanges();
 }
- 
+
 
 /// sync login (into this database)
 /// @note might be called several times (auth retries at beginning of session)
@@ -1118,10 +1121,10 @@ localstatus TBinfileImplDS::implMakeAdminReady(
   fPreviousSyncTime=0;
   fFirstTimeSync=false; // assume not first time
 
-  
+
   #if !defined(PRECONFIGURED_SYNCREQUESTS)
   // when sync params are in binfiles, target must be present by now - make sure it is loaded
-	sta=loadTarget(false); 
+	sta=loadTarget(false);
   // target info must already be present by now (loaded at session's SelectProfile)
   if (sta!=LOCERR_OK || fTargetIndex<0) {
   	// problem loading target record
@@ -1175,7 +1178,7 @@ localstatus TBinfileImplDS::implMakeAdminReady(
       fPreviousSuspendModCount = 0;
       // - no compare references yet
       fPreviousToRemoteSyncCmpRef = noLinearTime;
-      fPreviousSuspendIdentifier.erase(); 
+      fPreviousSuspendIdentifier.erase();
     }
     else {
       // Get token and date representing last update of this changelog (last preflight)
@@ -1196,7 +1199,7 @@ localstatus TBinfileImplDS::implMakeAdminReady(
       fPreviousSuspendIdentifier = fPreviousToRemoteSyncIdentifier; // DB on top of binfile only needs one reference time, which is the last changelog check time.
 	    PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI,("- last preflight update (fPreviousToRemoteSyncIdentifier) is '%s'",fPreviousToRemoteSyncIdentifier.c_str()));
       #endif // TARGETS_DB_VERSION>=6
-  	}  
+  	}
   }
   // get pending maps anyway (even if not resuming there might be pending maps)
   if(openPendingMaps()) {
@@ -1313,7 +1316,7 @@ bool TBinfileImplDS::testFilters(TMultiFieldItem *aItemP)
 void TBinfileImplDS::implMarkOnlyUngeneratedForResume(void)
 {
 	if (!binfileDSActive()) return; // must be active when called at all
-  
+
   TChangeLogEntry *chglogP;
 
   // simply return aEof when just refreshing
@@ -2034,7 +2037,7 @@ void TBinfileImplDS::dsConfirmItemOp(TSyncOperation aSyncOp, cAppCharP aLocalID,
 localstatus TBinfileImplDS::implSaveResumeMarks(void)
 {
 	if (!binfileDSActive()) return LOCERR_WRONGUSAGE; // must be active when called at all
-  
+
   // update modcount reference of last suspend
   fPreviousSuspendModCount = fCurrentModCount;
   // save admin data now
@@ -2222,7 +2225,7 @@ localstatus TBinfileImplDS::SaveAdminData(bool aSessionFinished, bool aSuccessfu
   fTarget.lastChangeCheck=fPreviousToRemoteSyncCmpRef;
   #if TARGETS_DB_VERSION>=6
   // - identifiers (tokens for StartDataRead)
-  AssignCString(fTarget.dummyIdentifier1,fPreviousToRemoteSyncIdentifier.c_str(),remoteAnchorMaxLen); // former lastSyncIdentifier 
+  AssignCString(fTarget.dummyIdentifier1,fPreviousToRemoteSyncIdentifier.c_str(),remoteAnchorMaxLen); // former lastSyncIdentifier
   AssignCString(fTarget.dummyIdentifier2,NULL,remoteAnchorMaxLen); // former lastSuspendIdentifier, not needed, make empty
   // store remote datastore's display name (is empty if we haven't got one from the remote via devInf)
   if (getRemoteDatastore()) {
@@ -2249,6 +2252,7 @@ localstatus TBinfileImplDS::SaveAdminData(bool aSessionFinished, bool aSuccessfu
     // make sure that resume alert codes of all other profile's targets for this datastore are erased
     // (because we have only a single changelog (markforresume flags!) and single pendingmap+pendingitem files)
     TBinfileDBSyncTarget otherTarget;
+    memset(&otherTarget, 0, sizeof(otherTarget));
     for (sInt32 ti=0; ti<sInt32(targetsBinFileP->getNumRecords()); ti++) {
       if (ti!=fTargetIndex) {
         // get that target

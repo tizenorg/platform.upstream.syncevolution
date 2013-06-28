@@ -80,6 +80,9 @@ class TDLL : public TAccess
 
 
 // --------------------------------------------------------------------------
+/*! General error reporting */
+void Report_Error( cAppCharP aText, ... );
+
 /*! Error output, if <aModName>  can't be found */
 void ModuleConnectionError( void* /* ref */, cAppCharP aModName );
 

@@ -365,11 +365,16 @@ class TDB_Api
     //! This function gets the stored information about the record with the four paramters:
     //! <sDevKey>, <sUsrKey> (taken from the session context)
     //! <aLocDB>,  <aRemDB>.
-    TSyError LoadAdminData( cAppCharP aLocDB,
-                            cAppCharP aRemDB, TDB_Api_Str &adminData );
+    //! And the same for AsKey (will be activated with ADMIN_AS_KEY)
+    TSyError LoadAdminData     ( cAppCharP aLocDB,
+                                 cAppCharP aRemDB, TDB_Api_Str &adminData );
+    TSyError LoadAdminDataAsKey( cAppCharP aLocDB,
+                                 cAppCharP aRemDB,       KeyH   aItemKey  );
 
     //! This functions stores the new <adminData> for this context
-    TSyError SaveAdminData( cAppCharP adminData );
+    //! And the same for AsKey (will be activated with ADMIN_AS_KEY)
+    TSyError SaveAdminData      ( cAppCharP adminData );
+    TSyError SaveAdminData_AsKey( KeyH      aItemKey  );
 
 
     // --- Map table handling

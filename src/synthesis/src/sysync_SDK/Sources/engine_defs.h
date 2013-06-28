@@ -207,9 +207,11 @@ enum TProfileFlagsEnum {
   /** we should log the next session (not handled in engine!) */
   PROFILEFLAG_LOGNEXTSYNC = 0x00000001,
   /** run session in legacy mode */
-  PROFILEFLAG_LEGACYMODE = 0x00000002,
+  PROFILEFLAG_LEGACYMODE  = 0x00000002,
   /** run session in lenient mode */
-  PROFILEFLAG_LENIENTMODE = 0x00000004
+  PROFILEFLAG_LENIENTMODE = 0x00000004,
+  /** we should keep msg logs of the next session (not handled in engine!) */
+  PROFILEFLAG_MSGNEXTSYNC = 0x00000008
 };
 
 

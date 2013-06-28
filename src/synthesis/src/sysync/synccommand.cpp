@@ -3121,7 +3121,7 @@ bool TMapCommand::handleStatus(TStatusCommand *aStatusCmdP)
       while (mapItemListP) {
         mapItemP=mapItemListP->mapItem;
         if (mapItemP) {
-          // call datastore to mark this map for pending (need to be sent again in next session / resume)
+          // call datastore to mark this map confirmed (no need to be sent again in next session / resume)
           fLocalDataStoreP->engMarkMapConfirmed(
             smlSrcTargLocURIToCharP(mapItemP->source), // source for outgoing mapitem is localID
             smlSrcTargLocURIToCharP(mapItemP->target) // target for outgoing mapitem is remoteID

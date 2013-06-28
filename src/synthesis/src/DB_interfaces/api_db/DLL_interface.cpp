@@ -20,6 +20,9 @@
 #include "SDK_support.h"
 #include "DLL_interface.h"
 
+#ifdef ANDROID
+  #include "android/log.h"
+#endif
 
 #ifdef SYSYNC_ENGINE
   #include "syncappbase.h"
@@ -63,10 +66,37 @@ bool TDLL::Disconnect() {
 
 
 // ---- Handler for DLL connection reporting ------------------------
+static void ReportPuts( cAppCharP aText )
+{
+  #ifdef ANDROiD
+    __android_log_write( ANDROID_LOG_DEBUG, "ReportError", aText );
+  #else
+    ConsolePrintf( aText );
+  #endif
+} // ReportPuts
+
+
+void Report_Error( cAppCharP aText, ... )
+{
+  const sInt16 maxmsglen=1024;
+  char msg[maxmsglen];
+  va_list args;
+
+  msg[0]='\0';
+  va_start(args, aText);
+  // assemble the message string
+  vsnprintf(msg, maxmsglen, aText, args);
+  va_end(args);
+
+  // write the string
+  ReportPuts( msg );
+}
+
+
 void ModuleConnectionError( void* /* ref */, cAppCharP aModName )
 {
   string               s= "Can't connect to library "  + Apo(  aModName ) + ".";
-  ConsolePrintf      ( s.c_str() );
+  Report_Error       ( s.c_str() );
 } // ModuleConnectionError
 
 
@@ -75,7 +105,7 @@ void FuncConnectionError( void* /* ref */, cAppCharP aFuncName, cAppCharP aModNa
   string               s= "Can't connect to function " + Apo( aFuncName );
   if (*aModName!='\0') s+= " of module "               + Apo(  aModName );
                        s+= ".";
-  ConsolePrintf      ( s.c_str() );
+  Report_Error       ( s.c_str() );
 } // FuncConnectionError
 
 

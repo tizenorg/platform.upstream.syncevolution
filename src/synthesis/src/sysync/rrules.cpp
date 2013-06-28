@@ -482,7 +482,10 @@ bool internalToRRULE2(
   TDebugLogger *aLogP
 )
 {
-  LOGDEBUGPRINTFX(aLogP,DBG_GEN,("InternalToRRULE2() need to analyze freq %c and freqmod %c", freq, freqmod));
+  LOGDEBUGPRINTFX(aLogP,DBG_EXOTIC+DBG_GEN,(
+  	"InternalToRRULE2(): expanding freq=%c, freqmod=%c, interval=%hd, firstmask=%llX, lastmask=%llX",
+    freq, freqmod, interval, (long long)firstmask, (long long)lastmask
+  ));
 
   // Now do the conversion
   string s;
@@ -829,19 +832,6 @@ incompat:
 } // RRULE1toInternal
 
 
-// Check if a combined BYDAY and BYMONTH, where BYMONTH is one entry and equal to <startmonth>
-static bool DayMonthCombi( char freq, string byday,
-                                      string bymonth, sInt16 startmonth )
-{
-  return freq=='Y'    &&                      // it is yearly,
-         startmonth>0 &&                      // start month of <dtstart> available ...
-         startmonth==atoi(bymonth.c_str()) && // ... and aequivalent to bymonth item
-         !byday.empty();                      // and byday item available as well
-} // DayMonthCombi
-
-
-
-
 /// @brief calculate end date of RRULE when count is specified
 /// @return true if repeating, false if not repeating at all
 /// @note returns until=noLinearTime for endless repeat (count=0)
@@ -878,7 +868,7 @@ bool endDateFromCount(
   // check if daily
   if (freq == 'D') {
   	// Daily recurrence is same for occurrence and interval counts
-    LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() daily calc - same in all cases"));
+    LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("endDateFromCount: daily calc - same in all cases"));
     until = dtstart+(ivrep*linearDateToTimeFactor);
     return true;
   }
@@ -888,13 +878,13 @@ bool endDateFromCount(
     switch (freq)
     {
       case 'W':
-        LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() simple weekly calc"));
+        LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("endDateFromCount: simple weekly calc"));
         // v1 end date calc, we need to take into account possible masks, so result must be end of interval, not just start date+interval
         // weekly: end date is last day of target week
         until=dtstart+((ivrep*DaysOfWeek-startwday+6)*linearDateToTimeFactor);
         return true;
       case 'M':
-        LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() simple monthly calc"));
+        LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("endDateFromCount: simple monthly calc"));
         startmonth--; // make 0 based
         startmonth += ivrep+1; // add number of months plus one (as we want next month, and then go one day back to last day of month)
         startyear += startmonth / 12; // update years
@@ -903,7 +893,7 @@ bool endDateFromCount(
         until = (date2lineardate(startyear,startmonth,1)-1)*linearDateToTimeFactor+starttime;
         return true;
       case 'Y':
-        LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() simple yearly calc"));
+        LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("endDateFromCount: simple yearly calc"));
         // yearly: end date is end of end year
         until = (date2lineardate(startyear+ivrep,12,31))*linearDateToTimeFactor+starttime;
         return true;
@@ -919,7 +909,7 @@ bool endDateFromCount(
     switch (freq)
     {
       case 'W':
-        LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() full expansion weekly calc"));
+        LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("endDateFromCount: full expansion weekly calc"));
       	// - make sure we have a mask
       	if (firstmask==0 && lastmask==0)
         	firstmask = 1<<startwday; // set start day in mask
@@ -944,7 +934,7 @@ bool endDateFromCount(
       case 'M':
         if (freqmod=='W') {
           // monthly by weekday
-          LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() full expansion of monthly by weekday"));
+          LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("endDateFromCount: full expansion of monthly by weekday"));
           // - make sure we have a mask
           if (firstmask==0 && lastmask==0)
 						firstmask = (uInt64)1<<(startwday+7*((startday-1)/7)); // set start day in mask
@@ -983,7 +973,7 @@ bool endDateFromCount(
         }
         else {
           // everything else, including no modifier, is treated as monthly by monthday
-          LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() full expansion of monthly by monthday"));
+          LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("endDateFromCount: full expansion of monthly by monthday"));
           // - make sure we have a mask
           if (firstmask==0 && lastmask==0)
 						firstmask = (uInt64)1<<(startday-1); // set start day in mask
@@ -1017,7 +1007,7 @@ bool endDateFromCount(
       case 'Y':
         if (freqmod=='M') {
         	// Yearly by month
-          LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() full expansion of yearly by month"));
+          LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("endDateFromCount: full expansion of yearly by month"));
           // - make sure we have a mask
           if (firstmask==0 && lastmask==0)
 						firstmask = (uInt64)1<<(startmonth-1); // set start month in mask
@@ -1058,7 +1048,7 @@ bool endDateFromCount(
         }
         else {
           // everything else, including no modifier, is treated as yearly on the same date (multiple occurrences per year not supported)
-          LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() full expansion of yearly by yearday - NOT SUPPORTED with more than one day"));
+          LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("endDateFromCount: full expansion of yearly by yearday - NOT SUPPORTED with more than one day"));
 	        until = (date2lineardate(startyear+ivrep,startmonth,startday))*linearDateToTimeFactor+starttime;
         }
         return true;
@@ -1680,12 +1670,13 @@ bool RRULE2toInternal(
   fieldinteger_t &lastmask,
   lineartime_t &until,
   timecontext_t &untilcontext,
-  TDebugLogger *aLogP
+  TDebugLogger *aLogP,
+  lineartime_t *aNewStartP
 )
 {
   #ifdef SYDEBUG
   string abc;
-  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() need to analyze %s", aText));
+  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal(): start analyzing '%s'", aText));
   #endif
 
   string temp;
@@ -1698,7 +1689,8 @@ bool RRULE2toInternal(
   string::size_type startIndex = 0;
   uInt16 cnt = 0;
   size_t pos;
-  bool calculateEndDate = false;
+  bool calculateEndDate = false; // indicator that end date calc is required as last step
+  bool calculateFirstOccurrence = false; // indicator that aNewStartP should be adjusted to show the first occurrence
   string key,value,byday,bymonthday,bymonth;
 
   // get elements of start point
@@ -1710,191 +1702,166 @@ bool RRULE2toInternal(
   p=aText;
   int start = 0;
   // get freq
-  if (!getNextDirective(temp, p, start))
-  {
+  if (!getNextDirective(temp, p, start)) {
     // failed
     goto incompat;
   }
   // analyze freq
-  if (temp == "FREQ=YEARLY")
-  {
+  if (temp == "FREQ=YEARLY") {
     freq='Y';
   }
-  else if (temp == "FREQ=MONTHLY")
-  {
+  else if (temp == "FREQ=MONTHLY") {
     freq='M';
   }
-  else if (temp == "FREQ=WEEKLY")
-  {
+  else if (temp == "FREQ=WEEKLY") {
     freq='W';
   }
-  else if (temp == "FREQ=DAILY")
-  {
+  else if (temp == "FREQ=DAILY") {
     freq='D';
   }
-  else
-  {
+  else {
     goto incompat;
   }
 
-  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() found frequency %s which maps to freq %c", temp.c_str(), freq));
+  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- found frequency %s which maps to freq %c", temp.c_str(), freq));
 
   // init vars
   cnt = 0;
-  // indicator that end date calc is required as last step
-  calculateEndDate = false;
+  
   // set interval to 1
   interval = 1;
   freqmod = ' ';
   firstmask = 0;
   lastmask = 0;
   // get next directives
-  while (getNextDirective(temp, p, start))
-  {
-
-    LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() found next directive %s", temp.c_str()));
-
+  while (getNextDirective(temp, p, start)) {
+    LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- found next directive %s", temp.c_str()));
     // split
     pos = temp.find("=");
-    if (pos == string::npos || pos == 0 || pos == (temp.length() - 1))
-    {
+    if (pos == string::npos || pos == 0 || pos == (temp.length() - 1)) {
       goto incompat;
     }
     key = temp.substr(0, pos);
     value = temp.substr(pos + 1, temp.length() - 1);
-
-    LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() extracted key/value %s/%s", key.c_str(), value.c_str()));
-
+    LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- extracted key/value %s/%s", key.c_str(), value.c_str()));
     // check for until
-    if (key == "UNTIL")
-    {
+    if (key == "UNTIL") {
       if (ISO8601StrToTimestamp(value.c_str(), until, untilcontext)==0)
-      {
-        goto incompat;
-      }
+        goto incompat; // invalid end date
       calculateEndDate = false;
     }
     // check for count
-    else if (key == "COUNT")
-    {
+    else if (key == "COUNT") {
       // convert count
-      for (int i = 0, ii = value.length(); i < ii; ++i)
-      {
-        if (isdigit(value[i]))
-        {
+      for (int i = 0, ii = value.length(); i < ii; ++i) {
+        if (isdigit(value[i])) {
           cnt = cnt * 10 + ((value[i]) - '0');
         }
       }
       // check if no count or one only
       if (cnt <= 1)
-      {
-        goto norep;
-      }
-      // recalc enddate
+        goto norep; // no repetition
+      // we need to recalculate the enddate from count
       calculateEndDate = true;
     }
     // check for interval
-    else if (key == "INTERVAL")
-    {
+    else if (key == "INTERVAL") {
       // convert interval
       interval = 0;
-      for (int i = 0, ii = value.length(); i < ii; ++i)
-      {
-        if (isdigit(value[i]))
-        {
+      for (int i = 0, ii = value.length(); i < ii; ++i) {
+        if (isdigit(value[i])) {
           interval = interval * 10 + ((value[i]) - '0');
         }
       }
       if (interval == 0)
-      {
-        goto incompat;
-      }
+        goto incompat; // invalid interval
     }
-    // just copy all supported byxxx rules into vars
+    // just copy all supported BYxxx rules into vars
     else if (key == "BYDAY")
-    {
       byday = value;
-    }
     else if (key == "BYMONTHDAY")
-    {
       bymonthday = value;
-    }
     else if (key == "BYMONTH")
-    {
       bymonth = value;
-    }
     // ignore week start
-    else if (key == "WKST")
-    {
+    else if (key == "WKST") {
+    	// nop
     }
     else
-    {
-      goto incompat;
-    }
+      goto incompat; // unknown directive
   } // while
 
   #ifdef SYDEBUG
-  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() dtstart weekday is %i", startwday));
-  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() extracted interval %u", interval));
-  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() extracted interval (2nd time) %u", interval));
-  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() extracted count %u", cnt));
-  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() end date calc required? %s", calculateEndDate ? "true" : "false"));
-  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() extracted byday %s", byday.c_str()));
-  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() extracted bymonthday %s", bymonthday.c_str()));
-  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() extracted bymonth %s", bymonth.c_str()));
+  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- dtstart weekday is %i", startwday));
+  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- extracted interval %u", interval));
+  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- extracted interval (2nd time) %u", interval));
+  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- extracted count %u", cnt));
+  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- end date calc required? %s", calculateEndDate ? "true" : "false"));
+  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- extracted byday %s", byday.c_str()));
+  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- extracted bymonthday %s", bymonthday.c_str()));
+  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- extracted bymonth %s", bymonth.c_str()));
   TimestampToISO8601Str(abc,until,startcontext,false,false);
-  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() extracted until %s", abc.c_str()));
+  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- extracted until %s", abc.c_str()));
   #endif
 
-  if (DayMonthCombi( freq, byday,bymonth,startmonth )) {
-    freq    = 'M';         // a different model will be chosen for this case,
-    interval= 12*interval; // which is in fact aequivalent
-    bymonth = "";
-  } // if
-
+	// Generally, we only support one BYxxx, not combinations. However, FREQ=YEARLY + BYMONTH + BYDAY is common
+  // to express start and end times of DST in VTIMEZONEs, so we convert these into equivalent FREQ=MONTHLY
+	if (freq=='Y' && !byday.empty() && !bymonth.empty() && bymonth.find(",")==string::npos) {
+  	// yearly by (single!) month and by day
+    // - get month as indicated by BYMONTH
+    sInt16 newStartMonth = 0;
+    if (StrToShort(bymonth.c_str(), newStartMonth)>0 && newStartMonth) {
+      // - check if BYMONTH is just redundant and references same month as start date
+      bool convertToMonthly = startmonth>0 && startmonth==newStartMonth;
+      if (!convertToMonthly && aNewStartP) {
+        // not redundant, but we can return a new start date
+        convertToMonthly = true;
+        // calculate the new start date
+        startmonth = newStartMonth;
+        dtstart = date2lineartime(startyear, startmonth, startday) + lineartime2timeonly(dtstart);
+			  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- moved recurrence origin to %04hd-%02hd-%02hd",startyear, startmonth, startday));
+        // pass it back to caller
+        calculateFirstOccurrence = true; // need to fine tune at the end
+        *aNewStartP = dtstart;
+      }
+      if (convertToMonthly) {
+			  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- converted FREQ=YEARLY BYMONTH into MONTHLY"));
+        freq = 'M'; // convert from YEARLY to MONTHLY
+        interval = 12*interval; // but with 12 months interval -> equivalent
+        bymonth.erase(); // forget BYMONTH clause
+      }
+    }
+	} // if FREQ=YEARLY + BYMONTH + BYDAY
   // check freq
   endIndex = 0;
   startIndex = 0;
-  switch (freq)
-  {
+  switch (freq) {
     case 'D' :
       // make weekly if byday and nothing else is set
-      if (!(byday == "") && bymonth == "" && bymonthday == "")
-      {
+      if (!(byday == "") && bymonth == "" && bymonthday == "") {
         freq='W';
         freqmod='W';
         // search separator ','
-        while ((endIndex = byday.find(",", startIndex)) != string::npos)
-        {
+        while ((endIndex = byday.find(",", startIndex)) != string::npos) {
           // set masks for the specific day
           if (!setWeekday(byday, firstmask, lastmask, startIndex, endIndex, false))
-          {
             goto incompat;
-          }
           // set new start
           startIndex = endIndex + 1;
           if (startIndex >= byday.length())
-          {
             break;
-          }
         }
         // check if anything is behind endindex
-        if (endIndex == string::npos && startIndex < byday.length())
-        {
+        if (endIndex == string::npos && startIndex < byday.length()) {
           endIndex = byday.length();
           if (!setWeekday(byday, firstmask, lastmask, startIndex, endIndex, false))
-          {
             goto incompat;
-          }
         }
       }
-      else
-      {
+      else {
         // we don't support byday and anything else at the same time
         if (!byday.empty())
-        {
           goto incompat;
-        }
         // ok, no mod
         freqmod = ' ';
       }
@@ -1902,167 +1869,133 @@ bool RRULE2toInternal(
     case 'W' :
       // we don't support month or monthday within weekly
       if (!bymonth.empty() || !bymonthday.empty())
-      {
         goto incompat;
-      }
       // set weekly and days
       freqmod='W';
-      if (!byday.empty())
-      {
+      if (!byday.empty()) {
         // search separator ','
-        while ((endIndex = byday.find(",", startIndex)) != string::npos)
-        {
+        while ((endIndex = byday.find(",", startIndex)) != string::npos) {
           // set masks for the specific day
           if (!setWeekday(byday, firstmask, lastmask, startIndex, endIndex, false))
-          {
             goto incompat;
-          }
           // set new start
           startIndex = endIndex + 1;
           if (startIndex >= byday.length())
-          {
             break;
-          }
         }
         // check if anything is behind endindex
-        if (endIndex == string::npos && startIndex < byday.length())
-        {
+        if (endIndex == string::npos && startIndex < byday.length()) {
           endIndex = byday.length();
           if (!setWeekday(byday, firstmask, lastmask, startIndex, endIndex, false))
-          {
             goto incompat;
-          }
         }
       }
       break;
     case 'M' :
       // we don't support by month in monthly
       if (!bymonth.empty())
-      {
         goto incompat;
-      }
       // we don't support byday and bymonthday at the same time
       if (!byday.empty() && !bymonthday.empty())
-      {
         goto incompat;
-      }
       // check if bymonthday
-      if (!bymonthday.empty())
-      {
+      if (!bymonthday.empty()) {
         freqmod = 'D';
         // search separator ','
-        while ((endIndex = bymonthday.find(",", startIndex)) != string::npos)
-        {
+        while ((endIndex = bymonthday.find(",", startIndex)) != string::npos) {
           // set masks for the specific day
           if (!setMonthDay(bymonthday, firstmask, lastmask, startIndex, endIndex))
-          {
             goto incompat;
-          }
           // set new start
           startIndex = endIndex + 1;
           if (startIndex >= bymonthday.length())
-          {
             break;
-          }
         }
         // check if anything is behind endindex
-        if (endIndex == string::npos && startIndex < bymonthday.length())
-        {
+        if (endIndex == string::npos && startIndex < bymonthday.length()) {
           endIndex = bymonthday.length();
           if (!setMonthDay(bymonthday, firstmask, lastmask, startIndex, endIndex))
-          {
             goto incompat;
-          }
         }
       }
       // or if by weekday
-      else if (!byday.empty())
-      {
+      else if (!byday.empty()) {
         freqmod = 'W';
         // search separator ','
-        while ((endIndex = byday.find(",", startIndex)) != string::npos)
-        {
+        while ((endIndex = byday.find(",", startIndex)) != string::npos) {
           // set masks for the specific day
           if (!setWeekday(byday, firstmask, lastmask, startIndex, endIndex, true))
-          {
             goto incompat;
-          }
           // set new start
           startIndex = endIndex + 1;
           if (startIndex >= byday.length())
-          {
             break;
-          }
         }
         // check if anything is behind endindex
-        if (endIndex == string::npos && startIndex < byday.length())
-        {
+        if (endIndex == string::npos && startIndex < byday.length()) {
           endIndex = byday.length();
           if (!setWeekday(byday, firstmask, lastmask, startIndex, endIndex, true))
-          {
             goto incompat;
-          }
         }
       }
-      else
-      {
+      else {
         // fine, no mod
         freqmod = ' ';
       }
       break;
     case 'Y' :
-      if (byday == "" ||
-         (byday.length() == 2 && byday[0] == RRULE_weekdays[startwday][0] &&
-                                 byday[1] == RRULE_weekdays[startwday][1]))
-      {
+      if (
+      	byday == "" ||
+        (byday.length() == 2 && byday[0] == RRULE_weekdays[startwday][0] &&
+        byday[1] == RRULE_weekdays[startwday][1])
+      ) {
         temp.erase();
         sprintf(s, "%hd", startday);
         temp.append(s);
-
-        LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() bymonthday checking %s against %s", temp.c_str(), bymonthday.c_str()));
-
-        if (bymonthday == "" || bymonthday == temp)
-        {
+        LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- bymonthday checking %s against %s", temp.c_str(), bymonthday.c_str()));
+        if (bymonthday == "" || bymonthday == temp) {
           temp.erase();
           sprintf(s, "%hd", startmonth);
           temp.append(s);
-
-          LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() bymonth checking %s against %s", temp.c_str(), bymonth.c_str()));
-
-          if (bymonth == "" || bymonth == temp)
-          {
+          LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- bymonth checking %s against %s", temp.c_str(), bymonth.c_str()));
+          if (bymonth == "" || bymonth == temp) {
             // this should usually be ' ' but the vcard conversion has a bug and requires 'M'
             freqmod = 'M';
             lastmask = 0;
             firstmask = 0;
           }
           else
-          {
             goto incompat;
-          }
         }
         else
-        {
           goto incompat;
-        }
       }
       else
-      {
         goto incompat;
-      }
       break;
     default :
-      LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() strange self-set freq %c, rule was %s", freq, aText));
+      LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- strange self-set freq %c, rule was %s", freq, aText));
       break;
   } // switch
 
   // calc end date, assumption/make sure: cnt > 1
-  if (calculateEndDate)
-  {
-    LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() calculating end date now"));
+  if (calculateEndDate) {
+    LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- calculating end date now"));
     if (!endDateFromCount(until,dtstart,freq,freqmod,interval,firstmask,lastmask,cnt,true,aLogP))
       goto norep;
     untilcontext = startcontext; // until is in same context as start
+  }
+  // calculate exact date of first occurrence
+  if (calculateFirstOccurrence && aNewStartP) {
+  	TRRuleExpandStatus es;
+    initRRuleExpansion(es, dtstart, freq, freqmod, interval, firstmask, lastmask, dtstart, noLinearTime);
+    dtstart = getNextOccurrence(es);
+		if (LOGDEBUGTEST(aLogP,DBG_PARSE+DBG_EXOTIC)) {
+    	sInt16 ny,nm,nd;
+		  lineartime2date(dtstart,&ny,&nm,&nd);
+		  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- adjusted first occurrence date to %04hd-%02hd-%02hd",ny, nm, nd));
+    }
+    *aNewStartP = dtstart;
   }
   // parsed ok, now store it
   goto store;
@@ -2077,9 +2010,9 @@ norep:
 store:
 
   #ifdef SYDEBUG
-  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() leaving with freq %c, freqmod %c, interval %hd, firstmask %ld, lastmask %ld", freq, freqmod, interval, (long)firstmask, (long)lastmask));
+  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- leaving with freq %c, freqmod %c, interval %hd, firstmask %ld, lastmask %ld", freq, freqmod, interval, (long)firstmask, (long)lastmask));
   TimestampToISO8601Str(abc,until,untilcontext,false,false);
-  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() extracted until %s", abc.c_str()));
+  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal(): extracted until '%s'", abc.c_str()));
   #endif
 
   return true; // ok
@@ -2125,63 +2058,49 @@ bool getNextDirective(
 )
 {
   // check
-  if (*aText == 0)
-  {
+  if (*aText == 0) {
     return false;
   }
-
+  
   char c;
   // check start
-  if (aStart > 0)
-  {
+  if (aStart > 0) {
     // skip to start
     for (int i = 0; (i < aStart) && ((c = *aText) != 0); ++i) aText++;
   }
-  else
-  {
+  else {
     // skip all spaces
-    while ((c = *aText) == ' ')
-    {
+    while ((c = *aText) == ' ') {
        aText++;
     }
   }
-
   // erase string, set counter
   aString.erase();
   uInt16 counter = 0;
-
   // append text
   c = *aText++; aStart++;
-  while (c != 0 && c != ';')
-  {
+  while (c != 0 && c != ';') {
     aString.append(1, c);
     ++counter;
     c = *aText++; aStart++;
   }
-
   // empty?
   if (counter == 0)
-  {
     return false;
-  }
-
   // remove trailing whitespace
   sInt16 i = counter - 1;
-  while (i >= 0 && aString[i] == ' ')
-  {
+  while (i >= 0 && aString[i] == ' ') {
     aString.erase(i, 1);
     --i;
   }
-
   // check length
   if (i == -1)
-  {
     return false;
-  }
-
   // fine
   return true;
 } // getNextDirective
+
+
 
 // maps the byday rule into the masks
 bool setWeekday(
@@ -2194,42 +2113,36 @@ bool setWeekday(
 )
 {
   // remove leading spaces
-  while (byday[startIndex] == ' ' && startIndex < endIndex)
-  {
+  while (byday[startIndex] == ' ' && startIndex < endIndex) {
     ++startIndex;
   }
   // check if digit or sign
-  if (isdigit(byday[startIndex]) || byday[startIndex] == '+' || byday[startIndex] == '-')
-  {
+  if (isdigit(byday[startIndex]) || byday[startIndex] == '+' || byday[startIndex] == '-') {
     // check if numbers before week days are allowed
-    if (!allowSpecial)
-    {
+    if (!allowSpecial) {
       return false;
     }
     // special treatment
     return setSpecialWeekday(byday, firstmask, lastmask, startIndex, endIndex);
   }
-
   // get index of weekday array
   sInt16 weekdayIndex = getWeekdayIndex(byday, startIndex);
-  if (weekdayIndex == -1)
-  {
+  if (weekdayIndex == -1) {
     return false;
   }
   // put into mask
-
   if (!allowSpecial) {
     firstmask |= ((uInt64)1<<weekdayIndex);
     return true;
   }
-
   for (int i= 0; i<WeeksOfMonth; i++) { // do it for all weeks of the month
     firstmask |= ((uInt64)1<<weekdayIndex);
     weekdayIndex+= DaysOfWeek;
   } // for
-
   return true;
 } // setWeekday
+
+
 
 // maps a special weekday (+/- int WEEKDAY) into the masks
 bool setSpecialWeekday(
@@ -2246,54 +2159,44 @@ bool setSpecialWeekday(
   sInt16 val = 0;
 
   // check sign
-  if (byday[startIndex] == '-')
-  {
+  if (byday[startIndex] == '-') {
     isNegative = true;
     ++startIndex;
   }
-  else if (byday[startIndex] == '+')
-  {
+  else if (byday[startIndex] == '+') {
     isNegative = false;
     ++startIndex;
   }
-  else
-  {
+  else {
     isNegative = false;
   }
   // convert to number
-  while (isdigit(byday[startIndex]))
-  {
+  while (isdigit(byday[startIndex])) {
     val = val * 10 + ((byday[startIndex++]) - '0');
   }
   // remove leading spaces
-  while (byday[startIndex] == ' ' && startIndex < endIndex)
-  {
+  while (byday[startIndex] == ' ' && startIndex < endIndex) {
     ++startIndex;
   }
-
   // make sure there's enough space
-  if (startIndex >= endIndex - 1)
-  {
+  if (startIndex >= endIndex - 1) {
     return false;
   }
   // get index for weekday
   sInt16 index = getWeekdayIndex(byday, startIndex);
-  if (index == -1)
-  {
+  if (index == -1) {
     return false;
   }
   // put into mask
-  if (isNegative)
-  {
+  if (isNegative) {
     lastmask |= (((uInt64)1<<index)<<((val - 1) * DaysOfWeek));
   }
-  else
-  {
+  else {
     firstmask |= (((uInt64)1<<index)<<((val - 1) * DaysOfWeek));
   }
-
   return true;
 } // setSpecialWeekday
+
 
 // returns the index within the rrule weekday array for the next
 // two chars of the supplied string starting at startIndex
@@ -2306,13 +2209,12 @@ sInt16 getWeekdayIndex(
   for (sInt16 i = 0; i < DaysOfWeek; ++i)
   {
     if (RRULE_weekdays[i][0] == byday[startIndex] && RRULE_weekdays[i][1] == byday[startIndex + 1])
-    {
       return i;
-    }
   }
   // not found
   return -1;
 } // getWeekdayIndex
+
 
 // set a day in month
 bool setMonthDay(
@@ -2329,42 +2231,33 @@ bool setMonthDay(
   sInt16 val=0;
 
   // check sign
-  if (bymonthday[startIndex] == '-')
-  {
+  if (bymonthday[startIndex] == '-') {
     isNegative = true;
     ++startIndex;
   }
-  else if (bymonthday[startIndex] == '+')
-  {
+  else if (bymonthday[startIndex] == '+') {
     isNegative = false;
     ++startIndex;
   }
-  else
-  {
+  else {
     isNegative = false;
   }
   // convert to number
-  for (string::size_type i = startIndex; i < endIndex; ++i)
-  {
-    if (isdigit(bymonthday[i]))
-    {
+  for (string::size_type i = startIndex; i < endIndex; ++i) {
+    if (isdigit(bymonthday[i])) {
       val = val * 10 + ((bymonthday[i]) - '0');
     }
-    else
-    {
+    else {
       return false;
     }
   }
   // put into mask
-  if (isNegative)
-  {
+  if (isNegative) {
     lastmask |= ((uInt64)1<<(val - 1));
   }
-  else
-  {
+  else {
     firstmask |= ((uInt64)1<<(val - 1));
   }
-
   return true;
 } // setMonthDay
 

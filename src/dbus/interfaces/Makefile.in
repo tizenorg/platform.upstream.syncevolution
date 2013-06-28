@@ -13,6 +13,7 @@
 # PARTICULAR PURPOSE.
 
 @SET_MAKE@
+
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
 pkglibdir = $(libdir)/@PACKAGE@
@@ -31,8 +32,17 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+@COND_DOC_TRUE@am__append_1 = syncevo-dbus-api-doc.html
+@COND_GUI_TRUE@am__append_2 = syncevo-marshal.c syncevo-marshal.h \
+@COND_GUI_TRUE@	syncevo-server-bindings.h syncevo-connection-bindings.h syncevo-session-bindings.h \
+@COND_GUI_TRUE@	syncevo-server-glue.h syncevo-connection-glue.h syncevo-session-glue.h \
+@COND_GUI_TRUE@	syncevo-server.xml syncevo-connection.xml syncevo-session.xml
+
+@COND_DOC_TRUE@am__append_3 = syncevo-server-doc.xml syncevo-connection-doc.xml syncevo-session-doc.xml \
+@COND_DOC_TRUE@	syncevo-dbus-api-doc.xml syncevo-dbus-api-doc.html
+
 subdir = src/dbus/interfaces
-DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
+DIST_COMMON = README $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4-repo/ax_boost_base.m4 \
 	$(top_srcdir)/m4/intltool.m4 $(top_srcdir)/configure.in
@@ -43,6 +53,15 @@ CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 SOURCES =
 DIST_SOURCES =
+am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
+am__vpath_adj = case $$p in \
+    $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
+    *) f=$$p;; \
+  esac;
+am__strip_dir = `echo $$p | sed -e 's|^.*/||'`;
+am__installdirs = "$(DESTDIR)$(docdir)"
+docDATA_INSTALL = $(INSTALL_DATA)
+DATA = $(doc_DATA)
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 ADDRESSBOOK_CFLAGS = @ADDRESSBOOK_CFLAGS@
@@ -182,6 +201,8 @@ POSUB = @POSUB@
 PO_IN_DATADIR_FALSE = @PO_IN_DATADIR_FALSE@
 PO_IN_DATADIR_TRUE = @PO_IN_DATADIR_TRUE@
 RANLIB = @RANLIB@
+RST2HTML = @RST2HTML@
+RST2MAN = @RST2MAN@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
@@ -266,12 +287,8 @@ sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-BUILT_SOURCES = syncevo-marshal.c syncevo-marshal.h \
-	syncevo-server-bindings.h syncevo-connection-bindings.h syncevo-session-bindings.h \
-	syncevo-server-glue.h syncevo-connection-glue.h syncevo-session-glue.h \
-	syncevo-server-doc.xml syncevo-connection-doc.xml syncevo-session-doc.xml \
-	syncevo-server.xml syncevo-connection.xml syncevo-session.xml
-
+doc_DATA = $(am__append_1)
+BUILT_SOURCES = $(am__append_2) $(am__append_3)
 CLEANFILES = $(BUILT_SOURCES) stamp-syncevo-dbus-glue.h
 EXTRA_DIST = syncevo-marshal.list \
 	spec-strip-docs.xsl \
@@ -319,6 +336,23 @@ mostlyclean-libtool:
 
 clean-libtool:
 	-rm -rf .libs _libs
+install-docDATA: $(doc_DATA)
+	@$(NORMAL_INSTALL)
+	test -z "$(docdir)" || $(MKDIR_P) "$(DESTDIR)$(docdir)"
+	@list='$(doc_DATA)'; for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  f=$(am__strip_dir) \
+	  echo " $(docDATA_INSTALL) '$$d$$p' '$(DESTDIR)$(docdir)/$$f'"; \
+	  $(docDATA_INSTALL) "$$d$$p" "$(DESTDIR)$(docdir)/$$f"; \
+	done
+
+uninstall-docDATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(doc_DATA)'; for p in $$list; do \
+	  f=$(am__strip_dir) \
+	  echo " rm -f '$(DESTDIR)$(docdir)/$$f'"; \
+	  rm -f "$(DESTDIR)$(docdir)/$$f"; \
+	done
 tags: TAGS
 TAGS:
 
@@ -355,8 +389,11 @@ distdir: $(DISTFILES)
 check-am: all-am
 check: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) check-am
-all-am: Makefile
+all-am: Makefile $(DATA)
 installdirs:
+	for dir in "$(DESTDIR)$(docdir)"; do \
+	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
+	done
 install: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) install-am
 install-exec: install-exec-am
@@ -402,7 +439,7 @@ info: info-am
 
 info-am:
 
-install-data-am:
+install-data-am: install-docDATA
 
 install-dvi: install-dvi-am
 
@@ -436,48 +473,61 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am:
+uninstall-am: uninstall-docDATA
 
 .MAKE: install-am install-strip
 
 .PHONY: all all-am check check-am clean clean-generic clean-libtool \
 	distclean distclean-generic distclean-libtool distdir dvi \
 	dvi-am html html-am info info-am install install-am \
-	install-data install-data-am install-dvi install-dvi-am \
-	install-exec install-exec-am install-html install-html-am \
-	install-info install-info-am install-man install-pdf \
-	install-pdf-am install-ps install-ps-am install-strip \
-	installcheck installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-generic \
-	mostlyclean-libtool pdf pdf-am ps ps-am uninstall uninstall-am
+	install-data install-data-am install-docDATA install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am install-man \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-strip installcheck installcheck-am installdirs \
+	maintainer-clean maintainer-clean-generic mostlyclean \
+	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
+	uninstall uninstall-am uninstall-docDATA
+
 
 %.xml: %-full.xml
 	$(XSLT) -o $@ $(srcdir)/spec-strip-docs.xsl $<
 
-%-doc.xml: %-full.xml
-	$(XSLT) -o $@ $(srcdir)/spec-to-docbook.xsl $<
+@COND_DOC_TRUE@%-doc.xml: %-full.xml
+@COND_DOC_TRUE@	$(XSLT) -o $@ $(srcdir)/spec-to-docbook.xsl $<
 
-%-bindings.h: stamp-%-bindings.h
-	@true
-stamp-%-bindings.h: %.xml
-	$(DBUS_BINDING_TOOL) --mode=glib-client --prefix=syncevo $< > xgen-$(@F) \
-	&& (cmp -s xgen-$(@F) $(@F:stamp-%=%) || cp xgen-$(@F) $(@F:stamp-%=%)) \
-	&& rm -f xgen-$(@F) \
-	&& echo timestamp > $(@F)
+@COND_DOC_TRUE@syncevo-dbus-api-doc.xml: syncevo-server-doc.xml syncevo-session-doc.xml syncevo-connection-doc.xml
+@COND_DOC_TRUE@	echo '<?xml version="1.0" encoding="UTF-8"?>' >$@
+@COND_DOC_TRUE@	echo '<reference><title>SyncEvolution D-Bus API $(VERSION)</title>' >>$@
+@COND_DOC_TRUE@	for xml in $+; do \
+@COND_DOC_TRUE@		tail -n +2 $$xml >>$@; \
+@COND_DOC_TRUE@	done
+@COND_DOC_TRUE@	echo '</reference>' >>$@
 
-syncevo-marshal.h: $(srcdir)/syncevo-marshal.list $(GLIB_GENMARSHAL)
-	$(GLIB_GENMARSHAL) $< --header --prefix=syncevo_marshal > $@
-syncevo-marshal.c: $(srcdir)/syncevo-marshal.list syncevo-marshal.h $(GLIB_GENMARSHAL)
-	echo "#include \"syncevo-marshal.h\"" > $@ \
-	&& $(GLIB_GENMARSHAL) --prefix=syncevo_marshal $(srcdir)/syncevo-marshal.list --body >> $@
+@COND_DOC_TRUE@syncevo-dbus-api-doc.html: syncevo-dbus-api-doc.xml
+@COND_DOC_TRUE@	$(XSLT) -o $@ http://docbook.sourceforge.net/release/xsl/current/html/docbook.xsl $<
 
-%-glue.h: stamp-%-glue.h
-	@true
-stamp-%-glue.h: %.xml
-	$(DBUS_BINDING_TOOL) --prefix=syncevo --mode=glib-server $< > xgen-$(@F) \
-	&& (cmp -s xgen-$(@F) $(@F:stamp-%=%) || cp xgen-$(@F) $(@F:stamp-%=%)) \
-	&& rm -f xgen-$(@F) \
-	&& echo timestamp > $(@F)
+@COND_GUI_TRUE@%-bindings.h: stamp-%-bindings.h
+@COND_GUI_TRUE@	@true
+@COND_GUI_TRUE@stamp-%-bindings.h: %.xml
+@COND_GUI_TRUE@	$(DBUS_BINDING_TOOL) --mode=glib-client --prefix=syncevo $< > xgen-$(@F) \
+@COND_GUI_TRUE@	&& (cmp -s xgen-$(@F) $(@F:stamp-%=%) || cp xgen-$(@F) $(@F:stamp-%=%)) \
+@COND_GUI_TRUE@	&& rm -f xgen-$(@F) \
+@COND_GUI_TRUE@	&& echo timestamp > $(@F)
+
+@COND_GUI_TRUE@syncevo-marshal.h: $(srcdir)/syncevo-marshal.list $(GLIB_GENMARSHAL)
+@COND_GUI_TRUE@	$(GLIB_GENMARSHAL) $< --header --prefix=syncevo_marshal > $@
+@COND_GUI_TRUE@syncevo-marshal.c: $(srcdir)/syncevo-marshal.list syncevo-marshal.h $(GLIB_GENMARSHAL)
+@COND_GUI_TRUE@	echo "#include \"syncevo-marshal.h\"" > $@ \
+@COND_GUI_TRUE@	&& $(GLIB_GENMARSHAL) --prefix=syncevo_marshal $(srcdir)/syncevo-marshal.list --body >> $@
+
+@COND_GUI_TRUE@%-glue.h: stamp-%-glue.h
+@COND_GUI_TRUE@	@true
+@COND_GUI_TRUE@stamp-%-glue.h: %.xml
+@COND_GUI_TRUE@	$(DBUS_BINDING_TOOL) --prefix=syncevo --mode=glib-server $< > xgen-$(@F) \
+@COND_GUI_TRUE@	&& (cmp -s xgen-$(@F) $(@F:stamp-%=%) || cp xgen-$(@F) $(@F:stamp-%=%)) \
+@COND_GUI_TRUE@	&& rm -f xgen-$(@F) \
+@COND_GUI_TRUE@	&& echo timestamp > $(@F)
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

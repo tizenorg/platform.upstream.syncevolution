@@ -754,51 +754,6 @@ SmlItemPtr_t TSyncItemType::newSmlItem(
         smlitemP->data->length = utf16bytestream.size();
         // copy contents
         memcpy((appPointer)smlitemP->data->content,utf16bytestream.c_str(),utf16bytestream.size());
-        /*
-        // get original size
-        MemSize_t origSize = smlitemP->data->length;
-        cAppCharP origData = (cAppCharP)smlitemP->data->content;
-        if (origSize) {
-          // we need roughly twice as many bytes (probably less, but not more)
-          MemSize_t utf16size = origSize*2;
-          MemPtr_t utf16Payload = (MemPtr_t)smlLibMalloc(utf16size+2); // one more in case we detect end of buffer only after a surrogate pair
-          if (utf16Payload) {
-            // now convert
-            uInt32 ucs4;
-            uInt16 utf16,utf16_1;
-            appCharP outP = (appCharP)utf16Payload;
-            cAppCharP inP = (cAppCharP)smlitemP->data->content;
-            while (*inP && inP-origData<origSize && outP-(cAppCharP)utf16Payload<utf16size) {
-              inP=UTF8toUCS4(inP, ucs4);
-              if (ucs4==0) break; // error
-              utf16_1 = UCS4toUTF16(ucs4,utf16);
-              if (fTypeConfigP->fMSBFirst) {
-                // Motorola order
-                if (utf16_1) {
-                  *(outP++) = (utf16_1 >> 8) & 0xFF;
-                  *(outP++) = utf16_1 & 0xFF;
-                }
-                *(outP++) = (utf16 >> 8) & 0xFF;
-                *(outP++) = utf16 & 0xFF;
-              }
-              else {
-                // Intel order
-                if (utf16_1) {
-                  *(outP++) = (utf16_1 >> 8) & 0xFF;
-                  *(outP++) = utf16_1 & 0xFF;
-                }
-                *(outP++) = utf16 & 0xFF;
-                *(outP++) = (utf16 >> 8) & 0xFF;
-              }
-            }
-            // replace contents
-            smlitemP->data->length=(MemPtr_t)outP-utf16Payload;
-            smlitemP->data->content=utf16Payload;
-            // forget original data
-            smlLibFree((void *)origData);
-          }
-        }
-        */
       }
       // compress data if zippedbindata selected in type
       #ifdef ZIPPED_BINDATA_SUPPORT

@@ -98,14 +98,14 @@ const char* VTZ_NAME  = "TZNAME";
  *  Converts  vCalendar 2.0 RRULE string into internal recurrence representation
  */
 static bool RRULE2toInternalR( const char*   aText,   // RRULE string to be parsed
-                               lineartime_t  dtstart, // reference date for parsing RRULE
+                               lineartime_t* dtstartP, // reference date for parsing RRULE (might be modified!)
                                RType         &r,
                                TDebugLogger* aLogP )
 {
   timecontext_t untilcontext = TCTX_UNKNOWN;
-  bool ok= RRULE2toInternal( aText, dtstart, TCTX_UNKNOWN,
+  bool ok= RRULE2toInternal( aText, *dtstartP, TCTX_UNKNOWN,
                              r.freq,r.freqmod,r.interval,r.firstmask,r.lastmask,r.until,untilcontext,
-                               aLogP );
+                               aLogP, dtstartP );
   if (aLogP) RTypeInfo( r, ok, aLogP );
   return ok;
 } // RRULE2toInternalR
@@ -245,7 +245,11 @@ static bool Get_Bias( string of, string ot, short &bias )
 } // Get_Bias
 
 
-/*! Fill in the TZ info */
+/*! Fill in the TZ info.
+ * @return false if some information was found, but couldn't be extracted;
+ *         true if not found (in which case c, cBias, cName are unchanged)
+ *         or found and extracted
+ */
 static bool GetTZInfo( cAppCharP     aText,
                        cAppCharP     aIdent, 
                        tChange      &c, 
@@ -258,6 +262,7 @@ static bool GetTZInfo( cAppCharP     aText,
   timecontext_t tctx;
   lineartime_t  dtstart, dtH= 0;
   string        a, st;
+  bool          success = true;
 
   if (aNth==-1) { // search for the last (in time)
     sInt32 i= 1;
@@ -271,7 +276,16 @@ static bool GetTZInfo( cAppCharP     aText,
       i++;
     } // while
   } // if
-                     a= VStr( aText, aIdent, aNth );
+
+  a= VStr( aText, aIdent, aNth );
+  if ( a.empty() ) {
+    // Happens for VTIMEZONEs without summer saving time when this
+    // function is called to extract changes for DAYLIGHT. Don't
+    // treat this as failure and continue with clean change rules, as
+    // before.
+    return success;
+  }
+
   string rr= VValue( a, VTZ_RR    ); // sub items: - RRULE
          st= VValue( a, VTZ_START ); //            - start time
   string of= VValue( a, VTZ_OFROM ); //            - tz offset from
@@ -281,13 +295,19 @@ static bool GetTZInfo( cAppCharP     aText,
   if (ISO8601StrToTimestamp( st.c_str(), dtstart, tctx )==0)  return false;
   if (!Get_Bias( of,ot, cBias ))                              return false;
 
-  if (RRULE2toInternalR    ( rr.c_str(), dtstart, r, aLogP )) {
+  if ( rr.empty() ) {
+    // Happens when parsing STANDARD part of VTIMEZONE 
+    // without DAYLIGHT saving.
+  } else if (RRULE2toInternalR    ( rr.c_str(), &dtstart, r, aLogP )) {
+    // Note: dtstart might have been adjusted by this call in case of DTSTART not meeting a occurrence for given RRULE
     string             vvv;
     internalRToRRULE2( vvv, r, false, aLogP );
     Rtm_to_tChange        ( r, dtstart, c );
+  } else {
+    success = false;
   } // if
 
-  return true;
+  return success;
 } // GetTZInfo
 
 
@@ -396,13 +416,23 @@ bool VTIMEZONEtoTZEntry( const char*    aText, // VTIMEZONE string to be parsed
                          TDebugLogger*  aLogP)
 {
   short dBias; // the full bias for DST
+  bool success = true;
 
                                  t.name   = "";
                                  t.ident  = "";
                                  t.dynYear= "CUR";
                                  t.biasDST= 0;
-       GetTZInfo( aText,VTZ_STD, t.std, t.bias, aStdName, -1, aLogP );
-  if (!GetTZInfo( aText,VTZ_DST, t.dst,  dBias, aDstName, -1, aLogP )) dBias= t.bias;
+                                 t.bias   = 0;
+  if (!GetTZInfo( aText,VTZ_STD, t.std, t.bias, aStdName, -1, aLogP )) {
+    success = false;
+  }
+  // default value if not found (which is treated as success by GetTZInfo)
+  dBias= t.bias;
+  if (!GetTZInfo( aText,VTZ_DST, t.dst,  dBias, aDstName, -1, aLogP )) {
+    // unknown failure, better restore default
+    dBias= t.bias;
+    success = false;
+  }
 
   if  (t.bias ==  dBias) ClrDST( t ); // no DST ?
   else t.biasDST= dBias - t.bias; // t.biasDST WILL be calculated here
@@ -410,7 +440,7 @@ bool VTIMEZONEtoTZEntry( const char*    aText, // VTIMEZONE string to be parsed
   // get TZID as found in VTIMEZONE
   t.name = VValue( aText, VTZ_ID );
 
-  return true;
+  return success;
 } // VTIMEZONEtoTZEntry
 
 
@@ -429,7 +459,9 @@ bool VTIMEZONEtoInternal( const char*    aText, // VTIMEZONE string to be parsed
                 lName;
   timecontext_t lContext;
 
-  VTIMEZONEtoTZEntry( aText, t, stdName, dstName, aLogP );
+  if (!VTIMEZONEtoTZEntry( aText, t, stdName, dstName, aLogP )) {
+    PLOGDEBUGPRINTFX(aLogP, DBG_PARSE+DBG_ERROR, ("parsing VTIMEZONE failed:\n%s", aText));
+  }
   if (aTzidP) *aTzidP = t.name; // return the original TZID as found, needed to match with TZID occurences in rest of vCalendar
 
   bool sC= !(stdName=="");
@@ -452,7 +484,7 @@ bool VTIMEZONEtoInternal( const char*    aText, // VTIMEZONE string to be parsed
   // find best match for VTIMEZONE: checks name and rules
   // allows multiple timezone, if last is ok !
   if (!g) return false; // avoid crashes with g==NULL
-  ok=  g->matchTZ(t, aContext);
+  ok=  g->matchTZ(t, aLogP, aContext);
 
   if (!ok && !okM) { // store it "as is" if both is not ok
     ClrDST( t );

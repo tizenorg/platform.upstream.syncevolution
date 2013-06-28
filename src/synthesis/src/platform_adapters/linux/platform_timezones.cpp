@@ -1,11 +1,12 @@
 /*
  *  File:         platform_timezones.cpp
  *
- *  Author:       Lukas Zeller / Patrick Ohly
+ *  Authors:      Lukas Zeller / Patrick Ohly
+ *                Beat Forster
  *
  *  Time zone dependent routines for Linux
  *
- *  Copyright (c) 2004-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2004-2010 by Synthesis AG (www.synthesis.ch)
  *
  *  2009-04-02 : Created by Lukas Zeller from timezones.cpp work by Patrick Ohly
  *
@@ -27,6 +28,7 @@
 
 #include "timezones.h"
 #include "vtimezone.h"
+#include "sysync_debug.h"
 
 #ifdef HAVE_LIBICAL
 # ifndef HANDLE_LIBICAL_MEMORY
@@ -148,9 +150,35 @@ namespace sysync {
  */
 bool loadSystemZoneDefinitions(GZones* aGZones)
 {
-	// load zones from system here
-	#ifdef HAVE_LIBICAL
+  // always add the builtin time zones
+  return false;
+} // loadSystemZoneDefinitions
+
+
+/*! @brief we use this callback to add and log libical time zone handling
+ *
+ * The advantage is that this handling can be logged. The disadvantage
+ * is that these time zones cannot be used in the configuration. Builtin
+ * time zones (if any) have to be used there.
+ */
+void finalizeSystemZoneDefinitions(GZones* aGZones)
+{
+  // load zones from system here
+#ifdef HAVE_LIBICAL
+  PLOGDEBUGBLOCKDESCCOLL(aGZones->getDbgLogger, "loadSystemZoneDefinitions", "Linux system time zones");
   icalarray *builtin = ICALTIMEZONE_GET_BUILTIN_TIMEZONES();
+#ifdef EVOLUTION_COMPATIBILITY
+  PLOGDEBUGPRINTFX(aGZones->getDbgLogger, DBG_PARSE+DBG_EXOTIC,
+                   ("runtime check: libical %s",
+                    icalcontext.icaltimezone_get_builtin_timezones_p ? "available" : "unavailable"))
+#endif
+  if (!builtin) {
+    PLOGDEBUGPUTSX(aGZones->getDbgLogger, DBG_PARSE+DBG_ERROR,
+                   "could not read timezone information from libical");
+    return;
+  }
+  PLOGDEBUGPRINTFX(aGZones->getDbgLogger, DBG_PARSE+DBG_EXOTIC,
+                   ("%d time zones from libical", builtin->num_elements));
   for (unsigned i = 0; builtin && i < builtin->num_elements; i++) {
     icaltimezone *zone = (icaltimezone *)ICALARRAY_ELEMENT_AT(builtin, i);
     if (!zone)
@@ -161,6 +189,7 @@ bool loadSystemZoneDefinitions(GZones* aGZones)
     char *vtimezone = ICALCOMPONENT_AS_ICAL_STRING(comp);
     if (!vtimezone)
       continue;
+    PLOGDEBUGPUTSX(aGZones->getDbgLogger, DBG_PARSE+DBG_EXOTIC, vtimezone);
     tz_entry t;
     string dstName, stdName;
     if (VTIMEZONEtoTZEntry(
@@ -188,10 +217,11 @@ bool loadSystemZoneDefinitions(GZones* aGZones)
     }
     ICAL_FREE(vtimezone);
   }
-	#endif // HAVE_LIBICAL
-	// return true if this list is considered complete (i.e. no built-in zones should be used additionally)
-  return false; // we need the built-in zones
-} // loadSystemZoneDefinitions
+  PLOGDEBUGENDBLOCK(aGZones->getDbgLogger, "loadSystemZoneDefinitions");
+#else
+  PLOGDEBUGPUTSX(aGZones->getDbgLogger, DBG_PARSE+DBG_EXOTIC, "support for libical not compiled");
+#endif // HAVE_LIBICAL
+} // finalizeSystemZoneDefinitions
 
 
 
@@ -206,21 +236,36 @@ bool getSystemTimeZoneContext(timecontext_t &aContext, GZones* aGZones)
   bool ok = true;
 
   #ifdef ANDROID
-  // BFO_INCOMPLETE
+    time_t rawtime;
+    time( &rawtime );
+    struct tm* timeinfo= localtime( &rawtime );
+  //struct tm* utc_info=    gmtime( &rawtime );
+  //if        (timeinfo) t.name= timeinfo->tm_zone;
+
+  //__android_log_write( ANDROID_LOG_DEBUG, "tzname[ 0 ]", tzname[ 0 ] );
+  //__android_log_write( ANDROID_LOG_DEBUG, "tzname[ 1 ]", tzname[ 1 ] );
   #else
   tzset();
   #endif
-  t.name = tzname[ 0 ];
-  if (strcmp( t.name.c_str(),tzname[ 1 ] )!=0) {
-    t.name+= "/";
-    t.name+= tzname[ 1 ];
+
+  if (t.name=="") {
+      t.name = tzname[ 0 ];
+      if (strcmp( t.name.c_str(), tzname[ 1 ] )!=0) {
+        t.name+= "/";
+        t.name+= tzname[ 1 ];
+      } // if
   } // if
 
   //if (isDbg) PNCDEBUGPRINTFX( DBG_SESSION, ( "Timezone: %s", sName.c_str() ));
 
   // search based on name before potentially using offset search
-  if (TimeZoneNameToContext( t.name.c_str(),aContext, aGZones ))
+  if (TimeZoneNameToContext( t.name.c_str(),aContext, aGZones )) {
+  //#ifdef ANDROID
+  //  __android_log_print( ANDROID_LOG_DEBUG, "tz ok", "'%s' %d\n", t.name.c_str(), aContext );
+  //#endif
+
     return true; // found, done
+  }
 	#if defined USE_TM_GMTOFF
   else {
     // We can use tm_gmtoff as fallback when the name computed above doesn't

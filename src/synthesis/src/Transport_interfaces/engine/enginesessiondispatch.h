@@ -131,7 +131,7 @@ public:
   // the toolkit instance used by the session
   InstanceID_t fSmlInstanceID;
   // status of the session
-  localstatus fSessionStatus;
+  localstatus fServerSessionStatus;
 };
 
 

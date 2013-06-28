@@ -203,6 +203,7 @@ class GZones {
       predefinedSysTZ= TCTX_UNKNOWN; // no predefined system time zone
       sysTZ= predefinedSysTZ; // default to predefined zone, if none, this will be obtained from OS APIs
       isDbg= false; // !!! IMPORTANT: do NOT enable this except for test targets, as it leads to recursions (debugPrintf calls time routines!)
+      fSystemZoneDefinitionsFinalized = false;
 
       #ifdef SYDEBUG
         getDbgMask  = 0;
@@ -219,6 +220,13 @@ class GZones {
      * Returns false in case of a fatal error.
      */
     bool initialize();
+
+    /*! @brief log and/or add more GZones
+     *
+     * Called after config was read and normal debug logging
+     * is possible.
+     */
+    void loggingStarted();
 
     /*! @brief find a matching time zone
      *
@@ -251,7 +259,7 @@ class GZones {
      *                     refers to the tz_entry without a dynYear
      * @return true if match found
      */
-    bool matchTZ(const tz_entry &aTZ, timecontext_t &aContext);
+    bool matchTZ(const tz_entry &aTZ, TDebugLogger *aLogP, timecontext_t &aContext);
 
     class visitor {
     public:
@@ -277,6 +285,7 @@ class GZones {
     timecontext_t           sysTZ; // the system's time zone, will be calculated,
                                    // if set to tctx_tz_unknown
     bool                    isDbg; // write debug information
+    bool fSystemZoneDefinitionsFinalized; // finalizeSystemZoneDefinitions() already called
 
     #ifdef SYDEBUG
       uInt32        getDbgMask; // allow debugging in a specific context
@@ -446,9 +455,18 @@ lineartime_t getSystemNowAs( timecontext_t aTimeContext, GZones* g, bool aNoOffs
 /*! @brief platform specific loading of time zone definitions
  *  @return true if this list is considered complete (i.e. no built-in zones should be used additionally)
  *  @param[in/out] aGZones : the GZones object where system zones should be loaded into
+ *  @note this is called at construction of the SyncAppBase before any logging facilities are
+ *        available. This routine should load enough time zone information such that config
+ *        can be read and conversion between UTC and system local time is possible.
+ *        Use finalizeSystemZoneDefinitions() to add time zones with full logging available.
  */
 bool loadSystemZoneDefinitions( GZones* aGZones );
 
+/*! @brief second opportunity to load platform specific time zone definitions with logging available (and config already parsed)
+ *  Called only once per GZones instance.
+ *  @param[in/out] aGZones : the GZones object where additional system zones should be loaded into
+ */
+void finalizeSystemZoneDefinitions( GZones* aGZones );
 
 /*! @brief get current system time zone
  *  @return true if successful

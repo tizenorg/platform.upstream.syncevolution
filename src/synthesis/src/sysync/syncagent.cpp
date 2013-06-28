@@ -617,10 +617,29 @@ TSyncAgent::TSyncAgent(
 ) :
   TSyncSession(aAppBaseP,aSessionID)  
 {
+	// General
+	#ifdef ENGINE_LIBRARY  
+  // init the flags which are set by STEPCMD_SUSPEND, STEPCMD_ABORT and STEPCMD_TRANSPFAIL
+  fAbortRequested = false;
+  fSuspendRequested = false;
+	fEngineSessionStatus = LOCERR_WRONGUSAGE;
+  #ifdef NON_FULLY_GRANULAR_ENGINE
+  // - erase the list of queued progress events
+  fProgressInfoList.clear();
+  fPendingStepCmd = 0; // none pending
+  #endif // NON_FULLY_GRANULAR_ENGINE
+  // - issue session start event here (in non-engine case this is done in TSyncSession constructor)
+  SESSION_PROGRESS_EVENT(this,pev_sessionstart,NULL,0,0,0);
+  #endif // ENGINE_LIBRARY
+  // reset data counts
+  fIncomingBytes = 0;
+  fOutgoingBytes = 0;
+
+  // Specific for Client or Server
 	if (IS_CLIENT) {
 		#ifdef SYSYNC_CLIENT
     #ifdef HARD_CODED_SERVER_URI
-    fNoCRCPrefixLen=0;
+    fNoCRCPrefixLen = 0;
     #endif
 	  #ifdef ENGINE_LIBRARY
 		// engine
@@ -629,7 +648,7 @@ TSyncAgent::TSyncAgent(
     // reset session now to get correct initial state
     InternalResetSession();
     // restart with session numbering at 1 (incremented before use)
-    fClientSessionNo=0;  
+    fClientSessionNo = 0;  
 		#endif // SYSYNC_CLIENT
   }
   else {
@@ -637,9 +656,6 @@ TSyncAgent::TSyncAgent(
     // init answer buffer
     fBufferedAnswer = NULL;
     fBufferedAnswerSize = 0;
-    // reset data counts
-    fIncomingBytes = 0;
-    fOutgoingBytes = 0;
 	  #ifdef ENGINE_LIBRARY
     // engine
     fServerEngineState = ses_needdata;
@@ -962,7 +978,7 @@ localstatus TSyncAgent::NextMessage(bool &aDone)
   aDone=true;
   #ifdef PROGRESS_EVENTS
   // check for user suspend
-  if (!getSyncAppBase()->NotifyProgressEvent(pev_suspendcheck)) {
+  if (!SESSION_PROGRESS_EVENT(this,pev_suspendcheck,NULL,0,0,0)) {
     SuspendSession(LOCERR_USERSUSPEND);
   }
   #endif
@@ -1693,6 +1709,9 @@ void TSyncAgent::retryClientSessionStart(bool aOldMessageInBuffer)
 // create a RespURI string. If none needed, return NULL
 SmlPcdataPtr_t TSyncAgent::newResponseURIForRemote(void)
 {
+  if (IS_CLIENT) {
+    return NULL;
+  }
   // do it in a transport-independent way, therefore let dispatcher do it
   string respURI; // empty string
   if (fUseRespURI) {  
@@ -2848,17 +2867,108 @@ appPointer TSyncAgent::newSessionKey(TEngineInterface *aEngineInterfaceP)
 
 TSyError TSyncAgent::SessionStep(uInt16 &aStepCmd, TEngineProgressInfo *aInfoP)
 {
+  #ifdef NON_FULLY_GRANULAR_ENGINE
+  // pre-process step command and generate pseudo-steps to empty progress event queue
+  // preprocess general step codes
+  switch (aStepCmd) {
+    case STEPCMD_TRANSPFAIL :
+      // directly abort
+      AbortSession(LOCERR_TRANSPFAIL,true);
+      goto abort;
+    case STEPCMD_ABORT :
+      // directly abort
+      AbortSession(LOCERR_USERABORT,true);
+    abort:
+      // also set the flag so subsequent progress events will result the abort status
+      fAbortRequested=true;
+      aStepCmd = STEPCMD_STEP; // convert to normal step
+      goto step;
+    case STEPCMD_SUSPEND :
+      // directly suspend
+      SuspendSession(LOCERR_USERSUSPEND);
+      // also set the flag so subsequent pev_suspendcheck events will result the suspend status
+      fSuspendRequested=true;
+      aStepCmd = STEPCMD_OK; // this is a out-of-order step, and always just returns STEPCMD_OK.
+      fEngineSessionStatus = 0; // ok for now, subsequent steps will perform the actual suspend
+      goto done; // no more action for now
+    case STEPCMD_STEP :
+    step:
+    // first just return all queued up progress events
+    if (fProgressInfoList.size()>0) {
+      // get first element in list
+      TEngineProgressInfoList::iterator pos = fProgressInfoList.begin();
+      // pass it back to caller if caller is interested
+      if (aInfoP) {
+        *aInfoP = *pos; // copy progress event
+      }
+      // delete progress event from list
+      fProgressInfoList.erase(pos);
+      // that's it for now, engine state does not change, wait for next step
+      aStepCmd = STEPCMD_PROGRESS;
+      return LOCERR_OK;
+    }
+    else if (fPendingStepCmd != 0) {
+      // now return previously generated step command
+      // Note: engine is already in the new state matching fPendingStepCmd
+      aStepCmd = fPendingStepCmd;
+      fEngineSessionStatus = fPendingStatus;
+      fPendingStepCmd=0; // none pending any more
+      fPendingStatus=0;
+      return fEngineSessionStatus; // return pending status now
+    }
+    // all progress events are delivered, now we can do the real work
+  }
+  #endif // NON_FULLY_GRANULAR_ENGINE
+	// Now perform the actual step
 	if (IS_CLIENT) {
 		#ifdef SYSYNC_CLIENT
-    return ClientSessionStep(aStepCmd,aInfoP);
+    fEngineSessionStatus = ClientSessionStep(aStepCmd,aInfoP);
 		#endif // SYSYNC_CLIENT
   }
   else {
     #ifdef SYSYNC_SERVER
-    return ServerSessionStep(aStepCmd,aInfoP);
+    fEngineSessionStatus = ServerSessionStep(aStepCmd,aInfoP);
     #endif // SYSYNC_SERVER
   }
+  #ifdef NON_FULLY_GRANULAR_ENGINE
+  // make sure caller issues STEPCMD_STEP to get all pending progress events
+  if (fProgressInfoList.size()>0) {
+    // save pending step command for returning later
+    fPendingStepCmd = aStepCmd;
+    fPendingStatus = fEngineSessionStatus;
+    // return request for more steps instead
+    aStepCmd = STEPCMD_OK;
+    fEngineSessionStatus = LOCERR_OK;
+  }
+  #endif // NON_FULLY_GRANULAR_ENGINE
+done:
+  // return step status
+  return fEngineSessionStatus;
 } // TSyncAgent::SessionStep
+
+
+bool TSyncAgent::HandleSessionProgressEvent(TEngineProgressInfo aProgressInfo)
+{
+  // handle some events specially
+  if (aProgressInfo.eventtype==pev_suspendcheck)
+    return !(fSuspendRequested);
+  else {
+    // engine progress record that needs to be queued
+    // - check for message
+    if (aProgressInfo.eventtype==pev_display100) {
+    	// this is a pointer to a string, save it separately
+      // extra1 is a pointer to the message text
+      // - save it for retrieval via SessionKey
+      fAlertMessage = (cAppCharP)(aProgressInfo.extra1);
+      // - don't pass pointer
+      aProgressInfo.extra1 = 0; 
+    }
+    // queue progress event
+    fProgressInfoList.push_back(aProgressInfo);
+  }
+  return !(fAbortRequested);
+} // TSyncAgent::HandleSessionProgressEvent
+
 
 #endif // ENGINE_LIBRARY
 
@@ -3219,7 +3329,7 @@ TSyError TSyncAgent::ClientSessionStep(uInt16 &aStepCmd, TEngineProgressInfo *aI
       switch (stepCmdIn) {
         case STEPCMD_GOTDATA : {
           // got data, now start processing it
-          OBJ_PROGRESS_EVENT(getSyncAppBase(),pev_recvend,NULL,0,0,0);
+          SESSION_PROGRESS_EVENT(this,pev_recvend,NULL,0,0,0);
           // check content type now
           MemPtr_t data = NULL;
           MemSize_t datasize;
@@ -3251,7 +3361,7 @@ TSyError TSyncAgent::ClientSessionStep(uInt16 &aStepCmd, TEngineProgressInfo *aI
           // performing the STEPCMD_RESENDDATA just generates a new send start event, but otherwise no engine action
           fClientEngineState = ces_resending;
           aStepCmd = STEPCMD_RESENDDATA; // return the same step command, to differentiate it from STEPCMD_SENDDATA
-          OBJ_PROGRESS_EVENT(getSyncAppBase(),pev_sendstart,NULL,0,0,0);
+          SESSION_PROGRESS_EVENT(this,pev_sendstart,NULL,0,0,0);
           sta = LOCERR_OK;
           break;
       } // switch stepCmdIn for ces_needdata
@@ -3265,7 +3375,7 @@ TSyError TSyncAgent::ClientSessionStep(uInt16 &aStepCmd, TEngineProgressInfo *aI
         case STEPCMD_SENTDATA :
         	// allowed in dataready or resending state
           // sent (or re-sent) data, now request answer data
-          OBJ_PROGRESS_EVENT(getSyncAppBase(),pev_sendend,NULL,0,0,0);
+          SESSION_PROGRESS_EVENT(this,pev_sendend,NULL,0,0,0);
           fClientEngineState = ces_needdata;
           aStepCmd = STEPCMD_NEEDDATA;
           sta = LOCERR_OK;
@@ -3315,7 +3425,7 @@ TSyError TSyncAgent::ClientGeneratingStep(uInt16 &aStepCmd, TEngineProgressInfo 
     // next is sending request to server
     fClientEngineState = ces_dataready;
     aStepCmd = STEPCMD_SENDDATA;
-    OBJ_PROGRESS_EVENT(getSyncAppBase(),pev_sendstart,NULL,0,0,0);
+    SESSION_PROGRESS_EVENT(this,pev_sendstart,NULL,0,0,0);
   }
   // return status
   return sta;
@@ -3614,10 +3724,9 @@ static TSyError readDisplayAlert(
   appPointer aBuffer, memSize aBufSize, memSize &aValSize
 )
 {
-  TClientEngineInterface *clientEngineP =
-    static_cast<TClientEngineInterface *>(aStructFieldsKeyP->getEngineInterface());
+  TAgentParamsKey *mykeyP = static_cast<TAgentParamsKey *>(aStructFieldsKeyP);
   return TStructFieldsKey::returnString(
-    clientEngineP->fAlertMessage.c_str(),
+    mykeyP->fAgentP->fAlertMessage.c_str(),
     aBuffer,aBufSize,aValSize
   );
 } // readDisplayAlert

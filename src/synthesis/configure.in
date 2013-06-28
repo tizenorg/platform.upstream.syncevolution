@@ -12,6 +12,14 @@ AC_PROG_LIBTOOL
 AC_PROG_MAKE_SET
 AM_PROG_CC_C_O
 
+AC_ARG_ENABLE(debug-logs,
+              AS_HELP_STRING([--debug-logs],
+                             [For developers: add links to call location to HTML log files. Depends on Doxygen (for HTML version of source) and g++ (for __PRETTY_FUNCTION__).]),
+              enable_debug_logs="$enableval", enable_debug_logs="no")
+if test "$enable_debug_logs" = "yes"; then
+   AC_DEFINE_UNQUOTED(SYDEBUG_LOCATION, "`pwd`/src/html", [absolute path to Doxygen HTML output])
+fi
+AM_CONDITIONAL([COND_DOXYGEN], [test "$enable_debug_logs" = "yes"])
 
 dnl All of these libraries have to be compiled and installed
 dnl separately. TODO: build bundled sources?

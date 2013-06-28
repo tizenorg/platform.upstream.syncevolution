@@ -335,7 +335,7 @@ public:
       }
       else if (strucmp(str.c_str(),"BEGIN:VTIMEZONE",15)==0) {
         // is a vTimezone, get it
-        if (!VTIMEZONEtoInternal(str.c_str(), tctx, aFuncContextP->getSession()->getSessionZones()))
+        if (!VTIMEZONEtoInternal(str.c_str(), tctx, aFuncContextP->getSession()->getSessionZones(),aFuncContextP->getSession()->getDbgLogger()))
           tctx = TCTX_UNKNOWN;
       }
       else {

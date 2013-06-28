@@ -265,7 +265,7 @@ void PlatformConsolePuts(const char *aText)
 {
   // generic output
   #ifdef ANDROID
-    __android_log_write( ANDROID_LOG_DEBUG, "ConsolePuts", aText );
+  //__android_log_write( ANDROID_LOG_DEBUG, "ConsolePuts", aText );
   #else
     puts(aText); // appends newline itself
   #endif

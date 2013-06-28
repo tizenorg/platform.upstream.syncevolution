@@ -46,25 +46,26 @@ libexec_PROGRAMS = $(am__EXEEXT_4)
 @COND_CORE_TRUE@am__append_6 = $(TEMPLATE_FILES)
 @COND_CORE_FALSE@am__append_7 = $(SYNTHESIS_SUBDIR_INCLUDES)
 @COND_GUI_TRUE@am__append_8 = dbus gtk-ui
-@COND_DBUS_TRUE@am__append_9 = syncevo-dbus-server
-@COND_DBUS_TRUE@am__append_10 = syncevo-http-server
-@COND_DBUS_TRUE@am__append_11 = $(SYNCEVO_DBUS_SERVER_SCRIPT)
-@ENABLE_MODULES_FALSE@am__append_12 = $(SYNCSOURCES)
+@COND_DOC_TRUE@@COND_GUI_FALSE@am__append_9 = dbus
+@COND_DBUS_TRUE@am__append_10 = syncevo-dbus-server
+@COND_DBUS_TRUE@am__append_11 = syncevo-http-server
+@COND_DBUS_TRUE@am__append_12 = $(SYNCEVO_DBUS_SERVER_SCRIPT)
 @ENABLE_MODULES_FALSE@am__append_13 = $(SYNCSOURCES)
-@ENABLE_MODULES_TRUE@am__append_14 = $(BACKEND_REGISTRIES)
-@ENABLE_MODULES_FALSE@am__append_15 = $(BACKEND_REGISTRIES)
-@COND_DBUS_TRUE@am__append_16 = gdbus/libgdbus.la
+@ENABLE_MODULES_FALSE@am__append_14 = $(SYNCSOURCES)
+@ENABLE_MODULES_TRUE@am__append_15 = $(BACKEND_REGISTRIES)
+@ENABLE_MODULES_FALSE@am__append_16 = $(BACKEND_REGISTRIES)
+@COND_DBUS_TRUE@am__append_17 = gdbus/libgdbus.la
 
 # distribute test system?
 # yes: install client-test in bindir, test files in datadir
-@ENABLE_TESTING_TRUE@am__append_17 = client-test
 @ENABLE_TESTING_TRUE@am__append_18 = client-test
+@ENABLE_TESTING_TRUE@am__append_19 = client-test
 # The "all" dependency causes a rebuild even if the actual input files
 # haven't changed. If client-test is part of the regular targets built
 # by "all", then it must not depend on all!
-@ENABLE_TESTING_FALSE@am__append_19 = client-test
-@ENABLE_TESTING_FALSE@am__append_20 = $(CLIENT_LIB_TEST_FILES)
-@ENABLE_TESTING_FALSE@am__append_21 = all
+@ENABLE_TESTING_FALSE@am__append_20 = client-test
+@ENABLE_TESTING_FALSE@am__append_21 = $(CLIENT_LIB_TEST_FILES)
+@ENABLE_TESTING_FALSE@am__append_22 = all
 subdir = src
 DIST_COMMON = $(am__nobase_dist_doc_DATA_DIST) \
 	$(am__nobase_dist_template_DATA_DIST) $(srcdir)/Makefile.am \
@@ -237,64 +238,20 @@ am__strip_dir = `echo $$p | sed -e 's|^.*/||'`;
 autostartDATA_INSTALL = $(INSTALL_DATA)
 am__nobase_dist_doc_DATA_DIST = testcases/lcs/file1.txt \
 	testcases/lcs/file2.txt \
-	testcases/templates/clients/SyncEvolution/sources/addressbook/config.ini \
-	testcases/templates/clients/SyncEvolution/sources/memo/config.ini \
-	testcases/templates/clients/SyncEvolution/sources/todo/config.ini \
-	testcases/templates/clients/SyncEvolution/sources/calendar/config.ini \
-	testcases/templates/clients/SyncEvolution/template.ini \
-	testcases/templates/clients/SyncEvolution/config.ini \
-	testcases/templates/clients/phone/nokia/S40/7210c/sources/addressbook/config.ini \
-	testcases/templates/clients/phone/nokia/S40/7210c/sources/memo/config.ini \
-	testcases/templates/clients/phone/nokia/S40/7210c/sources/todo/config.ini \
-	testcases/templates/clients/phone/nokia/S40/7210c/sources/calendar/config.ini \
-	testcases/templates/clients/phone/nokia/S40/7210c/sources/calendar+todo/config.ini \
-	testcases/templates/clients/phone/nokia/S40/7210c/template.ini \
-	testcases/templates/clients/phone/nokia/S40/7210c/config.ini \
+	testcases/templates/clients/SyncEvolution.ini \
+	testcases/templates/clients/phone/nokia/S40/7210c.ini \
 	testcases/vcard21.vcf testcases/vcard30.vcf \
-	testcases/ical20.ics testcases/imemo20.ics \
-	testcases/itodo20.ics $(subst .patch,,$(subst \
-	$(srcdir)/../test/,,$(TEST_FILES_PATCHES)))
+	testcases/ical20.ics testcases/ical20.ics.local \
+	testcases/imemo20.ics testcases/itodo20.ics $(subst \
+	.patch,,$(subst $(srcdir)/../test/,,$(TEST_FILES_PATCHES)))
 nobase_dist_docDATA_INSTALL = $(install_sh_DATA)
 am__nobase_dist_template_DATA_DIST = templates/README \
-	templates/servers/Funambol/config.ini \
-	templates/servers/Funambol/template.ini \
-	templates/servers/Funambol/sources/calendar/config.ini \
-	templates/servers/Funambol/sources/todo/config.ini \
-	templates/servers/Funambol/sources/addressbook/config.ini \
-	templates/servers/Funambol/sources/memo/config.ini \
-	templates/servers/ScheduleWorld/config.ini \
-	templates/servers/ScheduleWorld/template.ini \
-	templates/servers/ScheduleWorld/sources/calendar/config.ini \
-	templates/servers/ScheduleWorld/sources/todo/config.ini \
-	templates/servers/ScheduleWorld/sources/addressbook/config.ini \
-	templates/servers/ScheduleWorld/sources/memo/config.ini \
-	templates/clients/phone/nokia/S60/N85/config.ini \
-	templates/clients/phone/nokia/S60/N85/template.ini \
-	templates/clients/phone/nokia/S60/N85/sources/calendar/config.ini \
-	templates/clients/phone/nokia/S60/N85/sources/calendar+todo/config.ini \
-	templates/clients/phone/nokia/S60/N85/sources/todo/config.ini \
-	templates/clients/phone/nokia/S60/N85/sources/addressbook/config.ini \
-	templates/clients/phone/nokia/S60/N85/sources/memo/config.ini \
-	templates/clients/phone/nokia/maemo/n900/config.ini \
-	templates/clients/phone/nokia/maemo/n900/template.ini \
-	templates/clients/phone/nokia/maemo/n900/sources/calendar/config.ini \
-	templates/clients/phone/nokia/maemo/n900/sources/calendar+todo/config.ini \
-	templates/clients/phone/nokia/maemo/n900/sources/todo/config.ini \
-	templates/clients/phone/nokia/maemo/n900/sources/addressbook/config.ini \
-	templates/clients/phone/nokia/maemo/n900/sources/memo/config.ini \
-	templates/clients/phone/nokia/S40/7210c/config.ini \
-	templates/clients/phone/nokia/S40/7210c/template.ini \
-	templates/clients/phone/nokia/S40/7210c/sources/calendar/config.ini \
-	templates/clients/phone/nokia/S40/7210c/sources/calendar+todo/config.ini \
-	templates/clients/phone/nokia/S40/7210c/sources/todo/config.ini \
-	templates/clients/phone/nokia/S40/7210c/sources/addressbook/config.ini \
-	templates/clients/phone/nokia/S40/7210c/sources/memo/config.ini \
-	templates/clients/SyncEvolution/config.ini \
-	templates/clients/SyncEvolution/template.ini \
-	templates/clients/SyncEvolution/sources/calendar/config.ini \
-	templates/clients/SyncEvolution/sources/todo/config.ini \
-	templates/clients/SyncEvolution/sources/addressbook/config.ini \
-	templates/clients/SyncEvolution/sources/memo/config.ini
+	templates/servers/Funambol.ini \
+	templates/servers/ScheduleWorld.ini \
+	templates/clients/phone/nokia/S60/N85.ini \
+	templates/clients/phone/nokia/maemo/n900.ini \
+	templates/clients/phone/nokia/S40/7210c.ini \
+	templates/clients/SyncEvolution.ini
 nobase_dist_templateDATA_INSTALL = $(install_sh_DATA)
 serviceDATA_INSTALL = $(INSTALL_DATA)
 DATA = $(autostart_DATA) $(nobase_dist_doc_DATA) \
@@ -442,6 +399,8 @@ POSUB = @POSUB@
 PO_IN_DATADIR_FALSE = @PO_IN_DATADIR_FALSE@
 PO_IN_DATADIR_TRUE = @PO_IN_DATADIR_TRUE@
 RANLIB = @RANLIB@
+RST2HTML = @RST2HTML@
+RST2MAN = @RST2MAN@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
@@ -450,7 +409,7 @@ SQLITE_LIBS = @SQLITE_LIBS@
 STABLE_VERSION = @STABLE_VERSION@
 STRIP = @STRIP@
 SYNCEVOLUTION_CXXFLAGS = @SYNCEVOLUTION_CXXFLAGS@
-SYNCEVOLUTION_LDADD = @SYNCEVOLUTION_LDADD@ $(am__append_12)
+SYNCEVOLUTION_LDADD = @SYNCEVOLUTION_LDADD@ $(am__append_13)
 SYNCEVOLUTION_LOCALEDIR = @SYNCEVOLUTION_LOCALEDIR@
 SYNCSOURCES = @SYNCSOURCES@
 SYNTHESIS = @SYNTHESIS@
@@ -530,10 +489,10 @@ BACKENDS = backends/addressbook backends/evolution backends/file backends/maemo 
 
 # start with building nothing and add more targets below
 SUBDIRS = $(am__append_1) $(am__append_2) $(am__append_3) \
-	$(am__append_7) $(am__append_8)
+	$(am__append_7) $(am__append_8) $(am__append_9)
 bin_SCRIPTS = $(am__append_5)
-nodist_bin_SCRIPTS = $(am__append_10) syncevo-phone-config
-libexec_SCRIPTS = $(am__append_11)
+nodist_bin_SCRIPTS = $(am__append_11) syncevo-phone-config
+libexec_SCRIPTS = $(am__append_12)
 nobase_dist_template_DATA = $(am__append_6)
 DISTCLEANFILES = synccompare
 CLEANFILES = libstdc++.a client-test $(CLIENT_LIB_TEST_FILES) \
@@ -552,52 +511,13 @@ autostartdir = $(sysconfdir)/xdg/autostart
 SYNCEVO_DBUS_SERVER_DESKTOP = syncevo-dbus-server.desktop
 SYNCEVO_DBUS_SERVER_DESKTOP_IN = $(SYNCEVO_DBUS_SERVER_DESKTOP).in
 @COND_DBUS_TRUE@autostart_DATA = $(SYNCEVO_DBUS_SERVER_DESKTOP)
-SYNCEVOLUTION_DEP = $(am__append_13)
+SYNCEVOLUTION_DEP = $(am__append_14)
 EXTRA_DIST = shlibs.local Makefile-gen.am $(service_in_files) \
 	$(SYNCEVO_DBUS_SERVER_SCRIPT_IN) \
-	$(SYNCEVO_DBUS_SERVER_DESKTOP_IN) $(am__append_14)
-TEMPLATE_FILES = templates/README \
-	templates/servers/Funambol/config.ini \
-	templates/servers/Funambol/template.ini \
-	templates/servers/Funambol/sources/calendar/config.ini \
-	templates/servers/Funambol/sources/todo/config.ini \
-	templates/servers/Funambol/sources/addressbook/config.ini \
-	templates/servers/Funambol/sources/memo/config.ini \
-	templates/servers/ScheduleWorld/config.ini \
-	templates/servers/ScheduleWorld/template.ini \
-	templates/servers/ScheduleWorld/sources/calendar/config.ini \
-	templates/servers/ScheduleWorld/sources/todo/config.ini \
-	templates/servers/ScheduleWorld/sources/addressbook/config.ini \
-	templates/servers/ScheduleWorld/sources/memo/config.ini \
-	templates/clients/phone/nokia/S60/N85/config.ini \
-	templates/clients/phone/nokia/S60/N85/template.ini \
-	templates/clients/phone/nokia/S60/N85/sources/calendar/config.ini \
-	templates/clients/phone/nokia/S60/N85/sources/calendar+todo/config.ini \
-	templates/clients/phone/nokia/S60/N85/sources/todo/config.ini \
-	templates/clients/phone/nokia/S60/N85/sources/addressbook/config.ini \
-	templates/clients/phone/nokia/S60/N85/sources/memo/config.ini \
-	templates/clients/phone/nokia/maemo/n900/config.ini \
-	templates/clients/phone/nokia/maemo/n900/template.ini \
-	templates/clients/phone/nokia/maemo/n900/sources/calendar/config.ini \
-	templates/clients/phone/nokia/maemo/n900/sources/calendar+todo/config.ini \
-	templates/clients/phone/nokia/maemo/n900/sources/todo/config.ini \
-	templates/clients/phone/nokia/maemo/n900/sources/addressbook/config.ini \
-	templates/clients/phone/nokia/maemo/n900/sources/memo/config.ini \
-	templates/clients/phone/nokia/S40/7210c/config.ini \
-	templates/clients/phone/nokia/S40/7210c/template.ini \
-	templates/clients/phone/nokia/S40/7210c/sources/calendar/config.ini \
-	templates/clients/phone/nokia/S40/7210c/sources/calendar+todo/config.ini \
-	templates/clients/phone/nokia/S40/7210c/sources/todo/config.ini \
-	templates/clients/phone/nokia/S40/7210c/sources/addressbook/config.ini \
-	templates/clients/phone/nokia/S40/7210c/sources/memo/config.ini \
-	templates/clients/SyncEvolution/config.ini \
-	templates/clients/SyncEvolution/template.ini \
-	templates/clients/SyncEvolution/sources/calendar/config.ini \
-	templates/clients/SyncEvolution/sources/todo/config.ini \
-	templates/clients/SyncEvolution/sources/addressbook/config.ini \
-	templates/clients/SyncEvolution/sources/memo/config.ini
+	$(SYNCEVO_DBUS_SERVER_DESKTOP_IN) $(am__append_15)
+TEMPLATE_FILES = templates/README templates/servers/Funambol.ini templates/servers/ScheduleWorld.ini templates/clients/phone/nokia/S60/N85.ini templates/clients/phone/nokia/maemo/n900.ini templates/clients/phone/nokia/S40/7210c.ini templates/clients/SyncEvolution.ini
 templatedir = $(datadir)/syncevolution/
-CORE_SOURCES = $(am__append_15)
+CORE_SOURCES = $(am__append_16)
 
 # The files which register backends have to be compiled into
 # "client-test" and "syncevolution" in order to pull in the
@@ -624,7 +544,7 @@ syncevolution_SOURCES = \
 # SYNCEVOLUTION_LDADD will be replaced with libsyncebook.la/libsyncecal.la/libsyncsqlite.la
 # if linking statically against them, empty otherwise;
 # either way this does not lead to a dependency on those libs - done explicitly
-syncevolution_LDADD = $(CORE_LDADD) $(KEYRING_LIBS) $(am__append_16)
+syncevolution_LDADD = $(CORE_LDADD) $(KEYRING_LIBS) $(am__append_17)
 syncevolution_LDFLAGS = $(CORE_LD_FLAGS) $(DBUS_LIBS)
 syncevolution_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS) $(KEYRING_CFLAGS) -I$(srcdir)/gdbus $(DBUS_CFLAGS)
 syncevolution_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) # $(SYNTHESIS_DEP)
@@ -651,7 +571,7 @@ client_test_SOURCES = \
 	../test/client-test-main.cpp \
 	$(CORE_SOURCES)
 
-nodist_client_test_SOURCES = ../test/test.cpp $(am__append_20)
+nodist_client_test_SOURCES = ../test/test.cpp $(am__append_21)
 
 # list of test file base files
 #
@@ -661,22 +581,12 @@ nodist_client_test_SOURCES = ../test/test.cpp $(am__append_20)
 # add files created via patches
 CLIENT_LIB_TEST_FILES = testcases/lcs/file1.txt \
 	testcases/lcs/file2.txt \
-	testcases/templates/clients/SyncEvolution/sources/addressbook/config.ini \
-	testcases/templates/clients/SyncEvolution/sources/memo/config.ini \
-	testcases/templates/clients/SyncEvolution/sources/todo/config.ini \
-	testcases/templates/clients/SyncEvolution/sources/calendar/config.ini \
-	testcases/templates/clients/SyncEvolution/template.ini \
-	testcases/templates/clients/SyncEvolution/config.ini \
-	testcases/templates/clients/phone/nokia/S40/7210c/sources/addressbook/config.ini \
-	testcases/templates/clients/phone/nokia/S40/7210c/sources/memo/config.ini \
-	testcases/templates/clients/phone/nokia/S40/7210c/sources/todo/config.ini \
-	testcases/templates/clients/phone/nokia/S40/7210c/sources/calendar/config.ini \
-	testcases/templates/clients/phone/nokia/S40/7210c/sources/calendar+todo/config.ini \
-	testcases/templates/clients/phone/nokia/S40/7210c/template.ini \
-	testcases/templates/clients/phone/nokia/S40/7210c/config.ini \
+	testcases/templates/clients/SyncEvolution.ini \
+	testcases/templates/clients/phone/nokia/S40/7210c.ini \
 	testcases/vcard21.vcf testcases/vcard30.vcf \
-	testcases/ical20.ics testcases/imemo20.ics \
-	testcases/itodo20.ics $(TEST_FILES_GENERATED)
+	testcases/ical20.ics testcases/ical20.ics.local \
+	testcases/imemo20.ics testcases/itodo20.ics \
+	$(TEST_FILES_GENERATED)
 
 # all patch files
 TEST_FILES_PATCHES = $(wildcard $(srcdir)/../test/testcases/*.patch)
@@ -694,7 +604,7 @@ client_test_LDADD = $(CORE_LDADD) $(SYNTHESIS_ENGINE)
 # runs the binary with out-dated auxiliary files.
 client_test_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) \
 	$(CLIENT_LIB_TEST_FILES) testcase2patch synccompare templates \
-	$(am__append_21)
+	$(am__append_22)
 @ENABLE_TESTING_TRUE@nobase_dist_doc_DATA = $(CLIENT_LIB_TEST_FILES)
 abort_redirect_SOURCES = ../test/abort-redirect.cpp
 abort_redirect_CPPFLAGS = -DHAVE_CONFIG_H $(AM_CPPFLAGS)

@@ -35,7 +35,12 @@ SUBDIRS += $(SYNTHESIS_SUBDIR_INCLUDES)
 endif
 if COND_GUI
 SUBDIRS += dbus gtk-ui
+else
+if COND_DOC
+SUBDIRS += dbus
 endif
+endif
+
 DIST_SUBDIRS = gdbus dbus syncevo $(BACKENDS) gtk-ui gnome-bluetooth synthesis-includes
 
 AM_CPPFLAGS = $(SUBDIRS:%=-I$(srcdir)/%) -I$(srcdir)/../test -I$(top_srcdir) $(BACKEND_CPPFLAGS)
@@ -79,7 +84,7 @@ SYNCEVOLUTION_DEP += $(SYNCSOURCES)
 endif
 EXTRA_DIST = shlibs.local Makefile-gen.am $(service_in_files) $(SYNCEVO_DBUS_SERVER_SCRIPT_IN) $(SYNCEVO_DBUS_SERVER_DESKTOP_IN)
 
-TEMPLATE_FILES = templates/README templates/servers/Funambol/config.ini templates/servers/Funambol/template.ini templates/servers/Funambol/sources/calendar/config.ini templates/servers/Funambol/sources/todo/config.ini templates/servers/Funambol/sources/addressbook/config.ini templates/servers/Funambol/sources/memo/config.ini templates/servers/ScheduleWorld/config.ini templates/servers/ScheduleWorld/template.ini templates/servers/ScheduleWorld/sources/calendar/config.ini templates/servers/ScheduleWorld/sources/todo/config.ini templates/servers/ScheduleWorld/sources/addressbook/config.ini templates/servers/ScheduleWorld/sources/memo/config.ini templates/clients/phone/nokia/S60/N85/config.ini templates/clients/phone/nokia/S60/N85/template.ini templates/clients/phone/nokia/S60/N85/sources/calendar/config.ini templates/clients/phone/nokia/S60/N85/sources/calendar+todo/config.ini templates/clients/phone/nokia/S60/N85/sources/todo/config.ini templates/clients/phone/nokia/S60/N85/sources/addressbook/config.ini templates/clients/phone/nokia/S60/N85/sources/memo/config.ini templates/clients/phone/nokia/maemo/n900/config.ini templates/clients/phone/nokia/maemo/n900/template.ini templates/clients/phone/nokia/maemo/n900/sources/calendar/config.ini templates/clients/phone/nokia/maemo/n900/sources/calendar+todo/config.ini templates/clients/phone/nokia/maemo/n900/sources/todo/config.ini templates/clients/phone/nokia/maemo/n900/sources/addressbook/config.ini templates/clients/phone/nokia/maemo/n900/sources/memo/config.ini templates/clients/phone/nokia/S40/7210c/config.ini templates/clients/phone/nokia/S40/7210c/template.ini templates/clients/phone/nokia/S40/7210c/sources/calendar/config.ini templates/clients/phone/nokia/S40/7210c/sources/calendar+todo/config.ini templates/clients/phone/nokia/S40/7210c/sources/todo/config.ini templates/clients/phone/nokia/S40/7210c/sources/addressbook/config.ini templates/clients/phone/nokia/S40/7210c/sources/memo/config.ini templates/clients/SyncEvolution/config.ini templates/clients/SyncEvolution/template.ini templates/clients/SyncEvolution/sources/calendar/config.ini templates/clients/SyncEvolution/sources/todo/config.ini templates/clients/SyncEvolution/sources/addressbook/config.ini templates/clients/SyncEvolution/sources/memo/config.ini
+TEMPLATE_FILES = templates/README templates/servers/Funambol.ini templates/servers/ScheduleWorld.ini templates/clients/phone/nokia/S60/N85.ini templates/clients/phone/nokia/maemo/n900.ini templates/clients/phone/nokia/S40/7210c.ini templates/clients/SyncEvolution.ini
 templatedir = $(datadir)/syncevolution/
 
 # synccompare is created by replacing its 'import Algorithm::Diff;'
@@ -212,22 +217,12 @@ nodist_client_test_SOURCES = ../test/test.cpp
 CLIENT_LIB_TEST_FILES = \
 	testcases/lcs/file1.txt \
 	testcases/lcs/file2.txt \
-	testcases/templates/clients/SyncEvolution/sources/addressbook/config.ini \
-	testcases/templates/clients/SyncEvolution/sources/memo/config.ini \
-	testcases/templates/clients/SyncEvolution/sources/todo/config.ini \
-	testcases/templates/clients/SyncEvolution/sources/calendar/config.ini \
-	testcases/templates/clients/SyncEvolution/template.ini \
-	testcases/templates/clients/SyncEvolution/config.ini \
-	testcases/templates/clients/phone/nokia/S40/7210c/sources/addressbook/config.ini \
-	testcases/templates/clients/phone/nokia/S40/7210c/sources/memo/config.ini \
-	testcases/templates/clients/phone/nokia/S40/7210c/sources/todo/config.ini \
-	testcases/templates/clients/phone/nokia/S40/7210c/sources/calendar/config.ini \
-	testcases/templates/clients/phone/nokia/S40/7210c/sources/calendar+todo/config.ini \
-	testcases/templates/clients/phone/nokia/S40/7210c/template.ini \
-	testcases/templates/clients/phone/nokia/S40/7210c/config.ini \
+	testcases/templates/clients/SyncEvolution.ini \
+	testcases/templates/clients/phone/nokia/S40/7210c.ini \
 	testcases/vcard21.vcf \
 	testcases/vcard30.vcf \
 	testcases/ical20.ics \
+	testcases/ical20.ics.local \
 	testcases/imemo20.ics \
 	testcases/itodo20.ics
 

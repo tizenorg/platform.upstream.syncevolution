@@ -1536,6 +1536,11 @@ TSyError TDB_Api::LoadAdminData( cAppCharP aLocDB,
   return   err;
 } // LoadAdminData
 
+TSyError TDB_Api::LoadAdminDataAsKey( cAppCharP aLocDB,
+                                      cAppCharP aRemDB, KeyH   aItemKey  )
+{
+  return LOCERR_NOTIMP;
+} // LoadAdminDataAsKey
 
 
 //! This functions stores the new <adminData> for this context
@@ -1544,6 +1549,11 @@ TSyError TDB_Api::SaveAdminData( cAppCharP adminData )
   SvInfo_Func p= (SvInfo_Func)dm->ds.dsAdmin.SaveAdminData;
   return      p( fContext, adminData );
 } // SaveAdminData
+
+TSyError TDB_Api::SaveAdminData_AsKey( KeyH aItemKey )
+{
+  return LOCERR_NOTIMP;
+} // SaveAdminDataAsKey
 
 
 

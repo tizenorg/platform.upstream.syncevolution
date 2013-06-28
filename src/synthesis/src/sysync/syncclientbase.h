@@ -36,14 +36,7 @@ class TClientEngineInterface:
   typedef TEngineInterface inherited;
 public:
   // constructor
-  TClientEngineInterface()
-    #ifdef ENGINE_LIBRARY
-    : fSessionStatus(LOCERR_WRONGUSAGE)
-    #ifdef NON_FULLY_GRANULAR_ENGINE
-    ,fPendingStepCmd(0)
-    #endif
-    #endif
-  {};
+  TClientEngineInterface() {};
 
   #ifndef ENGINE_LIBRARY
 
@@ -93,23 +86,6 @@ protected:
 
   /// @brief returns the SML instance for a given session handle
   virtual InstanceID_t getSmlInstanceOfSession(SessionH aSessionH);
-
-private:
-  // status of the session
-  localstatus fSessionStatus;
-
-  #ifdef NON_FULLY_GRANULAR_ENGINE
-public:
-  // progress event queue until engine is fully granular
-  TEngineProgressInfoList fProgressInfoList;
-  // pending step command and status during progress retrieval steps
-  uInt16 fPendingStepCmd;
-  localstatus fPendingStatus;
-  string fAlertMessage;
-  // suspend and abort requests
-  bool fSuspendRequested;
-  bool fAbortRequested;
-  #endif // NON_FULLY_GRANULAR_ENGINE
 
   #endif // ENGINE_LIBRARY
 

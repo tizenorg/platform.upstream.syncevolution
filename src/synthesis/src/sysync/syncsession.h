@@ -312,7 +312,19 @@ public:
   // Initialize a datastore tunnel session
   virtual localstatus InitializeTunnelSession(cAppCharP aDatastoreName) { return LOCERR_NOTIMP; }; // is usually implemented in customimplagent, as it depends on DBApi architecture
   virtual TLocalEngineDS *getTunnelDS() { return NULL; }; // is usually implemented in customimplagent
-  #endif
+  #endif // DBAPI_TUNNEL_SUPPORT
+	#ifdef PROGRESS_EVENTS
+  // Create Session level progress event
+  bool NotifySessionProgressEvent(
+    TProgressEventType aEventType,
+    TLocalDSConfig *aDatastoreID,
+    sInt32 aExtra1,
+    sInt32 aExtra2,
+    sInt32 aExtra3
+  );
+  // Handle (or dispatch) Session level progress event  
+	virtual bool HandleSessionProgressEvent(TEngineProgressInfo aProgressInfo) { return true; }; // no handling by default
+  #endif // PROGRESS_EVENTS
   // called when incoming SyncHdr fails to execute
   virtual bool syncHdrFailure(bool aTryAgain) = 0;
   // Abort session
@@ -347,7 +359,7 @@ public:
   #ifdef ENGINEINTERFACE_SUPPORT
   /// @brief Get new session key to access details of this session
   virtual appPointer newSessionKey(TEngineInterface *aEngineInterfaceP) = 0;
-  #endif
+  #endif // ENGINEINTERFACE_SUPPORT
   // session handling
   // - get session owner (dispatcher/clientbase)
   TSyncAppBase *getSyncAppBase(void) { return fSyncAppBaseP; }
@@ -379,7 +391,7 @@ public:
   const char *getRemoteInfoString(void) { return fRemoteInfoString.c_str(); };
   const char *getRemoteDescName(void) { return fRemoteDescName.c_str(); };
   const char *getSyncUserName(void) { return fSyncUserName.c_str(); };
-  #endif
+  #endif // MINIMAL_CODE
   sInt32 getLastIncomingMsgID(void) { return fIncomingMsgID; };
   void setSessionBusy(bool aBusy) { fSessionIsBusy=aBusy; }; // make session behave busy generally
   bool getReadOnly(void) { return fReadOnly; }; // read-only option
@@ -416,13 +428,6 @@ public:
     TStatusCommand &aStatusCommand, // pre-set 200 status, can be modified in case of errors
     TLocalEngineDS *&aLocalDataStoreP // receives datastore pointer, if alert affects a datastore
   );
-  /* %%% obsolete, now as alert has its own private datastore pointer
-  // - alert status processing
-  virtual bool handleAlertStatus(
-    TSyError aStatusCode,  // status code
-    const char *aLocalURI // should be local URI of datastore which sent the alert
-  );
-  */
   // - handle status received for SyncHdr, returns false if not handled
   virtual bool handleHeaderStatus(TStatusCommand * /* aStatusCmdP */) { return false; } // no special handling by default
   // - map operation
@@ -602,12 +607,12 @@ public:
   // - flags
   bool fXMLtranslate; // dump XML translation of SyncML traffic
   bool fMsgDump; // dump raw SyncML messages
-  #endif
+  #endif // SYDEBUG
   // log writing
   #ifndef MINIMAL_CODE
   void WriteLogLine(const char *aLogline);
   bool logEnabled(void) { return fLogEnabled; };
-  #endif
+  #endif // MINIMAL_CODE
   // current database date & time (defaults to system time)
   virtual lineartime_t getDatabaseNowAs(timecontext_t aContext) { return getSystemNowAs(aContext); };
   // devinf
@@ -619,7 +624,7 @@ public:
   #ifdef SYDEBUG
   TDebugLogger *getDbgLogger(void) { return &fSessionLogger; };
   uInt32 getDbgMask(void) { return fSessionDebugLogs ? fSessionLogger.getMask() : 0; };
-  #endif
+  #endif // SYDEBUG
   // Remote-specific options, will be set up by checkClient/ServerSpecifics()
   bool fLimitedRemoteFieldLengths; // if set, all fields will be assumed to have limited, but unknown field length (used for cut-off detection)
   bool fDontSendEmptyProperties; // if set, no empty properties will be sent to client
@@ -646,7 +651,7 @@ public:
   #ifndef NO_REMOTE_RULES
   bool isActiveRule(cAppCharP aRuleName, TRemoteRuleConfig *aRuleP=NULL); // check if given rule (by name, or if aRuleName=NULL by rule pointer) is active
   TRemoteRulesList fActiveRemoteRules; // list of remote rules currently active in this session
-  #endif
+  #endif // NO_REMOTE_RULES
   // legacy mode
   bool fLegacyMode; // if set, remote will see the types marked preferred="legacy" in devInf as preferred types, not the regular preferred ones
   // lenient mode
@@ -654,7 +659,7 @@ public:
   #ifdef EXPIRES_AFTER_DATE
   // copy of scrambled now
   sInt32 fCopyOfScrambledNow;
-  #endif
+  #endif // EXPIRES_AFTER_DATE
   // Sync datastores
   // - find local datastore by URI and separate identifying from optional part of URI
   TLocalEngineDS *findLocalDataStoreByURI(const char *aURI,string *aOptions=NULL, string *aIdentifyingURI=NULL);
@@ -671,7 +676,7 @@ public:
   #ifdef SCRIPT_SUPPORT
   // access to session script context
   TScriptContext *getSessionScriptContext(void) { return fSessionScriptContextP; };
-  #endif
+  #endif // SCRIPT_SUPPORT
   // unprotected options
   // - set if we should send property lists in CTCap
   bool fShowCTCapProps;
@@ -686,11 +691,11 @@ public:
   /// fSessionDebugLogs should be removed (but this needs rewriting of the XML and SML dumpers)
   // - set if debug log for this session is enabled
   bool fSessionDebugLogs;
-  #endif
+  #endif // SYDEBUG
   #ifndef MINIMAL_CODE
   // - se if normal log for this session is enabled
   bool fLogEnabled; // real log file enabled
-  #endif
+  #endif // MINIMAL_CODE
   // - remote options (SyncML 1.1)
   bool fRemoteWantsNOC; // remote wants number-of-changes info
   bool fRemoteCanHandleUTC; // remote can handle UTC time
@@ -866,11 +871,11 @@ protected:
   string fRemoteDevInf_swv;
   string fRemoteDevInf_fwv;
   string fRemoteDevInf_hwv;
-  #endif
+  #endif // MINIMAL_CODE
   #ifdef SCRIPT_SUPPORT
   // Session level script context
   TScriptContext *fSessionScriptContextP;
-  #endif
+  #endif // SCRIPT_SUPPORT
   // Session options
   bool fReadOnly;
   // Session state vars
@@ -913,7 +918,7 @@ private:
   // debug logging
   #ifdef SYDEBUG
   TDebugLogger fSessionLogger; // the logger
-  #endif
+  #endif // SYDEBUG
   // internal vars
   TSyncAppBase *fSyncAppBaseP; // the owning application base (dispatcher/client base)
   /* %%% prepared, to be implemented. Currently constant limits

@@ -250,7 +250,11 @@ public:
   /// @param aInfoP[in] pointer to a TEngineProgressInfo structure, NULL if no progress info needed
   /// @return LOCERR_OK on success, SyncML or LOCERR_xxx error code on failure
   TSyError SessionStep(uInt16 &aStepCmd, TEngineProgressInfo *aInfoP);
-  #endif
+	#ifdef PROGRESS_EVENTS
+  // Handle (or dispatch) Session level progress event  
+	virtual bool HandleSessionProgressEvent(TEngineProgressInfo aProgressInfo);
+	#endif // PROGRESS_EVENTS
+  #endif // ENGINE_LIBRARY
   /// @brief Get new session key to access details of this session
   virtual appPointer newSessionKey(TEngineInterface *aEngineInterfaceP);
   #endif // ENGINEINTERFACE_SUPPORT
@@ -452,6 +456,21 @@ protected:
   TServerEngineState fServerEngineState;
   // - request size
   MemSize_t fRequestSize;
+  #ifdef NON_FULLY_GRANULAR_ENGINE
+  // progress event queue until engine is fully granular
+  TEngineProgressInfoList fProgressInfoList;
+  // pending step command and status during progress retrieval steps
+  uInt16 fPendingStepCmd;
+  localstatus fPendingStatus;
+public:
+  string fAlertMessage;
+protected:
+  #endif // NON_FULLY_GRANULAR_ENGINE
+  // current session status
+  localstatus fEngineSessionStatus;
+  // suspend and abort requests
+  bool fSuspendRequested;
+  bool fAbortRequested;
   #endif // ENGINE_LIBRARY
   // set if map command received in this session
   bool fMapSeen;

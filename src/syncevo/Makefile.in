@@ -70,12 +70,12 @@ am__DEPENDENCIES_1 =
 am__DEPENDENCIES_5 = $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3) \
 	$(am__DEPENDENCIES_4)
 am__libsyncevolution_la_SOURCES_DIST = ConfigTree.h ConfigNode.h \
-	HashConfigNode.h VolatileConfigNode.h VolatileConfigTree.h \
-	SmartPtr.h eds_abi_wrapper.h eds_abi_wrapper.cpp SyncML.h \
-	SyncML.cpp SynthesisEngine.h SynthesisEngine.cpp Logging.h \
-	Logging.cpp LogStdout.h LogStdout.cpp LogRedirect.h \
-	LogRedirect.cpp TransportAgent.h TransportAgent.cpp \
-	CurlTransportAgent.h CurlTransportAgent.cpp \
+	ConfigNode.cpp HashConfigNode.h VolatileConfigNode.h \
+	VolatileConfigTree.h SmartPtr.h eds_abi_wrapper.h \
+	eds_abi_wrapper.cpp SyncML.h SyncML.cpp SynthesisEngine.h \
+	SynthesisEngine.cpp Logging.h Logging.cpp LogStdout.h \
+	LogStdout.cpp LogRedirect.h LogRedirect.cpp TransportAgent.h \
+	TransportAgent.cpp CurlTransportAgent.h CurlTransportAgent.cpp \
 	SoupTransportAgent.h SoupTransportAgent.cpp util.cpp util.h \
 	lcs.h lcs.cpp Cmdline.cpp Cmdline.h SyncSource.h \
 	SyncSource.cpp SynthesisDBPlugin.cpp SyncContext.h \
@@ -84,12 +84,17 @@ am__libsyncevolution_la_SOURCES_DIST = ConfigTree.h ConfigNode.h \
 	MultiplexConfigNode.cpp FilterConfigNode.h \
 	FilterConfigNode.cpp SafeConfigNode.h SafeConfigNode.cpp \
 	PrefixConfigNode.h PrefixConfigNode.cpp FileConfigNode.h \
-	FileConfigNode.cpp FileConfigTree.h FileConfigTree.cpp \
-	TrackingSyncSource.h TrackingSyncSource.cpp \
-	ObexTransportAgent.h ObexTransportAgent.cpp
+	FileConfigNode.cpp IniConfigNode.h IniConfigNode.cpp \
+	SingleFileConfigTree.h SingleFileConfigTree.cpp DataBlob.h \
+	FileDataBlob.h FileDataBlob.cpp StringDataBlob.h \
+	StringDataBlob.cpp SafeOstream.h SafeOstream.cpp \
+	FileConfigTree.h FileConfigTree.cpp TrackingSyncSource.h \
+	TrackingSyncSource.cpp ObexTransportAgent.h \
+	ObexTransportAgent.cpp
 @ENABLE_OBEX_TRUE@am__objects_1 =  \
 @ENABLE_OBEX_TRUE@	libsyncevolution_la-ObexTransportAgent.lo
-am__objects_2 = libsyncevolution_la-eds_abi_wrapper.lo \
+am__objects_2 = libsyncevolution_la-ConfigNode.lo \
+	libsyncevolution_la-eds_abi_wrapper.lo \
 	libsyncevolution_la-SyncML.lo \
 	libsyncevolution_la-SynthesisEngine.lo \
 	libsyncevolution_la-Logging.lo \
@@ -109,6 +114,11 @@ am__objects_2 = libsyncevolution_la-eds_abi_wrapper.lo \
 	libsyncevolution_la-SafeConfigNode.lo \
 	libsyncevolution_la-PrefixConfigNode.lo \
 	libsyncevolution_la-FileConfigNode.lo \
+	libsyncevolution_la-IniConfigNode.lo \
+	libsyncevolution_la-SingleFileConfigTree.lo \
+	libsyncevolution_la-FileDataBlob.lo \
+	libsyncevolution_la-StringDataBlob.lo \
+	libsyncevolution_la-SafeOstream.lo \
 	libsyncevolution_la-FileConfigTree.lo \
 	libsyncevolution_la-TrackingSyncSource.lo $(am__objects_1)
 am_libsyncevolution_la_OBJECTS = $(am__objects_2)
@@ -299,6 +309,8 @@ POSUB = @POSUB@
 PO_IN_DATADIR_FALSE = @PO_IN_DATADIR_FALSE@
 PO_IN_DATADIR_TRUE = @PO_IN_DATADIR_TRUE@
 RANLIB = @RANLIB@
+RST2HTML = @RST2HTML@
+RST2MAN = @RST2MAN@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
@@ -392,23 +404,27 @@ AM_CPPFLAGS = @BACKEND_CPPFLAGS@ @GLIB_CFLAGS@ -I$(top_srcdir)/test -I$(top_srcd
 SUBDIRS = configs
 MAINTAINERCLEANFILES = Makefile.in
 lib_LTLIBRARIES = libsyncevolution.la
-SYNCEVOLUTION_SOURCES = ConfigTree.h ConfigNode.h HashConfigNode.h \
-	VolatileConfigNode.h VolatileConfigTree.h SmartPtr.h \
-	eds_abi_wrapper.h eds_abi_wrapper.cpp SyncML.h SyncML.cpp \
-	SynthesisEngine.h SynthesisEngine.cpp Logging.h Logging.cpp \
-	LogStdout.h LogStdout.cpp LogRedirect.h LogRedirect.cpp \
-	TransportAgent.h TransportAgent.cpp CurlTransportAgent.h \
-	CurlTransportAgent.cpp SoupTransportAgent.h \
-	SoupTransportAgent.cpp util.cpp util.h lcs.h lcs.cpp \
-	Cmdline.cpp Cmdline.h SyncSource.h SyncSource.cpp \
-	SynthesisDBPlugin.cpp SyncContext.h SyncContext.cpp \
-	SyncConfig.h SyncConfig.cpp DevNullConfigNode.h \
-	MultiplexConfigNode.h MultiplexConfigNode.cpp \
-	FilterConfigNode.h FilterConfigNode.cpp SafeConfigNode.h \
-	SafeConfigNode.cpp PrefixConfigNode.h PrefixConfigNode.cpp \
-	FileConfigNode.h FileConfigNode.cpp FileConfigTree.h \
-	FileConfigTree.cpp TrackingSyncSource.h TrackingSyncSource.cpp \
-	$(am__append_3)
+SYNCEVOLUTION_SOURCES = ConfigTree.h ConfigNode.h ConfigNode.cpp \
+	HashConfigNode.h VolatileConfigNode.h VolatileConfigTree.h \
+	SmartPtr.h eds_abi_wrapper.h eds_abi_wrapper.cpp SyncML.h \
+	SyncML.cpp SynthesisEngine.h SynthesisEngine.cpp Logging.h \
+	Logging.cpp LogStdout.h LogStdout.cpp LogRedirect.h \
+	LogRedirect.cpp TransportAgent.h TransportAgent.cpp \
+	CurlTransportAgent.h CurlTransportAgent.cpp \
+	SoupTransportAgent.h SoupTransportAgent.cpp util.cpp util.h \
+	lcs.h lcs.cpp Cmdline.cpp Cmdline.h SyncSource.h \
+	SyncSource.cpp SynthesisDBPlugin.cpp SyncContext.h \
+	SyncContext.cpp SyncConfig.h SyncConfig.cpp \
+	DevNullConfigNode.h MultiplexConfigNode.h \
+	MultiplexConfigNode.cpp FilterConfigNode.h \
+	FilterConfigNode.cpp SafeConfigNode.h SafeConfigNode.cpp \
+	PrefixConfigNode.h PrefixConfigNode.cpp FileConfigNode.h \
+	FileConfigNode.cpp IniConfigNode.h IniConfigNode.cpp \
+	SingleFileConfigTree.h SingleFileConfigTree.cpp DataBlob.h \
+	FileDataBlob.h FileDataBlob.cpp StringDataBlob.h \
+	StringDataBlob.cpp SafeOstream.h SafeOstream.cpp \
+	FileConfigTree.h FileConfigTree.cpp TrackingSyncSource.h \
+	TrackingSyncSource.cpp $(am__append_3)
 libsyncevolution_includedir = $(includedir)/syncevo
 libsyncevolution_include_HEADERS = \
 	declarations.h \
@@ -520,10 +536,13 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-Cmdline.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-ConfigNode.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-CurlTransportAgent.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-FileConfigNode.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-FileConfigTree.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-FileDataBlob.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-FilterConfigNode.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-IniConfigNode.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-LogRedirect.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-LogStdout.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-Logging.Plo@am__quote@
@@ -531,7 +550,10 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-ObexTransportAgent.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-PrefixConfigNode.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-SafeConfigNode.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-SafeOstream.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-SingleFileConfigTree.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-SoupTransportAgent.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-StringDataBlob.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-SyncConfig.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-SyncContext.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-SyncEvolutionXML.Plo@am__quote@
@@ -593,6 +615,13 @@ libsyncevolution_la-SyncEvolutionXML.lo: SyncEvolutionXML.c
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LTCXXCOMPILE) -c -o $@ $<
+
+libsyncevolution_la-ConfigNode.lo: ConfigNode.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -MT libsyncevolution_la-ConfigNode.lo -MD -MP -MF $(DEPDIR)/libsyncevolution_la-ConfigNode.Tpo -c -o libsyncevolution_la-ConfigNode.lo `test -f 'ConfigNode.cpp' || echo '$(srcdir)/'`ConfigNode.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsyncevolution_la-ConfigNode.Tpo $(DEPDIR)/libsyncevolution_la-ConfigNode.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ConfigNode.cpp' object='libsyncevolution_la-ConfigNode.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -c -o libsyncevolution_la-ConfigNode.lo `test -f 'ConfigNode.cpp' || echo '$(srcdir)/'`ConfigNode.cpp
 
 libsyncevolution_la-eds_abi_wrapper.lo: eds_abi_wrapper.cpp
 @am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -MT libsyncevolution_la-eds_abi_wrapper.lo -MD -MP -MF $(DEPDIR)/libsyncevolution_la-eds_abi_wrapper.Tpo -c -o libsyncevolution_la-eds_abi_wrapper.lo `test -f 'eds_abi_wrapper.cpp' || echo '$(srcdir)/'`eds_abi_wrapper.cpp
@@ -740,6 +769,41 @@ libsyncevolution_la-FileConfigNode.lo: FileConfigNode.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='FileConfigNode.cpp' object='libsyncevolution_la-FileConfigNode.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -c -o libsyncevolution_la-FileConfigNode.lo `test -f 'FileConfigNode.cpp' || echo '$(srcdir)/'`FileConfigNode.cpp
+
+libsyncevolution_la-IniConfigNode.lo: IniConfigNode.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -MT libsyncevolution_la-IniConfigNode.lo -MD -MP -MF $(DEPDIR)/libsyncevolution_la-IniConfigNode.Tpo -c -o libsyncevolution_la-IniConfigNode.lo `test -f 'IniConfigNode.cpp' || echo '$(srcdir)/'`IniConfigNode.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsyncevolution_la-IniConfigNode.Tpo $(DEPDIR)/libsyncevolution_la-IniConfigNode.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='IniConfigNode.cpp' object='libsyncevolution_la-IniConfigNode.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -c -o libsyncevolution_la-IniConfigNode.lo `test -f 'IniConfigNode.cpp' || echo '$(srcdir)/'`IniConfigNode.cpp
+
+libsyncevolution_la-SingleFileConfigTree.lo: SingleFileConfigTree.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -MT libsyncevolution_la-SingleFileConfigTree.lo -MD -MP -MF $(DEPDIR)/libsyncevolution_la-SingleFileConfigTree.Tpo -c -o libsyncevolution_la-SingleFileConfigTree.lo `test -f 'SingleFileConfigTree.cpp' || echo '$(srcdir)/'`SingleFileConfigTree.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsyncevolution_la-SingleFileConfigTree.Tpo $(DEPDIR)/libsyncevolution_la-SingleFileConfigTree.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='SingleFileConfigTree.cpp' object='libsyncevolution_la-SingleFileConfigTree.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -c -o libsyncevolution_la-SingleFileConfigTree.lo `test -f 'SingleFileConfigTree.cpp' || echo '$(srcdir)/'`SingleFileConfigTree.cpp
+
+libsyncevolution_la-FileDataBlob.lo: FileDataBlob.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -MT libsyncevolution_la-FileDataBlob.lo -MD -MP -MF $(DEPDIR)/libsyncevolution_la-FileDataBlob.Tpo -c -o libsyncevolution_la-FileDataBlob.lo `test -f 'FileDataBlob.cpp' || echo '$(srcdir)/'`FileDataBlob.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsyncevolution_la-FileDataBlob.Tpo $(DEPDIR)/libsyncevolution_la-FileDataBlob.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='FileDataBlob.cpp' object='libsyncevolution_la-FileDataBlob.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -c -o libsyncevolution_la-FileDataBlob.lo `test -f 'FileDataBlob.cpp' || echo '$(srcdir)/'`FileDataBlob.cpp
+
+libsyncevolution_la-StringDataBlob.lo: StringDataBlob.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -MT libsyncevolution_la-StringDataBlob.lo -MD -MP -MF $(DEPDIR)/libsyncevolution_la-StringDataBlob.Tpo -c -o libsyncevolution_la-StringDataBlob.lo `test -f 'StringDataBlob.cpp' || echo '$(srcdir)/'`StringDataBlob.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsyncevolution_la-StringDataBlob.Tpo $(DEPDIR)/libsyncevolution_la-StringDataBlob.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='StringDataBlob.cpp' object='libsyncevolution_la-StringDataBlob.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -c -o libsyncevolution_la-StringDataBlob.lo `test -f 'StringDataBlob.cpp' || echo '$(srcdir)/'`StringDataBlob.cpp
+
+libsyncevolution_la-SafeOstream.lo: SafeOstream.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -MT libsyncevolution_la-SafeOstream.lo -MD -MP -MF $(DEPDIR)/libsyncevolution_la-SafeOstream.Tpo -c -o libsyncevolution_la-SafeOstream.lo `test -f 'SafeOstream.cpp' || echo '$(srcdir)/'`SafeOstream.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsyncevolution_la-SafeOstream.Tpo $(DEPDIR)/libsyncevolution_la-SafeOstream.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='SafeOstream.cpp' object='libsyncevolution_la-SafeOstream.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -c -o libsyncevolution_la-SafeOstream.lo `test -f 'SafeOstream.cpp' || echo '$(srcdir)/'`SafeOstream.cpp
 
 libsyncevolution_la-FileConfigTree.lo: FileConfigTree.cpp
 @am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -MT libsyncevolution_la-FileConfigTree.lo -MD -MP -MF $(DEPDIR)/libsyncevolution_la-FileConfigTree.Tpo -c -o libsyncevolution_la-FileConfigTree.lo `test -f 'FileConfigTree.cpp' || echo '$(srcdir)/'`FileConfigTree.cpp

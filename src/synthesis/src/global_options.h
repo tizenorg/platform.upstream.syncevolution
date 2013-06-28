@@ -71,8 +71,8 @@
 #endif
 
 #ifndef SYSYNC_BUILDNUMBER
-#define SYSYNC_BUILDNUMBER          6
-#define SYSYNC_BUILDNUMBER_TXT     "6"
+#define SYSYNC_BUILDNUMBER          8
+#define SYSYNC_BUILDNUMBER_TXT     "8"
 #endif
 
 
@@ -174,6 +174,7 @@
 #define MIMEDIR_SUPPORT 1
 #define TEXTTYPE_SUPPORT 1
 #define DATAOBJ_SUPPORT 1
+#define RAWTYPE_SUPPORT 1
 
 // intermediate stuff for v3.x development
 /// @todo

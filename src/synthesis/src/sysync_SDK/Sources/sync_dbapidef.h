@@ -255,7 +255,8 @@ enum Version {
 #define CA_GlobContext       "GlobContext"  /* The global context, if available */
 #define CA_ADMIN_Info        "ADMIN_Info"   /* Get ADMIN info as <name><SP>"ADMIN" with 'CreateContext' */
                                             /*   (supported for V1.3.7 and higher) */
-#define CA_ItemAsKey         "ITEM_AS_KEY"  /* Supports the ItemAsKey" mode */
+#define CA_ItemAsKey         "ITEM_AS_KEY"  /* Supports the AsKey" mode */
+#define CA_AdminAsKey        "ADMIN_AS_KEY" /* Supports the AsKey" mode for Load/SaveAdminData */
 #define CA_Error             "ERROR"        /* Capability error */
 
 /* Predefined identifiers */

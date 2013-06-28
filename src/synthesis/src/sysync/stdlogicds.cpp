@@ -871,7 +871,7 @@ bool TStdLogicDS::logicGenerateSyncCommandsAsServer(
       fItemsSent++; // overall counter for statistics
       itemcount++; // per message counter
       // send event (but no check for abort)
-      OBJ_PROGRESS_EVENT(fSessionP->getSyncAppBase(),pev_itemsent,getDSConfig(),fItemsSent,getNumberOfChanges(),0);
+      DB_PROGRESS_EVENT(this,pev_itemsent,fItemsSent,getNumberOfChanges(),0);
     }
   }; // while not aborted and not message full
   // we are not done until all aNextMessageCommands are also out
@@ -1033,13 +1033,13 @@ bool TStdLogicDS::logicGenerateSyncCommandsAsClient(
       fItemsSent++;
       // send event and check for abort
       #ifdef PROGRESS_EVENTS
-      if (!fSessionP->getSyncAppBase()->NotifyProgressEvent(pev_itemsent,getDSConfig(),fItemsSent,getNumberOfChanges())) {
+      if (!DB_PROGRESS_EVENT(this,pev_itemsent,fItemsSent,getNumberOfChanges(),0)) {
         implEndDataRead(); // terminate reading
         fSessionP->AbortSession(500,true,LOCERR_USERABORT);
         return false; // error
       }
       // check for "soft" suspension
-      if (!fSessionP->getSyncAppBase()->NotifyProgressEvent(pev_suspendcheck)) {
+      if (!SESSION_PROGRESS_EVENT(fSessionP,pev_suspendcheck,NULL,0,0,0)) {
         fSessionP->SuspendSession(LOCERR_USERSUSPEND);
       }
       #endif

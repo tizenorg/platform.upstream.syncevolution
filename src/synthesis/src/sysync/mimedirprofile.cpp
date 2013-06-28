@@ -4159,7 +4159,7 @@ bool TMimeDirProfileHandler::parseLevels(
                 timecontext_t tctx;
                 // identify or add this in the session zones
                 string tzid;
-                if (VTIMEZONEtoInternal(s2.c_str(), tctx, getSessionZones(), NULL, &tzid)) {
+                if (VTIMEZONEtoInternal(s2.c_str(), tctx, getSessionZones(), getDbgLogger(), &tzid)) {
                 	// time zone identified
                   #ifdef SYDEBUG
                   string tzname;

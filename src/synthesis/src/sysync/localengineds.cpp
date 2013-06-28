@@ -2676,10 +2676,9 @@ TAlertCommand *TLocalEngineDS::engProcessSyncAlert(
         ));
         #ifdef PROGRESS_EVENTS
         // - progress event
-        OBJ_PROGRESS_EVENT(
-          fSessionP->getSyncAppBase(),
+        DB_PROGRESS_EVENT(
+          this,
           pev_alerted,
-          fDSConfigP,
           fSlowSync ? (fFirstTimeSync ? 2 : 1) : 0,
           fResuming ? 1 : 0,
           fSyncMode
@@ -3925,7 +3924,7 @@ bool TLocalEngineDS::engProcessSyncCmd(
         fSlowSync ? "slow" : "normal"
       ));
       if (fRemoteNumberOfChanges>=0) PDEBUGPRINTFX(DBG_HOT,("- NumberOfChanges announced by remote = %ld",(long)fRemoteNumberOfChanges));
-      OBJ_PROGRESS_EVENT(fSessionP->getSyncAppBase(),pev_syncstart,fDSConfigP,0,0,0);
+      DB_PROGRESS_EVENT(this,pev_syncstart,0,0,0);
     }
     else {
       // - not yet started
@@ -4190,10 +4189,9 @@ void TLocalEngineDS::engAbortDataStoreSync(TSyError aStatusCode, bool aLocalProb
       aLocalProblem ? "LOCAL" : "REMOTE",
       aStatusCode
     ));
-    OBJ_PROGRESS_EVENT(
-      fSessionP->getSyncAppBase(),
+    DB_PROGRESS_EVENT(
+    	this,
       pev_syncend,
-      fDSConfigP,
       getAbortStatusCode(), //%%%aLocalProblem ? localError(aStatusCode) : syncmlError(aStatusCode),
       fSlowSync ? (fFirstTimeSync ? 2 : 1) : 0,
       fResuming ? 1 : 0
@@ -4361,10 +4359,9 @@ void TLocalEngineDS::engFinishDataStoreSync(localstatus aErrorStatus)
     if (aErrorStatus!=LOCERR_OK)
       engAbortDataStoreSync(aErrorStatus,true); // if we have an error here, this is considered a local problem
     else {
-      OBJ_PROGRESS_EVENT(
-        fSessionP->getSyncAppBase(),
+      DB_PROGRESS_EVENT(
+      	this,
         pev_syncend,
-        fDSConfigP,
         fAbortStatusCode,
         fSlowSync ? (fFirstTimeSync ? 2 : 1) : 0,
         fResuming ? 1 : 0
@@ -4481,17 +4478,17 @@ void TLocalEngineDS::showStatistics(void)
   }
   CONSOLEPRINTF((""));
   // Always provide statistics as events
-  OBJ_PROGRESS_EVENT(fSessionP->getSyncAppBase(),pev_dsstats_l,fDSConfigP,fLocalItemsAdded,fLocalItemsUpdated,fLocalItemsDeleted);
-  OBJ_PROGRESS_EVENT(fSessionP->getSyncAppBase(),pev_dsstats_r,fDSConfigP,fRemoteItemsAdded,fRemoteItemsUpdated,fRemoteItemsDeleted);
-  OBJ_PROGRESS_EVENT(fSessionP->getSyncAppBase(),pev_dsstats_e,fDSConfigP,fLocalItemsError,fRemoteItemsError,0);
+  DB_PROGRESS_EVENT(this,pev_dsstats_l,fLocalItemsAdded,fLocalItemsUpdated,fLocalItemsDeleted);
+  DB_PROGRESS_EVENT(this,pev_dsstats_r,fRemoteItemsAdded,fRemoteItemsUpdated,fRemoteItemsDeleted);
+  DB_PROGRESS_EVENT(this,pev_dsstats_e,fLocalItemsError,fRemoteItemsError,0);
   #ifdef SYSYNC_SERVER
   if (IS_SERVER) {
-    OBJ_PROGRESS_EVENT(fSessionP->getSyncAppBase(),pev_dsstats_s,fDSConfigP,fSlowSyncMatches,0,0);
-    OBJ_PROGRESS_EVENT(fSessionP->getSyncAppBase(),pev_dsstats_c,fDSConfigP,fConflictsServerWins,fConflictsClientWins,fConflictsDuplicated);
+    DB_PROGRESS_EVENT(this,pev_dsstats_s,fSlowSyncMatches,0,0);
+    DB_PROGRESS_EVENT(this,pev_dsstats_c,fConflictsServerWins,fConflictsClientWins,fConflictsDuplicated);
   }
   #endif
   // NOTE: pev_dsstats_d should remain the last log data event sent (as it terminates collecting data in some GUIs)
-  OBJ_PROGRESS_EVENT(fSessionP->getSyncAppBase(),pev_dsstats_d,fDSConfigP,fOutgoingDataBytes,fIncomingDataBytes,fRemoteItemsError);
+  DB_PROGRESS_EVENT(this,pev_dsstats_d,fOutgoingDataBytes,fIncomingDataBytes,fRemoteItemsError);
   // Always show statistics in debug log
   #ifdef SYDEBUG
   PDEBUGPRINTFX(DBG_HOT,("Sync Statistics for '%s' (%s), %s sync",
@@ -5141,7 +5138,7 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
   if(CheckAborted(aStatusCommand))
     return false;
   // send event (but no abort checking)
-  OBJ_PROGRESS_EVENT(fSessionP->getSyncAppBase(),pev_itemreceived,fDSConfigP,++fItemsReceived,fRemoteNumberOfChanges,0);
+  DB_PROGRESS_EVENT(this,pev_itemreceived,++fItemsReceived,fRemoteNumberOfChanges,0);
   fPreventAdd = false;
   fIgnoreUpdate = false;
   // show
@@ -5959,7 +5956,7 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
       SYSYNC_THROW(TSyncException("Unknown sync op in TLocalEngineDS::processRemoteItemAsServer"));
   } // switch
   if (ok) {
-    OBJ_PROGRESS_EVENT(fSessionP->getSyncAppBase(),pev_itemprocessed,fDSConfigP,fLocalItemsAdded,fLocalItemsUpdated,fLocalItemsDeleted);
+    DB_PROGRESS_EVENT(this,pev_itemprocessed,fLocalItemsAdded,fLocalItemsUpdated,fLocalItemsDeleted);
   }
   else {
   	// if the DB has a error string to show, add it here
@@ -6023,10 +6020,10 @@ bool TLocalEngineDS::engProcessRemoteItemAsClient(
 
   // send event and check for user abort
   #ifdef PROGRESS_EVENTS
-  if (!fSessionP->getSyncAppBase()->NotifyProgressEvent(pev_itemreceived,fDSConfigP,++fItemsReceived,fRemoteNumberOfChanges)) {
+  if (!DB_PROGRESS_EVENT(this,pev_itemreceived,++fItemsReceived,fRemoteNumberOfChanges,0)) {
     fSessionP->AbortSession(500,true,LOCERR_USERABORT); // this also causes datastore to be aborted
   }
-  if (!fSessionP->getSyncAppBase()->NotifyProgressEvent(pev_suspendcheck)) {
+  if (!SESSION_PROGRESS_EVENT(fSessionP,pev_suspendcheck,NULL,0,0,0)) {
     fSessionP->SuspendSession(LOCERR_USERSUSPEND);
   }
   #endif
@@ -6201,7 +6198,7 @@ bool TLocalEngineDS::engProcessRemoteItemAsClient(
     } // switch
     // processed
     if (ok) {
-    	OBJ_PROGRESS_EVENT(fSessionP->getSyncAppBase(),pev_itemprocessed,fDSConfigP,fLocalItemsAdded,fLocalItemsUpdated,fLocalItemsDeleted);
+    	DB_PROGRESS_EVENT(this,pev_itemprocessed,fLocalItemsAdded,fLocalItemsUpdated,fLocalItemsDeleted);
     }
     else {
       // if the DB has a error string to show, add it here

@@ -21,9 +21,9 @@ $(srcdir)/Makefile.am: $(srcdir)/Makefile.am.in $(srcdir)/gen-makefile-am.sh
 # incompatible way, increment CURRENT and reset AGE and REVISION to
 # zero. When fixing something without interface change, increment
 # REVISION.
-ENGINE_CURRENT = 3
-ENGINE_REVISION = 1
-ENGINE_AGE = 3
+ENGINE_CURRENT = 4
+ENGINE_REVISION = 0
+ENGINE_AGE = 4
 
 CLEANFILES =
 EXTRA_DIST =
@@ -158,3 +158,26 @@ libsmltk_la_CXXFLAGS = $(libsmltk_la_CFLAGS)
 libsmltk_la_LDFLAGS = -version-info $(ENGINE_CURRENT):$(ENGINE_REVISION):$(ENGINE_AGE) \
 	-Wl,--version-script=$(srcdir)/smltk-linker.map
 libsmltk_la_DEPENDENCIES = $(srcdir)/smltk-linker.map
+
+# Doxygen for complete source code as used in autotools build.
+# The dependency on the libs ensures that doxygen is invoked
+# anew when any input file for those changes, reusing the
+# automatic dependency tracking. A side effect (both good
+# and bad) is that doxygen will not be invoked on code
+# which does not compile.
+html/index.html: Doxyfile libsynthesis.la libsynthesissdk.la
+	rm -rf html
+	INPUT="$(srcdir)/platform_adapters $(srcdir)/syncml_tk $(srcdir)/sysync_SDK $(srcdir)/sysync $(srcdir)/DB_interfaces" \
+	INCLUDE_PATH="$(srcdir)/Targets/ReleasedProducts/autotools $(srcdir)/Targets/ReleasedProducts/combiEngine_opensource_linux $(srcdir)/sysync_SDK/Sources" \
+	PREDEFINED="`cat $(srcdir)/Targets/ReleasedProducts/combiEngine_opensource_linux/target_options.h  | grep '^#define' | grep '1 *$$' | sed -e 's/#define //' -e 's/ 1//'`" \
+	doxygen $<
+
+.PHONY: doxygen
+doxygen: html/index.html
+clean-doxygen:
+	rm -rf html
+
+if COND_DOXYGEN
+all: doxygen
+clean-local: clean-doxygen
+endif

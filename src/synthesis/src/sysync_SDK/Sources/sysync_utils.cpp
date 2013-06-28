@@ -1931,7 +1931,7 @@ void StringObjHexString(string &aStringObj, const uInt8 *aBinary, uInt32 aBinSz)
 } // StringObjHexString
 
 
-// add CGI to existing URL string
+// add (already encoded!) CGI to existing URL string
 bool addCGItoString(string &aStringObj, cAppCharP aCGI, bool noduplicate)
 {
 	if (!noduplicate || aStringObj.find(aCGI)==string::npos) {
@@ -1943,6 +1943,27 @@ bool addCGItoString(string &aStringObj, cAppCharP aCGI, bool noduplicate)
   }
   return false; // nothing added
 }
+
+
+// encode string for being used as a CGI key/value element
+string encodeForCGI(cAppCharP aCGI)
+{
+	string cgi;
+  cAppCharP p = aCGI;
+  while (p && *p) {
+  	if (*p>0x7E || *p<=0x20 || *p=='%' || *p=='?' || *p=='&' || *p=='#') {
+    	// CGI encode these
+    	cgi += '%';
+      AppendHexByte(cgi, *p);
+    }
+    else {
+    	// use as-is
+    	cgi += *p;
+    }
+  	p++;
+  }
+  return cgi;
+} // encodeForCGI
 
 
 // Count bits

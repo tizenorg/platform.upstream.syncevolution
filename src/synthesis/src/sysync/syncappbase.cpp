@@ -43,7 +43,7 @@ extern "C" int GlobalNotifyProgressEvent (
   #ifdef PROGRESS_EVENTS
   TSyncAppBase *baseP = getExistingSyncAppBase();
   if (baseP) {
-    return baseP->NotifyProgressEvent(aEventType,NULL,aExtra1,aExtra2,aExtra3);
+    return baseP->NotifyAppProgressEvent(aEventType,NULL,aExtra1,aExtra2,aExtra3);
   }
   #endif
   return true; // not aborted
@@ -220,7 +220,7 @@ extern "C" void AppBaseLogDebugBlock(void *aCallbackRef, const char *aTag, const
   if (aCallbackRef) {
     bool collapsed=false;
     if (aTag && aTag[0]=='-') { aTag++; collapsed=true; }
-    static_cast<TSyncAppBase *>(aCallbackRef)->getDbgLogger()->DebugOpenBlock(aTag,aDesc,collapsed,"%s",aAttrText);
+    static_cast<TSyncAppBase *>(aCallbackRef)->getDbgLogger()->DebugOpenBlock(TDBG_LOCATION_NONE aTag,aDesc,collapsed,"%s",aAttrText);
   }
 } // AppBaseLogDebugBlock
 
@@ -229,7 +229,7 @@ extern "C" void AppBaseLogDebugEndBlock(void *aCallbackRef, const char *aTag)
 {
   if (aCallbackRef) {
     if (aTag && aTag[0]=='-') aTag++;
-    static_cast<TSyncAppBase *>(aCallbackRef)->getDbgLogger()->DebugCloseBlock(aTag);
+    static_cast<TSyncAppBase *>(aCallbackRef)->getDbgLogger()->DebugCloseBlock(TDBG_LOCATION_NONE aTag);
   }
 } // AppBaseLogDebugEndBlock
 
@@ -920,6 +920,12 @@ bool TDebugConfig::localStartElement(const char *aElementName, const char **aAtt
     expectEnum(sizeof(fSessionDbgLoggerOptions.fOutputFormat),&fSessionDbgLoggerOptions.fOutputFormat,DbgOutFormatNames,numDbgOutFormats);
   else if (strucmp(aElementName,"folding")==0)
     expectEnum(sizeof(fSessionDbgLoggerOptions.fFoldingMode),&fSessionDbgLoggerOptions.fFoldingMode,DbgFoldingModeNames,numDbgFoldingModes);
+  #ifdef SYDEBUG_LOCATION
+  else if (strucmp(aElementName,"sourcelink")==0)
+    expectEnum(sizeof(fSessionDbgLoggerOptions.fSourceLinkMode),&fSessionDbgLoggerOptions.fSourceLinkMode,DbgSourceModeNames,numDbgSourceModes);
+  else if (strucmp(aElementName,"sourcebase")==0)
+    expectPath(fSessionDbgLoggerOptions.fSourceRootPath);
+  #endif
   else if (strucmp(aElementName,"indentstring")==0)
     expectCString(fSessionDbgLoggerOptions.fIndentString);
   else if (strucmp(aElementName,"fileprefix")==0)
@@ -1160,7 +1166,7 @@ TSyncAppBase::TSyncAppBase() :
   fDeleting(false),
   fConfigP(NULL),
   fRequestCount(0),
-  #ifdef PROGRESS_EVENTS
+  #if defined(PROGRESS_EVENTS) && !defined(ENGINE_LIBRARY)
   fProgressEventFunc(NULL),
   #endif
   #ifdef ENGINEINTERFACE_SUPPORT
@@ -1198,7 +1204,7 @@ TSyncAppBase::TSyncAppBase() :
   sInt16 y,m,d;
   lineartime2date(getSystemNowAs(TCTX_UTC),&y,&m,&d);
   // - calculate scrambled version thereof
-  fScrambledNow=
+  fScrambledNow =
     ((sInt32)y-1720l)*12l*42l+
     ((sInt32)m-1)*42l+
     ((sInt32)d+7l);
@@ -1210,32 +1216,24 @@ TSyncAppBase::TSyncAppBase() :
   */
   #endif
   #ifdef APP_CAN_EXPIRE
-  fAppExpiryStatus=LOCERR_OK; // do not compare here, would be too easy
+  fAppExpiryStatus = LOCERR_OK; // do not compare here, would be too easy
   #endif
   #if defined(SYDEBUG) && defined(HARDCODED_CONFIG)
-  fConfigFilePath="<hardcoded config>";
+  fConfigFilePath = "<hardcoded config>";
   #endif
   #ifdef SYSER_REGISTRATION
   // make sure that license is standard (no phone home, no expiry) in case there is NO license at all
-  fRegLicenseType=0;
-  fRelDuration=0;
-  fRegDuration=0;
+  fRegLicenseType = 0;
+  fRelDuration = 0;
+  fRegDuration = 0;
+  #if defined(EXPIRES_AFTER_DAYS) && defined(ENGINE_LIBRARY)
+  fFirstUseDate = 0;
+  fFirstUseVers = 0;
+	#endif
   #endif
 
-  // TODO: put this somewhere where the return code can be checked and
-  // reported to the user of TSyncAppBase
+  // TODO: put this somewhere where the return code can be checked and reported to the user of TSyncAppBase
   fAppZones.initialize();
-
-  /* %%%%
-  string zoneName;
-  sInt16 stdBias;
-  sInt16 dstBias;
-  lineartime_t stdStart;
-  lineartime_t dstStart;
-  bool ok = getSystemTimeZone(zoneName, stdBias, dstBias, stdStart, dstStart);
-  printf("getSystemTimeZone: name=%s, stdBias=%hd, dstBias=%hd, stdStart=%lld, dstStart=%lld\n", zoneName.c_str(), stdBias, dstBias, stdStart, dstStart);
-  */
-
 } // TSyncAppBase::TSyncAppBase
 
 
@@ -1368,6 +1366,20 @@ bool TSyncAppBase::setConfigVar(cAppCharP aVarName, cAppCharP aNewValue)
 } // TSyncAppBase::setConfigVar
 
 
+// undefine config variable
+bool TSyncAppBase::unsetConfigVar(cAppCharP aVarName)
+{
+  TStringToStringMap::iterator pos = fConfigVars.find(aVarName);
+  if (pos!=fConfigVars.end()) {
+  	// exist, remove from map
+    fConfigVars.erase(pos);
+    return true;
+  }
+  // did not exist
+  return false;
+} // TSyncAppBase::unsetConfigVar
+
+
 // expand config vars in string
 bool TSyncAppBase::expandConfigVars(string &aString, sInt8 aCfgVarExp, TConfigElement *aCfgElement, cAppCharP aElementName)
 {
@@ -1421,7 +1433,14 @@ bool TSyncAppBase::expandConfigVars(string &aString, sInt8 aCfgVarExp, TConfigEl
 
 #endif // not HARDCODED_CONFIG
 
-
+localstatus TSyncAppBase::finishConfig()
+{
+#ifdef SYDEBUG
+  fAppZones.getDbgLogger = getDbgLogger();
+#endif
+  fAppZones.loggingStarted();
+  return LOCERR_OK;
+}
 
 #ifdef HARDCODED_CONFIG
 
@@ -1438,7 +1457,7 @@ localstatus TSyncAppBase::initHardcodedConfig(void)
   // make sure it gets all resolved
   fConfigP->ResolveAll();
   // is ok now
-  return LOCERR_OK;
+  return finishConfig();
 } // TSyncAppBase::initHardcodedConfig
 
 
@@ -1474,7 +1493,11 @@ void TSyncAppBase::ConferrPuts(const char *msg)
     // a config error path is defined
     if (strucmp(filename.c_str(),"console")==0) {
       // put message directly to what is supposed to be the console
+      #ifdef ANDROID
+      __android_log_write( ANDROID_LOG_DEBUG, "ConferrPuts", msg );
+      #else
       AppConsolePuts(msg);
+      #endif
       return; // done
     }
   #else // ENGINE_LIBRARY
@@ -1727,7 +1750,7 @@ localstatus TSyncAppBase::readXMLConfigStream(TXMLConfigReadFunc aReaderFunc, vo
   #endif
   // ok if done
   MP_SHOWCURRENT(DBG_HOT,"finished reading config");
-  return LOCERR_OK;
+  return finishConfig();
 } // TSyncAppBase::readXMLConfigStream
 
 
@@ -1918,10 +1941,10 @@ localstatus TSyncAppBase::readXMLConfigStandard(const char *aConfigFileName, boo
 
 /* progress sevent notification */
 
-#ifdef PROGRESS_EVENTS
+#if defined(PROGRESS_EVENTS) && !defined(ENGINE_LIBRARY)
 
 // event generator
-bool TSyncAppBase::NotifyProgressEvent(
+bool TSyncAppBase::NotifyAppProgressEvent(
   TProgressEventType aEventType,
   TLocalDSConfig *aDatastoreID,
   sInt32 aExtra1,
@@ -1947,9 +1970,9 @@ bool TSyncAppBase::NotifyProgressEvent(
   }
   // if no callback, never abort
   return true; // ok, no abort
-} // TSyncAppBase::NotifyProgressEvent
+} // TSyncAppBase::NotifyAppProgressEvent
 
-#endif
+#endif // non-engine progress events
 
 
 
@@ -2546,7 +2569,7 @@ SmlEncoding_t TSyncAppBase::encodingFromContentType(cAppCharP aTypeString)
     if (strucmp(aTypeString,SYNCML_MIME_TYPE SYNCML_ENCODING_SEPARATOR,l)==0) {
       // is SyncML, check encoding
       cAppCharP p = strchr(aTypeString,';');
-      sInt16 cl = p ? p-aTypeString-l : 0; // length of encoding string (charset could be appended here)  
+      sInt16 cl = p ? p-aTypeString-l : 0; // length of encoding string (charset could be appended here)
       StrToEnum(SyncMLEncodingMIMENames,numSyncMLEncodings,enc,aTypeString+l,cl);
     }
   }
@@ -2660,7 +2683,7 @@ bool TSyncAppBase::getMyDeviceID(string &devid)
   	return true; // custom device ID is assumed to be guaranteed unique
   }
   #endif
-	// use device ID as determined by platform adapters  
+	// use device ID as determined by platform adapters
   return getLocalDeviceID(devid);
 } // TSyncAppBase::getMyDeviceID
 
@@ -2827,7 +2850,7 @@ localstatus TSyncAppBase::getAppEnableInfo(sInt16 &aDaysLeft, string *aRegnameP,
   // no registration
   if (aRegnameP) aRegnameP->erase();
   if (aRegInternalsP) aRegInternalsP->erase();
-  aDaysLeft = -1; // no expiring license (altough hardexpiry might still apply
+  aDaysLeft = -1; // no expiring license (altough hardexpiry might still apply)
   return appEnableStatus();
   #else
   // we have registration
@@ -2904,6 +2927,23 @@ localstatus TSyncAppBase::getAppEnableInfo(sInt16 &aDaysLeft, string *aRegnameP,
   #error "SYSER_VERSCHECK_MASK must be defined in target_options.h"
 #endif
 
+
+
+/// @brief get time and version of first use. Version is included to allow re-evaluating after version changes significantly
+void TSyncAppBase::getFirstUseInfo(uInt8 aVariant, lineardate_t &aFirstUseDate, uInt32 &aFirstUseVers)
+{
+	#ifndef ENGINEINTERFACE_SUPPORT
+  // no first use date in base class, is overridden in derived platform-specific appBase classes.
+  aFirstUseDate=0;
+  aFirstUseVers=0;
+  #else
+  // use values stored into engine via settings keys
+  aFirstUseDate=fFirstUseDate;
+  aFirstUseVers=fFirstUseVers;
+  #endif
+} // TSyncAppBase::getFirstUseInfo
+
+
 /// @brief update first use info to allow for repeated eval when user installs an all-new version
 /// @return true if update was needed
 /// @param[in] aVariant variant context to perform update
@@ -2928,7 +2968,7 @@ bool TSyncAppBase::updateFirstUseInfo(lineardate_t &aFirstUseDate, uInt32 &aFirs
   return false;
 } // TSyncAppBase::updateFirstUseInfo
 
-#endif
+#endif // EXPIRES_AFTER_DAYS
 
 
 #ifdef SYSER_REGISTRATION
@@ -3134,7 +3174,9 @@ localstatus TSyncAppBase::checkLicenseActivation(lineardate_t &aLastcheck, uInt3
   }
   // show it to user
   if (!ok) {
-    OBJ_PROGRESS_EVENT(this,pev_error,NULL,LOCERR_BADREG,0,0);
+  	#ifndef ENGINE_LIBRARY
+    APP_PROGRESS_EVENT(this,pev_error,NULL,LOCERR_BADREG,0,0);
+    #endif
   }
   // return status
   return ok ? LOCERR_OK : LOCERR_BADREG;
@@ -3213,6 +3255,9 @@ bool TRootConfig::parseDatatypesConfig(const char **aAttributes, sInt32 aLine)
 #ifdef TEXTTYPE_SUPPORT
   #include "textitemtype.h"
 #endif
+#ifdef RAWTYPE_SUPPORT
+  #include "rawdataitemtype.h"
+#endif
 #ifdef DATAOBJ_SUPPORT
   #include "dataobjtype.h"
 #endif
@@ -3236,6 +3281,11 @@ TDataTypeConfig *TRootConfig::newDataTypeConfig(const char *aName, const char *a
   #ifdef TEXTTYPE_SUPPORT
   if (strucmp(aBaseType,"text")==0)
     return new TTextTypeConfig(aName,aParentP);
+  else
+  #endif
+  #ifdef RAWTYPE_SUPPORT
+  if (strucmp(aBaseType,"raw")==0)
+    return new TRawDataTypeConfig(aName,aParentP);
   else
   #endif
   #ifdef DATAOBJ_SUPPORT

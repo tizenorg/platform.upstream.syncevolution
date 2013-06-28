@@ -77,7 +77,12 @@ const class tzdata : public std::vector<tz_entry>
         tChange(t.dst.wMonth, t.dst.wDayOfWeek, t.dst.wNth, t.dst.wHour, t.dst.wMinute),
         tChange(t.std.wMonth, t.std.wDayOfWeek, t.std.wNth, t.std.wHour, t.std.wMinute),
         true // groupEnd
-      )); 
+      ));
+
+      // allow olson names for Android
+      #ifdef ANDROID
+      if (t.olsonName!=NULL) back().location= t.olsonName;
+      #endif
     }
     //push_back(tz_entry("unknown",               0,  0, "x",    "", tChange( 0, 0,0, 0,0),  tChange( 0, 0,0, 0,0)));  //   0
     #endif
@@ -103,8 +108,16 @@ bool GZones::initialize()
   return ok;
 }
 
+void GZones::loggingStarted()
+{
+  if (!fSystemZoneDefinitionsFinalized) {
+    finalizeSystemZoneDefinitions(this);
+    fSystemZoneDefinitionsFinalized = true;
+  }
+}
 
-bool GZones::matchTZ(const tz_entry &aTZ, timecontext_t &aContext)
+
+bool GZones::matchTZ(const tz_entry &aTZ, TDebugLogger *aLogP, timecontext_t &aContext)
 {
   // keeps track of best match while iterating
   class comparison : public visitor {
@@ -123,16 +136,20 @@ bool GZones::matchTZ(const tz_entry &aTZ, timecontext_t &aContext)
     /** the last entry without dynYear, i.e., the main entry of a group */
     timecontext_t fLeadContext;
 
+    TDebugLogger *fLogP;
+
     /** time zones */
     GZones *fG;
 
+
   public:
-    comparison(const tz_entry &aTZ, GZones *g) :
+    comparison(const tz_entry &aTZ, TDebugLogger *aLogP, GZones *g) :
       fRuleMatch(false),
       fLocationMatch(false),
       fContext(TCTX_UNKNOWN),
       fTZID(aTZ.name),
       fLeadContext(TCTX_UNKNOWN),
+      fLogP(aLogP),
       fG(g)
     {
       // prepare information for tzcmp() and YearFit()
@@ -159,6 +176,8 @@ bool GZones::matchTZ(const tz_entry &aTZ, timecontext_t &aContext)
          !fTZ.name.empty() && // empty match is NOT better !!
           fTZ.name == aTZ.name) {
         // name AND rule match => best possible match, return early
+        PLOGDEBUGPRINTFX(fLogP, DBG_PARSE+DBG_EXOTIC,
+                         ("matchTZ: final rule and name match for %s", fTZ.name.c_str()));
         fContext = fLeadContext;
         return true;
       }
@@ -170,6 +189,10 @@ bool GZones::matchTZ(const tz_entry &aTZ, timecontext_t &aContext)
             (!fRuleMatch && rule_match)) {
           // previous match did not match location or
           // not the rules and we do, so this match is better
+          PLOGDEBUGPRINTFX(fLogP, DBG_PARSE+DBG_EXOTIC,
+                           ("matchTZ %s: location %s found, rules %s",
+                            aTZ.name.c_str(), aTZ.location.c_str(),
+                            rule_match ? "match" : "don't match"));
           fLocationMatch = true;
           fRuleMatch = rule_match;
           fContext = fLeadContext;
@@ -181,6 +204,8 @@ bool GZones::matchTZ(const tz_entry &aTZ, timecontext_t &aContext)
       if (!fLocationMatch &&
           rule_match &&
           !fRuleMatch) {
+          PLOGDEBUGPRINTFX(fLogP, DBG_PARSE+DBG_EXOTIC,
+                           ("matchTZ %s: rules match", aTZ.name.c_str()));
         fContext = fLeadContext;
         fRuleMatch = true;
       }
@@ -199,7 +224,7 @@ bool GZones::matchTZ(const tz_entry &aTZ, timecontext_t &aContext)
     } // result
   }
 
-  c(aTZ, this);
+  c(aTZ, aLogP, this);
 
   foreachTZ(c);
 
@@ -487,16 +512,26 @@ static bool Same_tChange( const tChange &tCh1, const tChange &tCh2 )
 /*! Compare time zone information */
 static bool tzcmp( const tz_entry &t, const tz_entry &tzi )
 {
-  if        (!t.name.empty() &&
-              strucmp( t.name.c_str(), tzi.name.c_str() )!=0) return false;
+  bool sameName= !tzi.name.empty() &&
+         strucmp( tzi.name.c_str(), t.name.c_str() )==0;
+
+  bool sameLoc = false; // by default, no olson support here
+  #ifdef ANDROID
+    // allow olson names as well here
+       sameLoc=  !tzi.location.empty() &&
+         strucmp( tzi.location.c_str(), t.name.c_str() )==0;
+
+//__android_log_print( ANDROID_LOG_DEBUG, "TZ CMP", "'%s' == '%s' / '%s'\n",
+//                     t.name.c_str(), tzi.name.c_str(), tzi.location.c_str() );
+  #endif
+
+  if        (!t.name.empty() &&       !sameName && !sameLoc)  return false;
 
   bool idN=   t.ident.empty();
-  if (!idN && t.ident == "?" && // search for the name only
-              strucmp( t.name.c_str(), tzi.name.c_str()  )==0) return true;
+  if (!idN && t.ident == "?" &&       (sameName ||  sameLoc)) return true;
 
   if (!idN && t.ident == "$" &&
-              t.ident == tzi.ident &&
-              strucmp( t.name.c_str(), tzi.name.c_str()  )==0) return true;
+              t.ident == tzi.ident && (sameName ||  sameLoc)) return true;
 
   /*
   PNCDEBUGPRINTFX( DBG_SESSION,( "tS   m=%d dw=%d n=%d h=%d M=%d\n",   t.std.wMonth,   t.std.wDayOfWeek,   t.std.wNth,
@@ -807,6 +842,12 @@ bool TimeZoneContextToName( timecontext_t aContext, string &aName, GZones* g,
   tz_entry t;
   aName= "UNKNOWN";
 
+  // setting it via param does not work currently for some reasons, switch it on permanently for Android
+  #ifdef ANDROID
+    aPrefIdent= "o";
+  //__android_log_print( ANDROID_LOG_DEBUG, "ContextToName", "pref='%s' / aContext=%d\n", aPrefIdent, aContext );
+  #endif
+  
 	// if aPrefIndent contains "o", this means we'd like to see olson name, if possible
   // %%% for now, we can return olson for the built-ins only
   if (TCTX_IS_BUILTIN(aContext) && aPrefIdent && strchr(aPrefIdent, 'o')!=NULL) {
@@ -1030,57 +1071,6 @@ timecontext_t SelectTZ( TDaylightSavingZone zone, int bias, int biasDST, lineart
   return TCTX_SYMBOLIC_TZ+t;
 } // SelectTZ
 
-
-
-/* %%% luz 2009-04-02 seems of no relevance except for Symbian/Epoc -> Epoc code moved to Symbian/platform_timezones.cpp.
-
-   Note: added a replacement using MyContext which should return the same result (but not
-   the debug output, as SystemTZ is still being called from sysytest.
-
-timecontext_t SystemTZ( GZones *g, bool isDbg )
-{
-  TDaylightSavingZone zone= EDstNone;
-  int                 bias= 0;
-  lineartime_t        tNow = 0;
-
-  #ifdef __EPOC_OS__
-    TLocale                 tl;
-    zone=                   tl.HomeDaylightSavingZone();
-    TTimeIntervalSeconds o= tl.UniversalTimeOffset();
-    bias=                o.Int() / SecsPerMin; // bias is based on minutes
-    bool             isDst= tl.QueryHomeHasDaylightSavingOn();
-    isDbg= true;
-
-    const char* zs;
-    switch (zone) {
-      case EDstHome     : zs= "EDstHome";     break;
-      case EDstNone     : zs= "EDstNone";     break;
-      case EDstEuropean : zs= "EDstEuropean"; break;
-      case EDstNorthern : zs= "EDstNorthern"; break;
-      case EDstSouthern : zs= "EDstSouthern"; break;
-      default           : zs= "???";          break;
-    } // switch
-
-    PNCDEBUGPRINTFX( DBG_SESSION,( "SystemTZ (EPOC): %s %d dst=%s", zs,bias, isDst ? "on":"off" ));
-
-    #ifdef _WIN32
-      PNCDEBUGPRINTFX( DBG_SESSION,( "SystemTZ (EPOC): on emulator" ));
-    #endif
-  #endif
-
-  #if defined _WIN32 && !defined __EPOC_OS__
-    TIME_ZONE_INFORMATION tzi;
-    DWORD rslt= GetTimeZoneInformation( &tzi );
-    zone= EDstEuropean;
-    bias= -tzi.Bias; // as negative value
-    PNCDEBUGPRINTFX( DBG_SESSION,( "SystemTZ (WIN): %s %d", "", bias ) );
-  #endif
-
-  // is only dependendent on current time/date, if any DST zone
-  if (zone!=EDstNone) tNow= getSystemNowAs(TCTX_SYSTEM, g);
-  return SelectTZ( zone,bias,tNow, isDbg );
-} // SystemTZ
-*/
 
 
 // Get int value <i> as string

@@ -47,13 +47,20 @@ int wbxmlConv(int argc, const char *argv[]);
 #endif
 
 
-// progress event posting macro
+// progress event posting macros
+// Note: engine libraries only have session level progress events
 #ifdef PROGRESS_EVENTS
-  #define PROGRESS_EVENT(e,d,x,y,z) NotifyProgressEvent(e,d,x,y,z)
-  #define OBJ_PROGRESS_EVENT(o,e,d,x,y,z) o->NotifyProgressEvent(e,d,x,y,z)
+	#ifndef ENGINE_LIBRARY
+  	#define APP_PROGRESS_EVENT(a,e,d,x,y,z) a->NotifyAppProgressEvent(e,d,x,y,z)
+  #endif
+  #define SESSION_PROGRESS_EVENT(s,e,d,x,y,z) s->NotifySessionProgressEvent(e,d,x,y,z)
+  #define DB_PROGRESS_EVENT(d,e,x,y,z) d->getSession()->NotifySessionProgressEvent(e,d->getDSConfig(),x,y,z)
 #else
-  #define PROGRESS_EVENT(e,d,x,y,z) true
-  #define OBJ_PROGRESS_EVENT(o,e,d,x,y,z) true
+	#ifndef ENGINE_LIBRARY
+	  #define APP_PROGRESS_EVENT(a,e,d,x,y,z) true
+  #endif
+  #define SESSION_PROGRESS_EVENT(s,e,d,x,y,z) true
+  #define DB_PROGRESS_EVENT(s,e,x,y,z) true
 #endif
 
 // non-class print to console (#ifdef CONSOLEINFO)
@@ -463,6 +470,7 @@ public:
   // access to config variables
   bool getConfigVar(cAppCharP aVarName, string &aValue);
   bool setConfigVar(cAppCharP aVarName, cAppCharP aNewValue);
+  bool unsetConfigVar(cAppCharP aVarName);
   bool expandConfigVars(string &aString, sInt8 aCfgVarExp, TConfigElement *aCfgElement=NULL, cAppCharP aElementName=NULL);
   #endif
   #ifdef SYDEBUG
@@ -561,19 +569,19 @@ public:
   // somewhat scattered within object to make reverse engineering harder
   bool fRegOK; // updated by checkRegInfo, used to disable hard-coded-expiry
   #endif
-  #ifdef PROGRESS_EVENTS
+  #if defined(PROGRESS_EVENTS) && !defined(ENGINE_LIBRARY)
   // callback for progress events
   TProgressEventFunc fProgressEventFunc;
   void *fProgressEventContext;
   // event generator
-  bool NotifyProgressEvent(
+  bool NotifyAppProgressEvent(
     TProgressEventType aEventType,
     TLocalDSConfig *aDatastoreID=NULL,
     sInt32 aExtra1=0,
     sInt32 aExtra2=0,
     sInt32 aExtra3=0
   );
-  #endif
+  #endif // non-engine progress events
   #ifdef ENGINEINTERFACE_SUPPORT
   // owning engineInterface
   TEngineInterface *fEngineInterfaceP;
@@ -627,6 +635,10 @@ public:
   uInt8 fRegDuration;
   uInt8 fRelDuration;
   uInt32 fLicCRC;
+  #if defined(EXPIRES_AFTER_DAYS) && defined(ENGINEINTERFACE_SUPPORT)
+  lineardate_t fFirstUseDate;
+  uInt32 fFirstUseVers;
+	#endif
   // checks if registered (must be implemented in base class)
   // returns LOCERR_EXPIRED, LOCERR_TOONEW or LOCERR_BADREG if not registered correctly
   virtual localstatus isRegistered(void);
@@ -653,12 +665,14 @@ public:
   #endif
   #ifdef EXPIRES_AFTER_DAYS
   // gets information of first use for a given variant of the software.
-  virtual void getFirstUseInfo(uInt8 aVariant, lineardate_t &aFirstUseDate, uInt32 &aFirstUseVers)
-    { aFirstUseDate=0; aFirstUseVers=0; }
+  virtual void getFirstUseInfo(uInt8 aVariant, lineardate_t &aFirstUseDate, uInt32 &aFirstUseVers);
   // update first use info to allow for repeated eval when user installs an all-new version
   bool updateFirstUseInfo(lineardate_t &aFirstUseDate, uInt32 &aFirstUseVers);
   #endif
 private:
+  // to be executed after reading config stream or hard-coded config
+  localstatus finishConfig();
+
   // debug logging
   #ifdef SYDEBUG
   TDebugLogger fAppLogger; // the logger

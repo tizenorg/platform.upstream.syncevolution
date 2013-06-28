@@ -2839,8 +2839,8 @@ localstatus TBinfileImplClient::SelectProfile(uInt32 aProfileSelector, bool aAut
                   // silently discard (do not sync it)
                   PDEBUGPRINTFX(DBG_ERROR,("Local Database for datastore '%s' prepares not ok -> not synced",binfiledsP->getName()));
                   // show event (alerted for no database)
-                  OBJ_PROGRESS_EVENT(
-                    getSyncAppBase(),
+                  SESSION_PROGRESS_EVENT(
+                    this,
                     pev_error,
                     binfiledscfgP,
                     LOCERR_LOCDBNOTRDY,0,0

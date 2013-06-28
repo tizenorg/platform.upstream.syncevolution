@@ -111,7 +111,8 @@ bool RRULE2toInternal(
   fieldinteger_t &lastmask,
   lineartime_t &until,
   timecontext_t &untilcontext,
-  TDebugLogger *aLogP
+  TDebugLogger *aLogP,
+  lineartime_t *aNewStartP = NULL // optional, if not NULL, conversion may return modified start date
 );
 
 

@@ -84,6 +84,9 @@
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
 
+/* absolute path to Doxygen HTML output */
+#undef SYDEBUG_LOCATION
+
 /* libsynthesis.a linked statically */
 #undef UIAPI_LINKED
 

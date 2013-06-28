@@ -34,6 +34,8 @@ build_triplet = @build@
 host_triplet = @host@
 @COND_CORE_TRUE@am__append_1 = po test
 @COND_CORE_TRUE@am__append_2 = README NEWS COPYING $(TEST_README_FILES)
+@COND_CORE_TRUE@@COND_HTML_README_TRUE@am__append_3 = README.html
+@COND_CORE_TRUE@@COND_MAN_PAGES_TRUE@am__append_4 = syncevolution.1
 subdir = .
 DIST_COMMON = README $(am__configure_deps) $(am__dist_doc_DATA_DIST) \
 	$(srcdir)/Makefile.am $(srcdir)/Makefile.in \
@@ -59,15 +61,18 @@ RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	install-pdf-recursive install-ps-recursive install-recursive \
 	installcheck-recursive installdirs-recursive pdf-recursive \
 	ps-recursive uninstall-recursive
+man1dir = $(mandir)/man1
+am__installdirs = "$(DESTDIR)$(man1dir)" "$(DESTDIR)$(docdir)"
+NROFF = nroff
+MANS = $(man_MANS)
 am__dist_doc_DATA_DIST = README NEWS COPYING $(wildcard \
-	$(srcdir)/test/README.*)
+	$(srcdir)/test/README.*) README.html
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
     *) f=$$p;; \
   esac;
 am__strip_dir = `echo $$p | sed -e 's|^.*/||'`;
-am__installdirs = "$(DESTDIR)$(docdir)"
 dist_docDATA_INSTALL = $(INSTALL_DATA)
 DATA = $(dist_doc_DATA)
 RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
@@ -223,6 +228,8 @@ POSUB = @POSUB@
 PO_IN_DATADIR_FALSE = @PO_IN_DATADIR_FALSE@
 PO_IN_DATADIR_TRUE = @PO_IN_DATADIR_TRUE@
 RANLIB = @RANLIB@
+RST2HTML = @RST2HTML@
+RST2MAN = @RST2MAN@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
@@ -308,13 +315,15 @@ target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 ACLOCAL_AMFLAGS = -I m4 -I m4-repo
-dist_doc_DATA = $(am__append_2)
+man_MANS = $(am__append_4)
+dist_doc_DATA = $(am__append_2) $(am__append_3)
 SUBDIRS = src $(am__append_1)
 DIST_SUBDIRS = src po test
 EXTRA_DIST = \
 	HACKING \
 	LICENSE.txt \
 	LICENSE.LGPL-21 \
+        README.rst \
 	description \
 	configure-pre.in \
 	configure-post.in \
@@ -324,7 +333,7 @@ EXTRA_DIST = \
 	Doxyfile
 
 MAINTAINERCLEANFILES = Makefile.in config.h.in config.guess config.sub configure depcomp install-sh ltmain.sh missing mkinstalldirs 
-CLEANFILES = 
+CLEANFILES = syncevolution.1 README README.html
 TEST_README_FILES = $(wildcard $(srcdir)/test/README.*)
 DEV_FILE_PATTERN = $(1)$(2)/etc $(1)$(2)/include $(1)$(2)/lib/*.so $(1)$(2)/lib/*.a $(1)$(2)/lib/*.la $(1)$(2)/lib/*/*.la $(1)$(2)/lib/pkgconfig
 IPHONE_FILENAME = syncevolution-$(VERSION)-iphone.zip
@@ -350,6 +359,9 @@ PKGS = $(addprefix syncevolution-evolution-, 2.6 2.8 2.12)
 # Makefile-gen.am and configure.in we need an explicit rule to redo that work
 # so that "make" rebuilds derived files correctly.
 CONFIG_SUBS = src/backends/addressbook/configure-sub.in src/backends/evolution/configure-sub.in src/backends/file/configure-sub.in src/backends/maemo/configure-sub.in src/backends/sqlite/configure-sub.in src/backends/xmlrpc/configure-sub.in
+
+# patch README.rst properties on-the-fly with sed expressions
+PATCH_README = -e "s/^:Version: .*/:Version: $(VERSION)/" -e "s/:Date: .*/:Date: `date +%Y-%m-%d`/"
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
@@ -413,6 +425,51 @@ clean-libtool:
 
 distclean-libtool:
 	-rm -f libtool
+install-man1: $(man1_MANS) $(man_MANS)
+	@$(NORMAL_INSTALL)
+	test -z "$(man1dir)" || $(MKDIR_P) "$(DESTDIR)$(man1dir)"
+	@list='$(man1_MANS) $(dist_man1_MANS) $(nodist_man1_MANS)'; \
+	l2='$(man_MANS) $(dist_man_MANS) $(nodist_man_MANS)'; \
+	for i in $$l2; do \
+	  case "$$i" in \
+	    *.1*) list="$$list $$i" ;; \
+	  esac; \
+	done; \
+	for i in $$list; do \
+	  if test -f $(srcdir)/$$i; then file=$(srcdir)/$$i; \
+	  else file=$$i; fi; \
+	  ext=`echo $$i | sed -e 's/^.*\\.//'`; \
+	  case "$$ext" in \
+	    1*) ;; \
+	    *) ext='1' ;; \
+	  esac; \
+	  inst=`echo $$i | sed -e 's/\\.[0-9a-z]*$$//'`; \
+	  inst=`echo $$inst | sed -e 's/^.*\///'`; \
+	  inst=`echo $$inst | sed '$(transform)'`.$$ext; \
+	  echo " $(INSTALL_DATA) '$$file' '$(DESTDIR)$(man1dir)/$$inst'"; \
+	  $(INSTALL_DATA) "$$file" "$(DESTDIR)$(man1dir)/$$inst"; \
+	done
+uninstall-man1:
+	@$(NORMAL_UNINSTALL)
+	@list='$(man1_MANS) $(dist_man1_MANS) $(nodist_man1_MANS)'; \
+	l2='$(man_MANS) $(dist_man_MANS) $(nodist_man_MANS)'; \
+	for i in $$l2; do \
+	  case "$$i" in \
+	    *.1*) list="$$list $$i" ;; \
+	  esac; \
+	done; \
+	for i in $$list; do \
+	  ext=`echo $$i | sed -e 's/^.*\\.//'`; \
+	  case "$$ext" in \
+	    1*) ;; \
+	    *) ext='1' ;; \
+	  esac; \
+	  inst=`echo $$i | sed -e 's/\\.[0-9a-z]*$$//'`; \
+	  inst=`echo $$inst | sed -e 's/^.*\///'`; \
+	  inst=`echo $$inst | sed '$(transform)'`.$$ext; \
+	  echo " rm -f '$(DESTDIR)$(man1dir)/$$inst'"; \
+	  rm -f "$(DESTDIR)$(man1dir)/$$inst"; \
+	done
 install-dist_docDATA: $(dist_doc_DATA)
 	@$(NORMAL_INSTALL)
 	test -z "$(docdir)" || $(MKDIR_P) "$(DESTDIR)$(docdir)"
@@ -714,10 +771,10 @@ distcleancheck: distclean
 	       exit 1; } >&2
 check-am: all-am
 check: check-recursive
-all-am: Makefile $(DATA) config.h
+all-am: Makefile $(MANS) $(DATA) config.h
 installdirs: installdirs-recursive
 installdirs-am:
-	for dir in "$(DESTDIR)$(docdir)"; do \
+	for dir in "$(DESTDIR)$(man1dir)" "$(DESTDIR)$(docdir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-recursive
@@ -767,7 +824,7 @@ info: info-recursive
 
 info-am:
 
-install-data-am: install-dist_docDATA
+install-data-am: install-dist_docDATA install-man
 
 install-dvi: install-dvi-recursive
 
@@ -777,7 +834,7 @@ install-html: install-html-recursive
 
 install-info: install-info-recursive
 
-install-man:
+install-man: install-man1
 
 install-pdf: install-pdf-recursive
 
@@ -803,7 +860,9 @@ ps: ps-recursive
 
 ps-am:
 
-uninstall-am: uninstall-dist_docDATA
+uninstall-am: uninstall-dist_docDATA uninstall-man
+
+uninstall-man: uninstall-man1
 
 .MAKE: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) install-am \
 	install-strip
@@ -818,19 +877,19 @@ uninstall-am: uninstall-dist_docDATA
 	install install-am install-data install-data-am \
 	install-dist_docDATA install-dvi install-dvi-am install-exec \
 	install-exec-am install-html install-html-am install-info \
-	install-info-am install-man install-pdf install-pdf-am \
-	install-ps install-ps-am install-strip installcheck \
-	installcheck-am installcheck-local installdirs installdirs-am \
-	maintainer-clean maintainer-clean-generic mostlyclean \
-	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
-	tags tags-recursive uninstall uninstall-am \
-	uninstall-dist_docDATA
+	install-info-am install-man install-man1 install-pdf \
+	install-pdf-am install-ps install-ps-am install-strip \
+	installcheck installcheck-am installcheck-local installdirs \
+	installdirs-am maintainer-clean maintainer-clean-generic \
+	mostlyclean mostlyclean-generic mostlyclean-libtool pdf pdf-am \
+	ps ps-am tags tags-recursive uninstall uninstall-am \
+	uninstall-dist_docDATA uninstall-man uninstall-man1
 
 
 # binary distribution as .tar.gz
 # when building with D-Bus, we have no choice: the service has to go into /usr
 # in order to be found
-@COND_DBUS_TRUE@distbin : README NEWS COPYING $(TEST_README_FILES) INSTALL-tar-gz all
+@COND_DBUS_TRUE@distbin : $(dist_doc_DATA) INSTALL-tar-gz all
 @COND_DBUS_TRUE@	@ [ "$(BINSUFFIX)" ] || (echo "please invoke with e.g. 'make distbin BINSUFFIX=debian-3.1'"; exit 1 )
 @COND_DBUS_TRUE@	@ [ "$(prefix)" == "/usr" ] || (echo "please reconfigure with --prefix=/usr"; exit 1 )
 @COND_DBUS_TRUE@	rm -rf $(distdir)
@@ -840,19 +899,19 @@ uninstall-am: uninstall-dist_docDATA
 @COND_DBUS_TRUE@	for i in `find $(distdir) -type d | sort -r`; do rmdir $$i 2>/dev/null || true; done
 @COND_DBUS_TRUE@	mkdir -p $(distdir)/usr/share/doc/syncevolution
 @COND_DBUS_TRUE@	cp $(srcdir)/INSTALL-tar-gz $(distdir)/INSTALL
-@COND_DBUS_TRUE@	cp $(srcdir)/README $(srcdir)/NEWS $(srcdir)/COPYING $(TEST_README_FILES) $(distdir)/usr/share/doc/syncevolution
+@COND_DBUS_TRUE@	cp $(filter-out all, $+) $(distdir)/usr/share/doc/syncevolution
 @COND_DBUS_TRUE@	tar zcf $(distdir)-$(BINSUFFIX).tar.gz $(distdir)
 @COND_DBUS_TRUE@	rm -rf $(distdir)
 # without D-Bus, we can simply create an archive with a bin directory
 # and everything works
-@COND_DBUS_FALSE@distbin : README NEWS COPYING all
+@COND_DBUS_FALSE@distbin : $(dist_doc_DATA) all
 @COND_DBUS_FALSE@	@ [ "$(BINSUFFIX)" ] || (echo "please invoke with e.g. 'make distbin BINSUFFIX=debian-3.1'"; exit 1 ) 
 @COND_DBUS_FALSE@	rm -rf $(distdir)
 @COND_DBUS_FALSE@	$(MAKE) prefix=`pwd`/$(distdir) install
 @COND_DBUS_FALSE@	echo removing developer files and empty directories
 @COND_DBUS_FALSE@	rm -rf $(call DEV_FILE_PATTERN,$(distdir),/)
 @COND_DBUS_FALSE@	for i in `find $(distdir) -type d | sort -r`; do rmdir $$i 2>/dev/null || true; done
-@COND_DBUS_FALSE@	cp $(srcdir)/README $(srcdir)/NEWS $(srcdir)/COPYING $(TEST_README_FILES) $(distdir)
+@COND_DBUS_FALSE@	cp $(filter-out all, $+) $(distdir)
 @COND_DBUS_FALSE@	tar zcf $(distdir)-$(BINSUFFIX).tar.gz $(distdir)
 @COND_DBUS_FALSE@	rm -rf $(distdir)
 
@@ -980,6 +1039,20 @@ dist-hook:
 @ENABLE_EVOLUTION_COMPATIBILITY_TRUE@			exit 1; \
 @ENABLE_EVOLUTION_COMPATIBILITY_TRUE@		fi \
 @ENABLE_EVOLUTION_COMPATIBILITY_TRUE@	done
+
+# produce man pages
+syncevolution.1: README.rst
+	sed $(PATCH_README) $< | $(RST2MAN) --exit-status=3 - >$@
+
+# README is the traditional name in the distribution,
+# continue using it instead of README.rst.
+README: README.rst
+	sed $(PATCH_README) $< >$@
+
+# The README.html is also used on syncevolution.org as "Usage" page,
+# therefore we must use <h3> headers and lower to fit into the page.
+README.html: README.rst
+	sed $(PATCH_README) $< | $(RST2HTML) --initial-header-level=3 --exit-status=3 - >$@
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

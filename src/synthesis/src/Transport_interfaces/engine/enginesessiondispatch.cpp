@@ -287,7 +287,7 @@ TEngineServerSessionHandle::TEngineServerSessionHandle(TServerEngineInterface *a
 {
 	fServerSessionP = NULL;
   fSmlInstanceID = 0;
-  fSessionStatus = LOCERR_WRONGUSAGE;
+  fServerSessionStatus = LOCERR_WRONGUSAGE;
   fServerEngineInterface = aServerEngineInterface;
 }
 
@@ -321,8 +321,8 @@ TSyError TServerEngineInterface::OpenSessionInternal(SessionH &aNewSessionH, uIn
     #ifdef DBAPI_TUNNEL_SUPPORT
     #error "%%% tbi"
     // Create a new session, sessionName selects datastore
-    fSessionStatus = sessionDispatchP->CreateTunnelSession(aSessionName);
-    if (fSessionStatus==LOCERR_OK) {
+    sessionHandleP->fServerSessionStatus = sessionDispatchP->CreateTunnelSession(aSessionName);
+    if (sessionHandleP->fServerSessionStatus==LOCERR_OK) {
       // return the session pointer as handle
       %%%aNewSessionH=clientBaseP->fClientSessionP;
     }
@@ -366,7 +366,7 @@ TSyError TServerEngineInterface::OpenSessionInternal(SessionH &aNewSessionH, uIn
       if (sessionP) {
       	// assign to handle
         sessionHandleP->fServerSessionP = sessionP;
-        sessionHandleP->fSessionStatus = LOCERR_OK;
+        sessionHandleP->fServerSessionStatus = LOCERR_OK;
         // also create a toolkit instance for the session (so we can start receiving data)
         if (!getSyncAppBase()->newSmlInstance(
           SML_XML,
@@ -474,9 +474,9 @@ TSyError TServerEngineInterface::SessionStep(SessionH aSessionH, uInt16 &aStepCm
       break;
   }
   // let server session handle it
-  sessionHandleP->fSessionStatus = serverSessionP->SessionStep(aStepCmd, aInfoP);
+  sessionHandleP->fServerSessionStatus = serverSessionP->SessionStep(aStepCmd, aInfoP);
   // return step status
-  return sessionHandleP->fSessionStatus;
+  return sessionHandleP->fServerSessionStatus;
 } // TServerEngineInterface::SessionStep
 
 

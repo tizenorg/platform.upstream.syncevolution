@@ -110,6 +110,7 @@ typedef enum {
   tctx_tz_Greenland,                //  -3    Groenland
   tctx_tz_Greenwich,                //   0    Casablanca, Monrovia, Reykjavik
   tctx_tz_GTB,                      //   2    Athen, Bukarest, Istanbul
+  tctx_tz_HST_HPT,                  // -10    Hawaii
   tctx_tz_HAST_HADT,                // -10    Hawaii
   tctx_tz_Hawaiian,                 // -10    Hawaii
   tctx_tz_India,                    //   5.5  Chennai, Kolkata, Mumbai, Neu-Delhi
@@ -405,6 +406,7 @@ const tbl_tz_entry tbl_tz[tctx_numtimezones] =
   { "Greenland",         "America/Godthab",         -180, 60, " ",    "", {  4, 0,1, 2,0 },  { 10, 0,5, 2,0 } },  //  -3
   { "Greenwich",         "Africa/Casablanca",          0,  0, " ",    "", {  0, 0,0, 0,0 },  {  0, 0,0, 0,0 } },  //   0
   { "GTB",               "Europe/Istanbul",          120, 60, " ",    "", {  3, 0,5, 3,0 },  { 10, 0,5, 4,0 } },  //   2
+  { "HST/HPT",           "Pacific/Honolulu",        -600,  0, " ",    "", {  0, 0,0, 0,0 },  {  0, 0,0, 0,0 } },  // -10
   { "HAST/HADT",         "Pacific/Honolulu",        -600,  0, " ",    "", {  0, 0,0, 0,0 },  {  0, 0,0, 0,0 } },  // -10
   { "Hawaiian",          "Pacific/Honolulu",        -600,  0, " ",    "", {  0, 0,0, 0,0 },  {  0, 0,0, 0,0 } },  // -10
   { "India",             "Asia/Calcutta",            330,  0, " ",    "", {  0, 0,0, 0,0 },  {  0, 0,0, 0,0 } },  //   5.5

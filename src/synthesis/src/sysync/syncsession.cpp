@@ -1002,7 +1002,10 @@ TSyncSession::TSyncSession(
   InternalResetSessionEx(false);
   DEBUGPRINTFX(DBG_EXOTIC,("TSyncSession::TSyncSession: InternalResetSession called"));
   // show starting
-  OBJ_PROGRESS_EVENT(getSyncAppBase(),pev_sessionstart,NULL,0,0,0);
+  #ifndef ENGINE_LIBRARY
+  // - don't show it here in library case as Agent must be ready as well to distribute event correctly
+  SESSION_PROGRESS_EVENT(this,pev_sessionstart,NULL,0,0,0);
+  #endif
   #ifdef SYDEBUG
   #if defined(SYSYNC_SERVER) && defined(SYSYNC_CLIENT)
     #define CAN_BE_TEXT "Server+Client"
@@ -1211,7 +1214,7 @@ void TSyncSession::TerminateSession(void)
     MP_SHOWCURRENT(DBG_PROFILE,"TSyncSession deleting");
     // show ending (if not normal, then ending was already shown in AbortSession())
     if (normalend) {
-      OBJ_PROGRESS_EVENT(getSyncAppBase(),pev_sessionend,NULL, allsuccess ? 0 : LOCERR_INCOMPLETE,0,0);
+      SESSION_PROGRESS_EVENT(this,pev_sessionend,NULL, allsuccess ? 0 : LOCERR_INCOMPLETE,0,0);
     }
     // is NOW terminated
     fTerminated = true;
@@ -1347,12 +1350,6 @@ void TSyncSession::InternalResetSessionEx(bool terminationCall)
     }
   }
   #endif
-  /* %%% moved to ResetSession() because this might not be called from
-         destructor as datastores might refer to derived session which is
-         already destructed then
-  // - Note: datastores may not be cleared here, only reset
-  TerminateDatastores();
-  */
   // - remove all remote datastores
   TRemoteDataStorePContainer::iterator pos1;
   for (pos1=fRemoteDataStores.begin(); pos1!=fRemoteDataStores.end(); ++pos1) {
@@ -1546,6 +1543,48 @@ void TSyncSession::InternalResetSessionEx(bool terminationCall)
 
 
 
+#ifdef PROGRESS_EVENTS
+
+// event generator
+bool TSyncSession::NotifySessionProgressEvent(
+  TProgressEventType aEventType,
+  TLocalDSConfig *aDatastoreID,
+  sInt32 aExtra1,
+  sInt32 aExtra2,
+  sInt32 aExtra3
+)
+{
+  #ifdef ENGINE_LIBRARY
+  // library build, session level events get queued and dispatched via sessionstep
+  // - handle some events specially
+  if (aEventType == pev_nop)
+    return true; // just continue
+  else {
+    // - prepare info record
+    TEngineProgressInfo info;
+    info.eventtype = (uInt16)(aEventType);
+    // - datastore ID, if any
+    if (aDatastoreID != NULL)
+      info.targetID = (sInt32)(aDatastoreID->fLocalDBTypeID);
+    else
+      info.targetID = 0;
+		// - extras
+    info.extra1 = aExtra1;
+    info.extra2 = aExtra2;
+    info.extra3 = aExtra3;
+    // - handle it
+    return HandleSessionProgressEvent(info);
+  }
+  #else
+  // old monolithic build, pass to appbase which dispatches them to the app via callback
+  return getSyncAppBase()->NotifyAppProgressEvent(aEventType,aDatastoreID,aExtra1,aExtra2,aExtra3);  
+  #endif
+} // TSyncAppBase::NotifySessionProgressEvent
+
+#endif // PROGRESS_EVENTS
+
+
+
 // get root config pointer
 // NOTE: we have moved this here because Palm linker
 //       would have problems accessing it as syncsession.cpp is
@@ -1671,8 +1710,8 @@ void TSyncSession::AbortSession(TSyError aStatusCode, bool aLocalProblem, TSyErr
       fLocalAbortReason ? "LOCAL" : "REMOTE",
       fAbortReasonStatus
     ));
-    OBJ_PROGRESS_EVENT(
-      getSyncAppBase(),
+    SESSION_PROGRESS_EVENT(
+      this,
       pev_sessionend,
       NULL,
       getAbortReasonStatus(),
@@ -4827,7 +4866,7 @@ TSmlCommand *TSyncSession::processAlertItem(
         smlPCDataToCharP(aItemP->data)
       ));
       // callback to allow GUI clients to display the message
-      if (!OBJ_PROGRESS_EVENT(getSyncAppBase(),pev_display100,NULL,uIntPtr(smlPCDataToCharP(aItemP->data)),0,0)) {
+      if (!SESSION_PROGRESS_EVENT(this,pev_display100,NULL,uIntPtr(smlPCDataToCharP(aItemP->data)),0,0)) {
         // user answered no to our question "continue?"
         aStatusCommand.setStatusCode(514); // cancelled
         // Do NOT abort the session, so give the server a chance to do someting more sensible based on the 514 status.

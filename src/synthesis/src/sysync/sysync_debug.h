@@ -109,6 +109,53 @@ TDebugLogger *getDbgLogger(void);
 #endif
 
 
+#ifdef SYDEBUG_LOCATION
+/// Source location tracking in all debug messages
+
+/// Container for information about the location where a debug call was made.
+/// Strings are owned by caller.
+struct TDbgLocation {
+  /// function name, may be NULL, derived from __FUNC__ if available
+  const char *fFunction;
+  /// file name, may be NULL, from __FILE__
+  const char *fFile;
+  /// line number, 0 if unknown
+  const int fLine;
+
+	#ifdef __cplusplus
+  TDbgLocation(const char *aFunction = NULL,
+               const char *aFile = NULL,
+               const int aLine = 0) :
+    fFunction(aFunction),
+    fFile(aFile),
+    fLine(aLine)
+  {}
+  #endif
+};
+
+# define TDBG_LOCATION_PROTO const TDbgLocation &aTDbgLoc,
+# define TDBG_LOCATION_ARG aTDbgLoc,
+# define TDBG_LOCATION_HERE TDbgLocation(__func__, __FILE__, __LINE__),
+# define TDBG_LOCATION_NONE TDbgLocation(),
+# define TDBG_LOCATION_ARGS(_func, _file, _line) TDbgLocation(_func, _file, _line), 
+# define TDBG_VARARGS(m...) (TDbgLocation(__PRETTY_FUNCTION__, __FILE__, __LINE__), ## m)
+# define TDBG_LOCATION_ARG_NUM 1
+
+#else
+
+// No links to source in debug messages
+# define TDBG_LOCATION_PROTO
+# define TDBG_LOCATION_ARG
+# define TDBG_LOCATION_HERE
+# define TDBG_LOCATION_NONE
+# define TDBG_LOCATION_ARGS(_func, _file, _line)
+# define TDBG_VARARGS
+# define TDBG_LOCATION_ARG_NUM 0
+
+#endif // SYDEBUG_LOCATION
+
+
+
 // debug output macros (prevents unnecessary printf argument
 //   calculations when SYDEBUG is UNDEFined).
 
@@ -123,51 +170,52 @@ TDebugLogger *getDbgLogger(void);
 #ifdef SYDEBUG
   // "Public" debug info
   // Debug structure
-  #define PDEBUGBLOCKFMT(m) getDbgLogger()->DebugOpenBlockExpanded m
-  #define PDEBUGBLOCKFMTCOLL(m) getDbgLogger()->DebugOpenBlockCollapsed m
-  #define PDEBUGBLOCKDESC(n,d) getDbgLogger()->DebugOpenBlock(n,d)
-  #define PDEBUGBLOCKDESCCOLL(n,d) getDbgLogger()->DebugOpenBlock(n,d,true)
-  #define PDEBUGBLOCK(n) getDbgLogger()->DebugOpenBlock(n)
-  #define PDEBUGBLOCKCOLL(n) getDbgLogger()->DebugOpenBlock(n,NULL,true)
-  #define PDEBUGENDBLOCK(n) getDbgLogger()->DebugCloseBlock(n)
+  #define PDEBUGBLOCKFMT(m) getDbgLogger()->DebugOpenBlockExpanded TDBG_VARARGS m
+  #define PDEBUGBLOCKFMTCOLL(m) getDbgLogger()->DebugOpenBlockCollapsed TDBG_VARARGS m
+  #define PDEBUGBLOCKDESC(n,d) getDbgLogger()->DebugOpenBlock(TDBG_LOCATION_HERE n,d)
+  #define PDEBUGBLOCKDESCCOLL(n,d) getDbgLogger()->DebugOpenBlock(TDBG_LOCATION_HERE n,d,true)
+  #define PDEBUGBLOCK(n) getDbgLogger()->DebugOpenBlock(TDBG_LOCATION_HERE n)
+  #define PDEBUGBLOCKCOLL(n) getDbgLogger()->DebugOpenBlock(TDBG_LOCATION_HERE n,NULL,true)
+  #define PDEBUGENDBLOCK(n) getDbgLogger()->DebugCloseBlock(TDBG_LOCATION_HERE n)
   // current-class context debug output
-  #define PDEBUGPUTSX(lvl,m) { if (((lvl) & getDbgMask()) == (lvl)) getDbgLogger()->DebugPuts(lvl,m); }
-  #define PDEBUGPUTSXX(lvl,m,s,p) { if (((lvl) & getDbgMask()) == (lvl)) getDbgLogger()->DebugPuts(lvl,m,s,p); }
+  #define PDEBUGPUTSX(lvl,m) { if (((lvl) & getDbgMask()) == (lvl)) getDbgLogger()->DebugPuts(TDBG_LOCATION_HERE lvl,m); }
+  #define PDEBUGPUTSXX(lvl,m,s,p) { if (((lvl) & getDbgMask()) == (lvl)) getDbgLogger()->DebugPuts(TDBG_LOCATION_HERE lvl,m,s,p); }
   #define PDEBUGPUTS(m) PDEBUGPUTSX(DBG_REST,m)
-  #define PDEBUGVPRINTFX(lvl,f,a) { if (((lvl) & getDbgMask()) == (lvl)) getDbgLogger()->DebugVPrintf(lvl,f,a); }
-  #define PDEBUGPRINTFX(lvl,m) { if (((lvl) & getDbgMask()) == (lvl)) getDbgLogger()->setNextMask(lvl).DebugPrintfLastMask m; }
+  #define PDEBUGVPRINTFX(lvl,f,a) { if (((lvl) & getDbgMask()) == (lvl)) getDbgLogger()->DebugVPrintf(TDBG_LOCATION_HERE lvl,f,a); }
+  #define PDEBUGPRINTFX(lvl,m) { if (((lvl) & getDbgMask()) == (lvl)) getDbgLogger()->setNextMask(lvl).DebugPrintfLastMask TDBG_VARARGS m; }
   #define PDEBUGPRINTF(m) PDEBUGPRINTFX(DBG_REST,m)
-  #define PPOINTERTEST(p,m) if (!p) getDbgLogger()->setNextMask(DBG_ERROR).DebugPrintfLastMask m
+  #define PPOINTERTEST(p,m) if (!p) getDbgLogger()->setNextMask(DBG_ERROR).DebugPrintfLastMask TDBG_VARARGS m
   #define PDEBUGTEST(lvl) (((lvl) & getDbgMask()) == (lvl))
   #define PDEBUGMASK getDbgMask()
   // direct output to a logger
-  #define PLOGDEBUGBLOCKFMT(lo,m) (lo)->DebugOpenBlockExpanded m
-  #define PLOGDEBUGBLOCKFMTCOLL(lo,m) (lo)->DebugOpenBlockCollapsed m
-  #define PLOGDEBUGBLOCKDESC(lo,n,d) (lo)->DebugOpenBlock(n,d)
-  #define PLOGDEBUGBLOCKDESCCOLL(lo,n,d) (lo)->DebugOpenBlock(n,d,true)
-  #define PLOGDEBUGBLOCK(lo,n) (lo)->DebugOpenBlock(n)
-  #define PLOGDEBUGBLOCKCOLL(lo,n) (lo)->DebugOpenBlock(n,NULL,true)
-  #define PLOGDEBUGENDBLOCK(lo,n) (lo)->DebugCloseBlock(n)
-  #define PLOGDEBUGPUTSX(lo,lvl,m) { if ((lo) &&((lvl) & (lo)->getMask()) == (lvl)) (lo)->DebugPuts(lvl,m); }
-  #define PLOGDEBUGPUTSXX(lo,lvl,m,s,p) { if ((lo) &&((lvl) & (lo)->getMask()) == (lvl)) (lo)->DebugPuts(lvl,m,s,p); }
-  #define PLOGDEBUGVPRINTFX(lo,lvl,f,a) { if ((lo) &&((lvl) & (lo)->getMask()) == (lvl)) (lo)->DebugVPrintf(lvl,f,a); }
-  #define PLOGDEBUGPRINTFX(lo,lvl,m) { if ((lo) &&((lvl) & (lo)->getMask()) == (lvl)) (lo)->setNextMask(lvl).DebugPrintfLastMask m; }
+  #define PLOGDEBUGTEST(lo,lvl) ((lo) && (((lvl) & (lo)->getMask()) == (lvl)))
+  #define PLOGDEBUGBLOCKFMT(lo,m) { if (lo) (lo)->DebugOpenBlockExpanded TDBG_VARARGS m; }
+  #define PLOGDEBUGBLOCKFMTCOLL(lo,m) { if (lo) (lo)->DebugOpenBlockCollapsed TDBG_VARARGS m; }
+  #define PLOGDEBUGBLOCKDESC(lo,n,d) { if (lo) (lo)->DebugOpenBlock(TDBG_LOCATION_HERE n,d); }
+  #define PLOGDEBUGBLOCKDESCCOLL(lo,n,d) { if (lo) (lo)->DebugOpenBlock(TDBG_LOCATION_HERE n,d,true); }
+  #define PLOGDEBUGBLOCK(lo,n) { if (lo) (lo)->DebugOpenBlock(TDBG_LOCATION_HERE n); }
+  #define PLOGDEBUGBLOCKCOLL(lo,n) { if (lo) (lo)->DebugOpenBlock(TDBG_LOCATION_HERE n,NULL,true); }
+  #define PLOGDEBUGENDBLOCK(lo,n) { if (lo) (lo)->DebugCloseBlock(TDBG_LOCATION_HERE n); }
+  #define PLOGDEBUGPUTSX(lo,lvl,m) { if ((lo) && ((lvl) & (lo)->getMask()) == (lvl)) (lo)->DebugPuts(TDBG_LOCATION_HERE lvl,m); }
+  #define PLOGDEBUGPUTSXX(lo,lvl,m,s,p) { if ((lo) && ((lvl) & (lo)->getMask()) == (lvl)) (lo)->DebugPuts(TDBG_LOCATION_HERE lvl,m,s,p); }
+  #define PLOGDEBUGVPRINTFX(lo,lvl,f,a) { if ((lo) && ((lvl) & (lo)->getMask()) == (lvl)) (lo)->DebugVPrintf(TDBG_LOCATION_HERE lvl,f,a); }
+  #define PLOGDEBUGPRINTFX(lo,lvl,m) { if ((lo) && ((lvl) & (lo)->getMask()) == (lvl)) (lo)->setNextMask(lvl).DebugPrintfLastMask TDBG_VARARGS m; }
   // non-class context or C-level debug output
   #ifdef DIRECT_APPBASE_GLOBALACCESS
     #ifdef __cplusplus
-      #define PNCDEBUGPUTSX(lvl,m) { if (((lvl) & sysync::getDbgMask()) == (lvl)) sysync::DebugPuts(m); }
-      #define PNCDEBUGPRINTFX(lvl,m) { if (((lvl) & sysync::getDbgMask()) == (lvl)) sysync::DebugPrintf m; }
-      #define PNCDEBUGVPRINTFX(lvl,f,a) { if (((lvl) & sysync::getDbgMask()) == (lvl)) sysync::DebugVPrintf(lvl,f,a); }
+      #define PNCDEBUGPUTSX(lvl,m) { if (((lvl) & sysync::getDbgMask()) == (lvl)) sysync::DebugPuts(TDBG_LOCATION_HERE m); }
+      #define PNCDEBUGPRINTFX(lvl,m) { if (((lvl) & sysync::getDbgMask()) == (lvl)) sysync::DebugPrintf TDBG_VARARGS m; }
+      #define PNCDEBUGVPRINTFX(lvl,f,a) { if (((lvl) & sysync::getDbgMask()) == (lvl)) sysync::DebugVPrintf(TDBG_LOCATION_HERE lvl,f,a); }
     #else
-      #define PNCDEBUGPUTSX(lvl,m) { if (((lvl) & getDbgMask()) == (lvl)) DebugPuts(m); }
-      #define PNCDEBUGPRINTFX(lvl,m) { if (((lvl) & getDbgMask()) == (lvl)) DebugPrintf m; }
-      #define PNCDEBUGVPRINTFX(lvl,f,a) { if (((lvl) & getDbgMask()) == (lvl)) DebugVPrintf(lvl,f,a); }
+      #define PNCDEBUGPUTSX(lvl,m) { if (((lvl) & getDbgMask()) == (lvl)) DebugPuts(TDBG_LOCATION_HERE m); }
+      #define PNCDEBUGPRINTFX(lvl,m) { if (((lvl) & getDbgMask()) == (lvl)) DebugPrintf TDBG_VARARGS m; }
+      #define PNCDEBUGVPRINTFX(lvl,f,a) { if (((lvl) & getDbgMask()) == (lvl)) DebugVPrintf(TDBG_LOCATION_HERE lvl,f,a); }
     #endif
   #endif
   // specified object-context debug output
-  #define POBJDEBUGPRINTFX(obj,lvl,m) { if ((obj) && (((lvl) & (obj)->getDbgMask()) == (lvl))) (obj)->getDbgLogger()->setNextMask(lvl).DebugPrintfLastMask m; }
-  #define POBJDEBUGPUTSX(obj,lvl,m) { if ((obj) && (((lvl) & (obj)->getDbgMask()) == (lvl))) (obj)->getDbgLogger()->DebugPuts(lvl,m); }
-  #define POBJDEBUGPUTSXX(obj,lvl,m,s,p) { if ((obj) && (((lvl) & (obj)->getDbgMask()) == (lvl))) (obj)->getDbgLogger()->DebugPuts(lvl,m,s,p); }
+  #define POBJDEBUGPRINTFX(obj,lvl,m) { if ((obj) && (((lvl) & (obj)->getDbgMask()) == (lvl))) (obj)->getDbgLogger()->setNextMask(lvl).DebugPrintfLastMask TDBG_VARARGS m; }
+  #define POBJDEBUGPUTSX(obj,lvl,m) { if ((obj) && (((lvl) & (obj)->getDbgMask()) == (lvl))) (obj)->getDbgLogger()->DebugPuts(TDBG_LOCATION_HERE lvl,m); }
+  #define POBJDEBUGPUTSXX(obj,lvl,m,s,p) { if ((obj) && (((lvl) & (obj)->getDbgMask()) == (lvl))) (obj)->getDbgLogger()->DebugPuts(TDBG_LOCATION_HERE lvl,m,s,p); }
   #define POBJDEBUGPRINTF(obj,m) POBJDEBUGPRINTFX(obj,DBG_REST,m)
   #define POBJDEBUGTEST(obj,lvl) ((obj) && (((lvl) & (obj)->getDbgMask()) == (lvl)))
   // get current logger
@@ -191,6 +239,7 @@ TDebugLogger *getDbgLogger(void);
   #define PPOINTERTEST(p,m)
   #define PDEBUGTEST(lvl) false
   #define PDEBUGMASK 0
+  #define PLOGDEBUGTEST(lo,lvl) false
   #define PLOGDEBUGBLOCKFMT(lo,m)
   #define PLOGDEBUGBLOCKFMTCOLL(lo,m)
   #define PLOGDEBUGBLOCKDESC(lo,n,d)
@@ -233,6 +282,7 @@ TDebugLogger *getDbgLogger(void);
   #define NCDEBUGPUTSXX(lvl,m,s,p) PNCDEBUGPUTSXX(lvl,m,s,p)
   #define NCDEBUGPRINTFX(lvl,m) PNCDEBUGPRINTFX(lvl,m)
   #define NCDEBUGVPRINTFX(lvl,f,a) PNCDEBUGVPRINTFX(lvl,f,a)
+  #define LOGDEBUGTEST(lo,lvl) PLOGDEBUGTEST(lo,lvl)
   #define LOGDEBUGBLOCKFMT(lo,m) PLOGDEBUGBLOCKFMT(lo,m)
   #define LOGDEBUGBLOCKFMTCOLL(lo,m) PLOGDEBUGBLOCKFMTCOLL(lo,m)
   #define LOGDEBUGBLOCKDESC(lo,n,d) PLOGDEBUGBLOCKDESC(lo,n,d)
@@ -265,6 +315,7 @@ TDebugLogger *getDbgLogger(void);
   #define NCDEBUGPUTSXX(lvl,m,s,p)
   #define NCDEBUGPRINTFX(lvl,m)
   #define NCDEBUGVPRINTFX(lvl,f,a)
+  #define LOGDEBUGTEST(lo,lvl) false
   #define LOGDEBUGBLOCKFMT(lo,m)
   #define LOGDEBUGBLOCKFMTCOLL(lo,m)
   #define LOGDEBUGBLOCKDESC(lo,n,d)

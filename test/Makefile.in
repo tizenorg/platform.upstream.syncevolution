@@ -182,6 +182,8 @@ POSUB = @POSUB@
 PO_IN_DATADIR_FALSE = @PO_IN_DATADIR_FALSE@
 PO_IN_DATADIR_TRUE = @PO_IN_DATADIR_TRUE@
 RANLIB = @RANLIB@
+RST2HTML = @RST2HTML@
+RST2MAN = @RST2MAN@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
@@ -279,6 +281,7 @@ EXTRA_DIST = \
         Algorithm/Diff.pm \
         Algorithm/README \
         testcases/ical20.ics \
+	testcases/ical20.ics.local \
         testcases/itodo20.ics \
         testcases/vcal10.ics \
         testcases/vcard21.vcf \

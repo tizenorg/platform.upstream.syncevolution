@@ -365,8 +365,11 @@ void StringObjTimestamp(string &aStringObj, lineartime_t aTimer);
 // format as hex byte string
 void StringObjHexString(string &aStringObj, const uInt8 *aBinary, uInt32 aBinSz);
 
-// add CGI to existing URL string
+// add (already encoded!) CGI to existing URL string
 bool addCGItoString(string &aStringObj, cAppCharP aCGI, bool noduplicate=true);
+
+// encode string for being used as a CGI key/value element
+string encodeForCGI(cAppCharP aCGI);
 
 // Count bits
 int countbits(uInt32 aMask);

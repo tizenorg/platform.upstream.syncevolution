@@ -49,47 +49,6 @@ TSyncAppBase *TClientEngineInterface::newSyncAppBase(void)
 // EngineInterface methods
 // -----------------------
 
-// progress callback which queues up progress events for later delivery via SessionStep()
-static bool progressCallback(
-  const TProgressEvent &aEvent,
-  void *aContext
-)
-{
-  TClientEngineInterface *clientEngineP = static_cast<TClientEngineInterface *>(aContext);
-
-  // handle some events specially
-  if (aEvent.eventtype == pev_nop)
-    return true; // just continue
-  else if (aEvent.eventtype == pev_suspendcheck)
-    return !(clientEngineP->fSuspendRequested);
-  else {
-    // create engine progress record
-    TEngineProgressInfo info;
-    info.eventtype = (uInt16)(aEvent.eventtype);
-    // - datastore ID, if any
-    if (aEvent.datastoreID != NULL)
-      info.targetID = (sInt32)(aEvent.datastoreID->fLocalDBTypeID);
-    else
-      info.targetID = 0;
-    // - handle display message event specially
-    if (aEvent.eventtype==pev_display100) {
-      info.extra1 = 0;
-      // extra1 is a pointer to the message text, save it for retrieval via SessionKey
-      clientEngineP->fAlertMessage = (cAppCharP)(aEvent.extra);
-    }
-    else {
-      info.extra1 = aEvent.extra;
-    }
-    info.extra2 = aEvent.extra2;
-    info.extra3 = aEvent.extra3;
-    // append it at the end of the list
-    clientEngineP->fProgressInfoList.push_back(info);
-  }
-  return !(clientEngineP->fAbortRequested);
-} // progressCallback
-
-
-
 
 /// @brief Open a session
 /// @param aNewSessionH[out] receives session handle for all session execution calls
@@ -99,6 +58,7 @@ static bool progressCallback(
 TSyError TClientEngineInterface::OpenSessionInternal(SessionH &aNewSessionH, uInt32 aSelector, cAppCharP aSessionName)
 {
   TSyncClientBase *clientBaseP = static_cast<TSyncClientBase *>(getSyncAppBase());
+  localstatus sta = LOCERR_WRONGUSAGE;
 
   // No client session may exist when opening a new one
   if (clientBaseP->fClientSessionP)
@@ -108,8 +68,8 @@ TSyError TClientEngineInterface::OpenSessionInternal(SessionH &aNewSessionH, uIn
     // initiate a DBAPI tunnel session.
     #ifdef DBAPI_TUNNEL_SUPPORT
     // Create a new session, sessionName selects datastore
-    fSessionStatus = clientBaseP->CreateTunnelSession(aSessionName);
-    if (fSessionStatus==LOCERR_OK) {
+    sta = clientBaseP->CreateTunnelSession(aSessionName);
+    if (sta==LOCERR_OK) {
       // return the session pointer as handle
       aNewSessionH=(SessionH)clientBaseP->fClientSessionP;
     }
@@ -134,29 +94,17 @@ TSyError TClientEngineInterface::OpenSessionInternal(SessionH &aNewSessionH, uIn
     #endif
   }
   else {
-    #ifdef NON_FULLY_GRANULAR_ENGINE
-    // Install callback to catch progress events and deliver them via SessionStep
-    // - erase the list of queued progress events
-    fProgressInfoList.clear();
-    fPendingStepCmd=0; // none pending
-    // init the flags which are set by STEPCMD_SUSPEND, STEPCMD_ABORT and STEPCMD_TRANSPFAIL
-    fAbortRequested=false;
-    fSuspendRequested=false;
-    // - install the callback for catching all progress events (including those during session creation)
-    clientBaseP->fProgressEventFunc=progressCallback;
-    clientBaseP->fProgressEventContext=this; // pass link to myself
-    #endif // NON_FULLY_GRANULAR_ENGINE
     // Create a new session
-    fSessionStatus = clientBaseP->CreateSession();
+    sta = clientBaseP->CreateSession();
     // Pass profile ID
-    if (fSessionStatus==LOCERR_OK) {
+    if (sta==LOCERR_OK) {
       clientBaseP->fClientSessionP->SetProfileSelector(aSelector & SESSIONSEL_PROFILEID_MASK);
       // return the session pointer as handle
       aNewSessionH=(SessionH)clientBaseP->fClientSessionP;
     }
   }
   // done
-  return fSessionStatus;
+  return sta;
 } // TClientEngineInterface::OpenSessionInternal
 
 
@@ -199,9 +147,6 @@ TSyError TClientEngineInterface::CloseSession(SessionH aSessionH)
     return LOCERR_WRONGUSAGE; // something wrong with that handle
   // terminate running session (if any)
   clientBaseP->KillClientSession(LOCERR_USERABORT); // closing while session in progress counts as user abort
-  // - remove the callback
-  clientBaseP->fProgressEventFunc=NULL;
-  clientBaseP->fProgressEventContext=NULL;
   // done
   return LOCERR_OK;
 } // TClientEngineInterface::CloseSession
@@ -225,74 +170,8 @@ TSyError TClientEngineInterface::SessionStep(SessionH aSessionH, uInt16 &aStepCm
     return LOCERR_WRONGUSAGE; // something wrong with that handle
   // get client session pointer
   TSyncAgent *clientSessionP = static_cast<TSyncAgent *>((void *)aSessionH);
-  #ifdef NON_FULLY_GRANULAR_ENGINE
-  // pre-process setp command and generate pseudo-steps to empty progress event queue
-  // preprocess general step codes
-  switch (aStepCmd) {
-    case STEPCMD_TRANSPFAIL :
-      // directly abort
-      clientSessionP->AbortSession(LOCERR_TRANSPFAIL,true);
-      goto abort;
-    case STEPCMD_ABORT :
-      // directly abort
-      clientSessionP->AbortSession(LOCERR_USERABORT,true);
-    abort:
-      // also set the flag so subsequent progress events will result the abort status
-      fAbortRequested=true;
-      aStepCmd = STEPCMD_STEP; // convert to normal step
-      goto step;
-    case STEPCMD_SUSPEND :
-      // directly suspend
-      clientSessionP->SuspendSession(LOCERR_USERSUSPEND);
-      // also set the flag so subsequent pev_suspendcheck events will result the suspend status
-      fSuspendRequested=true;
-      aStepCmd = STEPCMD_OK; // this is a out-of-order step, and always just returns STEPCMD_OK.
-      fSessionStatus = 0; // ok for now, subsequent steps will perform the actual suspend
-      goto done; // no more action for now
-    case STEPCMD_STEP :
-    step:
-    // first just return all queued up progress events
-    if (fProgressInfoList.size()>0) {
-      // get first element in list
-      TEngineProgressInfoList::iterator pos = fProgressInfoList.begin();
-      // pass it back to caller if caller is interested
-      if (aInfoP) {
-        *aInfoP = *pos; // copy progress event
-      }
-      // delete progress event from list
-      fProgressInfoList.erase(pos);
-      // that's it for now, engine state does not change, wait for next step
-      aStepCmd = STEPCMD_PROGRESS;
-      return LOCERR_OK;
-    }
-    else if (fPendingStepCmd != 0) {
-      // now return previously generated step command
-      // Note: engine is already in the new state matching fPendingStepCmd
-      aStepCmd = fPendingStepCmd;
-      fSessionStatus = fPendingStatus;
-      fPendingStepCmd=0; // none pending any more
-      fPendingStatus=0;
-      return fSessionStatus; // return pending status now
-    }
-    // all progress events are delivered, now we can do the real work
-  }
-  #endif
-  // let client session handle it (if a session exists at all)
-  fSessionStatus = clientSessionP->SessionStep(aStepCmd, aInfoP);
-  #ifdef NON_FULLY_GRANULAR_ENGINE
-  // make sure caller issues STEPCMD_STEP to get all pending progress events
-  if (fProgressInfoList.size()>0) {
-    // save pending step command for returning later
-    fPendingStepCmd = aStepCmd;
-    fPendingStatus = fSessionStatus;
-    // return request for more steps instead
-    aStepCmd = STEPCMD_OK;
-    fSessionStatus = LOCERR_OK;
-  }
-  #endif
-done:
-  // return step status
-  return fSessionStatus;
+  // let client session handle it
+  return clientSessionP->SessionStep(aStepCmd, aInfoP);
 } // TClientEngineInterface::SessionStep
 
 
@@ -318,7 +197,7 @@ TSyError TClientEngineInterface::debugPuts(cAppCharP aFile, int aLine, cAppCharP
                                            cAppCharP aText)
 {
   #if defined(SYDEBUG)
-  static_cast<TSyncClientBase *>(getSyncAppBase())->getDbgLogger()->DebugPuts(/* aFile, aLine, aFunction, aPrefix */
+  static_cast<TSyncClientBase *>(getSyncAppBase())->getDbgLogger()->DebugPuts(TDBG_LOCATION_ARGS(aFunction, aFile, aLine /* aPrefix */)
                                                                               aDbgLevel, aText);
   return 0;
   #else
