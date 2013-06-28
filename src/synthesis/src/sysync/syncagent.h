@@ -1,13 +1,13 @@
 /*
  *  File:         SyncAgent.h
  *
- *  Author:			  Lukas Zeller (luz@synthesis.ch)
+ *  Author:			  Lukas Zeller (luz@plan44.ch)
  *
  *  TSyncAgent:   Provides functionality to run client or server
  *                sessions.
  *                Unifies former TSyncClient and TSyncServer
  *
- *  Copyright (c) 2002-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2002-2011 by Synthesis AG + plan44.ch
  *
  *  2009-09-30 : luz : created from syncclient.h and syncserver.h
  *
@@ -456,21 +456,6 @@ protected:
   TServerEngineState fServerEngineState;
   // - request size
   MemSize_t fRequestSize;
-  #ifdef NON_FULLY_GRANULAR_ENGINE
-  // progress event queue until engine is fully granular
-  TEngineProgressInfoList fProgressInfoList;
-  // pending step command and status during progress retrieval steps
-  uInt16 fPendingStepCmd;
-  localstatus fPendingStatus;
-public:
-  string fAlertMessage;
-protected:
-  #endif // NON_FULLY_GRANULAR_ENGINE
-  // current session status
-  localstatus fEngineSessionStatus;
-  // suspend and abort requests
-  bool fSuspendRequested;
-  bool fAbortRequested;
   #endif // ENGINE_LIBRARY
   // set if map command received in this session
   bool fMapSeen;
@@ -488,6 +473,26 @@ protected:
   // server session handle
   TSyncSessionHandle *fSessionHandleP; // the session "handle" (wrapper, containing server specific locking etc.)  
   #endif // SYSYNC_SERVER
+
+  #ifdef ENGINE_LIBRARY
+  // Common for client & server
+  #ifdef NON_FULLY_GRANULAR_ENGINE
+  // progress event queue until engine is fully granular
+  TEngineProgressInfoList fProgressInfoList;
+  // pending step command and status during progress retrieval steps
+  uInt16 fPendingStepCmd;
+  localstatus fPendingStatus;
+public:
+  string fAlertMessage;
+protected:
+  #endif // NON_FULLY_GRANULAR_ENGINE
+  // current session status
+  localstatus fEngineSessionStatus;
+  // suspend and abort requests
+  bool fSuspendRequested;
+  bool fAbortRequested;
+  #endif // ENGINE_LIBRARY
+	
 }; // TSyncAgent
 
 

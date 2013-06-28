@@ -1,11 +1,11 @@
 /*
  *  File:         sysync_glob_vars.h
  *
- *  Author:			  Lukas Zeller (luz@synthesis.ch)
+ *  Author:			  Lukas Zeller (luz@plan44.ch)
  *
  *  Global variables
  *
- *  Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  *  2004-08-09 : luz : created
  *

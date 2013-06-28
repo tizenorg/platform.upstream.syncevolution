@@ -2,7 +2,7 @@
  *  TCustomServerEngineBase, TCustomServerEngineInterface
  *    SyncML client engine for custom server - base classes
  *
- *  Copyright (c) 2009-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2009-2011 by Synthesis AG + plan44.ch
  *
  *  2009-02-06 : luz : Created
  *

@@ -1,14 +1,14 @@
 /**
  *  @File     stdlogicds.h
  *
- *  @Author   Lukas Zeller (luz@synthesis.ch)
+ *  @Author   Lukas Zeller (luz@plan44.ch)
  *
  *  @brief TStdLogicDS
  *    Standard database logic implementation, suitable for most (currently all)
  *    actual DS implementations, but takes as few assumptions about datastore
  *    so for vastly different sync patterns, this could be replaced by differnt locic
  *
- *    Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *    Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  *  @Date 2005-09-15 : luz : created from custdbdatastore
  */
@@ -28,13 +28,13 @@
 #endif
 
 #if defined(CLIENT_USES_SERVER_DB)
-	#define USES_SERVER_DB 1
-	#define HAS_SERVER_DB 1
+  #define USES_SERVER_DB 1
+  #define HAS_SERVER_DB 1
 #else
-	#ifdef SERVER_SUPPORT
-  	#define USES_SERVER_DB 1
+  #ifdef SERVER_SUPPORT
+    #define USES_SERVER_DB 1
   #endif
-	#define HAS_SERVER_DB IS_SERVER
+  #define HAS_SERVER_DB IS_SERVER
 #endif
 
 using namespace sysync;
@@ -228,15 +228,15 @@ protected:
   virtual localstatus implStartDataWrite(void) = 0;
   /// Returns true when DB can track syncop changes (i.e. having the DB report
   /// items as added again when stdlogic filters have decided they fell out of the syncset,
-  /// and has announced this to the DB using implReviewReadItem(). 
-  virtual bool implTracksSyncopChanges(void) { return false; }; // derived DB class needs to confirm true if   
-	/// review reported entry (allows post-processing such as map deleting)
-	/// MUST be called after implStartDataWrite, before any actual writing,
-	/// for each item obtained in implGetItem
-	virtual localstatus implReviewReadItem(
-	  TSyncItem &aItem         ///< the item
-	) = 0;
-	#ifdef SYSYNC_SERVER
+  /// and has announced this to the DB using implReviewReadItem().
+  virtual bool implTracksSyncopChanges(void) { return false; }; // derived DB class needs to confirm true if
+  /// review reported entry (allows post-processing such as map deleting)
+  /// MUST be called after implStartDataWrite, before any actual writing,
+  /// for each item obtained in implGetItem
+  virtual localstatus implReviewReadItem(
+    TSyncItem &aItem         ///< the item
+  ) = 0;
+  #ifdef SYSYNC_SERVER
   /// called to set maps.
   /// @note aLocalID or aRemoteID can be NULL - which signifies deletion of a map entry
   /// @note that this might be needed for clients accessing a server-style database as well
@@ -296,23 +296,23 @@ private:
   virtual bool logicGenerateSyncCommandsAsServer(
     TSmlCommandPContainer &aNextMessageCommands,
     TSmlCommand * &aInterruptedCommandP,
-    const char *aLocalIDPrefix
+    cAppCharP aLocalIDPrefix
   );
   /// called for servers when receiving map from client
   /// @note aLocalID or aRemoteID can be NULL - which signifies deletion of a map entry
   virtual localstatus logicProcessMap(cAppCharP aLocalID, cAppCharP aRemoteID);
   #endif // SYSYNC_SERVER
-  
+
   #ifdef SYSYNC_CLIENT
   /// called to generate sync sub-commands as server for remote client
   /// @return true if now finished for this datastore
   virtual bool logicGenerateSyncCommandsAsClient(
     TSmlCommandPContainer &aNextMessageCommands,
     TSmlCommand * &aInterruptedCommandP,
-    const char *aLocalIDPrefix
+    cAppCharP aLocalIDPrefix
   );
   #endif // SYSYNC_CLIENT
-  
+
   // - determine if this is a first time sync situation
   virtual bool isFirstTimeSync(void) { return fFirstTimeSync; };
 
@@ -366,6 +366,6 @@ private:
 
 } // namespace sysync
 
-#endif	// TStdLogicDS_H
+#endif  // TStdLogicDS_H
 
 // eof

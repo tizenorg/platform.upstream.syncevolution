@@ -1,7 +1,7 @@
 /*
  *  File:         rawdataitemtype.h
  *
- *  Author:       Lukas Zeller (luz@synthesis.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TRawDataItemType
  *    Item type for 1:1 raw items (SyncML payload is exchanged 1:1 with database backend) 

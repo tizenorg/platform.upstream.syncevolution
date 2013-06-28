@@ -6,7 +6,7 @@
  *
  *  Time zone dependent routines for Linux
  *
- *  Copyright (c) 2004-2010 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2004-2011 by Synthesis AG + plan44.ch
  *
  *  2009-04-02 : Created by Lukas Zeller from timezones.cpp work by Patrick Ohly
  *

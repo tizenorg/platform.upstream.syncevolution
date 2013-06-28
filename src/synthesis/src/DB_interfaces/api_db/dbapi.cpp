@@ -7,7 +7,7 @@
  *  Programming interface between Synthesis SyncML engine
  *  and a database structure: C++ class interface
  *
- *  Copyright (c) 2004-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2004-2011 by Synthesis AG + plan44.ch
  *
  */
 
@@ -257,22 +257,28 @@ namespace no_dbapi {
 
   /* --- DATASTORE --------------------------------------------------------------------------------- */
   /* ----- OPEN ------------------------ */
-  TSyError CreateContext    ( CContext* /* co */, cAppCharP /* aContextName */, DB_Callback /* aCB */,
-                                                  cAppCharP /* sDevKey */,
-                                                  cAppCharP /* sUsrKey */ )       { return DB_Fatal; }
-  uInt32   ContextSupport   ( CContext  /* co */, cAppCharP /* aContextRules */ ) { return 0; }
-  uInt32   FilterSupport    ( CContext  /* co */, cAppCharP /* aFilterRules  */ ) { return 0; }
+  TSyError CreateContext     ( CContext* /* co */, cAppCharP /* aContextName */, DB_Callback /* aCB */,
+                                                   cAppCharP /* sDevKey */,
+                                                   cAppCharP /* sUsrKey */ )       { return DB_Fatal; }
+  uInt32   ContextSupport    ( CContext  /* co */, cAppCharP /* aContextRules */ ) { return 0; }
+  uInt32   FilterSupport     ( CContext  /* co */, cAppCharP /* aFilterRules  */ ) { return 0; }
 
 
   /* ----- ADMINISTRATION -------------- */
-  TSyError  LoadAdminData   ( CContext  /* co */, cAppCharP  /* aLocDB */,
-                                                  cAppCharP  /* aRemDB */,
-                                                   appCharP* /* adminData */ )              { return DB_Forbidden; }
-  TSyError  SaveAdminData   ( CContext  /* co */, cAppCharP  /* adminData */ )              { return DB_Forbidden; }
-  bool    ReadNextMapItem   ( CContext  /* co */,     MapID  /* mID */, bool /* aFirst */ ) { return false;        }
-  TSyError  InsertMapItem   ( CContext  /* co */,    cMapID  /* mID */ )                    { return DB_Forbidden; }
-  TSyError  UpdateMapItem   ( CContext  /* co */,    cMapID  /* mID */ )                    { return DB_Forbidden; }
-  TSyError  DeleteMapItem   ( CContext  /* co */,    cMapID  /* mID */ )                    { return DB_Forbidden; }
+  TSyError LoadAdminData     ( CContext  /* co */, cAppCharP  /* aLocDB    */,
+                                                   cAppCharP  /* aRemDB    */,
+                                                    appCharP* /* adminData */ )              { return DB_Forbidden; }
+  TSyError LoadAdminDataAsKey( CContext  /* co */, cAppCharP  /* aLocDB    */,
+                                                   cAppCharP  /* aRemDB    */,
+                                                        KeyH  /* adminKey  */ )              { return DB_Forbidden; }
+
+  TSyError SaveAdminData     ( CContext  /* co */, cAppCharP  /* adminData */ )              { return DB_Forbidden; }
+  TSyError SaveAdminDataAsKey( CContext  /* co */,      KeyH  /* adminKey  */ )              { return DB_Forbidden; }
+
+  bool     ReadNextMapItem   ( CContext  /* co */,     MapID  /* mID */, bool /* aFirst */ ) { return false;        }
+  TSyError   InsertMapItem   ( CContext  /* co */,    cMapID  /* mID */ )                    { return DB_Forbidden; }
+  TSyError   UpdateMapItem   ( CContext  /* co */,    cMapID  /* mID */ )                    { return DB_Forbidden; }
+  TSyError   DeleteMapItem   ( CContext  /* co */,    cMapID  /* mID */ )                    { return DB_Forbidden; }
 
 
   /* ----- GENERAL --------------------- */
@@ -572,21 +578,23 @@ static void connect_no_dbapi( appPointer &aMod, API_Methods &m )
   DBApi_LibAssign ( aMod,no_dbapi, &m,              sizeof(m) );
 
 //---- session -------------------------------
-  DBApi_LibAssign ( aMod,no_dbapi, &m.se,           sizeof(m.se),           Plugin_Session     );
-  DBApi_LibAssign ( aMod,no_dbapi, &m.se.seAdapt,   sizeof(m.se.seAdapt),   Plugin_SE_Adapt    );
-  DBApi_LibAssign ( aMod,no_dbapi, &m.se.seAuth,    sizeof(m.se.seAuth),    Plugin_SE_Auth     );
-  DBApi_LibAssign ( aMod,no_dbapi, &m.se.dvAdmin,   sizeof(m.se.dvAdmin),   Plugin_DV_Admin    );
-  DBApi_LibAssign ( aMod,no_dbapi, &m.se.dvTime,    sizeof(m.se.dvTime),    Plugin_DV_DBTime   );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.se,           sizeof(m.se),           Plugin_Session      );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.se.seAdapt,   sizeof(m.se.seAdapt),   Plugin_SE_Adapt     );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.se.seAuth,    sizeof(m.se.seAuth),    Plugin_SE_Auth      );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.se.dvAdmin,   sizeof(m.se.dvAdmin),   Plugin_DV_Admin     );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.se.dvTime,    sizeof(m.se.dvTime),    Plugin_DV_DBTime    );
 
 //---- datastore -----------------------------
-  DBApi_LibAssign ( aMod,no_dbapi, &m.ds,           sizeof(m.ds),           Plugin_Datastore   );
-  DBApi_LibAssign ( aMod,no_dbapi, &m.ds.dsg,       sizeof(m.ds.dsg),       Plugin_DS_General  );
-  DBApi_LibAssign ( aMod,no_dbapi, &m.ds.dsAdapt,   sizeof(m.ds.dsAdapt),   Plugin_DS_Adapt    );
-  DBApi_LibAssign ( aMod,no_dbapi, &m.ds.dsAdmin,   sizeof(m.ds.dsAdmin),   Plugin_DS_Admin    );
-  DBApi_LibAssign ( aMod,no_dbapi, &m.ds.dsData,    sizeof(m.ds.dsData),    Plugin_DS_Data     );
-  DBApi_LibAssign ( aMod,no_dbapi, &m.ds.dsData.str,sizeof(m.ds.dsData.str),Plugin_DS_Data_Str );
-  DBApi_LibAssign ( aMod,no_dbapi, &m.ds.dsData.key,sizeof(m.ds.dsData.key),Plugin_DS_Data_Key );
-  DBApi_LibAssign ( aMod,no_dbapi, &m.ds.dsBlob,    sizeof(m.ds.dsBlob),    Plugin_DS_Blob     );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.ds,           sizeof(m.ds),           Plugin_Datastore    );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.ds.dsg,       sizeof(m.ds.dsg),       Plugin_DS_General   );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.ds.dsAdapt,   sizeof(m.ds.dsAdapt),   Plugin_DS_Adapt     );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.ds.dsAdm.str, sizeof(m.ds.dsAdm.str), Plugin_DS_Admin_Str );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.ds.dsAdm.key, sizeof(m.ds.dsAdm.key), Plugin_DS_Admin_Key );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.ds.dsAdm.map, sizeof(m.ds.dsAdm.map), Plugin_DS_Admin_Map );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.ds.dsData,    sizeof(m.ds.dsData),    Plugin_DS_Data      );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.ds.dsData.str,sizeof(m.ds.dsData.str),Plugin_DS_Data_Str  );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.ds.dsData.key,sizeof(m.ds.dsData.key),Plugin_DS_Data_Key  );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.ds.dsBlob,    sizeof(m.ds.dsBlob),    Plugin_DS_Blob      );
 //---- ui context ----------------------------
   DBApi_LibAssign ( aMod,no_dbapi, &m.ui,           sizeof(m.ui),           Plugin_UI );
   DisconnectModule( aMod    ); // no longer used, avoid memory leak
@@ -830,7 +838,7 @@ TSyError TDB_Api_Config::Connect( cAppCharP aModName, CContext &globContext,
   // !Supported( VP_EngineVersionParam ): only JNI signature changes
   // !Supported( VP_MD5_Nonce_IN       ): only JNI signature changes
 
-    cAppCharP                             vda= Plugin_DS_Admin;
+    cAppCharP                             vda= Plugin_DS_Admin_Map;
     if (!Supported( VP_InsertMapItem   )) vda= Plugin_DS_Admin_OLD;
     cAppCharP                             vdd= Plugin_DS_Data;
     if (!Supported( VP_FLI_DSS         )) vdd= Plugin_DS_Data_OLD2;
@@ -874,7 +882,16 @@ TSyError TDB_Api_Config::Connect( cAppCharP aModName, CContext &globContext,
         if (!err) err= DBApi_Assign( ca, &m.ds.dsBlob,    sizeof(m.ds.dsBlob),    vdb );
       } // if
 
-      if   (!err) err= DBApi_Assign( ca, &m.ds.dsAdmin,   sizeof(m.ds.dsAdmin),   vda );
+      if   (!err   &&      FlagOK  ( ca, Plugin_DS_Admin )) {
+        bool asK=          FlagOK  ( ca, CA_AdminAsKey, true );
+        if  (asK) err= DBApi_Assign( ca, &m.ds.dsAdm.key, sizeof(m.ds.dsAdm.key),Plugin_DS_Admin_Key );
+
+        bool asS= !asK ||  FlagBoth( ca, CA_AdminAsKey );
+        if  (asS) err= DBApi_Assign( ca, &m.ds.dsAdm.str, sizeof(m.ds.dsAdm.str),Plugin_DS_Admin_Str );
+
+	      if   (!err) err= DBApi_Assign( ca, &m.ds.dsAdm.map, sizeof(m.ds.dsAdm.map), vda );
+      } // if
+
       if   (!err) err= DBApi_Assign( ca, &m.ds.dsData,    sizeof(m.ds.dsData),    vdd );
 
       if   (!err   &&      FlagOK  ( ca, Plugin_DS_Data )) {
@@ -1530,29 +1547,32 @@ TSyError TDB_Api::LoadAdminData( cAppCharP aLocDB,
                                  cAppCharP aRemDB, TDB_Api_Str &adminData )
 {
                                              adminData.DisposeStr();
-  LoadAdm_Func  p= (LoadAdm_Func)dm->ds.dsAdmin.LoadAdminData;
+  LoadAdm_SFunc p= (LoadAdm_SFunc)dm->ds.dsAdm.str.LoadAdminData;
   TSyError err= p( fContext, aLocDB,aRemDB, &adminData.fStr );
   if     (!err)                   AssignStr( adminData );
   return   err;
 } // LoadAdminData
 
 TSyError TDB_Api::LoadAdminDataAsKey( cAppCharP aLocDB,
-                                      cAppCharP aRemDB, KeyH   aItemKey  )
+                                      cAppCharP aRemDB, KeyH aAdminKey )
 {
-  return LOCERR_NOTIMP;
+  LoadAdm_KFunc p= (LoadAdm_KFunc)dm->ds.dsAdm.key.LoadAdminDataAsKey;
+  TSyError err= p( fContext, aLocDB,aRemDB, aAdminKey );
+  return   err;
 } // LoadAdminDataAsKey
 
 
 //! This functions stores the new <adminData> for this context
 TSyError TDB_Api::SaveAdminData( cAppCharP adminData )
 {
-  SvInfo_Func p= (SvInfo_Func)dm->ds.dsAdmin.SaveAdminData;
-  return      p( fContext, adminData );
+  SaveAdm_SFunc p= (SaveAdm_SFunc)dm->ds.dsAdm.str.SaveAdminData;
+  return        p( fContext, adminData );
 } // SaveAdminData
 
-TSyError TDB_Api::SaveAdminData_AsKey( KeyH aItemKey )
+TSyError TDB_Api::SaveAdminData_AsKey( KeyH adminKey )
 {
-  return LOCERR_NOTIMP;
+  SaveAdm_KFunc p= (SaveAdm_KFunc)dm->ds.dsAdm.key.SaveAdminDataAsKey;
+  return        p( fContext, adminKey );
 } // SaveAdminDataAsKey
 
 
@@ -1565,7 +1585,7 @@ bool TDB_Api::ReadNextMapItem( TDB_Api_MapID &mID, bool aFirst )
   mID.localID.DisposeStr();
   mID.remoteID.DisposeStr();
 
-  RdNMap_Func p= (RdNMap_Func)dm->ds.dsAdmin.ReadNextMapItem;
+  RdNMap_Func p= (RdNMap_Func)dm->ds.dsAdm.map.ReadNextMapItem;
   bool   ok=  p( fContext, &u, aFirst );
   if    (ok) {
     mID.localID.fStr = u.localID;  AssignStr( mID.localID  );
@@ -1582,7 +1602,7 @@ bool TDB_Api::ReadNextMapItem( TDB_Api_MapID &mID, bool aFirst )
 // Insert a map item of this context
 TSyError TDB_Api::InsertMapItem( MapID mID )
 {
-  InsMap_Func p= (InsMap_Func)dm->ds.dsAdmin.InsertMapItem;
+  InsMap_Func p= (InsMap_Func)dm->ds.dsAdm.map.InsertMapItem;
   return      p( fContext, mID );
 } // InsertMapItem
 
@@ -1591,7 +1611,7 @@ TSyError TDB_Api::InsertMapItem( MapID mID )
 // Update a map item of this context
 TSyError TDB_Api::UpdateMapItem( MapID mID )
 {
-  UpdMap_Func p= (UpdMap_Func)dm->ds.dsAdmin.UpdateMapItem;
+  UpdMap_Func p= (UpdMap_Func)dm->ds.dsAdm.map.UpdateMapItem;
   return      p( fContext, mID );
 } // UpdateMapItem
 
@@ -1600,7 +1620,7 @@ TSyError TDB_Api::UpdateMapItem( MapID mID )
 // Delete a map item of this context
 TSyError TDB_Api::DeleteMapItem( MapID mID )
 {
-  DelMap_Func p= (DelMap_Func)dm->ds.dsAdmin.DeleteMapItem;
+  DelMap_Func p= (DelMap_Func)dm->ds.dsAdm.map.DeleteMapItem;
   return      p( fContext, mID );
 } // DeleteMapItem
 

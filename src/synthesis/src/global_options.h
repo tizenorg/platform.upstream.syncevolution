@@ -37,19 +37,24 @@
 #endif
 // global expiry date (usually applies for unregistered demos or regular products in trial mode)
 #ifndef EXPIRY_YEAR
-  #define EXPIRY_DATE_STRING "2010-08-31"
-  #define EXPIRY_YEAR 2010
-  #define EXPIRY_MONTH 8
-  #define EXPIRY_DAY 31
+  #define EXPIRY_DATE_STRING "2011-09-30"
+  #define EXPIRY_YEAR 2011
+  #define EXPIRY_MONTH 9
+  #define EXPIRY_DAY 30
 #endif
 
 // Release date (date relevant for licenses that are valid only up to a certain release date)
 #if !defined(RELEASE_YEAR) || !defined(RELEASE_MONTH)
   // define one globally in case target or product does not specify it's own date
-  #define RELEASE_YEAR        2008
-  #define RELEASE_YEAR_TXT   "2008"
-  #define RELEASE_MONTH       1
-  #define RELEASE_MONTH_TXT  "1"
+  #define RELEASE_YEAR        	2008
+  #define RELEASE_YEAR_TXT   		"2008"
+  #define RELEASE_MONTH       	1
+  #define RELEASE_MONTH_TXT  		"1"
+#endif
+// Real Release date (shown in some texts)
+#if !defined(REAL_RELEASE_YEAR)
+  #define REAL_RELEASE_YEAR     2011
+  #define REAL_RELEASE_YEAR_TXT "2011"
 #endif
 
 
@@ -71,8 +76,8 @@
 #endif
 
 #ifndef SYSYNC_BUILDNUMBER
-#define SYSYNC_BUILDNUMBER          8
-#define SYSYNC_BUILDNUMBER_TXT     "8"
+#define SYSYNC_BUILDNUMBER          27
+#define SYSYNC_BUILDNUMBER_TXT     "27"
 #endif
 
 
@@ -81,7 +86,7 @@
   #if defined(__EPOC_OS__)
     #define SYSYNC_PLATFORM_NAME "SymbianOS"
   #elif defined(MOBOSX)
-    #define SYSYNC_PLATFORM_NAME "iPhoneOS"
+    #define SYSYNC_PLATFORM_NAME "iOS"
   #elif defined(MACOSX)
     #define SYSYNC_PLATFORM_NAME "MacOSX"
   #elif defined(ANDROID)

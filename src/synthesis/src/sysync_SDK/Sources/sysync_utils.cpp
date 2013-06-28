@@ -1,12 +1,12 @@
 /*
  *  File:         sysync_utils.cpp
  *
- *  Author:       Lukas Zeller (luz@synthesis.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  Provides some helper functions interfacing between SyncML Toolkit
  *  and C++
  *
- *  Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  *  2001-05-16 : luz : created
  *
@@ -2190,7 +2190,7 @@ localstatus syncmlError(localstatus aErr)
 // SyncML status code <10000, and convert 200 into LOCERR_OK)
 localstatus localError(localstatus aErr)
 {
-  if (aErr==200) return LOCERR_OK;
+  if (aErr==200 || aErr==0) return LOCERR_OK;
   if (aErr<LOCAL_STATUS_CODE) return aErr+LOCAL_STATUS_CODE;
   return aErr;
 } // localError

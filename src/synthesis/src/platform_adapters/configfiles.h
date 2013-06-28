@@ -1,11 +1,11 @@
 /*
  *  File:         configfiles.h
  *
- *  Author:			  Lukas Zeller (luz@synthesis.ch)
+ *  Author:			  Lukas Zeller (luz@plan44.ch)
  *
  *  Platform adaptors for accessing config files
  *
- *  Copyright (c) 2002-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2002-2011 by Synthesis AG + plan44.ch
  *
  *  2002-11-18 : luz : created
  *

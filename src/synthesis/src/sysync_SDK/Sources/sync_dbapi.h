@@ -7,7 +7,7 @@
  *           Synthesis SyncML engine and
  *           the database layer for plug-ins
  *
- *  Copyright (c) 2005-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2005-2011 by Synthesis AG + plan44.ch
  *
  */
 
@@ -633,9 +633,12 @@ _ENTRY_ void DispItems( CContext aContext, bool allFields, cAppCharP specificIte
  *
  *  USED ONLY WITH \<plugin_datastoredadmin>
  */
-_ENTRY_ TSyError LoadAdminData( CContext aContext, cAppCharP aLocDB,
-                                                   cAppCharP aRemDB, appCharP *adminData );
+_ENTRY_ TSyError LoadAdminData     ( CContext aContext, cAppCharP aLocDB,
+                                                        cAppCharP aRemDB, appCharP *adminData );
 
+/*! This is the equivalent to 'LoadAdminData', but using a key instead of a data string */
+_ENTRY_ TSyError LoadAdminDataAsKey( CContext aContext, cAppCharP aLocDB,
+                                                        cAppCharP aRemDB,     KeyH  aItemKey );
 
 
 /*! This functions stores the new \<adminData> for this context
@@ -649,7 +652,10 @@ _ENTRY_ TSyError LoadAdminData( CContext aContext, cAppCharP aLocDB,
  *
  *  USED ONLY WITH \<plugin_datastoredadmin>
  */
-_ENTRY_ TSyError SaveAdminData( CContext aContext, cAppCharP adminData );
+_ENTRY_ TSyError SaveAdminData     ( CContext aContext, cAppCharP adminData );
+
+/*! This is the equivalent to 'SaveAdminData', but using a key instead of a data string */
+_ENTRY_ TSyError SaveAdminDataAsKey( CContext aContext,      KeyH aItemKey );
 
 
 

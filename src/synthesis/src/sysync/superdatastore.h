@@ -1,14 +1,14 @@
 /*
  *  File:         SuperDataStore.h
  *
- *  Author:			  Lukas Zeller (luz@synthesis.ch)
+ *  Author:			  Lukas Zeller (luz@plan44.ch)
  *
  *  TSuperDataStore
  *    "Virtual" datastore consisting of an union of other
  *    datastores, for example a vCal datastore based on
  *    two separate vEvent and vTodo datastores.
  *
- *  Copyright (c) 2002-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2002-2011 by Synthesis AG + plan44.ch
  *
  *  2002-08-05 : luz : created
  *

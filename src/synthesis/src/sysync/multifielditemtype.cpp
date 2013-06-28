@@ -1,14 +1,14 @@
 /*
  *  File:         MultiFieldItemType.cpp
  *
- *  Author:			  Lukas Zeller (luz@synthesis.ch)
+ *  Author:			  Lukas Zeller (luz@plan44.ch)
  *
  *  TMultiFieldItemType
  *    Type consisting of multiple data fields (TItemField objects)
  *    To be used as base class for field formats like vCard,
  *    vCalendar etc.
  *
- *  Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  *  2001-08-13 : luz : created
  *
@@ -220,6 +220,20 @@ public:
     }
   }; // func_CompareFields
 
+
+  // string COMPARISONMODE()
+  // returns mode of comparison
+  static void func_ComparisonMode(TItemField *&aTermP, TScriptContext *aFuncContextP)
+  {
+    TMultiFieldItemType *mfitP = static_cast<TMultiFieldItemType *>(aFuncContextP->getCallerContext());
+    if (!mfitP->fFirstItemP) aTermP->unAssign(); // no comparison
+    else {
+      aTermP->setAsString(comparisonModeNames[mfitP->fEqMode]);
+    }
+  }; // func_CompareFields
+
+
+
   #endif
 
 
@@ -325,6 +339,7 @@ const TBuiltInFuncDef DataTypeFuncDefs[] = {
   { "SETWINNINGCHANGED", TMFTypeFuncs::func_SetWinningChanged, fty_none, 1, param_IntArg },
   { "SETLOOSINGCHANGED", TMFTypeFuncs::func_SetLoosingChanged, fty_none, 1, param_IntArg },
   { "COMPAREFIELDS", TMFTypeFuncs::func_CompareFields, fty_integer, 0, NULL },
+  { "COMPARISONMODE", TMFTypeFuncs::func_ComparisonMode, fty_string, 0, NULL },
   #endif
   { "SYNCOP", TMFTypeFuncs::func_SyncOp, fty_string, 0, NULL },
   { "REJECTITEM", TMFTypeFuncs::func_RejectItem, fty_none, 1, param_IntArg },

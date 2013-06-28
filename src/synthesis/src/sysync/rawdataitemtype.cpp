@@ -1,7 +1,7 @@
 /*
  *  File:         rawdataitemtype.cpp
  *
- *  Author:       Lukas Zeller (luz@synthesis.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TRawDataItemType
  *    Item type for 1:1 raw items (SyncML payload is exchanged 1:1 with database backend) 
@@ -208,7 +208,7 @@ bool TRawDataItemType::internalSetItemData(
 SmlDevInfCTDataPropListPtr_t TRawDataItemType::newCTDataPropList(TTypeVariantDescriptor aVariantDescriptor)
 {
 	// return supported properties
-  // #warning "TODO create this list from some configuration data"
+  //#warning "TODO create this list from some configuration data"
 	return NULL; // %%% for now: none
 }
 
@@ -250,7 +250,7 @@ bool TRawDataItemType::copyCTCapInfoFrom(TSyncItemType &aSourceItem)
   // must be same type as myself or based on the type of myself
   if (!aSourceItem.isBasedOn(getTypeID()))
     return false; // not compatible
-  // TRawDataItemType *itemTypeP = static_cast<TRawDataItemType *>(&aSourceItem);
+  //TRawDataItemType *itemTypeP = static_cast<TRawDataItemType *>(&aSourceItem);
   // all CTCap info we might have is in the field options of MultiFieldItemType
   return inherited::copyCTCapInfoFrom(aSourceItem);
 } // TRawDataItemType::copyCTCapInfoFrom

@@ -1,12 +1,12 @@
 /**
  *  @File     binfile.cpp
  *
- *  @Author   Lukas Zeller (luz@synthesis.ch)
+ *  @Author   Lukas Zeller (luz@plan44.ch)
  *
  *  @brief TBinFileBase
  *    Simple record based binary file storage class
  *
- *    Copyright (c) 2003-2009 by Synthesis AG (www.synthesis.ch)
+ *    Copyright (c) 2003-2011 by Synthesis AG + plan44.ch
  *
  *  @Date 2006-03-28 : luz : extracted into separate file from TBinfileImplDS
  */
@@ -72,6 +72,67 @@ void TBinFileBase::setFileInfo(const char *aFilename, uInt32 aVersion, uInt32 aI
   fVersion=aVersion;
   fExpectedRecordSize=aExpectedRecordSize;
 } // TBinFileBase::setFileInfo
+
+
+// - copy entire binfile 1:1 without looking at header
+bferr TBinFileBase::createAsCopyFrom(TBinFileBase &aSourceBinFile, bool aOverwrite)
+{
+  // make sure it is closed first
+  close();
+  aSourceBinFile.close();
+	// open original
+	if (!aSourceBinFile.platformOpenFile(aSourceBinFile.fFilename.c_str(), fopm_update))
+  	return BFE_NOTFOUND;
+  // get original header into my own fBinFileHeader
+  aSourceBinFile.platformSeekFile(0);
+  if (!aSourceBinFile.platformReadFile(&fBinFileHeader,sizeof(fBinFileHeader))) {
+    aSourceBinFile.platformCloseFile();
+    return BFE_BADSTRUCT;
+  }
+  // calculate file size
+  uInt32 filesize = fBinFileHeader.headersize + fBinFileHeader.recordsize * fBinFileHeader.allocatedrecords;
+  // create output file
+  if (!aOverwrite) {
+  	// first test for existing file
+    if (platformOpenFile(fFilename.c_str(), fopm_update)) {
+    	// already exists, don't copy
+      platformCloseFile(); // close existing file
+	    aSourceBinFile.platformCloseFile(); // close input
+      return BFE_EXISTS; // already exists, don't overwrite
+    }
+  }
+  if (!platformOpenFile(fFilename.c_str(), fopm_create)) {
+    aSourceBinFile.platformCloseFile(); // close input
+  	return BFE_IOERR;
+  }
+  // allocate buffer to read entire file
+  void *copybuffer = malloc(filesize);
+  if (!copybuffer) {
+    aSourceBinFile.platformCloseFile(); // close input
+    platformCloseFile(); // close output
+  	return BFE_MEMORY; // fatal
+  }
+  // read everything from old file
+  aSourceBinFile.platformSeekFile(0);
+  if (!aSourceBinFile.platformReadFile(copybuffer,filesize)) {
+    aSourceBinFile.platformCloseFile(); // close input
+    platformCloseFile(); // close output
+    return BFE_IOERR;
+  }
+  aSourceBinFile.platformCloseFile(); // done with input file
+  // write everything out to new file
+  if (!platformWriteFile(copybuffer,filesize)) {
+    platformCloseFile(); // close output
+    return BFE_IOERR;
+  }
+  // return memory
+  free(copybuffer);
+  // close output
+  platformCloseFile();
+  // done ok
+  return BFE_OK;
+}
+
 
 
 // - try to open existing DB file according to params set with setFileInfo

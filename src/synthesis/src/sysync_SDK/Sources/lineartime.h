@@ -1,11 +1,11 @@
 /*
  *  File:         lineartime.h
  *
- *  Author:			  Lukas Zeller (luz@synthesis.ch)
+ *  Author:			  Lukas Zeller (luz@plan44.ch)
  *
  *  conversion from/to linear time scale.
  *
- *  Copyright (c) 2002-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2002-2011 by Synthesis AG + plan44.ch
  *
  *  2002-04-14 : luz : created from pascal source (plani.ch)
  *

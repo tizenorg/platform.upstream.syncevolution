@@ -2048,7 +2048,7 @@ get_config_for_config_widget_cb (SyncevoServer *server,
                                  GError *error,
                                  config_data *c_data)
 {
-    char *ready, *is_peer, *url;
+    char *ready, *is_peer, *url, *type;
 
     c_data->data->service_list_updates_left--;
 
@@ -2062,8 +2062,18 @@ get_config_for_config_widget_cb (SyncevoServer *server,
     syncevo_config_get_value (config, NULL, "ConsumerReady", &ready);
     syncevo_config_get_value (config, NULL, "PeerIsClient", &is_peer);
     syncevo_config_get_value (config, NULL, "syncURL", &url);
+    syncevo_config_get_value (config, NULL, "peerType", &type);
 
-    if (is_peer && g_strcmp0 ("1", is_peer) == 0) {
+    
+    if (g_strcmp0 ("1", ready) != 0 ||
+        (type && g_strcmp0 ("WebDAV", type) == 0) ||
+        (url && g_str_has_prefix (url, "local://@"))) {
+
+        /* Ignore existing configs and templates unless they are
+           explicitly marked as "ConsumerReady. 
+           Also ignore webdav  (and the local syncs used for webdav)
+           for now */
+    } else if (is_peer && g_strcmp0 ("1", is_peer) == 0) {
         if (url) {
             SyncConfigWidget *w;
             char *fp, *tmp, *template_name, *device_name = NULL;
@@ -2091,40 +2101,34 @@ get_config_for_config_widget_cb (SyncevoServer *server,
             /* keep a list of added devices */
             w = g_hash_table_lookup (c_data->device_templates, url);
             if (!w) {
-                if (c_data->has_configuration || g_strcmp0 ("1", ready) == 0) {
-                    w = add_configuration_to_box (GTK_BOX (c_data->data->devices_box),
-                                                           config,
-                                                           device_name,
-                                                           c_data->has_template,
-                                                           c_data->has_configuration,
-                                                           c_data->data);
-                    g_hash_table_insert (c_data->device_templates, url, w);
-                    sync_config_widget_add_alternative_config (w, template_name, config,
-                                                               c_data->has_configuration);
-                }
+                w = add_configuration_to_box (GTK_BOX (c_data->data->devices_box),
+                                              config,
+                                              device_name,
+                                              c_data->has_template,
+                                              c_data->has_configuration,
+                                              c_data->data);
+                g_hash_table_insert (c_data->device_templates, url, w);
+                sync_config_widget_add_alternative_config (w, template_name, config,
+                                                           c_data->has_configuration);
             } else {
                 /* TODO: might want to add a new widget, if user has created more
                  * configs for same device: this really requires us to look at 
                  * all configs / templates, then decide what to sho w*/
 
                 /* there is a widget for this device already, add this info there*/
-                if (c_data->has_configuration || g_strcmp0 ("1", ready) == 0) {
-                    sync_config_widget_add_alternative_config (w, template_name, config,
-                                                               c_data->has_configuration);
-                }
+                sync_config_widget_add_alternative_config (w, template_name, config,
+                                                           c_data->has_configuration);
             }
             g_free (device_name);
             g_strfreev (fpv);
         }
     } else {
-        if (c_data->has_configuration || g_strcmp0 ("1", ready) == 0) {
-            add_configuration_to_box (GTK_BOX (c_data->data->services_box),
-                                      config,
-                                      c_data->name,
-                                      c_data->has_template,
-                                      c_data->has_configuration,
-                                      c_data->data);
-        }
+        add_configuration_to_box (GTK_BOX (c_data->data->services_box),
+                                  config,
+                                  c_data->name,
+                                  c_data->has_template,
+                                  c_data->has_configuration,
+                                  c_data->data);
     }
 
     g_free (c_data->name);

@@ -5,7 +5,7 @@
  *
  *  Timezones conversion from/to linear time scale.
  *
- *  Copyright (c) 2004-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2004-2011 by Synthesis AG + plan44.ch
  *
  *  2004-04-18 : bfo : initial version
  *
@@ -1053,8 +1053,10 @@ timecontext_t SelectTZ( TDaylightSavingZone zone, int bias, int biasDST, lineart
           default           : ok= true;
         } // switch
 
-        if (isDbg) PNCDEBUGPRINTFX( DBG_SESSION,( " %d %d dst=%d cond=%d '%s'",
-                                        i, bias, dst, tCond, tz[ i ].name.c_str() ));
+        if (isDbg) {
+          PNCDEBUGPRINTFX( DBG_SESSION,( " %d %d dst=%d cond=%d '%s'",
+                                         i, bias, dst, tCond, tz[ i ].name.c_str() ));
+        }
         if   (ok) { // check, if european time zone
           ok= (zone==EDstEuropean) ==
             (tz[ i ].name.find("Europe") != string::npos ||
@@ -1067,8 +1069,10 @@ timecontext_t SelectTZ( TDaylightSavingZone zone, int bias, int biasDST, lineart
     } // if
   } // for
 
-  if (isDbg) PNCDEBUGPRINTFX( DBG_SESSION,( "SelectTZ: zone=%s bias=%d",
-                                             tz[ t ].name.c_str(), bias ) );
+  if (isDbg) {
+    PNCDEBUGPRINTFX( DBG_SESSION,( "SelectTZ: zone=%s bias=%d",
+                                   tz[ t ].name.c_str(), bias ) );
+  }
   return TCTX_SYMBOLIC_TZ+t;
 } // SelectTZ
 
@@ -1107,7 +1111,9 @@ static bool MyContext( timecontext_t &aContext, GZones* g )
   // - call platform specific routine
   bool ok = getSystemTimeZoneContext( aContext, g );
   
-  if (isDbg) PNCDEBUGPRINTFX( DBG_SESSION, ( "MyContext: %08X ok=%d", aContext, ok ));
+  if (isDbg) {
+    PNCDEBUGPRINTFX( DBG_SESSION, ( "MyContext: %08X ok=%d", aContext, ok ));
+  }
   
   // update cached system context
   if (g && ok) g->sysTZ= aContext; // assign the system context

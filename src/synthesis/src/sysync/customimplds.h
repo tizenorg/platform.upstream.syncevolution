@@ -1,13 +1,13 @@
 /**
  *  @File     customimpl.h
  *
- *  @Author   Lukas Zeller (luz@synthesis.ch)
+ *  @Author   Lukas Zeller (luz@plan44.ch)
  *
  *  @brief TCustomImplDS
  *    Base class for customizable datastores (mainly extended DB mapping features
  *    common to all derived classes like ODBC, DBAPI etc.).
  *
- *    Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *    Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  *  @Date 2005-12-05 : luz : separated from odbcapids
  */
@@ -498,8 +498,17 @@ public:
   virtual localstatus apiEndDataRead(void) = 0;
   /// start of write
   virtual localstatus apiStartDataWrite(void) = 0;
+#ifdef __clang__
+/// Same name as in TBinfileImplDS. Tell clang compiler to ignore that name clash,
+/// it is okay here.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Woverloaded-virtual"
+#endif
   /// end DB data write sequence (but not yet admin data)
   virtual localstatus apiEndDataWrite(string &aThisSyncIdentifier) = 0;
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 
   /// @}
 
@@ -759,7 +768,7 @@ protected:
   // - get container ID for specified localid
   bool getContainerID(const char *aLocalID, string &aContainerID);
   // - delete sync set one by one
-  localstatus zapSyncSet(void);
+  localstatus zapSyncSetOneByOne(void);
   // - Queue the data needed for finalisation (usually - relational link updates)
   //   as a item copy with only finalisation-required fields
   void queueForFinalisation(TMultiFieldItem *aItemP);
@@ -806,9 +815,9 @@ protected:
   #endif // BINFILE_ALWAYS_ACTIVE
   #ifdef BASED_ON_BINFILE_CLIENT
   bool fSyncSetLoaded; // set if sync set is currently loaded
-  bool makeSyncSetLoaded(bool aNeedAll);
-	localstatus getItemFromSyncSetItem(TSyncSetItem *aSyncSetItemP, TSyncItem *&aItemP);
+  localstatus makeSyncSetLoaded(bool aNeedAll);
   #endif // BASED_ON_BINFILE_CLIENT
+	localstatus getItemFromSyncSetItem(TSyncSetItem *aSyncSetItemP, TSyncItem *&aItemP);
   bool fNoSingleItemRead; // if set, syncset list will also contain items
   bool fMultiFolderDB; // if set, we need the syncset list for finding container IDs later
   #ifdef SCRIPT_SUPPORT

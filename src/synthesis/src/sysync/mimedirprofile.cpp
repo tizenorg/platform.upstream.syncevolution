@@ -1,12 +1,12 @@
 /*
  *  File:         mimedirprofile.cpp
  *
- *  Author:       Lukas Zeller (luz@synthesis.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TMimeDirItemType
  *    base class for MIME DIR based content types (vCard, vCalendar...)
  *
- *  Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  *  2009-01-09 : luz : created from mimediritemtype.cpp
  *
@@ -119,13 +119,13 @@ void TMIMEProfileConfig::clear(void)
 // handler factory
 TProfileHandler *TMIMEProfileConfig::newProfileHandler(TMultiFieldItemType *aItemTypeP)
 {
-	// check if fieldlists match as they should
+  // check if fieldlists match as they should
   if (aItemTypeP->getFieldDefinitions()!=fFieldListP) {
-  	// profile is for another field list, cannot be used for this item type
-   	return NULL;
+    // profile is for another field list, cannot be used for this item type
+    return NULL;
   }
-	// our handler is the text profile handler
-	return (TProfileHandler *)(new TMimeDirProfileHandler(this,aItemTypeP));
+  // our handler is the text profile handler
+  return (TProfileHandler *)(new TMimeDirProfileHandler(this,aItemTypeP));
 }
 
 
@@ -133,48 +133,74 @@ TProfileHandler *TMIMEProfileConfig::newProfileHandler(TMultiFieldItemType *aIte
 
 
 // get conversion mode, virtual, can be overridden by derivates
-bool TMIMEProfileConfig::getConvMode(const char *aText, sInt16 &aConvMode)
+bool TMIMEProfileConfig::getConvMode(cAppCharP aText, sInt16 &aConvMode)
 {
-  // basic modes
-  if (strucmp(aText,"none")==0)
-    aConvMode=CONVMODE_NONE;
-  else if (strucmp(aText,"version")==0)
-    aConvMode=CONVMODE_VERSION;
-  else if (strucmp(aText,"prodid")==0)
-    aConvMode=CONVMODE_PRODID;
-  else if (strucmp(aText,"timestamp")==0)
-    aConvMode=CONVMODE_TIMESTAMP;
-  else if (strucmp(aText,"date")==0)
-    aConvMode=CONVMODE_DATE;
-  else if (strucmp(aText,"autodate")==0)
-    aConvMode=CONVMODE_AUTODATE;
-  else if (strucmp(aText,"autoenddate")==0)
-    aConvMode=CONVMODE_AUTOENDDATE;
-  else if (strucmp(aText,"tz")==0)
-    aConvMode=CONVMODE_TZ;
-  else if (strucmp(aText,"daylight")==0)
-    aConvMode=CONVMODE_DAYLIGHT;
-  else if (strucmp(aText,"tzid")==0)
-    aConvMode=CONVMODE_TZID;
-  else if (strucmp(aText,"emptyonly")==0)
-    aConvMode=CONVMODE_EMPTYONLY;
-  else if (strucmp(aText,"bitmap")==0)
-    aConvMode=CONVMODE_BITMAP;
-  else if (strucmp(aText,"multimix")==0)
-    aConvMode=CONVMODE_MULTIMIX;
-  else if (strucmp(aText,"blob_b64")==0)
-    aConvMode=CONVMODE_BLOB_B64;
-  else if (strucmp(aText,"mailto")==0)
-    aConvMode=CONVMODE_MAILTO;
-  else if (strucmp(aText,"valuetype")==0)
-    aConvMode=CONVMODE_VALUETYPE;
-  else if (strucmp(aText,"fullvaluetype")==0)
-    aConvMode=CONVMODE_FULLVALUETYPE;
-  else if (strucmp(aText,"rrule")==0)
-    aConvMode=CONVMODE_RRULE;
+  // separate options
+  size_t n=0; // no size
+  cAppCharP op = strchr(aText, '+');
+  if (op) n = op-aText;
+  // check basic modes
+  if (op && n==0) {
+    // only options, no basic mode
+    aConvMode = CONVMODE_NONE;
+  }
   else {
-    fail("'conversion' value '%s' is invalid",aText);
-    return false;
+    // first item is basic mode
+    if (strucmp(aText,"none",n)==0)
+      aConvMode = CONVMODE_NONE;
+    else if (strucmp(aText,"version",n)==0)
+      aConvMode = CONVMODE_VERSION;
+    else if (strucmp(aText,"prodid",n)==0)
+      aConvMode = CONVMODE_PRODID;
+    else if (strucmp(aText,"timestamp",n)==0)
+      aConvMode = CONVMODE_TIMESTAMP;
+    else if (strucmp(aText,"date",n)==0)
+      aConvMode = CONVMODE_DATE;
+    else if (strucmp(aText,"autodate",n)==0)
+      aConvMode = CONVMODE_AUTODATE;
+    else if (strucmp(aText,"autoenddate",n)==0)
+      aConvMode = CONVMODE_AUTOENDDATE;
+    else if (strucmp(aText,"tz",n)==0)
+      aConvMode = CONVMODE_TZ;
+    else if (strucmp(aText,"daylight",n)==0)
+      aConvMode = CONVMODE_DAYLIGHT;
+    else if (strucmp(aText,"tzid",n)==0)
+      aConvMode = CONVMODE_TZID;
+    else if (strucmp(aText,"emptyonly",n)==0)
+      aConvMode = CONVMODE_EMPTYONLY;
+    else if (strucmp(aText,"bitmap",n)==0)
+      aConvMode = CONVMODE_BITMAP;
+    else if (strucmp(aText,"multimix",n)==0)
+      aConvMode = CONVMODE_MULTIMIX;
+    else if (strucmp(aText,"blob_b64",n)==0)
+      aConvMode = CONVMODE_BLOB_B64;
+    else if (strucmp(aText,"mailto",n)==0)
+      aConvMode = CONVMODE_MAILTO;
+    else if (strucmp(aText,"valuetype",n)==0)
+      aConvMode = CONVMODE_VALUETYPE;
+    else if (strucmp(aText,"fullvaluetype",n)==0)
+      aConvMode = CONVMODE_FULLVALUETYPE;
+    else if (strucmp(aText,"rrule",n)==0)
+      aConvMode = CONVMODE_RRULE;
+    else {
+      fail("'conversion' value '%s' is invalid",aText);
+      return false;
+    }
+  }
+  // now check for options flags and or them into conversion value
+  while (op) {
+    aText = op+1; // skip +
+    n = 0;
+    op = strchr(aText, '+');
+    if (op) n = op-aText;
+    if (strucmp(aText,"extfmt",n)==0)
+      aConvMode |= CONVMODE_FLAG_EXTFMT;
+    else if (strucmp(aText,"millisec",n)==0)
+      aConvMode |= CONVMODE_FLAG_MILLISEC;
+    else {
+      fail("'conversion' option '%s' is invalid",aText);
+      return false;
+    }
   }
   return true;
 } // TMIMEProfileConfig::getConvMode
@@ -424,12 +450,12 @@ bool TMIMEProfileConfig::localStartElement(const char *aElementName, const char 
       // <value field="N_FIRST" conversion="none" combine="no"/>
       // - set default options
       fid=FID_NOT_SUPPORTED;
-      convmode=CONVMODE_NONE;
-      combsep=0;
+      convmode = CONVMODE_NONE;
+      combsep = 0;
       // - get other options of convdef
       if (!getConvAttrs(aAttributes,fid,convmode,combsep)) return true; // failed
       // - set convdef
-      fOpenConvDef=fOpenParameter->setConvDef(fid,convmode,combsep);
+      fOpenConvDef = fOpenParameter->setConvDef(fid,convmode,combsep);
       startNestedParsing();
     }
     else if (strucmp(aElementName,"position")==0) {
@@ -455,13 +481,13 @@ bool TMIMEProfileConfig::localStartElement(const char *aElementName, const char 
         return fail("'index' out of range (0..%hd)",fOpenProperty->numValues);
       // - set default options
       fid=FID_NOT_SUPPORTED;
-      convmode=CONVMODE_NONE;
-      combsep=0;
+      convmode = CONVMODE_NONE;
+      combsep = 0;
       // - get other options of convdef
       if (!getConvAttrs(aAttributes,fid,convmode,combsep))
         return true; // failed
       // - set convdef
-      fOpenConvDef=fOpenProperty->setConvDef(idx,fid,convmode,combsep);
+      fOpenConvDef = fOpenProperty->setConvDef(idx,fid,convmode,combsep);
       startNestedParsing();
     }
     else if (strucmp(aElementName,"parameter")==0) {
@@ -485,10 +511,10 @@ bool TMIMEProfileConfig::localStartElement(const char *aElementName, const char 
         return fail("bad boolean value");
       // - add parameter
       fOpenParameter = fOpenProperty->addParam(nam,defparam,positional,shownonempty,showinctcap,modeDep);
-#ifndef NO_REMOTE_RULES
+      #ifndef NO_REMOTE_RULES
       const char *depRuleName = getAttr(aAttributes,"rule");
       TCFG_ASSIGN(fOpenParameter->dependencyRuleName,depRuleName); // save name for later resolving
-#endif
+      #endif
       startNestedParsing();
     }
     else if (strucmp(aElementName,"position")==0) {
@@ -556,7 +582,7 @@ bool TMIMEProfileConfig::localStartElement(const char *aElementName, const char 
       // - add level control field stuff, if any
       fnam = getAttr(aAttributes,"field");
       if (fnam) {
-      	// - "value" is optional, without a value subprofile is activated if field is non-empty
+        // - "value" is optional, without a value subprofile is activated if field is non-empty
         val = getAttr(aAttributes,"value");
         // - find field
         fid = fFieldListP->fieldIndex(fnam);
@@ -565,7 +591,7 @@ bool TMIMEProfileConfig::localStartElement(const char *aElementName, const char 
         // - set level control convdef
         TConversionDef *cdP = fOpenProfile->setConvDef(fid); // set field ID of level control field
         if (val)
-        	cdP->addEnum("",val,enm_translate); // set value to be set into level control field when level is entered
+          cdP->addEnum("",val,enm_translate); // set value to be set into level control field when level is entered
       }
     }
     else if (strucmp(aElementName,"property")==0) {
@@ -604,12 +630,14 @@ bool TMIMEProfileConfig::localStartElement(const char *aElementName, const char 
       bool mandatory = false;
       bool showprop = true; // show property in devInf by default
       bool suppressempty = false;
+      bool allowFoldAtSep = false;
       bool canfilter = false; // 3.2.0.9 onwards: do not show filter caps by default (devInf gets too large)
       if (
         !getAttrBool(aAttributes,"mandatory",mandatory,true) ||
         !getAttrBool(aAttributes,"showindevinf",showprop,true) || // formerly just called "show" (but renamed to make it ineffective in old configs as new engine prevents duplicates automatically)
         !getAttrBool(aAttributes,"suppressempty",suppressempty,true) ||
-        !getAttrBool(aAttributes,"filter",canfilter,true)
+        !getAttrBool(aAttributes,"filter",canfilter,true) ||
+        !getAttrBool(aAttributes,"foldbetween",allowFoldAtSep,true)
       ) return fail("bad boolean value");
       const char *valsep= getAttr(aAttributes,"valueseparator");
       if (!valsep) valsep=";"; // default to semicolon if not defined
@@ -619,7 +647,7 @@ bool TMIMEProfileConfig::localStartElement(const char *aElementName, const char 
       sInt16 groupFieldID = FID_NOT_SUPPORTED; // no group field ID by default
       cAppCharP gfin = getAttr(aAttributes, "groupfield");
       if (gfin) {
-    		groupFieldID = fFieldListP->fieldIndex(gfin);
+        groupFieldID = fFieldListP->fieldIndex(gfin);
         if (groupFieldID==VARIDX_UNDEFINED) {
           fail("'groupfield' '%s' does not exist in field list '%s'",gfin,fFieldListP->getName());
           return false;
@@ -630,7 +658,7 @@ bool TMIMEProfileConfig::localStartElement(const char *aElementName, const char 
       if (!getAttrShort(aAttributes,"delayedparsing",delayedprocessing,true))
         return fail ("bad 'delayedparsing' specification");
       // - create property now and open new level of parsing
-      fOpenProperty=fOpenProfile->addProperty(nam,numval,mandatory,showprop,suppressempty,delayedprocessing,*valsep,fPropertyGroupID,canfilter,modeDep, *altvalsep, groupFieldID);
+      fOpenProperty=fOpenProfile->addProperty(nam, numval, mandatory, showprop, suppressempty, delayedprocessing, *valsep, fPropertyGroupID, canfilter, modeDep, *altvalsep, groupFieldID, allowFoldAtSep);
       fLastProperty=fOpenProperty; // for group checking
       #ifndef NO_REMOTE_RULES
       // - add rule dependency (pointer will be resolved later)
@@ -665,11 +693,11 @@ bool TMIMEProfileConfig::localStartElement(const char *aElementName, const char 
       startNestedParsing();
     }
     else if (strucmp(aElementName,"unfloattimestamps")==0)
-    	expectBool(fUnfloatFloating);
+      expectBool(fUnfloatFloating);
     else if (strucmp(aElementName,"vtimezonegenmode")==0)
-    	expectEnum(sizeof(fVTimeZoneGenMode),&fVTimeZoneGenMode,VTimeZoneGenModes,numVTimeZoneGenModes);
+      expectEnum(sizeof(fVTimeZoneGenMode),&fVTimeZoneGenMode,VTimeZoneGenModes,numVTimeZoneGenModes);
     else if (strucmp(aElementName,"tzidgenmode")==0)
-    	expectEnum(sizeof(fTzIdGenMode),&fTzIdGenMode,VTzIdGenModes,numTzIdGenModes);
+      expectEnum(sizeof(fTzIdGenMode),&fTzIdGenMode,VTzIdGenModes,numTzIdGenModes);
     // none known here
     else
       return inherited::localStartElement(aElementName, aAttributes, aLine);
@@ -841,11 +869,11 @@ const
     ) break; // found prefix match (or prefix entry with no text, which means match as well)
     // otherwise: remember if this is a default
     else if (enumP->enummode==enm_default_value) {
-    	// default value entry
-    	defaultenumP=enumP; // anyway: remember default value entry
+      // default value entry
+      defaultenumP=enumP; // anyway: remember default value entry
       // allow searching default value by name (for "has","hasnot" parsing via getExtIDbit())
       if (!(TCFG_ISEMPTY(enumP->enumtext)) && strucmp(aName,TCFG_CSTR(enumP->enumtext),n)==0)
-      	break; // found named default value
+        break; // found named default value
     }
     // check next
     enumP=enumP->next;
@@ -913,10 +941,10 @@ TParameterDefinition::TParameterDefinition(
   shownonempty=aShowNonEmpty;
   showInCTCap=aShowInCTCap;
   modeDependency=aModeDep;
-#ifndef NO_REMOTE_RULES
+  #ifndef NO_REMOTE_RULES
   ruleDependency=NULL;
   TCFG_CLEAR(dependencyRuleName);
-#endif
+  #endif
 } // TParameterDefinition::TParameterDefinition
 
 
@@ -961,7 +989,7 @@ TPropNameExtension::~TPropNameExtension()
 } // TPropNameExtension::~TPropNameExtension
 
 
-TPropertyDefinition::TPropertyDefinition(const char* aName, sInt16 aNumVals, bool aMandatory, bool aShowInCTCap, bool aSuppressEmpty, uInt16 aDelayedProcessing, char aValuesep, char aAltValuesep, uInt16 aPropertyGroupID, bool aCanFilter, TMimeDirMode aModeDep, sInt16 aGroupFieldID)
+TPropertyDefinition::TPropertyDefinition(const char* aName, sInt16 aNumVals, bool aMandatory, bool aShowInCTCap, bool aSuppressEmpty, uInt16 aDelayedProcessing, char aValuesep, char aAltValuesep, uInt16 aPropertyGroupID, bool aCanFilter, TMimeDirMode aModeDep, sInt16 aGroupFieldID, bool aAllowFoldAtSep)
 {
   next = NULL;
   TCFG_ASSIGN(propname,aName);
@@ -971,8 +999,12 @@ TPropertyDefinition::TPropertyDefinition(const char* aName, sInt16 aNumVals, boo
   expandlist = false; // not expanding value list into repeating property by default
   valuesep = aValuesep; // separator for structured-value and value-list properties
   altvaluesep = aAltValuesep; // alternate separator for structured-value and value-list properties (for parsing only)
+  allowFoldAtSep = aAllowFoldAtSep; // allow folding at value separators even if it inserts a space at the end of the previous value
   groupFieldID = aGroupFieldID; // fid for field that contains the group tag (prefix to the property name, like "a" in "a.TEL:079122327")
   propGroup = aPropertyGroupID; // property group ID
+  // check if this is an unprocessed wildcard property
+  unprocessed = strchr(aName, '*')!=NULL;
+  // check value list
   if (aNumVals==NUMVAL_LIST || aNumVals==NUMVAL_REP_LIST) {
     // value list
     valuelist = true;
@@ -1135,12 +1167,13 @@ TPropertyDefinition *TProfileDefinition::addProperty(
   bool aCanFilter, // can be filtered -> show in filter cap
   TMimeDirMode aModeDep, // property valid only for specific MIME mode
   char aAltValuesep, // alternate separator (for parsing)
-  sInt16 aGroupFieldID // group field ID
+  sInt16 aGroupFieldID, // group field ID
+  bool aAllowFoldAtSep // allow folding at separators
 )
 {
   TPropertyDefinition **propPP=&propertyDefs;
   while (*propPP!=NULL) propPP=&((*propPP)->next);
-  *propPP=new TPropertyDefinition(aName,aNumValues,aMandatory,aShowInCTCap,aSuppressEmpty,aDelayedProcessing,aValuesep,aAltValuesep,aPropertyGroupID,aCanFilter,aModeDep,aGroupFieldID);
+  *propPP=new TPropertyDefinition(aName,aNumValues,aMandatory,aShowInCTCap,aSuppressEmpty,aDelayedProcessing,aValuesep,aAltValuesep,aPropertyGroupID,aCanFilter,aModeDep,aGroupFieldID,aAllowFoldAtSep);
   // return new property
   return *propPP;
 } // TProfileDefinition::addProperty
@@ -1258,7 +1291,7 @@ TMimeDirProfileHandler::TMimeDirProfileHandler(
   // settable options defaults
   fMimeDirMode=mimo_standard;
   fReceiverCanHandleUTC = true;
-	fVCal10EnddatesSameDay = false; // avoid 23:59:59 style end date by default
+  fVCal10EnddatesSameDay = false; // avoid 23:59:59 style end date by default
   fReceiverTimeContext = TCTX_UNKNOWN; // none in particular
   fDontSendEmptyProperties = false; // send all defined properties
   fDefaultOutCharset = chs_utf8; // standard
@@ -1325,7 +1358,7 @@ static bool mixvalparse(cAppCharP aMixVal, uInt16 &aOffs, bool &aIsBitMap, uInt1
 // to a given convdef (for multi-field conversion modes such as CONVMODE_RRULE
 sInt16 TMimeDirProfileHandler::fieldBlockSize(const TConversionDef &aConvDef)
 {
-  if (aConvDef.convmode==CONVMODE_RRULE)
+  if ((aConvDef.convmode & CONVMODE_MASK)==CONVMODE_RRULE)
     return 6; // RRULE fieldblock: DTSTART,FREQ,INTERVAL,FIRSTMASK,LASTMASK,UNTIL = 6 fields
   else
     return 1; // single field
@@ -1372,9 +1405,12 @@ bool TMimeDirProfileHandler::fieldToMIMEString(
   // get pointer to leaf field
   TItemField *fldP = aItem.getArrayField(aFid,aArrIndex,true); // existing array elements only
 
-  bool dateonly=false; // assume timestamp mode
-  bool autodate=true; // show date-only values automatically as date-only, even if stored in a timestamp field
-  switch (aConvDefP->convmode) {
+  bool dateonly = false; // assume timestamp mode
+  bool autodate = true; // show date-only values automatically as date-only, even if stored in a timestamp field
+  bool extFmt = (aConvDefP->convmode & CONVMODE_FLAG_EXTFMT)!=0;
+  bool milliSec = (aConvDefP->convmode & CONVMODE_FLAG_MILLISEC)!=0;
+  sInt16 convmode = aConvDefP->convmode & CONVMODE_MASK;
+  switch (convmode) {
     // no special mode
     case CONVMODE_NONE:
     case CONVMODE_EMPTYONLY:
@@ -1412,12 +1448,12 @@ bool TMimeDirProfileHandler::fieldToMIMEString(
       }
       // check for special cases
       if (TCTX_IS_DURATION(tctx)) {
-      	// duration is shown as such
-        tsFldP->getAsISO8601(aString, TCTX_UNKNOWN | TCTX_DURATION, false, false, false, false);
+        // duration is shown as such
+        tsFldP->getAsISO8601(aString, TCTX_UNKNOWN | TCTX_DURATION, false, false, extFmt, milliSec);
       }
       else if (dateonly) {
         // date-only are either floating or shown as date-only part of original timestamp
-        tsFldP->getAsISO8601(aString, TCTX_UNKNOWN | TCTX_DATEONLY, false, false, false, false);
+        tsFldP->getAsISO8601(aString, TCTX_UNKNOWN | TCTX_DATEONLY, false, false, extFmt, milliSec);
       }
       else if (fReceiverCanHandleUTC && !tsFldP->isFloating()) {
         // remote can handle UTC and the timestamp is not floating
@@ -1425,11 +1461,11 @@ bool TMimeDirProfileHandler::fieldToMIMEString(
           // if we have rendered a TZID for this property, this means that apparently the remote
           // supports TZID (otherwise the field would not be marked available in the devInf).
           // - show it as floating, explicitly with both date AND time (both flags set)
-          tsFldP->getAsISO8601(aString, TCTX_UNKNOWN | TCTX_TIMEONLY | TCTX_DATEONLY, false, false, false, false);
+          tsFldP->getAsISO8601(aString, TCTX_UNKNOWN | TCTX_TIMEONLY | TCTX_DATEONLY, false, false, extFmt, milliSec);
         }
         else {
           // - show it as UTC
-          tsFldP->getAsISO8601(aString, TCTX_UTC, true, false, false, false);
+          tsFldP->getAsISO8601(aString, TCTX_UTC, true, false, extFmt, milliSec);
         }
       }
       else {
@@ -1440,22 +1476,22 @@ bool TMimeDirProfileHandler::fieldToMIMEString(
           if (ts==noLinearTime)
             aString.erase();
           else {
-          	if (TCTX_IS_DATEONLY(tctx)) {
-            	// value is a date-only, but we must render it a datetime
+            if (TCTX_IS_DATEONLY(tctx)) {
+              // value is a date-only, but we must render it a datetime
               ts=lineartime2dateonlyTime(ts); // make time part 0:00:00
             }
             // first check for auto-end-date (which must be floating)
             // Note: we don't get here with a date only mimo_standard because it will be catched above, so test is not really needed
-            if (aConvDefP->convmode==CONVMODE_AUTOENDDATE && fVCal10EnddatesSameDay && TCTX_IS_DATEONLY(tctx) && fMimeDirMode==mimo_old)
+            if (convmode==CONVMODE_AUTOENDDATE && fVCal10EnddatesSameDay && TCTX_IS_DATEONLY(tctx) && fMimeDirMode==mimo_old)
               ts-=1; // subtract one unit to make end show last time unit of previous day
             // now show as floating ISO8601
-            TimestampToISO8601Str(aString, ts, TCTX_UNKNOWN, false, false);
+            TimestampToISO8601Str(aString, ts, TCTX_UNKNOWN, extFmt, milliSec);
           }
         }
         else {
           // not floating (=not a enddateonly), but we can't send UTC - render as localtime
           // in item time zone (which defaults to session time zone)
-          tsFldP->getAsISO8601(aString, fItemTimeContext, false, false, false, false);
+          tsFldP->getAsISO8601(aString, fItemTimeContext, false, false, extFmt, milliSec);
         }
       }
       return true; // found
@@ -1473,7 +1509,7 @@ bool TMimeDirProfileHandler::fieldToMIMEString(
       // Note that testing fldP is not enough, because an empty array will also cause fldP==NULL
       if (!fldP) {
         if (aFid!=FID_NOT_SUPPORTED)
-        	return false; // field not available (but conversion definition DOES refer to a field --> no time zone)
+          return false; // field not available (but conversion definition DOES refer to a field --> no time zone)
         // conversion definition does not refer to a field: use item context
         tctx = fItemTimeContext;
       }
@@ -1510,7 +1546,7 @@ bool TMimeDirProfileHandler::fieldToMIMEString(
         tctx = fItemTimeContext; // use item zone
       }
       // now render context as selected
-      if (aConvDefP->convmode==CONVMODE_TZID) {
+      if (convmode==CONVMODE_TZID) {
         // time zone ID for iCal 2.0 TZID parameter
         // - make sure meta context is resolved (we don't want "SYSTEM" as TZID!)
         if (!TzResolveMetaContext(tctx, getSessionZones())) return false; // cannot resolve, no time zone ID
@@ -1524,8 +1560,8 @@ bool TMimeDirProfileHandler::fieldToMIMEString(
           fUsedTCtxSet.insert(fUsedTCtxSet.end(),tctx);
           // - update range of time covered for generating VTIMEZONE later
           if (ts) {
-          	if (fEarliestTZDate==noLinearTime || fEarliestTZDate>ts) fEarliestTZDate = ts; // new minimum
-          	if (fLatestTZDate==noLinearTime || fLatestTZDate<ts) fLatestTZDate = ts; // new maximum
+            if (fEarliestTZDate==noLinearTime || fEarliestTZDate>ts) fEarliestTZDate = ts; // new minimum
+            if (fLatestTZDate==noLinearTime || fLatestTZDate<ts) fLatestTZDate = ts; // new maximum
           }
         }
       }
@@ -1545,14 +1581,14 @@ bool TMimeDirProfileHandler::fieldToMIMEString(
         }
         // - get resolved TZ offset and DAYLIGHT string for vCal 1.0
         ContextToTzDaylight(tctx,ts,s,tctx,getSessionZones());
-        if (aConvDefP->convmode==CONVMODE_TZ) {
+        if (convmode==CONVMODE_TZ) {
           // time zone in +/-hh[:mm] format for vCal 1.0 TZ property
           // - render offset in extended format
           aString.erase();
           // - return true only if we actually have a TZ
           return ContextToISO8601StrAppend(aString, tctx, true);
         }
-        else if (aConvDefP->convmode==CONVMODE_DAYLIGHT) {
+        else if (convmode==CONVMODE_DAYLIGHT) {
           // TZ and DAYLIGHT property for vCal 1.0
           aString = s;
           // - return true only if we actually have a DAYLIGHT
@@ -1581,11 +1617,11 @@ bool TMimeDirProfileHandler::fieldToMIMEString(
         else if (TCTX_IS_DATEONLY(tctx)) aString="DATE";
         else if (TCTX_IS_TIMEONLY(tctx)) aString="TIME";
         else {
-  				// only show type if full value type requested
-        	if (aConvDefP->convmode==CONVMODE_FULLVALUETYPE)
-          	aString="DATE-TIME";
-        	else
-	          return false; // we don't need a VALUE param for normal datetimes
+          // only show type if full value type requested
+          if (convmode==CONVMODE_FULLVALUETYPE)
+            aString="DATE-TIME";
+          else
+            return false; // we don't need a VALUE param for normal datetimes
         }
       }
       else
@@ -1648,7 +1684,7 @@ bool TMimeDirProfileHandler::fieldToMIMEString(
                 // create bit representation
                 if (!aString.empty() && aConvDefP->combineSep)
                   aString+=aConvDefP->combineSep; // separator first if not first item
-                if (aConvDefP->convmode==CONVMODE_MULTIMIX) {
+                if (convmode==CONVMODE_MULTIMIX) {
                   // multimix mode, use full syntax
                   if (mixOffs[i]>0)
                     StringObjAppendPrintf(aString,"%d.",mixOffs[i]);
@@ -1713,14 +1749,14 @@ bool TMimeDirProfileHandler::fieldToMIMEString(
       // A RRULE with no end extends at least into current time (for tz range update, see below)
       if (until==noLinearTime) {
         // no end, but we still need a range to generate time zones for
-      	tzend = getSession()->getSystemNowAs(TCTX_UTC);
+        tzend = getSession()->getSystemNowAs(TCTX_UTC);
       }
       else {
-        // Treat RR_END similar to CONVMODE_AUTODATE, i.e. prevent rendering a date-only value in mimo_old (which i not correct according to the standard)
+        // Treat RR_END similar to CONVMODE_AUTODATE, i.e. prevent rendering a date-only value in mimo_old (which is not correct according to the standard)
         if (TCTX_IS_DATEONLY(untilcontext) && fMimeDirMode==mimo_old) {
           // there are no date-only recurrence ends in vCalendar 1.0
-          until = lineartime2dateonlyTime(until)+secondToLinearTimeFactor*SecsPerHour*24-1 ; // make time part 23:5:59.999 of this day
-          untilcontext &= ~TCTX_DATEONLY;
+          until = lineartime2dateonlyTime(until)+secondToLinearTimeFactor*SecsPerHour*24-1 ; // make time part 23:59:59.999 of this day
+          untilcontext &= ~TCTX_DATEONLY; // clear dateonly rendering flag
         }
       }
       // Now do the conversion
@@ -1757,7 +1793,7 @@ bool TMimeDirProfileHandler::fieldToMIMEString(
       // to the recurrence end (date or open end, see tzend calculation above)
       if (!aString.empty()) {
         if (fEarliestTZDate==noLinearTime || tzend<fEarliestTZDate) fEarliestTZDate = tzend;
-        if (fLatestTZDate==noLinearTime || tzend>fLatestTZDate) fLatestTZDate = tzend;      
+        if (fLatestTZDate==noLinearTime || tzend>fLatestTZDate) fLatestTZDate = tzend;
       }
       return ok;
       break; // just in case
@@ -1776,7 +1812,7 @@ bool TMimeDirProfileHandler::fieldToMIMEString(
 /// @param [in] aChar charcter to check
 static bool isLineEndChar(appChar aChar)
 {
-	return (aChar=='\x0D') || (aChar=='\x0A');
+  return (aChar=='\x0D') || (aChar=='\x0A');
 } // isLineEndChar
 
 
@@ -1785,7 +1821,7 @@ static bool isLineEndChar(appChar aChar)
 /// @param [in] aChar charcter to check
 static bool isEndOfLineOrText(appChar aChar)
 {
-	return (aChar==0) || isLineEndChar(aChar);
+  return (aChar==0) || isLineEndChar(aChar);
 } // isEndOfLineOrText
 
 
@@ -1795,21 +1831,21 @@ static bool isEndOfLineOrText(appChar aChar)
 /// @param [in/out] aText advance past line end sequence
 static bool testAndSkipLineEnd(cAppCharP &aText)
 {
-	cAppCharP	p = aText;
+  cAppCharP p = aText;
   bool crFound = false;
   // skip sequence of CRs
   while (*p=='\x0D') {
-  	p++;
-		crFound = true;    
+    p++;
+    crFound = true;
   }
   // past all CRs in a row
   if (*p=='\x0A') {
-  	// independent of the number of CRs preceeding, this is a line end including the LF
+    // independent of the number of CRs preceeding, this is a line end including the LF
     aText = p+1; // past LF
     return true;
   }
   else if (crFound) {
-  	// we previously found at least one CR at the beginning, but no LF is following
+    // we previously found at least one CR at the beginning, but no LF is following
     // -> assume CR only line ends, consider first CR as a line end by itself
     aText++; // skip first CR
     return true;
@@ -1823,9 +1859,9 @@ static bool testAndSkipLineEnd(cAppCharP &aText)
 // return incremented pointer pointing to original char or next non-folded char
 static cAppCharP skipfolded(cAppCharP aText, TMimeDirMode aMimeMode, bool qpSoftBreakCancel=false)
 {
-	cAppCharP p = aText;
+  cAppCharP p = aText;
   if (testAndSkipLineEnd(p)) {
-  	// check for folding sequence
+    // check for folding sequence
     if (*p==' ' || *p=='\x09') {
       // line end followed by space: folding sequence
       if (aMimeMode==mimo_standard) {
@@ -1842,7 +1878,7 @@ static cAppCharP skipfolded(cAppCharP aText, TMimeDirMode aMimeMode, bool qpSoft
     // could be soft break sequence, check for line end
     p++;
     if (testAndSkipLineEnd(p)) {
-    	return p;
+      return p;
     }
   }
   // not folding sequence, return ptr to char as is
@@ -1861,7 +1897,7 @@ static const char *nextunfolded(const char *p, TMimeDirMode aMimeMode, bool qpSo
 } // nextunfolded
 
 
-// helper for MIME DIR generation:
+// helper for MIME DIR parsing:
 // - apply encoding and charset conversion to values part of property if needed
 static void decodeValue(
   TEncodingTypes aEncoding,    // the encoding to be used
@@ -1947,8 +1983,8 @@ static void decodeValue(
           // - examine next line
           bool eob64 = false;
           for (cAppCharP r2=r; *r2 && !isLineEndChar(*r2); r2++) {
-          	if (*r2==':' || *r2==';') {
-            	eob64 = true;
+            if (*r2==':' || *r2==';') {
+              eob64 = true;
               break;
             }
           }
@@ -1971,7 +2007,7 @@ static void decodeValue(
   }
   else {
     // no (known) encoding
-    p = skipfolded(aText,aMimeMode,false); // get unfolded start point (in case value starts with folding sequence
+    p = skipfolded(aText,aMimeMode,false); // get unfolded start point (in case value starts with folding sequence)
     do {
       c=*p;
       if (isEndOfLineOrText(c) || (!escaped && aStructSep!=0 && (c==aStructSep || c==aAltSep))) break; // EOLN and structure-sep (usually ;) terminate value
@@ -2051,33 +2087,34 @@ static void finalizeProperty(
   // make sure that allocation does not increase char by char
   aString.reserve(aString.size()+strlen(proptext)+100);
   char c;
-  ssize_t n=0,llen=0;
-  ssize_t lastlwsp=-1; // no linear white space found so far
+  ssize_t n = 0, llen = 0;
+  ssize_t foldLoc = -1; // possible break location - linear white space or explicit break indicator
   bool explf;
   cAppCharP firstunwritten=proptext; // none written yet
   while (proptext && (c=*proptext)!=0) {
     // remember position of last lwsp (space or TAB)
-    if (c==' ' || c==0x09) lastlwsp=n;
+    if (aMimeMode==mimo_old && (c==' ' || c==0x09))
+      foldLoc=n; // white spaces are relevant in mimo_old only (but '\b' are checked also for MIME-DIR, see below)
     // next (UTF8) char
     // Note: we prevent folding within UTF8 sequences as result string would become inconvertible e.g. into UTF16
     uInt32 uc;
     cAppCharP nP = UTF8toUCS4(proptext, uc);
     if (uc!=0) {
-    	// UTF-8 compliant byte (or byte sequence), skip as an entiety
+      // UTF-8 compliant byte (or byte sequence), skip as an entiety
       n += nP-proptext;
       proptext = nP;
     }
     else {
-    	// Not UTF-8 compliant, simply one byte
+      // Not UTF-8 compliant, simply one byte
       n++;
       proptext++;
     }
-    // check for optional break indicator
+    // check for optional break indicator (MIME-DIR or allowFoldAtSep)
     if (c=='\b') {
       aString.append(firstunwritten,n-1); // copy what we have up to that '\b'
-      firstunwritten+=n; // now pointing to next char after '\b'
-      lastlwsp=0; // usually now pointing to a NON-LWSP, except if by accident a LWSP follows, which is ok as well
-      n=0; // continue checking from here
+      firstunwritten += n; // now pointing to next char after '\b'
+      foldLoc = 0; // usually now pointing to a NON-LWSP, except if by accident a LWSP follows, which is ok as well
+      n = 0; // continue checking from here
       continue; // check next
     }
     // update line length
@@ -2091,64 +2128,70 @@ static void finalizeProperty(
         n--; // explicit \n or \r is ignored
         aString.append(firstunwritten,n);
         // forget the explicit linefeed - and continue
-        n=0;
-        llen=0;
-        firstunwritten=proptext;
+        n = 0;
+        llen = 0;
+        firstunwritten = proptext;
       }
     }
     else if ((llen>=MIME_MAXLINESIZE && *proptext) || explf) { // avoid unnecessary folding (there must be something more coming)
       // folding needed (line gets longer than MIME_MAXLINESIZE or '\n' found in input string)
       if (aMimeMode==mimo_old && !explf) {
         // vCard 2.1 type folding, must occur before an LWSP
-        #ifdef DONT_FORCE_FOLD_ITEMS_WITHOUT_LWSP
-        if (lastlwsp<0) continue; // no LWSP found, cannot fold
-        #else
-        if (lastlwsp<0) {
+        if (foldLoc<0) {
           // emergency force fold and accept data being shredded
           // - copy all we have by now
           aString.append(firstunwritten,n);
-          firstunwritten+=n; // now pointing to next
-          n=0; // none left (not needed, would be reset below anyway)
+          firstunwritten += n; // now pointing to next
+          n = 0; // none left - new line is empty now
           // - insert line break
           aString.append("\x0D\x0A "); // line break AND an extra shredding space
         }
-        else
-        #endif
-        {
-          // - copy all up to (but not including) last LWSP
-          aString.append(firstunwritten,lastlwsp);
-          firstunwritten+=lastlwsp; // now pointing to LWSP (or non-LWSP in case of '\b')
-          n-=lastlwsp; // number of chars left (including LWSP)
+        else {
+          // - copy all up to (but not including) last LWSP (or '\b' break indicator)
+          aString.append(firstunwritten,foldLoc);
+          firstunwritten += foldLoc; // now pointing to LWSP (or non-LWSP in case of '\b')
+          n -= foldLoc; // number of chars left (including LWSP)
           // - insert line break
           aString.append("\x0D\x0A"); // line break
           if (*firstunwritten!=' ' && *firstunwritten!=0x09)
-            aString+=' '; // breaking at location indicated by '\b', LWSP must be added
+            aString += ' '; // breaking at location indicated by '\b', LWSP must be added
           // - copy rest scanned so far (except in '\b' case, this begins with an LWSP)
           aString.append(firstunwritten,n);
         }
-        // we are on a new line now
-        n=0;
-        lastlwsp=-1;
-        llen=0;
-        firstunwritten=proptext;
       }
       else {
         // MIME-DIR type folding, can occur anywhere and *adds* a LWSP (which is removed at unfolding later)
         // or mimo-old type folding containing explicit CR(LF)s -> break here
-        // - copy line so far to output
-        if (explf)
-          n--; // explicit \n or \r is not copied, but only causes line break to occur
-        aString.append(firstunwritten,n);
+        if (explf) {
+          // explicit \n or \r is not copied, but only causes line break to occur
+          n--;
+        }
+        if (foldLoc<0 || explf) {
+          // no or explf indicator, just fold here
+          aString.append(firstunwritten,n);
+          n = 0; // nothing left to carry over - new line is empty now
+        }
+        else {
+          // we have a preferred folding location detected before: copy all up to (but not including) break indicator
+          aString.append(firstunwritten,foldLoc);
+          firstunwritten += foldLoc; // now pointing to next char after break)
+          n -= foldLoc; // number of chars left (including LWSP)
+        }
+        // now fold
         aString.append("\x0D\x0A"); // line break
         if (
           (c!='\r' && aMimeMode==mimo_standard) || // folding indicator and MIME-DIR -> folding always must insert extra space
           (c=='\r' && !aDoSoftBreak) // soft-break indicator, but not in softbreak mode (i.e. B64 input) -> always insert extra space
         )
-          aString+=' '; // not only soft line break, but MIMD-DIR type folding
-        n=0;
-        llen=0;
-        firstunwritten=proptext;
+          aString += ' '; // not only soft line break, but MIMD-DIR type folding
+        // - copy carry over from previous line
+        if (n>0) aString.append(firstunwritten,n);
       }
+      // we are on a new line now
+      llen = n; // new line has this size of what was carried over from the previous line
+      foldLoc = -1;
+      n = 0;
+      firstunwritten = proptext;
     }
   }
   // append rest
@@ -2182,7 +2225,10 @@ sInt16 TMimeDirProfileHandler::generateValue(
   bool aCommaEscape,          // set if "," content escaping is needed (for values in valuelists like TYPE=TEL,WORK etc.)
   TEncodingTypes &aEncoding,  // modified if special value encoding is required
   bool &aNonASCII,            // set if any non standard 7bit ASCII-char is contained
-  char aFirstChar             // will be appended before value if there is any value (and a '\b' optional break indicator is appended as well)
+  char aFirstChar,            // will be appended before value if there is any value (and in MIME-DIR '\b' optional break indicator is appended as well)
+  sInt32 &aNumNonSpcs,        // how many non-spaces are already in the value
+  bool aFoldAtSeparators,     // if true, even in mimo_old folding may appear at value separators (adding an extra space - which is ok for EXDATE and similar)
+  bool aEscapeOnlyLF          // if true, only linefeeds are escaped as \n, but nothing else (not even \ itself)
 )
 {
   string vallist;             // as received from fieldToMIMEString()
@@ -2213,7 +2259,7 @@ sInt16 TMimeDirProfileHandler::generateValue(
           maxSiz = 0; // no size restriction
         bool noTruncate=aItem.getTargetItemType()->getFieldOptions(fid)->notruncate;
         // check for BLOB values
-        if (aConvDefP->convmode==CONVMODE_BLOB_B64) {
+        if ((aConvDefP->convmode & CONVMODE_MASK)==CONVMODE_BLOB_B64) {
           // no value lists, escaping, enums. Simply set value and encoding
           TItemField *fldP = aItem.getArrayField(fid,aRepOffset,true); // existing array elements only
           if (!fldP) return GENVALUE_EXHAUSTED; // no leaf field - must be exhausted array (fldP==NULL is not possible here for non-arrays)
@@ -2278,31 +2324,29 @@ sInt16 TMimeDirProfileHandler::generateValue(
             // perform escaping and determine need for encoding
             bool spaceonly = true;
             bool firstchar = true;
-            sInt32 wordSize=0;
             for (const char *p=val.c_str();(c=*p)!=0 && (c!=aConvDefP->combineSep);p++) {
               // process char
               // - check for whitespace
               if (!isspace(c)) {
                 spaceonly = false; // does not consist of whitespace only
-                wordSize++; // count consecutive non-spaces
-                if (aMimeMode==mimo_old && aEncoding==enc_none && wordSize>MIME_MAXLINESIZE/2) {
+                aNumNonSpcs++; // count consecutive non-spaces
+                if (aMimeMode==mimo_old && aEncoding==enc_none && aNumNonSpcs>MIME_MAXLINESIZE) {
                   // If text contains words with critical (probably unfoldable) size in mimo-old, select quoted printable encoding
                   aEncoding=enc_quoted_printable;
                 }
               }
               else {
-                wordSize = 0; // new word starts
+                aNumNonSpcs = 0; // new word starts
               }
               // only text must be fully escaped, turn escaping off for RRULE (RECUR type)
-			        bool noescape = aConvDefP->convmode==CONVMODE_RRULE;
               // escape reserved chars
               switch (c) {
-              	case '"':
-                	if (firstchar && aParamValue && aMimeMode==mimo_standard) goto do_escape; // if param value starts with a double quote, we need to escape it because param value can be in double-quote-enclosed form
-									goto add_char; // otherwise, just add
+                case '"':
+                  if (firstchar && aParamValue && aMimeMode==mimo_standard) goto do_escape; // if param value starts with a double quote, we need to escape it because param value can be in double-quote-enclosed form
+                  goto add_char; // otherwise, just add
                 case ',':
-                	// in MIME-DIR, always escape commas, in pre-MIME-DIR only if usage in value list requires it
-                  if (noescape || (!aCommaEscape && aMimeMode==mimo_old)) goto add_char;
+                  // in MIME-DIR, always escape commas, in pre-MIME-DIR only if usage in value list requires it
+                  if (!aCommaEscape && aMimeMode==mimo_old) goto add_char;
                   goto do_escape;
                 case ':':
                   // always escape colon in parameters
@@ -2315,10 +2359,12 @@ sInt16 TMimeDirProfileHandler::generateValue(
                   goto do_escape;
                 case ';':
                   // in MIME-DIR, always escape semicolons, in pre-MIME-DIR only in parameters and structured values
-                  if (noescape || (!aParamValue && !aStructured && aMimeMode==mimo_old)) goto add_char;
+                  if (!aParamValue && !aStructured && aMimeMode==mimo_old) goto add_char;
                 do_escape:
-                  // escape chars with backslash
-                  outval+='\\';
+                  if (!aEscapeOnlyLF) {
+                    // escape chars with backslash
+                    outval+='\\';
+                  }
                   goto out_char;
                 case '\r':
                   // ignore returns
@@ -2356,7 +2402,12 @@ sInt16 TMimeDirProfileHandler::generateValue(
               // more items in the list
               // - add separator if previous one is not empty param value
               if (!(spaceonly && aParamValue)) {
+                if (aMimeMode==mimo_standard || aFoldAtSeparators) {
+                  outval+='\b'; // preferred break location (or location where extra space is allowed for mimo_old)
+                  aNumNonSpcs=0; // we can fold here, so word is broken
+                }
                 outval+=aSeparator;
+                aNumNonSpcs++; // count it (assuming separator is never a space!)
                 valsiz++; // count it as part of the value
               }
               lp++; // skip input list separator
@@ -2416,13 +2467,17 @@ sInt16 TMimeDirProfileHandler::generateValue(
     aEncoding=enc_quoted_printable;
   // just append
   if (!outval.empty() && aFirstChar!=0) {
+    if (aMimeMode==mimo_standard || aFoldAtSeparators) {
+      aString+='\b'; // preferred break location (or location where extra space is allowed for mimo_old)
+      aNumNonSpcs = 0; // we can break here, new word starts
+    }
     aString+=aFirstChar; // we have a value, add sep char first
-    aString+='\b'; // and an optional break indicator
+    aNumNonSpcs++; // count it (assuming separator is never a space!)
   }
   aString.append(outval);
   // done
   return outval.empty()
-  	? (isarray ? GENVALUE_EMPTYELEMENT : GENVALUE_EMPTY) // empty
+    ? (isarray ? GENVALUE_EMPTYELEMENT : GENVALUE_EMPTY) // empty
     : (isarray ? GENVALUE_ELEMENT : GENVALUE_NONEMPTY); // non empty
 } // TMimeDirProfileHandler::generateValue
 
@@ -2437,7 +2492,8 @@ bool TMimeDirProfileHandler::generateParams(
   TMimeDirMode aMimeMode, // MIME mode (older or newer vXXX format compatibility)
   sInt16 aBaseOffset,
   sInt16 aRepOffset,
-  TPropNameExtension *aPropNameExt // propname extension for generating musthave param values
+  TPropNameExtension *aPropNameExt, // propname extension for generating musthave param values
+  sInt32 &aNumNonSpcs // number of consecutive non-spaces, accumulated so far
 )
 {
   const TParameterDefinition *paramP;
@@ -2460,10 +2516,10 @@ bool TMimeDirProfileHandler::generateParams(
     paramstarted=false;
     // process param only if matching mode and active rules
     if (mimeModeMatch(paramP->modeDependency)
-#ifndef NO_REMOTE_RULES
-        && (!paramP->ruleDependency || isActiveRule(paramP->ruleDependency))
-#endif
-        ) {
+      #ifndef NO_REMOTE_RULES
+      && (!paramP->ruleDependency || isActiveRule(paramP->ruleDependency))
+      #endif
+    ) {
       // first append extendsname param values
       if (paramP->extendsname && aPropNameExt) {
         const TEnumerationDef *enumP = paramP->convdef.enumdefs;
@@ -2530,9 +2586,11 @@ bool TMimeDirProfileHandler::generateParams(
         //       but parameters of repeating properties can be stored in array elements (using the
         //       same index as for the property itself)
         // Note: Escape commas if separator is a comma
-        if (generateValue(aItem,&(paramP->convdef),aBaseOffset,aRepOffset,paramstr,sep,aMimeMode,true,false,sep==',',encoding,nonasc)>=GENVALUE_ELEMENT) {
+        sInt32 numNoSpcs = aNumNonSpcs;
+        if (generateValue(aItem,&(paramP->convdef),aBaseOffset,aRepOffset,paramstr,sep,aMimeMode,true,false,sep==',',encoding,nonasc,0,numNoSpcs,false,false)>=GENVALUE_ELEMENT) {
           // value generated, add parameter name/value (or separator/value for already started params)
           aString.append(paramstr);
+          aNumNonSpcs = numNoSpcs; // actually added, count now
           paramstarted=true; // started only if we really have appended something at all
         }
       } // if field defined for this param
@@ -2615,12 +2673,12 @@ void TMimeDirProfileHandler::expandProperty(
           for (sInt16 i=0; i<aPropP->numValues; i++) {
             sInt16 fid=aPropP->convdefs[0].fieldid;
             if (fid>=0) {
-            	if (fRelatedDatastoreP) {
+              if (fRelatedDatastoreP) {
                 // only if datastore is related we are in SyncML context, otherwise we should not check maxOccur
                 maxOccur = aItem.getItemType()->getFieldOptions(fid)->maxoccur;
               }
               else
-               	maxOccur = 0; // no limit
+                maxOccur = 0; // no limit
               // Note: all value fields of the property will have the same maxOccur, so we can stop here
               break;
             }
@@ -2702,31 +2760,11 @@ sInt16 TMimeDirProfileHandler::generateProperty(
   fPropTZIDtctx = TCTX_UNKNOWN;
   // - start with empty text
   proptext.erase();
-  // - first set group if there is one
-  if (aPropP->groupFieldID!=FID_NOT_SUPPORTED) {
-    // get group name
-    TItemField *g_fldP = aItem.getArrayFieldAdjusted(aPropP->groupFieldID+aBaseOffset, aRepeatOffset, true);
-    if (g_fldP && !g_fldP->isEmpty()) {
-			g_fldP->appendToString(proptext);
-      proptext += '.'; // group separator
-    }
-  }
-  // - append name and (possibly) parameters that are constant over all repetitions
-  proptext += aPrefix;
-  bool anyvaluessupported=false; // at least one of the main values must be supported by the remote in order to generate property at all
-  bool arrayexhausted=false; // flag will be set if a main value was not generated because array exhausted
-  // - append parameter values
-  //   anyvalues gets set if a parameter with shownonempty attribute was generated
-  bool anyvalues=generateParams(
-    aItem,  // the item where data comes from
-    proptext, // where params will be appended
-    aPropP,  // the property definition
-    aMimeMode,
-    aBaseOffset,
-    aRepeatOffset,
-    aPropNameExt
-  );
-  // - append value(s)
+  // - init flags
+  bool anyvaluessupported = false; // at least one of the main values must be supported by the remote in order to generate property at all
+  bool arrayexhausted = false; // flag will be set if a main value was not generated because array exhausted
+  bool anyvalues = false; // flag will be set when at least one value has been generated
+  sInt32 numNonSpcs=0;
   encoding=enc_none; // default is no encoding
   sInt16 v=0; // value counter
   nonasc=false; // assume plain ASCII
@@ -2734,137 +2772,238 @@ sInt16 TMimeDirProfileHandler::generateProperty(
   TEncodingTypes enc;
   bool na;
   const TConversionDef *convP;
-  sInt16 maxrep=1,repinc=1;
-  if (aPropNameExt) {
-    maxrep=aPropNameExt->maxRepeat;
-    repinc=aPropNameExt->repeatInc;
-  }
-  // generate property contents
-  if (aPropP->valuelist && !aPropP->expandlist) {
-    // property with value list
-    // NOTE: convdef[0] is used for all values, aRepeatOffset changes
+  // - now generate
+  if (aPropP->unprocessed) {
     convP = &(aPropP->convdefs[0]);
-    // - now iterate over available repeats or array contents
-    while(aRepeatOffset<maxrep*repinc || maxrep==REP_ARRAY) {
-      // generate one value
-      enc=encoding;
-      na=false;
-      genres=generateValue(
-        aItem,
-        convP,
-        aBaseOffset, // offset relative to base field
-        aRepeatOffset, // additional offset or array index
-        elemtext,
-        aPropP->valuesep, // use valuelist separator between multiple values possibly generated from a list in a single field (e.g. CATEGORIES)
-        aMimeMode,
-        false, // not a param
-        true, // always escape ; in valuelist properties
-        aPropP->valuesep==',' || aPropP->altvaluesep==',', // escape commas if one of the separators is a comma
-        enc,
-        na,
-        v>0 ? aPropP->valuesep : 0 // separate with specified multi-value-delimiter if not first value
-      );
-      // check if something was generated
-      if (genres>=GENVALUE_ELEMENT) {
-        // generated something, might have caused encoding/noasc change
-        encoding=enc;
-        nonasc=nonasc || na;
+    // unfolded and not-linefeed-escaped raw property stored in string - generate it as one value
+    enc=encoding;
+    na=false;
+    genres=generateValue(
+      aItem,
+      convP,
+      aBaseOffset, // base offset, relative to
+      aRepeatOffset, // repeat offset or array index
+      elemtext, // value will be stored here (might be binary in case of BLOBs, but then encoding will be set)
+      0, // should for some exotic reason values consist of a list, separate it by "," (";" is reserved for structured values)
+      aMimeMode,
+      false, // no parameter
+      false, // not structured value, don't escape ";"
+      false, // don't escape commas, either
+      enc, // will receive needed encoding (usually B64 for binary values)
+      na,
+      0, // no first char
+      numNonSpcs, // number of consecutive non-spaces, accumulated
+      aPropP->allowFoldAtSep,
+      true // linefeed only escaping
+    );
+    // check if something was generated
+    if (genres>=GENVALUE_ELEMENT) {
+      // generated something, might have caused encoding/noasc change
+      encoding=enc;
+      nonasc=nonasc || na;
+      anyvaluessupported=true;
+      anyvalues=true;
+      // separate name+params and values
+      bool dq = false;
+      bool fc = true;
+      size_t pti = string::npos;
+      appChar c;
+      for (cAppCharP p=elemtext.c_str(); (c=*p)!=0; p++) {
+        if (dq) {
+          if (c=='"') dq = false; // end of double quoted part
+        }
+        else {
+          // not in doublequote
+          if (fc && c=='"') dq = true; // if first char is doublequote, start quoted string
+          else if (c==':') { pti = p-elemtext.c_str(); break; } // found
+          else if (c=='\\' && *(p+1)) p++; // make sure next char is not evaluated
+        }
+        fc = false; // no longer first char
       }
-      // update if we have at least one value of this property supported (even if empty) by the remote party
-      if (genres>GENVALUE_NOTSUPPORTED) anyvaluessupported=true;
-      if (genres==GENVALUE_EXHAUSTED) arrayexhausted=true; // for at least one component of the property, the array is exhausted
-      // update if we have any value now (even if only empty)
-      // - generate empty property according to
-      //   - aSuppressEmpty
-      //   - session-global fDontSendEmptyProperties
-      //   - supressEmpty property flag in property definition
-      //   - if no repeat (i.e. no aPropNameExt), exhausted array is treated like empty value (i.e. rendered unless suppressempty set)
-      anyvalues = anyvalues ||
-        (genres>=(aSuppressEmpty || fDontSendEmptyProperties || aPropP->suppressEmpty ? GENVALUE_ELEMENT : (aPropNameExt ? GENVALUE_EMPTYELEMENT : GENVALUE_EXHAUSTED)));
-      // count effective value appended
-      v++;
-      // update repeat offset
-      aRepeatOffset+=repinc;
-      // check for array mode - stop if array is exhausted or field not supported
-      if (maxrep==REP_ARRAY && genres<=GENVALUE_EXHAUSTED) break;
+      if (pti!=string::npos) {
+        proptext.assign(elemtext, 0, pti); // name+params without separator
+        elemtext.erase(0, pti+1); // remove name and separator
+      }
+    }
+    else {
+      arrayexhausted = true; // no more values, assume array exhausted
     }
   }
   else {
-    // property with individual values (like N)
-    // NOTE: field changes with different convdefs, offsets remain stable
-    arrayexhausted = true; // assume all arrays exhausted unless we find at least one non-exhausted array
-    bool somearrays = false; // no arrays yet
-    do {
-      convP = &(aPropP->convdefs[v]);
-      // generate one value
-      enc=encoding;
-      na=false;
-      genres=generateValue(
-        aItem,
-        convP,
-        aBaseOffset, // base offset, relative to
-        aRepeatOffset, // repeat offset or array index
-        elemtext, // value will be stored here (might be binary in case of BLOBs, but then encoding will be set)
-        ',', // should for some exotic reason values consist of a list, separate it by "," (";" is reserved for structured values)
-        aMimeMode,
-        false,
-        aPropP->numValues>1, // structured value, escape ";"
-        aPropP->altvaluesep==',', // escape commas if alternate separator is a comma
-        enc, // will receive needed encoding (usually B64 for binary values)
-        na
-      );
-      //* %%% */ PDEBUGPRINTFX(DBG_EXOTIC,("generateValue #%hd for property '%s' returns genres==%hd",v,TCFG_CSTR(aPropP->propname),genres));
-      // check if something was generated
-      if (genres>=GENVALUE_ELEMENT) {
-        // generated something, might have caused encoding/noasc change
-        encoding=enc;
-        nonasc=nonasc || na;
+    // Normally generated property
+    // - first set group if there is one
+    if (aPropP->groupFieldID!=FID_NOT_SUPPORTED) {
+      // get group name
+      TItemField *g_fldP = aItem.getArrayFieldAdjusted(aPropP->groupFieldID+aBaseOffset, aRepeatOffset, true);
+      if (g_fldP && !g_fldP->isEmpty()) {
+        g_fldP->appendToString(proptext);
+        proptext += '.'; // group separator
       }
-      // update if we have at least one value of this property supported (even if empty) by the remote party
-      if (genres>GENVALUE_NOTSUPPORTED) anyvaluessupported=true;
-      if (genres==GENVALUE_ELEMENT || genres==GENVALUE_EMPTYELEMENT) {
-      	arrayexhausted = false; // there is at least one non-exhausted array we're reading from (even if only empty value)
-        somearrays = true; // generating from array
+    }
+    // - append name and (possibly) parameters that are constant over all repetitions
+    proptext += aPrefix;
+    // - up to here assume no spaces
+    numNonSpcs = proptext.size()+14; // some extra room for possible ";CHARSET=UTF8"
+    // - append parameter values
+    //   anyvalues gets set if a parameter with shownonempty attribute was generated
+    anyvalues=generateParams(
+      aItem,  // the item where data comes from
+      proptext, // where params will be appended
+      aPropP,  // the property definition
+      aMimeMode,
+      aBaseOffset,
+      aRepeatOffset,
+      aPropNameExt,
+      numNonSpcs
+    );
+    // - append value(s)
+    sInt16 maxrep=1,repinc=1;
+    if (aPropNameExt) {
+      maxrep=aPropNameExt->maxRepeat;
+      repinc=aPropNameExt->repeatInc;
+    }
+    // generate property contents
+    if (aPropP->valuelist && !aPropP->expandlist) {
+      // property with value list
+      // NOTE: convdef[0] is used for all values, aRepeatOffset changes
+      convP = &(aPropP->convdefs[0]);
+      // - now iterate over available repeats or array contents
+      while(aRepeatOffset<maxrep*repinc || maxrep==REP_ARRAY) {
+        // generate one value
+        enc=encoding;
+        na=false;
+        genres=generateValue(
+          aItem,
+          convP,
+          aBaseOffset, // offset relative to base field
+          aRepeatOffset, // additional offset or array index
+          elemtext,
+          aPropP->valuesep, // use valuelist separator between multiple values possibly generated from a list in a single field (e.g. CATEGORIES)
+          aMimeMode,
+          false, // not a param
+          true, // always escape ; in valuelist properties
+          aPropP->valuesep==',' || aPropP->altvaluesep==',', // escape commas if one of the separators is a comma
+          enc,
+          na,
+          v>0 ? aPropP->valuesep : 0, // separate with specified multi-value-delimiter if not first value
+          numNonSpcs, // number of consecutive non-spaces, accumulated
+          aPropP->allowFoldAtSep,
+          (convP->convmode & CONVMODE_MASK)==CONVMODE_RRULE // RRULES are not to be escaped
+        );
+        // check if something was generated
+        if (genres>=GENVALUE_ELEMENT) {
+          // generated something, might have caused encoding/noasc change
+          encoding=enc;
+          nonasc=nonasc || na;
+        }
+        // update if we have at least one value of this property supported (even if empty) by the remote party
+        if (genres>GENVALUE_NOTSUPPORTED) anyvaluessupported=true;
+        if (genres==GENVALUE_EXHAUSTED) arrayexhausted=true; // for at least one component of the property, the array is exhausted
+        // update if we have any value now (even if only empty)
+        // - generate empty property according to
+        //   - aSuppressEmpty
+        //   - session-global fDontSendEmptyProperties
+        //   - supressEmpty property flag in property definition
+        //   - if no repeat (i.e. no aPropNameExt), exhausted array is treated like empty value (i.e. rendered unless suppressempty set)
+        anyvalues = anyvalues || (genres>=
+          (aSuppressEmpty || fDontSendEmptyProperties || aPropP->suppressEmpty
+            ? GENVALUE_ELEMENT // if empty values should be suppressed, we need a non-empty element (array or simple field)
+            : GENVALUE_EXHAUSTED // for valuelists, if empty values are not explicitly suppressed (i.e. minshow==0, see caller) exhausted array must always produce an empty value
+          )
+        );
+        // count effective value appended
+        v++;
+        // update repeat offset
+        aRepeatOffset+=repinc;
+        // check for array mode - stop if array is exhausted or field not supported
+        if (maxrep==REP_ARRAY && genres<=GENVALUE_EXHAUSTED) break;
       }
-      else if (genres==GENVALUE_EXHAUSTED)
-      	somearrays = true; // generating from array
-      // update if we have any value now (even if only empty)
-      // - generate empty property according to
-      //   - aSuppressEmpty
-      //   - session-global fDontSendEmptyProperties
-      //   - supressEmpty property flag in property definition
-      //   - if no repeat (i.e. no aPropNameExt), exhausted array is treated like empty value (i.e. rendered unless suppressempty set)
-      anyvalues = anyvalues ||
-        (genres>=(aSuppressEmpty || fDontSendEmptyProperties || aPropP->suppressEmpty ? GENVALUE_ELEMENT : (aPropNameExt ? GENVALUE_EMPTYELEMENT : GENVALUE_EXHAUSTED)));
-      // insert delimiter if not last value
-      v++;
-      if (v>=aPropP->numValues) break; // done with all values
-      // add delimiter for next value
-      elemtext+=aPropP->valuesep;
-      // add break indicator
-      elemtext+='\b';
-    } while(true);
-    // if none of the data sources is an array, we can't be exhausted.
-    if (!somearrays) arrayexhausted = false;
-  }
+    }
+    else {
+      // property with individual values (like N)
+      // NOTE: field changes with different convdefs, offsets remain stable
+      arrayexhausted = true; // assume all arrays exhausted unless we find at least one non-exhausted array
+      bool somearrays = false; // no arrays yet
+      do {
+        convP = &(aPropP->convdefs[v]);
+        // generate one value
+        enc=encoding;
+        na=false;
+        genres=generateValue(
+          aItem,
+          convP,
+          aBaseOffset, // base offset, relative to
+          aRepeatOffset, // repeat offset or array index
+          elemtext, // value will be stored here (might be binary in case of BLOBs, but then encoding will be set)
+          ',', // should for some exotic reason values consist of a list, separate it by "," (";" is reserved for structured values)
+          aMimeMode,
+          false,
+          aPropP->numValues>1, // structured value, escape ";"
+          aPropP->altvaluesep==',', // escape commas if alternate separator is a comma
+          enc, // will receive needed encoding (usually B64 for binary values)
+          na,
+          0, // no first char
+          numNonSpcs, // number of consecutive non-spaces, accumulated
+          aPropP->allowFoldAtSep,
+          (convP->convmode & CONVMODE_MASK)==CONVMODE_RRULE // RRULES are not to be escaped
+        );
+        //* %%% */ PDEBUGPRINTFX(DBG_EXOTIC,("generateValue #%hd for property '%s' returns genres==%hd",v,TCFG_CSTR(aPropP->propname),genres));
+        // check if something was generated
+        if (genres>=GENVALUE_ELEMENT) {
+          // generated something, might have caused encoding/noasc change
+          encoding=enc;
+          nonasc=nonasc || na;
+        }
+        // update if we have at least one value of this property supported (even if empty) by the remote party
+        if (genres>GENVALUE_NOTSUPPORTED) anyvaluessupported=true;
+        if (genres==GENVALUE_ELEMENT || genres==GENVALUE_EMPTYELEMENT) {
+          arrayexhausted = false; // there is at least one non-exhausted array we're reading from (even if only empty value)
+          somearrays = true; // generating from array
+        }
+        else if (genres==GENVALUE_EXHAUSTED)
+          somearrays = true; // generating from array
+        // update if we have any value now (even if only empty)
+        // - generate empty property according to
+        //   - aSuppressEmpty
+        //   - session-global fDontSendEmptyProperties
+        //   - supressEmpty property flag in property definition
+        //   - if no repeat (i.e. no aPropNameExt), exhausted array is treated like empty value (i.e. rendered unless suppressempty set)
+        anyvalues = anyvalues ||
+          (genres>=(aSuppressEmpty || fDontSendEmptyProperties || aPropP->suppressEmpty ? GENVALUE_ELEMENT : (aPropNameExt ? GENVALUE_EMPTYELEMENT : GENVALUE_EXHAUSTED)));
+        // insert delimiter if not last value
+        v++;
+        if (v>=aPropP->numValues) break; // done with all values
+        // add delimiter for next value
+        if (aMimeMode==mimo_standard || aPropP->allowFoldAtSep) {
+          elemtext+='\b'; // preferred break location (or location where extra space is allowed for mimo_old)
+          numNonSpcs = 0; // can break here, new word starts
+        }
+        elemtext+=aPropP->valuesep;
+        numNonSpcs++; // count it (assuming separator is never a space!)
+        // add break indicator
+      } while(true);
+      // if none of the data sources is an array, we can't be exhausted.
+      if (!somearrays) arrayexhausted = false;
+    }
+  } // normal generated property from components
   // - finalize property if it contains supported fields at all (or is mandatory)
   if ((anyvaluessupported && anyvalues) || aPropP->mandatory) {
-    // - generate encoding parameter if needed
-    if (encoding!=enc_none) {
-    	// in MIME-DIR, only "B" is allowed for binary, for vCard 2.1 it is "BASE64"
-      if (encoding==enc_base64 || encoding==enc_b) {
-      	encoding = aMimeMode==mimo_standard ? enc_b : enc_base64;
-      }
-    	// add the parameter
-      proptext.append(";ENCODING=");
-      proptext.append(MIMEEncodingNames[encoding]);
-    }
     // - generate charset parameter if needed
     //   NOTE: MIME-DIR based formats do NOT have the CHARSET attribute any more!
     if (nonasc && aMimeMode==mimo_old && fDefaultOutCharset!=chs_ansi) {
       // non-ASCII chars contained, generate property telling what charset is used
       proptext.append(";CHARSET=");
       proptext.append(MIMECharSetNames[fDefaultOutCharset]);
+    }
+    // - generate encoding parameter if needed
+    if (encoding!=enc_none) {
+      // in MIME-DIR, only "B" is allowed for binary, for vCard 2.1 it is "BASE64"
+      if (encoding==enc_base64 || encoding==enc_b) {
+        encoding = aMimeMode==mimo_standard ? enc_b : enc_base64;
+      }
+      // add the parameter
+      proptext.append(";ENCODING=");
+      proptext.append(MIMEEncodingNames[encoding]);
     }
     // - separate value from property text
     proptext+=':';
@@ -2876,15 +3015,15 @@ sInt16 TMimeDirProfileHandler::generateProperty(
     //   disabled, so we need to insert it here (because non-folding mode eliminates it from being
     //   generated automatically in encodeValues/finalizeProperty)
     if (fDoNotFoldContent && encoding==enc_base64)
-			aString.append("\x0D\x0A"); // extra CRLF terminating a base64 encoded property (note, base64 only occurs in mimo_old)
+      aString.append("\x0D\x0A"); // extra CRLF terminating a base64 encoded property (note, base64 only occurs in mimo_old)
     // - property generated
     return GENPROP_NONEMPTY;
   }
   else {
-  	// Note: it is essential to return GENPROP_EXHAUSTED if no values are supported for this property at
+    // Note: it is essential to return GENPROP_EXHAUSTED if no values are supported for this property at
     //       all (otherwise caller might loop endless trying to generate a non-empty property
     return
-    	anyvaluessupported
+      anyvaluessupported
       ? (arrayexhausted ? GENPROP_EXHAUSTED : GENPROP_EMPTY) // no property generated
       : GENPROP_EXHAUSTED; // no values supported means "exhausted" as well
   }
@@ -2910,7 +3049,7 @@ void TMimeDirProfileHandler::generateMimeDir(TMultiFieldItem &aItem, string &aSt
   generateLevels(aItem,aString,fProfileDefinitionP);
   // now generate VTIMEZONE, if needed
   if (fVTimeZonePendingProfileP) {
-  	string s, val, vtz;
+    string s, val, vtz;
     vtz.erase();
     // generate needed vTimeZones (according to fUsedTCtxSet)
     for (TTCtxSet::iterator pos=fUsedTCtxSet.begin(); pos!=fUsedTCtxSet.end(); pos++) {
@@ -2935,8 +3074,8 @@ void TMimeDirProfileHandler::generateMimeDir(TMultiFieldItem &aItem, string &aSt
             // pass start year but request that all rules from start up to the current date are inlcuded
             endYear = 0;
             break;
-        	case vtzgen_current:
-        	case numVTimeZoneGenModes:
+          case vtzgen_current:
+          case numVTimeZoneGenModes:
             // case statement to keep gcc happy, will not be reached because of if() above
             break;
         }
@@ -2971,7 +3110,7 @@ void TMimeDirProfileHandler::generateMimeDir(TMultiFieldItem &aItem, string &aSt
     aString.insert(fVTimeZoneInsertPos, vtz);
     // done
     fVTimeZonePendingProfileP = NULL;
-	} // if pending VTIMEZONE
+  } // if pending VTIMEZONE
 } // TMimeDirProfileHandler::generateMimeDir
 
 
@@ -2982,7 +3121,6 @@ void TMimeDirProfileHandler::generateLevels(
   const TProfileDefinition *aProfileP
 )
 {
-  //* %%% */ PDEBUGBLOCKDESC("generateLevels",TCFG_CSTR(aProfileP->levelName));
   // check if level must be generated
   bool dolevel=false;
   string s,val;
@@ -3009,7 +3147,7 @@ void TMimeDirProfileHandler::generateLevels(
   if (dolevel) {
     // generate level start
     if (aProfileP->profileMode==profm_vtimezones) {
-    	// don't generate now, just remember the string position where we should add the
+      // don't generate now, just remember the string position where we should add the
       // VTIMEZONEs when we're done generating the record.
       fVTimeZonePendingProfileP = aProfileP;
       fVTimeZoneInsertPos = aString.size();
@@ -3034,7 +3172,6 @@ void TMimeDirProfileHandler::generateLevels(
           propP=propP->next;
           continue;
         }
-        //* %%% */ PDEBUGBLOCKDESC("expand_property",TCFG_CSTR(propP->propname));
         #ifndef NO_REMOTE_RULES
         // check for beginning of new group (no or different property group number)
         if (propP->propGroup==0 || propP->propGroup!=propGroup) {
@@ -3100,7 +3237,6 @@ void TMimeDirProfileHandler::generateLevels(
             fMimeDirMode // MIME-DIR mode
           );
         }
-        //* %%% */ PDEBUGENDBLOCK("expand_property");
       } // properties loop
       // generate sublevels, if any
       const TProfileDefinition *subprofileP = aProfileP->subLevels;
@@ -3116,7 +3252,6 @@ void TMimeDirProfileHandler::generateLevels(
       finalizeProperty(s.c_str(),aString,fMimeDirMode,false,false);
     } // normal level
   } // if level must be generated
-  //* %%% */ PDEBUGENDBLOCK("generateLevels");
 } // TMimeDirProfileHandler::generateLevels
 
 
@@ -3142,9 +3277,9 @@ bool TMimeDirProfileHandler::MIMEStringToField(
   fieldinteger_t flags = 0;
   TTimestampField *tsFldP;
   timecontext_t tctx;
-	TParsedTzidSet::iterator tz;
+  TParsedTzidSet::iterator tz;
   string s;
-	// RRULE
+  // RRULE
   lineartime_t dtstart;
   timecontext_t startcontext = 0, untilcontext = 0;
   char freq;
@@ -3157,7 +3292,8 @@ bool TMimeDirProfileHandler::MIMEStringToField(
 
   // get pointer to leaf field
   TItemField *fldP = aItem.getArrayField(aFid,aArrIndex);
-  switch (aConvDefP->convmode) {
+  sInt16 convmode = aConvDefP->convmode & CONVMODE_MASK;
+  switch (convmode) {
     case CONVMODE_MAILTO:
       // remove the mailto: prefix if there is one
       if (strucmp(aText,"mailto:",7)==0)
@@ -3237,7 +3373,7 @@ bool TMimeDirProfileHandler::MIMEStringToField(
               // unfloat only if remote cannot handle UTC and therefore ALWAYS uses localtime.
               // otherwise, assume that floating status is intentional and must be retained.
               // Note: TZID and TZ, if present, are already applied by now
-              // Note: DURATION and DATE floating will always be retained, as they are always intentional              
+              // Note: DURATION and DATE floating will always be retained, as they are always intentional
               if ((!fReceiverCanHandleUTC || fProfileCfgP->fUnfloatFloating) && !TCTX_IS_DATEONLY(tsFldP->getTimeContext()) && !tsFldP->isDuration()) {
                 // not intentionally floating, but just not capable otherwise
                 // - put it into context of item (which is in this case session's user context)
@@ -3254,10 +3390,10 @@ bool TMimeDirProfileHandler::MIMEStringToField(
             }
           }
           // special conversions
-          if (aConvDefP->convmode==CONVMODE_DATE) {
+          if (convmode==CONVMODE_DATE) {
             tsFldP->makeFloating(); // date-only is forced floating
           }
-          else if (aConvDefP->convmode==CONVMODE_AUTOENDDATE && fMimeDirMode==mimo_old) {
+          else if (convmode==CONVMODE_AUTOENDDATE && fMimeDirMode==mimo_old) {
             // check if this could be a 23:59 type end-of-day
             lineartime_t ts = tsFldP->getTimestampAs(fItemTimeContext,&tctx); // get in item context or floating
             lineartime_t ts0 = lineartime2dateonlyTime(ts);
@@ -3282,9 +3418,9 @@ bool TMimeDirProfileHandler::MIMEStringToField(
         //  (which is then used when parsing dates (which should be delayed to make sure TZ is seen first)
         fItemTimeContext = tctx;
         if (!TCTX_IS_TZ(tctx)) {
-        	// only offset. Try to symbolize it by passing a DAYLIGHT:FALSE and the offset
+          // only offset. Try to symbolize it by passing a DAYLIGHT:FALSE and the offset
           if (TzDaylightToContext("FALSE", fItemTimeContext, tctx, getSessionZones(), fReceiverTimeContext))
-		        fItemTimeContext = tctx; // there is a symbolized context, keep that
+            fItemTimeContext = tctx; // there is a symbolized context, keep that
         }
         fHasExplicitTZ = true; // zone explicitly set, not only copied from session's user zone
         goto timecontext;
@@ -3310,19 +3446,19 @@ bool TMimeDirProfileHandler::MIMEStringToField(
       // - look up in TZIDs we've parsed so far from VTIMEZONE
       tz = fParsedTzidSet.find(aText);
       if (tz!=fParsedTzidSet.end()) {
-      	tctx = tz->second; // get tctx resolved from VTIMEZONE
-      	// use tctx for all values from this property
+        tctx = tz->second; // get tctx resolved from VTIMEZONE
+        // use tctx for all values from this property
         fPropTZIDtctx = tctx;
         goto timecontext;
       }
       else if (TimeZoneNameToContext(aText, tctx, getSessionZones())) {
         // found valid TZID property, save it so we can use it for all values of this property that don't specify their own TZ
-      	PDEBUGPRINTFX(DBG_ERROR,("Warning: TZID %s could be resolved against internal name, but appropriate VTIMEZONE is missing",aText));
+        PDEBUGPRINTFX(DBG_ERROR,("Warning: TZID %s could be resolved against internal name, but appropriate VTIMEZONE is missing",aText));
         fPropTZIDtctx=tctx;
         goto timecontext;
       }
       else {
-      	PDEBUGPRINTFX(DBG_ERROR,("Invalid TZID value '%s' found (no related VTIMEZONES found and not referring to an internal time zone name)",aText));
+        PDEBUGPRINTFX(DBG_ERROR,("Invalid TZID value '%s' found (no related VTIMEZONES found and not referring to an internal time zone name)",aText));
       }
       return true; // not set, is ok
     timecontext:
@@ -3349,7 +3485,7 @@ bool TMimeDirProfileHandler::MIMEStringToField(
     case CONVMODE_MULTIMIX:
     case CONVMODE_BITMAP:
       while (*aText && *aText==' ') aText++; // skip leading spaces
-      if (aConvDefP->convmode==CONVMODE_MULTIMIX) {
+      if (convmode==CONVMODE_MULTIMIX) {
         // parse value to determine field
         if (!mixvalparse(aText, offs, isBitMap, n)) return true; // syntax not ok, nop
         fldP = aItem.getArrayField(aFid+offs,aArrIndex);
@@ -3492,7 +3628,8 @@ bool TMimeDirProfileHandler::parseValue(
   char aSeparator,            // separator between values
   TMimeDirMode aMimeMode,     // MIME mode (older or newer vXXX format compatibility)
   bool aParamValue,           // set if parsing parameter value (different escaping rules)
-  bool aStructured            // set if value consists of multiple values (has semicolon content escaping)
+  bool aStructured,           // set if value consists of multiple values (has semicolon content escaping)
+  bool aOnlyDeEscLF           // set if de-escaping only for \n -> LF, but all visible char escapes should be left intact
 )
 {
   string val,val2;
@@ -3510,7 +3647,7 @@ bool TMimeDirProfileHandler::parseValue(
     // find out if value exists (available in source and target)
     if (isFieldAvailable(aItem,fid)) {
       // parse only if field available in both source and target
-      if (aConvDefP->convmode==CONVMODE_BLOB_B64) {
+      if ((aConvDefP->convmode & CONVMODE_MASK)==CONVMODE_BLOB_B64) {
         // move 1:1 into field
         // - get pointer to leaf field
         TItemField *fldP = aItem.getArrayField(fid,aRepOffset);
@@ -3537,6 +3674,7 @@ bool TMimeDirProfileHandler::parseValue(
             c=*p;
             if (!c) break; // half escape sequence, ignore
             else if (c=='n' || c=='N') c='\n';
+            else if (aOnlyDeEscLF) val+=c; // if deescaping only for \n, transfer escape char into output
             // other escaped chars are shown as themselves
           }
           // add char
@@ -3627,7 +3765,9 @@ bool TMimeDirProfileHandler::parseProperty(
   sInt16 aRepArraySize, // size of array (for security)
   TMimeDirMode aMimeMode, // MIME mode (older or newer vXXX format compatibility)
   cAppCharP aGroupName, // property group ("a" in "a.TEL:131723612")
-  size_t aGroupNameLen
+  size_t aGroupNameLen,
+  cAppCharP aFullPropName, // entire property name (excluding group) - might be needed in case of wildcard property match
+  size_t aFullNameLen
 )
 {
   TNameExtIDMap nameextmap;
@@ -3636,6 +3776,7 @@ bool TMimeDirProfileHandler::parseProperty(
   char c;
   string pname;
   string val;
+  string unprocessedVal;
   bool defaultparam;
   bool fieldoffsetfound;
   bool notempty = false;
@@ -3650,7 +3791,7 @@ bool TMimeDirProfileHandler::parseProperty(
   sInt16 repinc = 1; // inc by 1
   sInt16 repid = -1; // invalid by default
   bool overwriteempty = false; // do not overwrite empty values by default
-  bool repoffsByGroup = false;    
+  bool repoffsByGroup = false;
 
   // init
   encoding = enc_none; // no encoding by default
@@ -3658,7 +3799,15 @@ bool TMimeDirProfileHandler::parseProperty(
   nameextmap = 0; // no name extensions detected so far
   fieldoffsetfound = (aPropP->nameExts==NULL); // no first pass needed at all w/o nameExts, just use offs=0
   valuelist = aPropP->valuelist; // cache flag
-  // scan parameter list
+  // prepare storage as unprocessed value
+  if (aPropP->unprocessed) {
+    if (aGroupName && *aGroupName) {
+      unprocessedVal.assign(aGroupName, aGroupNameLen);
+      unprocessedVal += '.';
+    }
+    unprocessedVal.append(aFullPropName, aFullNameLen);
+  }
+  // scan parameter list (even if unprocessed, to catch ENCODING and CHARSET)
   do {
     p=aText;
     while (*p==';') {
@@ -3680,7 +3829,7 @@ bool TMimeDirProfileHandler::parseProperty(
           if (aMimeMode!=mimo_old) {
             // only mimo_old allows default params, but as e.g. Nokia Intellisync (Synchrologic) does this completely wrong, we now tolerate it
             POBJDEBUGPRINTFX(getSession(),DBG_ERROR,(
-            	"Parameter without value: %s - is wrong in MIME-DIR, but we tolerate it and parse as default param name",
+              "Parameter without value: %s - is wrong in MIME-DIR, but we tolerate it and parse as default param name",
               pname.c_str()
             ));
           }
@@ -3701,25 +3850,29 @@ bool TMimeDirProfileHandler::parseProperty(
       // - obtain unfolded value
       val.erase();
       bool dquoted = false;
-      if (*vp=='"' && aMimeMode==mimo_standard) {
-      	dquoted = true;
+      bool wasdquoted = false;
+      // - note: we allow quoted params even with mimo_old, as the chance is much higher that a param value
+      //   beginning with doublequote is actually a quoted string than a value containing a doublequote at the beginning
+      if (*vp=='"') {
+        dquoted = true;
+        wasdquoted = true;
         vp=nextunfolded(vp,aMimeMode);
       }
       do {
         c=*vp;
         if (isEndOfLineOrText(c)) break;
         if (dquoted) {
-        	// within double quoted value, only closing dquote can end it
-        	if (c=='"') {
-          	// swallow closing double quote and proceed (next should be end of value anyway)
-	          vp = nextunfolded(vp,aMimeMode);
+          // within double quoted value, only closing dquote can end it
+          if (c=='"') {
+            // swallow closing double quote and proceed (next should be end of value anyway)
+            vp = nextunfolded(vp,aMimeMode);
             dquoted = false;
             continue;
           }
         }
         else {
-        	// not within double quoted value
-        	if (c==':' || c==';') break; // end of value
+          // not within double quoted value
+          if (c==':' || c==';') break; // end of value
           // check escaped characters
           if (c=='\\') {
             // escape char, do not check next char for end-of-value (but DO NOT expand \-escaped chars here!!)
@@ -3741,16 +3894,26 @@ bool TMimeDirProfileHandler::parseProperty(
       // - processing of next param starts here
       p=vp;
       // check for global parameters
+      bool storeUnprocessed = true; // in case this is a unprocessed property, flag will be cleared to prevent storing params that still ARE processed
       if ((aMimeMode==mimo_old && defaultparam) || strucmp(pname.c_str(),"ENCODING")==0) {
-        // get encoding (if valid encoding)
+        // get encoding
+        // Note: always process ENCODING, as QP is mimo-old specific and must be removed for normalized storage
         for (sInt16 k=0; k<numMIMEencodings; k++) {
           if (strucmp(val.c_str(),MIMEEncodingNames[k])==0) {
             encoding=static_cast <TEncodingTypes> (k);
           }
         }
+        if (aPropP->unprocessed) {
+          if (encoding==enc_quoted_printable)
+            storeUnprocessed = false; // QP will be decoded (for unprocessed properties), so param must not be stored
+          else
+            encoding = enc_none; // other encodings will not be processed for unprocessed properties
+        }
       }
       else if (strucmp(pname.c_str(),"CHARSET")==0) {
         // charset specified (mimo_old value-only not supported)
+        // Note: always process CHARSET, because non-UTF8 cannot be safely passed to DBs, so we need
+        //       to convert in case it's not UTF-8 even for "unprocessed" properties
         sInt16 k;
         for (k=1; k<numCharSets; k++) {
           if (strucmp(val.c_str(),MIMECharSetNames[k])==0) {
@@ -3765,6 +3928,18 @@ bool TMimeDirProfileHandler::parseProperty(
           // %%% replace 8bit chars with underscore
           charset=chs_unknown;
         }
+        storeUnprocessed = false; // CHARSET is never included in unprocessed property, as we always store UTF-8
+      }
+      if (aPropP->unprocessed && storeUnprocessed && fieldoffsetfound) {
+        // append in reconstructed form for storing "unprocessed" (= lightly normalized)
+        unprocessedVal += ';';
+        unprocessedVal += pname;
+        if (!defaultparam) {
+          unprocessedVal += '=';
+          if (wasdquoted) unprocessedVal += '"';
+          unprocessedVal += val;
+          if (wasdquoted) unprocessedVal += '"';
+        }
       }
       // find param in list now
       paramP = aPropP->parameterDefs;
@@ -3773,9 +3948,9 @@ bool TMimeDirProfileHandler::parseProperty(
         // check for match
         if (
           mimeModeMatch(paramP->modeDependency) &&
-#ifndef NO_REMOTE_RULES
+          #ifndef NO_REMOTE_RULES
           (!paramP->ruleDependency || isActiveRule(paramP->ruleDependency)) &&
-#endif
+          #endif
           ((defaultparam && paramP->defaultparam) || strucmp(pname.c_str(),TCFG_CSTR(paramP->paramname))==0)
         ) {
           // param name found
@@ -3828,7 +4003,8 @@ bool TMimeDirProfileHandler::parseProperty(
               defaultparam ? ';' : ',', // value list separator
               aMimeMode,    // MIME mode (older or newer vXXX format compatibility)
               true,         // parsing a parameter
-              false         // no structured value
+              false,        // no structured value
+              false         // normal, full de-escaping
             )) {
               DEBUGPRINTFX(DBG_PARSE,(
                 "TMimeDirProfileHandler::parseProperty: %s: value not parsed: %s",
@@ -3855,7 +4031,7 @@ bool TMimeDirProfileHandler::parseProperty(
     //   an entry in the nameexts list
     TPropNameExtension *propnameextP = aPropP->nameExts;
     if (propnameextP) {
-    	repoffsByGroup = false;
+      repoffsByGroup = false;
       bool dostore = false;
       while (propnameextP) {
         // check if entry matches parsed extendsname param values
@@ -3870,7 +4046,7 @@ bool TMimeDirProfileHandler::parseProperty(
           maxrep=propnameextP->maxRepeat;
           if (maxrep==REP_REWRITE) {
             dostore=true; // we can store
-            break; // unlimited repeat allowed but stored in same fields (overwrite), no need for index search by group 
+            break; // unlimited repeat allowed but stored in same fields (overwrite), no need for index search by group
           }
           // find index where to store this repetition
           repid=propnameextP->repeatID;
@@ -3882,7 +4058,7 @@ bool TMimeDirProfileHandler::parseProperty(
             string s;
             bool someGroups = false;
             for (sInt16 n=0; n<maxrep || maxrep==REP_ARRAY; n++) {
-              sInt16 g_repoffset = n*propnameextP->repeatInc; // original repeatoffset (not adjusted yet)            
+              sInt16 g_repoffset = n*propnameextP->repeatInc; // original repeatoffset (not adjusted yet)
               TItemField *g_fldP =  aItem.getArrayFieldAdjusted(aPropP->groupFieldID+baseoffset,g_repoffset,true); // get leaf field, if it exists
               if (!g_fldP) break; // group field for that repetition does not (yet) exist, array exhausted
               // compare group name
@@ -3892,7 +4068,7 @@ bool TMimeDirProfileHandler::parseProperty(
                   // don't use repetitions already used by SOME of the fields in the group
                   // for auto-assigning new groups (or ungrouped occurrences)
                   if (aRepArray[repid]<n+1)
-                  	aRepArray[repid] = n+1;
+                    aRepArray[repid] = n+1;
                 }
                 // check if group matches (only if there is a group at all)
                 g_fldP->getAsString(s);
@@ -3968,84 +4144,114 @@ bool TMimeDirProfileHandler::parseProperty(
   // parameters are all processed by now, decision made to store data (if !dostore, routine exits above)
   // - store the group tag value if we have one
   if (aPropP->groupFieldID!=FID_NOT_SUPPORTED) {
-		TItemField *g_fldP =  aItem.getArrayFieldAdjusted(aPropP->groupFieldID+baseoffset,repoffset,false);
+    TItemField *g_fldP =  aItem.getArrayFieldAdjusted(aPropP->groupFieldID+baseoffset,repoffset,false);
     if (g_fldP)
-    	g_fldP->setAsString(aGroupName,aGroupNameLen); // store the group name (aGroupName might be NULL, that's ok)
+      g_fldP->setAsString(aGroupName,aGroupNameLen); // store the group name (aGroupName might be NULL, that's ok)
   }
-  // - read value(s)
-  char sep=':'; // first value starts with colon
-  // repeat until we have all values
-  for (sInt16 i=0; i<aPropP->numValues || valuelist; i++) {
-    if (*p!=sep && (aPropP->altvaluesep==0 || *p!=aPropP->altvaluesep)) {
-      #ifdef SYDEBUG
-      // Note: for valuelists, this is the normal loop exit case as we are not limited by numValues
-      if (!valuelist) {
-        // New behaviour: omitting values is ok (needed e.g. for T39m)
-        DEBUGPRINTFX(DBG_PARSE,("TMimeDirProfileHandler::parseProperty: %s does not specify all values",TCFG_CSTR(aPropP->propname)));
-      }
-      #endif
-      break; // all available values read
-    }
-    // skip separator
-    p++;
-    // get value(list) unfolded
-    decodeValue(encoding,charset,aMimeMode,aPropP->numValues > 1 || valuelist ? aPropP->valuesep : 0,aPropP->altvaluesep,p,val);
-    // check if we can store, otherwise just read over value
-    // - get the conversion def for the value
-    TConversionDef *convDef = &(aPropP->convdefs[valuelist ? 0 : i]); // always use convdef[0] for value lists
-    // - store value if not a value list (but simple value or part of structured value), or store if
-    //   valuelist and repeat not yet exhausted, or if valuelist without repetition but combination separator
-    //   which allows to put multiple values into a single field
-    if (!valuelist || repoffset<maxrep*repinc || maxrep==REP_ARRAY || (valuelist && convDef->combineSep)) {
-      // convert and store value (or comma separated value-list, not to mix with valuelist-property!!)
+  if (aPropP->unprocessed) {
+    if (*p==':') {
+      // there is a value
+      p++;
+      // - get entire property value part, not checking for any separators, but converting to appchar (UTF-8) and unfolding
+      decodeValue(encoding==enc_quoted_printable ? encoding : enc_none, charset, aMimeMode, 0, 0, p, val);
+      // - add it to "unprocessed" value representation
+      unprocessedVal += ':';
+      unprocessedVal += val;
+      // - process this as a whole (de-escaping ONLY CRLFs) and assign to field
       if (!parseValue(
-        val,
-        convDef,
+        unprocessedVal,
+        &(aPropP->convdefs[0]), // the conversion definition
         baseoffset, // identifies base field
         repoffset,  // repeat offset to base field / array index
         aItem,      // the item where data goes to
         notempty,   // set true if value(s) parsed are not all empty
-        ',',
+        0, // no value list separator
         aMimeMode,  // MIME mode (older or newer vXXX format compatibility)
         false,      // no parameter
-        aPropP->numValues > 1 // structured if multiple values
+        false,      // not structured
+        true        // only de-escape linefeeds, but nothing else
       )) {
+        return false;
+      }
+    } // if property has a value part
+  } // if unprocessed property
+  else {
+    // - read and decode value(s)
+    char sep=':'; // first value starts with colon
+    // repeat until we have all values
+    for (sInt16 i=0; i<aPropP->numValues || valuelist; i++) {
+      if (*p!=sep && (aPropP->altvaluesep==0 || *p!=aPropP->altvaluesep)) {
+        #ifdef SYDEBUG
+        // Note: for valuelists, this is the normal loop exit case as we are not limited by numValues
+        if (!valuelist) {
+          // New behaviour: omitting values is ok (needed e.g. for T39m)
+          DEBUGPRINTFX(DBG_PARSE,("TMimeDirProfileHandler::parseProperty: %s does not specify all values",TCFG_CSTR(aPropP->propname)));
+        }
+        #endif
+        break; // all available values read
+      }
+      // skip separator
+      p++;
+      // get value(list) unfolded
+      decodeValue(encoding,charset,aMimeMode,aPropP->numValues > 1 || valuelist ? aPropP->valuesep : 0,aPropP->altvaluesep,p,val);
+      // check if we can store, otherwise just read over value
+      // - get the conversion def for the value
+      TConversionDef *convDef = &(aPropP->convdefs[valuelist ? 0 : i]); // always use convdef[0] for value lists
+      // - store value if not a value list (but simple value or part of structured value), or store if
+      //   valuelist and repeat not yet exhausted, or if valuelist without repetition but combination separator
+      //   which allows to put multiple values into a single field
+      if (!valuelist || repoffset<maxrep*repinc || maxrep==REP_ARRAY || (valuelist && convDef->combineSep)) {
+        // convert and store value (or comma separated value-list, not to mix with valuelist-property!!)
+        if (!parseValue(
+          val,
+          convDef,
+          baseoffset, // identifies base field
+          repoffset,  // repeat offset to base field / array index
+          aItem,      // the item where data goes to
+          notempty,   // set true if value(s) parsed are not all empty
+          ',',
+          aMimeMode,  // MIME mode (older or newer vXXX format compatibility)
+          false,      // no parameter
+          aPropP->numValues > 1, // structured if multiple values
+          false       // normal, full de-escaping
+        )) {
+          PDEBUGPRINTFX(DBG_PARSE+DBG_EXOTIC,(
+            "TMimeDirProfileHandler::parseProperty: %s: value not parsed: %s",
+            TCFG_CSTR(aPropP->propname),
+            val.c_str()
+          ));
+          return false;
+        }
+        // update repeat offset and repeat count if this is a value list
+        if (valuelist && convDef->combineSep==0 && (notempty || !overwriteempty)) {
+          // - update count for every non-empty value (for empty values only if overwriteempty is not set)
+          if (repid>=0)
+            aRepArray[repid]++; // next repetition
+          repoffset+=repinc; // also update repeat offset
+        }
+      }
+      else {
+        // value cannot be stored
         PDEBUGPRINTFX(DBG_PARSE+DBG_EXOTIC,(
-          "TMimeDirProfileHandler::parseProperty: %s: value not parsed: %s",
+          "TMimeDirProfileHandler::parseProperty: %s: value not stored because repeat exhausted: %s",
           TCFG_CSTR(aPropP->propname),
           val.c_str()
         ));
-        return false;
       }
-      // update repeat offset and repeat count if this is a value list
-      if (valuelist && convDef->combineSep==0 && (notempty || !overwriteempty)) {
-        // - update count for every non-empty value (for empty values only if overwriteempty is not set)
-        if (repid>=0)
-        	aRepArray[repid]++; // next repetition
-        repoffset+=repinc; // also update repeat offset
-      }
-    }
-    else {
-      // value cannot be stored
-      PDEBUGPRINTFX(DBG_PARSE+DBG_EXOTIC,(
-        "TMimeDirProfileHandler::parseProperty: %s: value not stored because repeat exhausted: %s",
-        TCFG_CSTR(aPropP->propname),
-        val.c_str()
-      ));
-    }
-    // more values must be separated by the value sep char (default=';' but can be ',' e.g. for iCalendar 2.0 CATEGORIES)
-    sep = aPropP->valuesep;
-  } // for all values
+      // more values must be separated by the value sep char (default=';' but can be ',' e.g. for iCalendar 2.0 CATEGORIES)
+      sep = aPropP->valuesep;
+    } // for all values
+  } // process values
   if (notempty && !valuelist) {
-  	// at least one of the components is not empty. Make sure all components are "touched" such that
+    // at least one of the components is not empty. Make sure all components are "touched" such that
     // in case of arrays, these are assigned even if empty
-	  for (sInt16 j=0; j<aPropP->numValues; j++) {
+    for (sInt16 j=0; j<aPropP->numValues; j++) {
       sInt16 fid=aPropP->convdefs[j].fieldid;
       if (fid>=0) {
         // requesting the pointer creates the field if it does not already exist
         aItem.getArrayFieldAdjusted(fid+baseoffset,repoffset,false);
       }
-    }    
+    }
   }
   if (!valuelist && repid>=0 && (notempty || !overwriteempty) && !repoffsByGroup) {
     // we have used this repetition and actually stored values, so count it now
@@ -4145,9 +4351,9 @@ bool TMimeDirProfileHandler::parseLevels(
       if (c==':' || c==';') break;
       // handle grouping
       if (c=='.') {
-      	// this is a group name (or element of it)
+        // this is a group name (or element of it)
         // - remember the group name
-      	if (!groupname) groupname = propname;
+        if (!groupname) groupname = propname;
         gn = p-groupname; // size of groupname
         // - prop name starts after group name (and dot)
         propname = ++p; // skip group
@@ -4209,7 +4415,7 @@ bool TMimeDirProfileHandler::parseLevels(
                 // identify or add this in the session zones
                 string tzid;
                 if (VTIMEZONEtoInternal(s2.c_str(), tctx, getSessionZones(), getDbgLogger(), &tzid)) {
-                	// time zone identified
+                  // time zone identified
                   #ifdef SYDEBUG
                   string tzname;
                   TimeZoneContextToName(tctx, tzname, getSessionZones());
@@ -4288,7 +4494,7 @@ bool TMimeDirProfileHandler::parseLevels(
         // compare
         if (
           mimeModeMatch(propP->modeDependency) && // none or matching mode dependency
-          strucmp(propname,TCFG_CSTR(propP->propname),n)==0
+          strwildcmp(propname,TCFG_CSTR(propP->propname),n)==0 // wildcards allowed (for unprocessed properties for example)
         ) {
           // found property def with matching name (and MIME mode)
           // check all in group (=all subsequent with same name)
@@ -4371,7 +4577,9 @@ bool TMimeDirProfileHandler::parseLevels(
                 maxreps,
                 fMimeDirMode, // MIME-DIR mode
                 groupname,
-                gn
+                gn,
+                propname,
+                n
               )) {
                 // property parsed successfully
                 propparsed=true;
@@ -4406,14 +4614,14 @@ bool TMimeDirProfileHandler::parseLevels(
     //   Note: we need to check if this is quoted-printable, otherwise we might NOT cancel soft breaks
     bool isqp = false;
     while ((c=*p)!=0) {
-    	if (isEndOfLineOrText(c)) break; // end of line or string
+      if (isEndOfLineOrText(c)) break; // end of line or string
       if (c==';' && *(p+1)) {
-				if (strucmp(p+1, QP_ENCODING_PARAM, strlen(QP_ENCODING_PARAM))==0) {
-        	c = *(p+1+strlen(QP_ENCODING_PARAM));
-        	isqp = c==':' || c==';'; // the property is QP encoded, we need to cancel QP softbreaks while looking for end of property
+        if (strucmp(p+1, QP_ENCODING_PARAM, strlen(QP_ENCODING_PARAM))==0) {
+          c = *(p+1+strlen(QP_ENCODING_PARAM));
+          isqp = c==':' || c==';'; // the property is QP encoded, we need to cancel QP softbreaks while looking for end of property
         }
-			}
-    	p=nextunfolded(p,fMimeDirMode,isqp); // cancel soft breaks if we are in QP encoded property
+      }
+      p=nextunfolded(p,fMimeDirMode,isqp); // cancel soft breaks if we are in QP encoded property
     }
     // - skip entire EOLN (=all control chars in sequence %%%)
     while (*p && (uInt8)(*p)<'\x20') p=nextunfolded(p,fMimeDirMode);
@@ -4439,7 +4647,8 @@ bool TMimeDirProfileHandler::parseLevels(
         maxreps,
         fMimeDirMode, // MIME-DIR mode
         (*pos).groupname,
-        (*pos).groupnameLen
+        (*pos).groupnameLen,
+        "X-delayed", 9 // dummy, unprocessed properties must not be parsed in delayed mode!
       )) {
         // count mandarory properties found
         //%%% moved this to when we queue the delayed props, as mandatory count is per-profile
@@ -4457,7 +4666,7 @@ bool TMimeDirProfileHandler::parseLevels(
   if (foundmandatory<aProfileP->numMandatoryProperties) {
     // not all mandatory properties found
     POBJDEBUGPRINTFX(getSession(),DBG_ERROR,(
-      "parseMimeDir: missing %hd of %hd mandatory properies",
+      "parseMimeDir: missing %d of %hd mandatory properies",
       aProfileP->numMandatoryProperties-foundmandatory,
       aProfileP->numMandatoryProperties
     ));
@@ -4475,20 +4684,24 @@ bool TMimeDirProfileHandler::parseLevels(
 
 void TMimeDirProfileHandler::getOptionsFromDatastore(void)
 {
-  // get options datastore if one is related
-  if (fRelatedDatastoreP) {
-  	fReceiverCanHandleUTC = fRelatedDatastoreP->getSession()->fRemoteCanHandleUTC;
-    fVCal10EnddatesSameDay = fRelatedDatastoreP->getSession()->fVCal10EnddatesSameDay;
-    fReceiverTimeContext = fRelatedDatastoreP->getSession()->fUserTimeContext; // default to user context
-    fDontSendEmptyProperties = fRelatedDatastoreP->getSession()->fDontSendEmptyProperties;
-    fDefaultOutCharset = fRelatedDatastoreP->getSession()->fDefaultOutCharset;
-    fDefaultInCharset = fRelatedDatastoreP->getSession()->fDefaultInCharset;
-    fDoQuote8BitContent = fRelatedDatastoreP->getSession()->fDoQuote8BitContent;
-    fDoNotFoldContent = fRelatedDatastoreP->getSession()->fDoNotFoldContent;
-    fTreatRemoteTimeAsLocal = fRelatedDatastoreP->getSession()->fTreatRemoteTimeAsLocal;
-    fTreatRemoteTimeAsUTC = fRelatedDatastoreP->getSession()->fTreatRemoteTimeAsUTC;
+  // get options datastore if one is related;
+  // ignore the session from getSession() here because we need
+  // to distinguish between script context and normal sync context
+  // (the former has no datastore, the latter has)
+  TSyncSession *sessionP = fRelatedDatastoreP ? fRelatedDatastoreP->getSession() : NULL;
+  if (sessionP) {
+    fReceiverCanHandleUTC = sessionP->fRemoteCanHandleUTC;
+    fVCal10EnddatesSameDay = sessionP->fVCal10EnddatesSameDay;
+    fReceiverTimeContext = sessionP->fUserTimeContext; // default to user context
+    fDontSendEmptyProperties = sessionP->fDontSendEmptyProperties;
+    fDefaultOutCharset = sessionP->fDefaultOutCharset;
+    fDefaultInCharset = sessionP->fDefaultInCharset;
+    fDoQuote8BitContent = sessionP->fDoQuote8BitContent;
+    fDoNotFoldContent = sessionP->fDoNotFoldContent;
+    fTreatRemoteTimeAsLocal = sessionP->fTreatRemoteTimeAsLocal;
+    fTreatRemoteTimeAsUTC = sessionP->fTreatRemoteTimeAsUTC;
     #ifndef NO_REMOTE_RULES
-		fActiveRemoteRules = fRelatedDatastoreP->getSession()->fActiveRemoteRules; // copy the list
+    fActiveRemoteRules = sessionP->fActiveRemoteRules; // copy the list
     #endif
   }
 }
@@ -4498,7 +4711,7 @@ void TMimeDirProfileHandler::getOptionsFromDatastore(void)
 void TMimeDirProfileHandler::generateText(TMultiFieldItem &aItem, string &aString)
 {
   // get options datastore if one is related
-	getOptionsFromDatastore();
+  getOptionsFromDatastore();
   #ifdef SYDEBUG
   PDEBUGPRINTFX(DBG_GEN+DBG_HOT,("Generating...."));
   aItem.debugShowItem(DBG_DATA+DBG_GEN);
@@ -4519,9 +4732,9 @@ void TMimeDirProfileHandler::generateText(TMultiFieldItem &aItem, string &aStrin
 // parse Data item (includes header and footer)
 bool TMimeDirProfileHandler::parseText(const char *aText, stringSize aTextSize, TMultiFieldItem &aItem)
 {
-	//#warning "aTextSize must be checked!"
+  //#warning "aTextSize must be checked!"
   // get options datastore if one is related
-	getOptionsFromDatastore();
+  getOptionsFromDatastore();
   // baseclass just parses MIME-DIR
   fBeginEndNesting = 0; // no BEGIN found yet
   #ifdef SYDEBUG
@@ -4628,7 +4841,7 @@ static void addCTDataPropToListIfNotExists(
   while (*aCTDataPropListPP) {
     // check name
     if (strcmp(smlPCDataToCharP(aCTDataPropP->prop->name),smlPCDataToCharP((*aCTDataPropListPP)->data->prop->name))==0) {
-    	//%%% we can add merging parameters here as well
+      //%%% we can add merging parameters here as well
       // same property already exists, forget this one
       smlFreeDevInfCTDataProp(aCTDataPropP);
       aCTDataPropP = NULL;
@@ -4639,7 +4852,7 @@ static void addCTDataPropToListIfNotExists(
   // if not detected duplicate, add it now
   if (aCTDataPropP) {
     addCTDataPropToList(aCTDataPropP,aCTDataPropListPP);
-  }	
+  }
 } // addCTDataPropToListIfNotExists
 
 
@@ -4661,7 +4874,7 @@ static void addNewPropToListIfNotExists(
 // helper for newCTDataPropList
 void TMimeDirProfileHandler::enumerateProperties(const TProfileDefinition *aProfileP, SmlDevInfCTDataPropListPtr_t *&aPropListPP, const TProfileDefinition *aSelectedProfileP, TMimeDirItemType *aItemTypeP)
 {
-	// remember start of properties
+  // remember start of properties
   // add all properties of this level (if enabled)
   // Note: if this is the explicitly selected (sub)profile, it will be shown under any circumstances
   if  ((!aProfileP->shownIfSelectedOnly || aProfileP==aSelectedProfileP || aSelectedProfileP==NULL) && mimeModeMatch(aProfileP->modeDependency)) {
@@ -4793,7 +5006,7 @@ void TMimeDirProfileHandler::enumerateProperties(const TProfileDefinition *aProf
           }
           // - add property data descriptor
           propdataP->prop = newDevInfCTData(TCFG_CSTR(propP->propname),sz,noTruncate,maxOccur,dataType);
-          if (propP->convdefs && propP->convdefs->convmode==CONVMODE_VERSION) {
+          if (propP->convdefs && (propP->convdefs->convmode & CONVMODE_MASK)==CONVMODE_VERSION) {
             // special case: add version valenum
             addPCDataStringToList(aItemTypeP->getTypeVers(),&(propdataP->prop->valenum));
           }
@@ -4827,7 +5040,7 @@ void TMimeDirProfileHandler::enumeratePropFilters(const TProfileDefinition *aPro
       if (
         propP->canFilter &&
         (propP->showInCTCap || aProfileP==aSelectedProfileP) &&
-        propP->convdefs && propP->convdefs[0].convmode!=CONVMODE_VERSION && propP->convdefs[0].convmode!=CONVMODE_PRODID
+        propP->convdefs && (propP->convdefs[0].convmode & CONVMODE_MASK)!=CONVMODE_VERSION && (propP->convdefs[0].convmode & CONVMODE_MASK)!=CONVMODE_PRODID
       ) {
         // Note: properties of explicitly selected (sub)profiles will be shown anyway,
         //       as only purpose of suppressing properties in devInf is to avoid
@@ -4872,7 +5085,7 @@ void TMimeDirProfileHandler::addFilterCapPropsAndKeywords(SmlPcdataListPtr_t &aF
 // generates SyncML-Devinf property list for type
 SmlDevInfCTDataPropListPtr_t TMimeDirProfileHandler::newCTDataPropList(TTypeVariantDescriptor aVariantDescriptor, TSyncItemType *aItemTypeP)
 {
-	TMimeDirItemType *itemTypeP = static_cast<TMimeDirItemType *>(aItemTypeP);
+  TMimeDirItemType *itemTypeP = static_cast<TMimeDirItemType *>(aItemTypeP);
   // get pointer to selected variant (if none, all variants will be shown)
   const TProfileDefinition *selectedSubprofileP = (const TProfileDefinition *)aVariantDescriptor;
   // generate new list
@@ -4912,7 +5125,7 @@ SmlDevInfCTDataPropListPtr_t TMimeDirProfileHandler::newCTDataPropList(TTypeVari
 // Analyze CTCap part of devInf
 bool TMimeDirProfileHandler::analyzeCTCap(SmlDevInfCTCapPtr_t aCTCapP, TSyncItemType *aItemTypeP)
 {
-	TMimeDirItemType *itemTypeP = static_cast<TMimeDirItemType *>(aItemTypeP);	
+  TMimeDirItemType *itemTypeP = static_cast<TMimeDirItemType *>(aItemTypeP);
   // assume all sublevels enabled (as long as we don't get a
   // BEGIN CTCap listing all the available levels.
   //aItemTypeP->setLevelOptions(NULL,true);
@@ -5150,9 +5363,9 @@ void TMimeDirProfileHandler::setProfileMode(sInt32 aMode)
 {
   fProfileMode = aMode;
   // determine derived mime mode
-	switch (aMode) {
-  	case PROFILEMODE_OLD  : fMimeDirMode=mimo_old; break; // 1 = old = vCard 2.1 / vCalendar 1.0
-		default : fMimeDirMode=mimo_standard; break; // anything else = standard = vCard 3.0 / iCalendar 2.0 style
+  switch (aMode) {
+    case PROFILEMODE_OLD  : fMimeDirMode=mimo_old; break; // 1 = old = vCard 2.1 / vCalendar 1.0
+    default : fMimeDirMode=mimo_standard; break; // anything else = standard = vCard 3.0 / iCalendar 2.0 style
   }
 } // TMimeDirProfileHandler::setProfileMode
 
@@ -5167,24 +5380,59 @@ void TMimeDirProfileHandler::setRemoteRule(const string &aRemoteRuleName)
     if((*pos)->fElementName == aRemoteRuleName) {
       // only this rule and all rules included by it rule must be active
       fActiveRemoteRules.clear();
-      fActiveRemoteRules.push_back(*pos);
-      TRemoteRulesList::iterator spos;
-      for(spos=(*pos)->fSubRulesList.begin();spos!=(*pos)->fSubRulesList.end();spos++) {
-        fActiveRemoteRules.push_back(*spos);
-      }
+      activateRemoteRule(*pos);
       break;
     }
   }
 } // TMimeDirProfileHandler::setRemoteRule
 
+void TMimeDirProfileHandler::activateRemoteRule(TRemoteRuleConfig *aRuleP)
+{
+  // activate this rule (similar code as in TSyncSession::checkRemoteSpecifics()
+  fActiveRemoteRules.push_back(aRuleP);
+  // - apply options that have a value
+  //if (aRuleP->fLegacyMode>=0) fLegacyMode = aRuleP->fLegacyMode;
+  //if (aRuleP->fLenientMode>=0) fLenientMode = aRuleP->fLenientMode;
+  //if (aRuleP->fLimitedFieldLengths>=0) fLimitedRemoteFieldLengths = aRuleP->fLimitedFieldLengths;
+  if (aRuleP->fDontSendEmptyProperties>=0) fDontSendEmptyProperties = aRuleP->fDontSendEmptyProperties;
+  if (aRuleP->fDoQuote8BitContent>=0) fDoQuote8BitContent = aRuleP->fDoQuote8BitContent;
+  if (aRuleP->fDoNotFoldContent>=0) fDoNotFoldContent = aRuleP->fDoNotFoldContent;
+  //if (aRuleP->fNoReplaceInSlowsync>=0) fNoReplaceInSlowsync = aRuleP->fNoReplaceInSlowsync;
+  if (aRuleP->fTreatRemoteTimeAsLocal>=0) fTreatRemoteTimeAsLocal = aRuleP->fTreatRemoteTimeAsLocal;
+  if (aRuleP->fTreatRemoteTimeAsUTC>=0) fTreatRemoteTimeAsUTC = aRuleP->fTreatRemoteTimeAsUTC;
+  if (aRuleP->fVCal10EnddatesSameDay>=0) fVCal10EnddatesSameDay = aRuleP->fVCal10EnddatesSameDay;
+  //if (aRuleP->fIgnoreDevInfMaxSize>=0) fIgnoreDevInfMaxSize = aRuleP->fIgnoreDevInfMaxSize;
+  //if (aRuleP->fIgnoreCTCap>=0) fIgnoreCTCap = aRuleP->fIgnoreCTCap;
+  //if (aRuleP->fDSPathInDevInf>=0) fDSPathInDevInf = aRuleP->fDSPathInDevInf;
+  //if (aRuleP->fDSCgiInDevInf>=0) fDSCgiInDevInf = aRuleP->fDSCgiInDevInf;
+  //if (aRuleP->fUpdateClientDuringSlowsync>=0) fUpdateClientDuringSlowsync = aRuleP->fUpdateClientDuringSlowsync;
+  //if (aRuleP->fUpdateServerDuringSlowsync>=0) fUpdateServerDuringSlowsync = aRuleP->fUpdateServerDuringSlowsync;
+  //if (aRuleP->fAllowMessageRetries>=0) fAllowMessageRetries = aRuleP->fAllowMessageRetries;
+  //if (aRuleP->fStrictExecOrdering>=0) fStrictExecOrdering = aRuleP->fStrictExecOrdering;
+  //if (aRuleP->fTreatCopyAsAdd>=0) fTreatCopyAsAdd = aRuleP->fTreatCopyAsAdd;
+  //if (aRuleP->fCompleteFromClientOnly>=0) fCompleteFromClientOnly = aRuleP->fCompleteFromClientOnly;
+  //if (aRuleP->fRequestMaxTime>=0) fRequestMaxTime = aRuleP->fRequestMaxTime;
+  if (aRuleP->fDefaultOutCharset!=chs_unknown) fDefaultOutCharset = aRuleP->fDefaultOutCharset;
+  if (aRuleP->fDefaultInCharset!=chs_unknown) fDefaultInCharset = aRuleP->fDefaultInCharset;
+  // - possibly override decisions that are otherwise made by session
+  //   Note: this is not a single option because we had this before rule options were tristates.
+  //if (aRuleP->fForceUTC>0) fRemoteCanHandleUTC=true;
+  //if (aRuleP->fForceLocaltime>0) fRemoteCanHandleUTC=false;
+
+  // now recursively activate included rules
+  TRemoteRulesList::iterator pos;
+  for(pos=aRuleP->fSubRulesList.begin();pos!=aRuleP->fSubRulesList.end();pos++) {
+    activateRemoteRule(*pos);
+  }
+}
 
 // check if given rule (by name, or if aRuleName=NULL by rule pointer) is active
 bool TMimeDirProfileHandler::isActiveRule(TRemoteRuleConfig *aRuleP)
 {
   TRemoteRulesList::iterator pos;
   for(pos=fActiveRemoteRules.begin();pos!=fActiveRemoteRules.end();pos++) {
-  	if ((*pos)==aRuleP)
-    	return true;
+    if ((*pos)==aRuleP)
+      return true;
   }
   // no match
   return false;

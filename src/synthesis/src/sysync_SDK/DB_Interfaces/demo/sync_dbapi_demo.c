@@ -7,7 +7,7 @@
  *  Programming interface between Synthesis SyncML engine
  *  and a database structure.
  *
- *  Copyright (c) 2004-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2004-2011 by Synthesis AG + plan44.ch
  *
  *
  *    E X A M P L E    C O D E
@@ -524,6 +524,18 @@ TSyError LoadAdminData( CContext aContext, cAppCharP aLocDB,
 
 
 
+TSyError LoadAdminDataAsKey( CContext aContext, cAppCharP aLocDB,
+                                                cAppCharP aRemDB, KeyH adminKey )
+{
+  /**** CAN BE ADAPTED BY USER ****/
+  ContextP  ac= DBC( aContext );
+  DEBUG_DB( ac->fCB, MyDB,Da_LA, "%d '%s' '%s' '%s' '%s' adminKey=%08X",
+                                  ac->contextID, ac->fDevKey, ac->fUsrKey, aLocDB, aRemDB, adminKey );
+  return DB_Forbidden; /* not yet implemented */
+} /* LoadAdminDataAsKey */
+
+
+
 TSyError SaveAdminData( CContext aContext, cAppCharP adminData )
 {
   /**** CAN BE ADAPTED BY USER ****/
@@ -531,6 +543,16 @@ TSyError SaveAdminData( CContext aContext, cAppCharP adminData )
   DEBUG_DB( ac->fCB, MyDB,Da_SA, "%d '%s'", ac->contextID, adminData );
   return DB_Forbidden; /* not yet implemented */
 } /* SaveAdminData */
+
+
+
+TSyError SaveAdminDataAsKey( CContext aContext, KeyH adminKey )
+{
+  /**** CAN BE ADAPTED BY USER ****/
+  ContextP  ac= DBC( aContext );
+  DEBUG_DB( ac->fCB, MyDB,Da_SA, "%d adminKey=%08X", ac->contextID, adminKey );
+  return DB_Forbidden; /* not yet implemented */
+} /* SaveAdminDataAsKey */
 
 
 

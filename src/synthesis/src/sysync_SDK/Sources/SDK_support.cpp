@@ -6,7 +6,7 @@
  *  Some SDK support utility functions for C++
  *
  *
- *  Copyright (c) 2005-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2005-2011 by Synthesis AG + plan44.ch
  *
  */
 
@@ -571,15 +571,15 @@ CVersion VersionNr( string s )
 
 bool SameBegin( string s, string cmp )
 {
-  uInt32 w=      s.length()-cmp.length();
+  ssize_t w=      s.length()-cmp.length();
   return w>=0 && s.find   ( cmp, 0 )==0;
 } // SameBegin
 
 
 bool SameEnd  ( string s, string cmp )
 {
-  uInt32 w=      s.length()-cmp.length();
-  return w>=0 && s.find   ( cmp, w )==w;
+  ssize_t w=      s.length()-cmp.length();
+  return w>=0 && s.find   ( cmp, w )==(size_t)w;
 } // SameEnd
 
 

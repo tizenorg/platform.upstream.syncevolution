@@ -1,11 +1,11 @@
 /*
  *  File:         sysync_globs.h
  *
- *  Author:       Lukas Zeller (luz@synthesis.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  Global definitions/macros/constants
  *
- *  Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  *  2001-xx-xx : luz : created
  *

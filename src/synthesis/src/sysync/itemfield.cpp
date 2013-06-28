@@ -1,14 +1,14 @@
 /*
  *  File:         itemfield.cpp
  *
- *  Author:       Lukas Zeller (luz@synthesis.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TItemField
  *    Abstract class, holds a single field value
  *  TStringField, TIntegerField, TTimeStampField etc.
  *    Implementations of field types
  *
- *  Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  *  2001-08-08 : luz : created
  *
@@ -246,18 +246,31 @@ size_t TItemField::writeStream(void *aBuffer, size_t aNumBytes)
 
 
 // constructor
-TArrayField::TArrayField(TItemFieldTypes aLeafFieldType)
+TArrayField::TArrayField(TItemFieldTypes aLeafFieldType, GZones *aGZonesP)
 {
   fLeafFieldType=aLeafFieldType;
+  fGZonesP = aGZonesP;
+  // field for index==0 always exists
+  fFirstField = newItemField(fLeafFieldType,fGZonesP,false);
 } // TArrayField::TArrayField
 
 
 // destructor
 TArrayField::~TArrayField()
 {
-  // make sure leaf fields are all gone
+  // make sure leaf fields (except idx==0) are gone
   unAssign();
+  // and kill firstfield
+  delete fFirstField;
 } // TArrayField::~TArrayField
+
+
+
+bool TArrayField::elementsBasedOn(TItemFieldTypes aFieldType) const
+{
+  return fFirstField->isBasedOn(aFieldType);
+} // TArrayField::elementsBasedOn
+
 
 
 #ifdef SYDEBUG
@@ -286,7 +299,10 @@ TItemField *TArrayField::getArrayField(sInt16 aArrIdx, bool aExistingOnly)
     fldP = fArray[aArrIdx];
     if (fldP==NULL) {
       // but element does not exist yet, create field for it
-      fldP=newItemField(fLeafFieldType,NULL,false);
+      if (aArrIdx==0)
+        fldP = fFirstField;
+      else
+        fldP = newItemField(fLeafFieldType,fGZonesP,false);
       fArray[aArrIdx]=fldP;
     }
   }
@@ -300,8 +316,11 @@ TItemField *TArrayField::getArrayField(sInt16 aArrIdx, bool aExistingOnly)
     for (sInt16 idx=arraySize(); idx<=aArrIdx; idx++) {
       fArray.push_back(NULL);
     }
-    // actually create last field only
-    fldP=newItemField(fLeafFieldType,NULL,false);
+    // actually create last field only (and use firstField if that happens to be idx==0)
+    if (aArrIdx==0)
+      fldP = fFirstField;
+    else
+      fldP = newItemField(fLeafFieldType,fGZonesP,false);
     fArray[aArrIdx]=fldP;
   }
   // return field
@@ -326,7 +345,10 @@ void TArrayField::unAssign(void)
 {
   for (sInt16 idx=0; idx<arraySize(); idx++) {
     if (fArray[idx]) {
-      delete fArray[idx];
+      if (idx==0)
+        fArray[idx]->unAssign(); // first is always kept, it is the fFirstField, so only unassign to remove content
+      else
+        delete fArray[idx];
       fArray[idx]=NULL;
     }
   }
@@ -399,24 +421,24 @@ void TArrayField::appendString(cAppCharP aString, size_t aMaxChars)
 // contained somewhere in my own array)
 bool TArrayField::contains(TItemField &aItemField, bool aCaseInsensitive)
 {
-	bool contained = false;
+  bool contained = false;
   if (aItemField.isArray()) {
-		contained=true;
-  	// array: all array elements must be contained in at least one of my elements
+    contained=true;
+    // array: all array elements must be contained in at least one of my elements
     for (sInt16 idx=0; idx<aItemField.arraySize(); idx++) {
-    	if (!contains(*(aItemField.getArrayField(idx)),aCaseInsensitive)) {
-      	// one of the elements of aItemField is not contained in myself -> not contained
-      	contained = false;
+      if (!contains(*(aItemField.getArrayField(idx)),aCaseInsensitive)) {
+        // one of the elements of aItemField is not contained in myself -> not contained
+        contained = false;
         break;
       }
     }
   }
   else {
-  	// leaf element: must be contained in at least one of my elements
-		contained = false;
+    // leaf element: must be contained in at least one of my elements
+    contained = false;
     for (sInt16 idx=0; idx<arraySize(); idx++) {
       if (getArrayField(idx)->contains(aItemField,aCaseInsensitive)) {
-      	// the value of aItemField is contained in one of my elements -> contained
+        // the value of aItemField is contained in one of my elements -> contained
         contained = true;
         break;
       }
@@ -1005,10 +1027,10 @@ TURLField::~TURLField()
 
 void TURLField::stringWasAssigned(void)
 {
-	// post-process string that was just assigned
+  // post-process string that was just assigned
   string proto;
   if (!fString.empty()) {
-  	// make sure we have a URL with protocol
+    // make sure we have a URL with protocol
     splitURL(fString.c_str() ,&proto, NULL, NULL, NULL, NULL);
     if (proto.empty()) {
       // no protocol set, but string not empty --> assume http
@@ -1018,31 +1040,6 @@ void TURLField::stringWasAssigned(void)
   inherited::stringWasAssigned();
 } // TURLField::stringWasAssigned
 
-
-/*%%% old, was not called with all variants of setAsString()
-// must check and update URL on write
-void TURLField::setAsString(cAppCharP aString)
-{
-  string proto;
-
-  if (!aString) {
-    fString.erase();
-  }
-  else {
-    splitURL(aString,&proto,NULL,NULL,NULL,NULL);
-    if (proto.empty() && *aString!=0) {
-      // no protocol set, but string not empty --> assume http
-      fString="http://";
-      fString+=aString;
-    }
-    else {
-      // protocol is there (or empty string), assume ok
-      fString=aString;
-    }
-  }
-  fAssigned=true;
-} // TURLField::setAsString
-*/
 
 /* end of TURLField implementation */
 
@@ -1261,7 +1258,7 @@ void TTimestampField::makeFloating(void)
 /// @return true if context has TCTX_DURATION rendering flag set
 bool TTimestampField::isDuration(void)
 {
-  return TCTX_IS_DURATION(fTimecontext);	
+  return TCTX_IS_DURATION(fTimecontext);
 } // TTimestampField::isDuration
 
 
@@ -1785,7 +1782,7 @@ TItemField *newItemField(const TItemFieldTypes aType, GZones *aGZonesP, bool aAs
 {
   #ifdef ARRAYFIELD_SUPPORT
   if (aAsArray) {
-    return new TArrayField(aType);
+    return new TArrayField(aType,aGZonesP);
   }
   else
   #endif
@@ -1988,16 +1985,17 @@ TSyError TItemFieldKey::GetValueInternal(
       memcpy(aBuffer,&valtype,aValSize); // copy valtype uInt16
     return LOCERR_OK;
   }
-  // Get actual data - we need the leaf field
+  // Get actual data - we need the leaf field (unless we pass <0 for aArrayIndex, which accesses the array base field)
   fieldP = getFieldFromFid(fid, aArrayIndex, true); // existing array elements only
   if (!fieldP) {
     // array instance does not exist
     return LOCERR_OUTOFRANGE;
   }
   else {
-    // leaf field exists
+    // leaf field (or explicitly requested array base field) exists
     if (!fieldP->isAssigned()) return DB_NotFound; // no content found because none assigned
     if (fieldP->isEmpty()) return DB_NoContent; // empty
+    if (fieldP->isArray()) return LOCERR_OUTOFRANGE; // no real access for array base field possible - if we get here it means non-empty
     // assigned and not empty, return actual value
     TItemFieldTypes fty = fieldP->getType();
     appPointer valPtr = NULL;
@@ -2008,7 +2006,7 @@ TSyError TItemFieldKey::GetValueInternal(
     sInt16 minOffs;
     TTimestampField *tsFldP;
     if (aID & VALID_FLAG_NORM) {
-    	// for all field types: get normalized string value
+      // for all field types: get normalized string value
       fieldP->getAsNormalizedString(sval);
       aValSize = sval.size();
       valPtr = (appPointer)sval.c_str();
@@ -2121,12 +2119,12 @@ TSyError TItemFieldKey::SetValueInternal(
     TTimestampField *tsFldP;
     // treat setting normalized value like setting as string
     if (aID & VALID_FLAG_NORM)
-    	fty = fty_string; // treat like string
+      fty = fty_string; // treat like string
     // handle NULL (empty) case
     if (aBuffer==0) {
-    	// buffer==NULL means NULL value
-    	fieldP->assignEmpty();
-    	return LOCERR_OK;
+      // buffer==NULL means NULL value
+      fieldP->assignEmpty();
+      return LOCERR_OK;
     }
     // now handle according to type
     switch (fty) {

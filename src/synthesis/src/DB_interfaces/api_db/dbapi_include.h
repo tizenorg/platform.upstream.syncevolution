@@ -6,7 +6,7 @@
  *  DB_Api class
  *    Bridge to user programmable interface
  *
- *  Copyright (c) 2004-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2004-2011 by Synthesis AG + plan44.ch
  *
  */
 
@@ -129,6 +129,7 @@ static TSyError AssignMethods( appPointer aMod, appPointer aField, memSize aFiel
     } // if
   #endif
 
+  /*
   #ifndef DISABLE_PLUGIN_DATASTOREADMIN
     if (strcmp( aKey,Plugin_DS_Admin     )==0 || // new AND old
         strcmp( aKey,Plugin_DS_Admin_OLD )==0) {
@@ -142,6 +143,40 @@ static TSyError AssignMethods( appPointer aMod, appPointer aField, memSize aFiel
                       DeleteMapItem,
                       NULL );
     } // if
+  #endif
+  */
+
+  #ifndef   DISABLE_PLUGIN_DATASTOREADMIN
+  	#ifndef DISABLE_PLUGIN_DATASTOREADMIN_STR
+      if (strcmp( aKey,Plugin_DS_Admin_Str )==0) {
+        return ConnectFunctions( aMod, aField,aFieldSize, false,
+                // ---- aItemData functions ----
+                        LoadAdminData,
+                        SaveAdminData,
+                        NULL );
+      } // if
+    #endif
+
+  	#ifndef DISABLE_PLUGIN_DATASTOREADMIN_KEY
+      if (strcmp( aKey,Plugin_DS_Admin_Key )==0) {
+        return ConnectFunctions( aMod, aField,aFieldSize, false,
+                // ---- aItemKey functions ----
+                        LoadAdminDataAsKey,
+                        SaveAdminDataAsKey,
+                        NULL );
+      } // if
+    #endif
+
+    if   (strcmp( aKey,Plugin_DS_Admin_Map )==0 || // new AND old
+          strcmp( aKey,Plugin_DS_Admin_OLD )==0) {
+      return   ConnectFunctions( aMod, aField,aFieldSize, false,
+                // ---- datastore admin ----
+                        ReadNextMapItem,
+                        InsertMapItem,
+                        UpdateMapItem,
+                        DeleteMapItem,
+                        NULL );
+      } // if
   #endif
 
   #ifndef DISABLE_PLUGIN_ADAPTITEM
@@ -232,12 +267,18 @@ static TSyError AssignMethods( appPointer aMod, appPointer aField, memSize aFiel
                       XX, /*+*/
                       XX, /*+*/
                           /* */
-                      XX, /*-----* admin */
+                          /*-----* admin */
+                      XX, /* str */
+                      XX, /*     */
+                          /*-----*/
+                      XX, /* key */
+                      XX, /*     */
+                          /*-----*/
+                      XX, /*     */
+                      XX, /* map */
                       XX, /*     */
                       XX, /*     */
-                      XX, /*     */
-                      XX, /*     */
-                      XX, /*-----*/
+                          /*-----*/
                           /* */
                           /*-----* data read/write */
                       XX, /* rd  */
@@ -330,12 +371,18 @@ static TSyError AssignMethods( appPointer aMod, appPointer aField, memSize aFiel
                       XX, /*+*/
                       XX, /*+*/
                           /* */
-                      XX, /*-----* admin */
+                          /*-----* admin */
+                      XX, /* str */
+                      XX, /*     */
+                          /*-----*/
+                      XX, /* key */
+                      XX, /*     */
+                          /*-----*/
+                      XX, /*     */
+                      XX, /* map */
                       XX, /*     */
                       XX, /*     */
-                      XX, /*     */
-                      XX, /*     */
-                      XX, /*-----*/
+                          /*-----*/
                           /* */
                           /*-----* data read/write */
                       XX, /* rd  */

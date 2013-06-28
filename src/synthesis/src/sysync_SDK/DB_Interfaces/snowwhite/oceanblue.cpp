@@ -6,7 +6,7 @@
  *  datastore plugin interface and
  *  Base class for datastore plugins in C++
  *
- *  Copyright (c) 2008-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2008-2011 by Synthesis AG + plan44.ch
  *
  */
 
@@ -142,37 +142,52 @@ uInt32 OceanBlue::FilterSupport ( cAppCharP /* aFilterRules  */ ) { return 0; }
 
 // -- admin
 #ifndef DISABLE_PLUGIN_DATASTOREADMIN
-  TSyError OceanBlue::LoadAdminData( cAppCharP aLocDB, cAppCharP aRemDB, appCharP &adminData ) {
-    return     fAdmin.LoadAdminData          ( aLocDB,           aRemDB,          &adminData );
-  } // LoadAdminData
+  TSyError OceanBlue::LoadAdminData     ( cAppCharP    aLocDB, cAppCharP aRemDB, appCharP &adminData ) {
+    return     fAdmin.LoadAdminData                  ( aLocDB,           aRemDB,          &adminData );
+  }                // LoadAdminData
   
-  TSyError OceanBlue::SaveAdminData( cAppCharP adminData ) {
-    return     fAdmin.SaveAdminData          ( adminData );
-  } // SaveAdminData
+  TSyError OceanBlue::LoadAdminDataAsKey( cAppCharP /* aLocDB */,
+                                          cAppCharP /* aRemDB */, KeyH /* adminKey */ ) {
+    return LOCERR_NOTIMP;
+  }                // LoadAdminDataAsKey
+
+  TSyError OceanBlue::SaveAdminData     ( cAppCharP adminData ) {
+    return     fAdmin.SaveAdminData               ( adminData );
+  }                // SaveAdminData
+
+  TSyError OceanBlue::SaveAdminDataAsKey( KeyH /* adminKey */ ) {
+    return LOCERR_NOTIMP;
+  }                // SaveAdminDataAsKey
+
 
   bool     OceanBlue::ReadNextMapItem (  MapID mID, bool aFirst ) {
     return     fAdmin.ReadNextMapItem        ( mID,      aFirst );
-  } // ReadNextMapItem
+  }                // ReadNextMapItem
 
   TSyError OceanBlue::InsertMapItem   ( cMapID mID ) {
     return     fAdmin.InsertMapItem          ( mID );
-  } // InsertMapItem
+  }                // InsertMapItem
 
   TSyError OceanBlue::UpdateMapItem   ( cMapID mID ) {
     return     fAdmin.UpdateMapItem          ( mID );
-  } // UpdateMapItem
+  }                // UpdateMapItem
 
   TSyError OceanBlue::DeleteMapItem   ( cMapID mID ) {
     return     fAdmin.DeleteMapItem          ( mID );
-  } // DeleteMapItem
+  }                // DeleteMapItem
 #else
-  TSyError OceanBlue::LoadAdminData( cAppCharP /* aLocDB */, 
-                                     cAppCharP /* aRemDB */, appCharP& /* adminData */ ) { return DB_Forbidden;  }
-  TSyError OceanBlue::SaveAdminData                       ( cAppCharP  /* adminData */ ) { return DB_Forbidden;  }
-  bool     OceanBlue::ReadNextMapItem (  MapID /* mID */,        bool  /* aFirst    */ ) { return false;         }
-  TSyError OceanBlue::InsertMapItem   ( cMapID /* mID */ )                               { return DB_Forbidden;  }
-  TSyError OceanBlue::UpdateMapItem   ( cMapID /* mID */ )                               { return DB_Forbidden;  }
-  TSyError OceanBlue::DeleteMapItem   ( cMapID /* mID */ )                               { return DB_Forbidden;  }
+  TSyError OceanBlue::LoadAdminData     ( cAppCharP /* aLocDB */,
+                                          cAppCharP /* aRemDB */, appCharP& /* adminData */ ) { return DB_Forbidden;  }
+  TSyError OceanBlue::LoadAdminDataAsKey( cAppCharP /* aLocDB */,
+                                          cAppCharP /* aRemDB */,     KeyH  /* adminKey  */ ) { return DB_Forbidden;  }
+
+  TSyError OceanBlue::SaveAdminData                            ( cAppCharP  /* adminData */ ) { return DB_Forbidden;  }
+  TSyError OceanBlue::SaveAdminDataAsKey                            ( KeyH  /* adminKey  */ ) { return DB_Forbidden;  }
+
+  bool     OceanBlue::ReadNextMapItem (  MapID /* mID */,             bool  /* aFirst    */ ) { return false;         }
+  TSyError OceanBlue::InsertMapItem   ( cMapID /* mID */ )                                    { return DB_Forbidden;  }
+  TSyError OceanBlue::UpdateMapItem   ( cMapID /* mID */ )                                    { return DB_Forbidden;  }
+  TSyError OceanBlue::DeleteMapItem   ( cMapID /* mID */ )                                    { return DB_Forbidden;  }
 #endif
 
 
@@ -186,7 +201,7 @@ TSyError OceanBlue::ReadNextItem     ( ItemID /* aID */, appCharP& /* aItemData 
 TSyError OceanBlue::ReadNextItemAsKey( ItemID /* aID */,     KeyH  /* aItemKey  */,
                                        sInt32 &aStatus,      bool  /* aFirst    */ )
                                             { aStatus= ReadNextItem_EOF;                   return LOCERR_OK;     }
-                                            
+
 TSyError OceanBlue::ReadItem        ( cItemID /* aID */, appCharP& /* aItemData */ )     { return LOCERR_NOTIMP; }
 TSyError OceanBlue::ReadItemAsKey   ( cItemID /* aID */,     KeyH  /* aItemKey  */ )     { return LOCERR_NOTIMP; }
 TSyError OceanBlue::EndDataRead()                                                        { return LOCERR_OK;     }
@@ -614,29 +629,37 @@ uInt32             FilterSupport ( CContext ac, cAppCharP aFilterRules ) {
 
 
 // -- admin
-TSyError           LoadAdminData  ( CContext ac, cAppCharP aLocDB, cAppCharP aRemDB, appCharP *adminData ) {
-  return SW( ac )->LoadAdminData                         ( aLocDB,           aRemDB,          *adminData );
-} // LoadAdminData
+TSyError           LoadAdminData     ( CContext ac, cAppCharP aLocDB, cAppCharP aRemDB, appCharP *adminData ) {
+  return SW( ac )->LoadAdminData                            ( aLocDB,           aRemDB,          *adminData );
+}               // LoadAdminData
 
-TSyError           SaveAdminData  ( CContext ac, cAppCharP adminData ) {
-  return SW( ac )->SaveAdminData                         ( adminData );
-} // SaveAdminData
+TSyError           LoadAdminDataAsKey( CContext ac, cAppCharP aLocDB, cAppCharP aRemDB,     KeyH  adminKey ) {
+  return SW( ac )->LoadAdminDataAsKey                       ( aLocDB,           aRemDB,           adminKey );
+}               // LoadAdminDataAsKey
 
-bool               ReadNextMapItem( CContext ac,  MapID mID, bool aFirst ) {
-  return SW( ac )->ReadNextMapItem                    ( mID,      aFirst );
-} // ReadNextMapItem
+TSyError           SaveAdminData     ( CContext ac, cAppCharP adminData ) {
+  return SW( ac )->SaveAdminData                            ( adminData );
+}               // SaveAdminData
 
-TSyError           InsertMapItem  ( CContext ac, cMapID mID ) {
-  return SW( ac )->InsertMapItem                      ( mID );
-} // InsertMapItem
+TSyError           SaveAdminDataAsKey( CContext ac,      KeyH adminKey ) {
+  return SW( ac )->SaveAdminDataAsKey                       ( adminKey );
+}               // SaveAdminDataAsKey
 
-TSyError           UpdateMapItem  ( CContext ac, cMapID mID ) {
-  return SW( ac )->UpdateMapItem                      ( mID );
-} // UpdateMapItem
+bool               ReadNextMapItem   ( CContext ac,  MapID mID, bool aFirst ) {
+  return SW( ac )->ReadNextMapItem                       ( mID,      aFirst );
+}               // ReadNextMapItem
 
-TSyError           DeleteMapItem  ( CContext ac, cMapID mID ) {
-  return SW( ac )->DeleteMapItem                      ( mID );
-} // DeleteMapItem
+TSyError           InsertMapItem     ( CContext ac, cMapID mID ) {
+  return SW( ac )->InsertMapItem                         ( mID );
+}               // InsertMapItem
+
+TSyError           UpdateMapItem     ( CContext ac, cMapID mID ) {
+  return SW( ac )->UpdateMapItem                         ( mID );
+}               // UpdateMapItem
+
+TSyError           DeleteMapItem     ( CContext ac, cMapID mID ) {
+  return SW( ac )->DeleteMapItem                         ( mID );
+}               // DeleteMapItem
 
 
 

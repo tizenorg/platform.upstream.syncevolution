@@ -1,13 +1,13 @@
 /**
  *  @File     customimplagent.cpp
  *
- *  @Author   Lukas Zeller (luz@synthesis.ch)
+ *  @Author   Lukas Zeller (luz@plan44.ch)
  *
  *  @brief TCustomAgent
  *    Base class for agenst (servers or clients) with customizable datastores
  *    based on TCustomImplDS
  *
- *    Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *    Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  *  @Date 2005-12-05 : luz : separated from odbcdbagent
  */

@@ -36,11 +36,18 @@
 #endif
 
 #include "CmdlineSyncClient.h"
-#include "EvolutionSyncSource.h"
+#include <syncevo/SyncSource.h>
 #include <syncevo/util.h>
 #include <syncevo/VolatileConfigNode.h>
 
+#include <boost/bind.hpp>
+
 #include <syncevo/declarations.h>
+
+#ifdef ENABLE_BUTEO_TESTS
+#include "client-test-buteo.h"
+#endif
+
 SE_BEGIN_CXX
 
 /*
@@ -109,7 +116,7 @@ private:
  * not delivered, see e-cal.c), which then leads to D-Bus errors.
  *
  * The workaround consists of keeping one open SyncEvolution backend
- * around for each of ical20 and vcard21/30, if they ever were used
+ * around for each of eds_event and eds_contact/30, if they ever were used
  * during testing.
  */
 static map<string, boost::shared_ptr<TestingSyncSource> > lockEvolution;
@@ -163,7 +170,7 @@ public:
         ClientTest(getenv("CLIENT_TEST_DELAY") ? atoi(getenv("CLIENT_TEST_DELAY")) : 0,
                    getenv("CLIENT_TEST_LOG") ? getenv("CLIENT_TEST_LOG") : ""),
         m_clientID(id),
-        m_configs(EvolutionSyncSource::getTestRegistry())
+        m_configs(SyncSource::getTestRegistry())
     {
         const char *server = getenv("CLIENT_TEST_SERVER");
 
@@ -255,7 +262,6 @@ public:
                     boost::shared_ptr<SyncSourceConfig> scServerTemplate = from->getSyncSourceConfig(testconfig.sourceNameServerTemplate);
                     sc->setURI(scServerTemplate->getURI());
                 }
-                sc->setSourceType(testconfig.type);
             }
 
             // always set these properties: they might have changed since the last run
@@ -263,6 +269,7 @@ public:
             sc->setDatabaseID(database);
             sc->setUser(m_evoUser);
             sc->setPassword(m_evoPassword);
+            sc->setBackend(SourceType(testconfig.type).m_backend);
         }
         config->flush();
     }
@@ -319,14 +326,41 @@ public:
         return false;
     }
 
+#ifdef ENABLE_BUTEO_TESTS
+    virtual void setup() {
+        QtContactsSwitcher::prepare(*this);
+    }
+#endif
+
     virtual SyncMLStatus doSync(const int *sources,
                                 const std::string &logbase,
                                 const SyncOptions &options)
     {
+        // check whether using buteo to do sync
+        const char *buteo = getenv("CLIENT_TEST_BUTEO");
+        bool useButeo = false;
+        if (buteo && 
+                (boost::equals(buteo, "1") || boost::iequals(buteo, "t"))) {
+            useButeo = true;
+        }
+
         string server = getenv("CLIENT_TEST_SERVER") ? getenv("CLIENT_TEST_SERVER") : "funambol";
         server += "_";
         server += m_clientID;
         
+
+        if (useButeo) {
+#ifdef ENABLE_BUTEO_TESTS
+            ButeoTest buteo(*this, server, logbase, options);
+            buteo.prepareSources(sources, m_syncSource2Config);
+            SyncReport report;
+            SyncMLStatus status = buteo.doSync(&report);
+            options.m_checkReport.check(status, report);
+            return status;
+#else
+            throw runtime_error("This client-test was built without enabling buteo testing.");
+#endif
+        }
         class ClientTest : public CmdlineSyncClient {
         public:
             ClientTest(const string &server,
@@ -355,11 +389,15 @@ public:
                     // mode is perhaps too conservative, but in
                     // practice the only test where slow sync
                     // prevention caused a test failure was
-                    // Client::Sync::vcard30::testTwoWaySync after
+                    // Client::Sync::eds_contact::testTwoWaySync after
                     // some other failed test, so let's be conservative...
                     setPreventSlowSync(false);
                 }
                 SyncContext::prepare();
+                if (m_options.m_prepareCallback &&
+                    m_options.m_prepareCallback(*this, m_options)) {
+                    m_options.m_isAborted = true;
+                }
             }
 
             virtual void displaySyncProgress(sysync::TProgressEventEnum type,
@@ -396,9 +434,9 @@ public:
         // configure active sources with the desired sync mode,
         // disable the rest
         FilterConfigNode::ConfigFilter filter;
-        filter[SyncSourceConfig::m_sourcePropSync.getName()] = "none";
+        filter["sync"] = "none";
         client.setConfigFilter(false, "", filter);
-        filter[SyncSourceConfig::m_sourcePropSync.getName()] =
+        filter["sync"] =
             PrettyPrintSyncMode(options.m_syncMode);
         for(int i = 0; sources[i] >= 0; i++) {
             std::string &name = m_syncSource2Config[sources[i]];
@@ -431,9 +469,9 @@ private:
     /** returns the name of the Evolution database */
     string getDatabaseName(const string &configName) {
         if (configName == "calendar+todo") {
-            return "ical20,itodo20";
+            return "eds_event,eds_task";
         } else if (configName == "file_calendar+todo") {
-            return "file_ical20,file_itodo20";
+            return "file_event,file_task";
         }
         return m_evoPrefix + configName + "_" + m_clientID;
     }
@@ -446,16 +484,16 @@ private:
         // implement Evolution shutdown workaround (see lockEvolution above)
         evClient.checkEvolutionSource(name);
 
-        return evClient.createSource(name, isSourceA);
+        return evClient.createNamedSource(name, isSourceA);
     }
 
     /** called internally in this class */
-    TestingSyncSource *createSource(const string &name, bool isSourceA) {
+    TestingSyncSource *createNamedSource(const string &name, bool isSourceA) {
         string database = getDatabaseName(name);
-        SyncConfig config("client-test-changes");
-        SyncSourceNodes nodes = config.getSyncSourceNodes(name,
-                                                          string("_") + m_clientID +
-                                                          "_" + (isSourceA ? "A" : "B"));
+        boost::shared_ptr<SyncConfig> context(new SyncConfig("target-config@client-test"));
+        SyncSourceNodes nodes = context->getSyncSourceNodes(name,
+                                                            string("_") + m_clientID +
+                                                            "_" + (isSourceA ? "A" : "B"));
 
         // always set this property: the name might have changes since last test run
         nodes.getProperties()->setProperty("evolutionsource", database.c_str());
@@ -463,14 +501,14 @@ private:
         nodes.getProperties()->setProperty("evolutionpassword", m_evoPassword.c_str());
 
         SyncSourceParams params(name,
-                                nodes);
-
+                                nodes,
+                                context);
         const RegisterSyncSourceTest *test = m_configs[name];
         ClientTestConfig testConfig;
         getSourceConfig(test, testConfig);
 
         PersistentSyncSourceConfig sourceConfig(params.m_name, params.m_nodes);
-        sourceConfig.setSourceType(testConfig.type);
+        sourceConfig.setSourceType(SourceType(testConfig.type));
 
         // downcasting here: anyone who registers his sources for testing
         // must ensure that they are indeed TestingSyncSource instances
@@ -499,17 +537,16 @@ private:
         // hard-coded names as used by src/backends/evolution;
         // if some other backend reuses them, it gets the
         // same treatment, which shouldn't cause any harm
-        if (name == "vcard21" ||
-            name == "vcard30") {
+        if (name == "eds_contact") {
             basename = "ebook";
-        } else if (name == "ical20" ||
+        } else if (name == "eds_event" ||
                    name == "text") {
             basename = "ecal";
         }
 
         if (!basename.empty() &&
             lockEvolution.find(basename) == lockEvolution.end()) {
-            lockEvolution[basename].reset(createSource(name, true));
+            lockEvolution[basename].reset(createNamedSource(name, true));
             lockEvolution[basename]->open();
             ClientTest::registerCleanup(CleanupSources);
         }

@@ -1,11 +1,11 @@
 /*
  *  File:         rrules.cpp
  *
- *  Author:       Lukas Zeller (luz@synthesis.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  Parser/Generator routines for vCalendar RRULES
  *
- *  Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  *  2004-11-23 : luz : created from exctracts from vcalendaritemtype.cpp
  *
@@ -405,7 +405,7 @@ bool internalToRRULE1(
                 // show repetion before first day item
                 if (!repshown) {
                   repshown=true;
-                  StringObjAppendPrintf(aString," %hd",j+1);
+                  StringObjAppendPrintf(aString," %d",j+1);
                   // - show if relative to beginning or end of month
                   if (i>0) aString+='-'; else aString+='+';
                 }
@@ -434,7 +434,7 @@ bool internalToRRULE1(
         // - show day numbers
         for (k=0; k<32; k++) {
           if (m & ((uInt64)1<<k)) {
-            StringObjAppendPrintf(aString," %hd",k+1);
+            StringObjAppendPrintf(aString," %d",k+1);
             // show if relative to the end
             if (i>0) aString+='-';
           }
@@ -528,7 +528,7 @@ bool internalToRRULE2(
                 if (!repshown) {
                   repshown=true;
                   if (i>0) aString+='-';
-                  StringObjAppendPrintf(aString,"%hd",j+1);
+                  StringObjAppendPrintf(aString,"%d",j+1);
                   // - show if relative to beginning or end of month
                 }
                 // show day
@@ -573,7 +573,8 @@ bool internalToRRULE2(
     default :
       goto incompat;
   } // switch freqmod
-  // add end date (or #0 if no end date = endless)
+  // add end date
+  // Note: for correct iCalendar 2.0, this should be (and is, in mimedir) called with untilcontext=UTC unless it's date-only
   if (until!=noLinearTime) {
     // there is an end date, use it
     aString+=";UNTIL=";
@@ -2041,7 +2042,7 @@ void appendMaskAsNumbers(
         aString+=aPrefix;
         aPrefix=","; // prefix for further elements is now colon.
         if (i>0) aString+='-';
-        StringObjAppendPrintf(aString,"%hd",k+1);
+        StringObjAppendPrintf(aString,"%d",k+1);
       }
     }
     // - switch to those that are relative to the end of the month / year

@@ -1,12 +1,12 @@
 /*
  *  File:         ConfigElement.cpp
  *
- *  Author:			  Lukas Zeller (luz@synthesis.ch)
+ *  Author:			  Lukas Zeller (luz@plan44.ch)
  *
  *  TConfigElement
  *    Element of hierarchical configuration
  *
- *  Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  *  2001-11-14 : luz : created
  */
@@ -320,6 +320,11 @@ bool TConfigElement::startElement(const char *aElementName, const char **aAttrib
       fNest,
       aLine
     ));
+    if (fParseMode==pamo_all) {
+      // read over contents, no matter what is inside
+    	fNest++;
+      return true;
+    }
     #ifdef SYSER_REGISTRATION
     // check for locked elements or subtrees
     // - copy parent's lock status
@@ -516,10 +521,12 @@ bool TConfigElement::startElement(const char *aElementName, const char **aAttrib
         return false; // element not known, generate error message
       }
     }
+    /* %%% moved up to beginning
     else if (fParseMode==pamo_all) {
       // read over contents
       fNest++;
     }
+    */
     else {
       ReportError(false,"no XML tag expected here");
     }
@@ -673,7 +680,8 @@ bool TConfigElement::endElement(const char *aElementName, bool aIsDelegated)
           // back to nested
         	fParseMode=pamo_nested;
         }
-        else fParseMode=pamo_element; // back to normal element parsing
+        else
+        	fParseMode=pamo_element; // back to normal element parsing
         return false; // do not exit
       case pamo_all:
       case pamo_nested:

@@ -7,7 +7,7 @@
  *  Programming interface between Synthesis SyncML engine 
  *  and a database structure.
  *
- *  Copyright (c) 2008-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2008-2011 by Synthesis AG + plan44.ch
  *
  *  
  *    E X A M P L E    C O D E

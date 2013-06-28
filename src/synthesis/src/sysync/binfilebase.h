@@ -1,12 +1,12 @@
 /**
  *  @File     binfile.h
  *
- *  @Author   Lukas Zeller (luz@synthesis.ch)
+ *  @Author   Lukas Zeller (luz@plan44.ch)
  *
  *  @brief TBinFileBase
  *    Simple record based binary file storage class
  *
- *    Copyright (c) 2003-2009 by Synthesis AG (www.synthesis.ch)
+ *    Copyright (c) 2003-2011 by Synthesis AG + plan44.ch
  *
  *  @Date 2006-03-28 : luz : extracted into separate file from TBinfileImplDS
  */
@@ -88,6 +88,8 @@ public:
   uInt32 getFoundVersion(void) { return fFoundVersion; };
   // - check if open
   bool isOpen(void) { return platformFileIsOpen(); };
+	// - create a copy
+	bferr createAsCopyFrom(TBinFileBase &aSourceBinFile, bool aOverwrite=false);
   // - try to open existing DB file according to params set with setFileInfo
   bferr open(uInt32 aExtraHeadersize=0, void *aExtraHeaderP=NULL, TUpdateFunc aUpdateFunc=NULL);
   // - create existing DB file according to params set with setFileInfo

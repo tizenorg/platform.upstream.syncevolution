@@ -1,12 +1,12 @@
 /**
  *  @File     stdlogicagent.h
  *
- *  @Author   Lukas Zeller (luz@synthesis.ch)
+ *  @Author   Lukas Zeller (luz@plan44.ch)
  *
  *  @brief TStdLogicAgent
  *    Agent (=server or client session) for standard database logic implementations, see @ref TStdLogicDS
  *
- *    Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *    Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  *  @Date 2005-09-23 : luz : created from custdbagent
  */

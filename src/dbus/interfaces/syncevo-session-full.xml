@@ -94,9 +94,10 @@
       <arg type="b" name="temporary" direction="in">
         <doc:doc><doc:summary>TRUE if configuration changes should only be used for the duration of the session.
             This is useful to run a single sync session with different settings,
-            for example with an increased logging level. "update=FALSE" and
-            "temporary=TRUE" are mutually exclusive. Temporary config changes
-            do not affect getting or setting permanent configurations.
+            for example with an increased logging level. "update=FALSE" removes
+            all previous temporary settings before adding the current ones.
+            Temporary config changes modify the result of GetConfig(), but
+            are ignored when making permanent changes in SetConfig().
         </doc:summary></doc:doc>
       </arg>
       <arg type="a{sa{ss}}" name="configuration" direction="in">
@@ -204,7 +205,7 @@
         <doc:doc><doc:summary>synchronization source modes</doc:summary></doc:doc>
         <doc:doc><doc:description>Source modes to override the 'mode' variable for specific sources. The dictionary key is source name, value is synchronization mode. Valid synchronization modes are all synchronization modes used in syncevolution server configuration files and the empty string.</doc:description></doc:doc>
       </arg>
-      <annotation name="com.trolltech.QtDBus.QtTypeName.In1" value="StringMap"/>
+      <annotation name="com.trolltech.QtDBus.QtTypeName.In1" value="QStringMap"/>
     </method>
 
     <method name="Abort">
@@ -291,6 +292,7 @@
       </arg>
       <arg type="a{ss}" name="vars" direction="in">
         <doc:doc><doc:summary>Environment variables in clients</doc:summary></doc:doc>
+        <annotation name="com.trolltech.QtDBus.QtTypeName.In1" value="QStringMap"/>
       </arg>
     </method>
 

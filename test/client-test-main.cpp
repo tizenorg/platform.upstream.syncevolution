@@ -40,6 +40,7 @@
 
 #include <Logging.h>
 #include <LogStdout.h>
+#include <syncevo/LogRedirect.h>
 #include "ClientTest.h"
 
 #include <stdlib.h>
@@ -126,11 +127,11 @@ public:
 
     void startTest (CppUnit::Test *test) {
         m_currentTest = test->getName();
-        std::cerr << m_currentTest;
+        std::cout << m_currentTest << std::flush;
         if (!getenv("SYNCEVOLUTION_DEBUG")) {
             string logfile = m_currentTest + ".log";
             simplifyFilename(logfile);
-            m_logger.reset(new LoggerStdout(logfile));
+            m_logger.reset(new LogRedirect(true, logfile.c_str()));
             m_logger->setLevel(Logger::DEBUG);
             LoggerBase::pushLogger(m_logger.get());
         }
@@ -191,14 +192,18 @@ public:
             FILE *fd = fopen ("____compare.log","r");
             if (fd != NULL) {
                 fclose(fd);
-                system ((string("cat ____compare.log >>")+logfile).c_str());
+                if (system ((string("cat ____compare.log >>")+logfile).c_str()) < 0) {
+                    SE_LOG_WARNING(NULL, NULL, "Unable to append ____compare.log to %s.",
+                                   logfile.c_str());
+                }
             }
         }
 
-        std::cerr << " " << result << "\n";
+        std::cout << " " << result << "\n";
         if (!failure.empty()) {
-            std::cerr << failure << "\n";
+            std::cout << failure << "\n";
         }
+        std::cout << std::flush;
     }
 
     bool hasFailed() { return m_failed; }
@@ -209,7 +214,7 @@ private:
     bool m_failed, m_testFailed;
     string m_currentTest;
     int m_alarmSeconds;
-    auto_ptr<LoggerStdout> m_logger;
+    auto_ptr<LoggerBase> m_logger;
     CppUnit::TestResultCollector m_failures;
 
     static void alarmTriggered(int signal) {
@@ -256,7 +261,7 @@ int main(int argc, char* argv[])
 
   // Change the default outputter to a compiler error format outputter
   runner.setOutputter( new ClientOutputter( &runner.result(),
-                                            std::cerr ) );
+                                            std::cout ) );
 
   // track current test and failure state
   const char *allowedFailures = getenv("CLIENT_TEST_FAILURES");
@@ -287,7 +292,7 @@ int main(int argc, char* argv[])
       return syncListener.hasFailed() ? 1 : 0;
   } catch (invalid_argument e) {
       // Test path not resolved
-      std::cerr << std::endl
+      std::cout << std::endl
                 << "ERROR: " << e.what()
                 << std::endl;
 

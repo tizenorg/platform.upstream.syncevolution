@@ -1,12 +1,12 @@
 /*
  *  File:         textprofile.h
  *
- *  Author:			  Lukas Zeller (luz@synthesis.ch)
+ *  Author:			  Lukas Zeller (luz@plan44.ch)
  *
  *  TTextProfile
  *    utility class to parse line-by-line type text including RFC822 emails
  *
- *  Copyright (c) 2002-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2002-2011 by Synthesis AG + plan44.ch
  *
  *  2005-07-26 : luz : extracted from textitemtype
  *

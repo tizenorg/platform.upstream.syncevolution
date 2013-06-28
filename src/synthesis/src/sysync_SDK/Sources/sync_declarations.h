@@ -7,7 +7,7 @@
  *        the Synthesis SyncML engine
  *        and the database layer
  *
- *  Copyright (c) 2004-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2004-2011 by Synthesis AG + plan44.ch
  *
  * These are the declarations for the calling interface between the
  * Synthesis SyncML engine and a UI and/or DB plugin. Use this

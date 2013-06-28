@@ -1,13 +1,13 @@
 /*
  *  File:         VCalendarItemType.h
  *
- *  Author:			  Lukas Zeller (luz@synthesis.ch)
+ *  Author:			  Lukas Zeller (luz@plan44.ch)
  *
  *  TVCalendarItemType
  *    vCalendar item type, based on MIME-DIR Item Type, uses
  *    TMultiFieldItem as data item.
  *
- *  Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  *  2001-09-25 : luz : created
  *
@@ -22,10 +22,6 @@
 using namespace sysync;
 
 namespace sysync {
-
-// define local conversion mode for MIME-derivate
-#define CONVMODE_RRULE CONVMODE_MIME_DERIVATES+0
-
 
 // vCalendar variants
 typedef enum {

@@ -1,12 +1,12 @@
 /**
  *  @File     pluginapids.cpp
  *
- *  @Author   Lukas Zeller (luz@synthesis.ch)
+ *  @Author   Lukas Zeller (luz@plan44.ch)
  *
  *  @brief TPluginApiDS
  *    Plugin based datastore API implementation
  *
- *    Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *    Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  *  @Date 2005-10-06 : luz : created from apidbdatastore
  */
@@ -112,6 +112,7 @@ void TPluginDSConfig::clear(void)
   fPluginParams_Data.clear();
   // - clear capabilities
   fItemAsKey = false;
+  fHasDeleteSyncSet = false;
   // clear inherited
   inherited::clear();
 } // TPluginDSConfig::clear
@@ -186,10 +187,13 @@ void TPluginDSConfig::localResolve(bool aLastPass)
       // now pass plugin-specific config
       if (fDBApiConfig_Data.PluginParams(fPluginParams_Data.fConfigString.c_str())!=LOCERR_OK)
         SYSYNC_THROW(TConfigParseException("Module does not understand params passed in <plugin_params>"));
-      // Check for new method for data access (as keys instead of as text items)
+			// Check module capabilities
       TDB_Api_Str capa;
       fDBApiConfig_Data.Capabilities(capa);
       string capaStr = capa.c_str();
+      // - check existence of DeleteSyncSet()
+      fHasDeleteSyncSet = FlagOK(capaStr,CA_DeleteSyncSet,true);
+      // - Check for new method for data access (as keys instead of as text items)
       fItemAsKey = FlagOK(capaStr,CA_ItemAsKey,true);
       // Check if engine is compatible
       #ifndef DBAPI_TEXTITEMS
@@ -313,8 +317,9 @@ void TPluginApiDS::announceAgentDestruction(void)
 /// @note must be safe to be called multiple times and even after announceAgentDestruction()
 void TPluginApiDS::InternalResetDataStore(void)
 {
-  // init some vars
-  /* nop for now */
+  // filtering capabilities need to be evaluated first
+	fAPICanFilter = false;
+  fAPIFiltersTested = false;
 } // TPluginApiDS::InternalResetDataStore
 
 
@@ -480,125 +485,6 @@ bool TPluginApiDS::generateDBItemData(
 } // TPluginApiDS::generateDBItemData
 
 
-/* %%% old version, common base part now moved to customimplds
-
-// generate text representations of item's fields (BLOBs and parametrized fields not included)
-// - returns true if at least one field appended
-bool TPluginApiDS::generateItemData(
-  bool aAssignedOnly,
-  TMultiFieldItem &aItem,
-  uInt16 aSetNo,
-  string &aDataFields
-)
-{
-  TFieldMapList *fmlP = &(fPluginDSConfigP->fFieldMappings.fFieldMapList);
-  TFieldMapList::iterator pos;
-  TApiFieldMapItem *fmiP;
-  string val;
-  bool createdone=false;
-
-  // pre-process (run scripts)
-  if (!preWriteProcessItem(aItem)) return false;
-  // create text representation for all mapped and writable fields
-  for (pos=fmlP->begin(); pos!=fmlP->end(); pos++) {
-    fmiP = static_cast<TApiFieldMapItem *>(*pos);
-    if (
-      fmiP->writable &&
-      fmiP->setNo==aSetNo
-    ) {
-      // get field
-      TItemField *basefieldP,*leaffieldP;
-      sInt16 fid = fmiP->fid;
-      // determine base field (might be array)
-      basefieldP = getMappedBaseFieldOrVar(aItem,fid);
-      // ignore map if we have no field for it
-      if (!basefieldP) continue;
-      // ignore map if field is not assigned and assignedonly flag is set
-      if (aAssignedOnly && basefieldP->isUnassigned()) continue;
-      // yes, we want to write this field
-      #ifdef ARRAYFIELD_SUPPORT
-      uInt16 arrayIndex=0;
-      #endif
-      do {
-        // first check if there is an element at all
-        #ifdef ARRAYFIELD_SUPPORT
-        if (basefieldP->isArray())
-          leaffieldP = basefieldP->getArrayField(arrayIndex,true); // get existing leaf fields only
-        else
-          leaffieldP = basefieldP; // leaf is base field
-        #else
-        leaffieldP = basefieldP; // leaf is base field
-        #endif
-        // if no leaf field, we'll need to exit here (we're done with the array)
-        if (leaffieldP==NULL) break;
-        // we have some data, first append name
-        aDataFields+=fmiP->getName();
-        #ifdef ARRAYFIELD_SUPPORT
-        // append array index if this is an array field
-        if (basefieldP->isArray())
-          StringObjAppendPrintf(aDataFields,"[%d]",arrayIndex);
-        #endif
-        // append value
-        if (basefieldP->isBasedOn(fty_blob) || fmiP->as_param) {
-          // - for blobs and parametrized values, we use a BlobID and send the data later
-          aDataFields+= ";BLOBID=";
-          aDataFields+= fmiP->getName();
-          #ifdef ARRAYFIELD_SUPPORT
-          // append array index if this is an array field
-          if (basefieldP->isArray())
-            StringObjAppendPrintf(aDataFields,"[%d]",arrayIndex);
-          #endif
-        }
-        else {
-          // - literal value (converted to DB charset as C-escaped string)
-          if (leaffieldP->isBasedOn(fty_timestamp) && fmiP->dbfieldtype==dbft_timestamp) {
-            TTimestampField *tsfP = static_cast<TTimestampField *>(leaffieldP);
-            // get original zone
-            timecontext_t tctx = tsfP->getTimeContext();
-          	if (TCTX_IS_DURATION(tctx) || TCTX_IS_DATEONLY(tctx) ||!TCTX_IS_UNKNOWN(tctx)) {
-            	// not fully floating, get name
-		          TimeZoneContextToName(tctx, val, tsfP->getGZones());
-              // append it
-              aDataFields+= ";TZNAME=";
-              aDataFields+= val;
-            }
-            // now convert to database time zone
-            tctx = fPluginDSConfigP->fDataTimeZone; // desired database zone
-            // report as-is if we have a floating map or if it IS floating
-            if (fmiP->floating_ts || tsfP->isFloating())
-              tctx = TCTX_UNKNOWN; // report as-is
-            // now create ISO8601 of it
-            tsfP->getAsISO8601(val,tctx,true,false,false);
-          }
-          else {
-            leaffieldP->getAsString(val); // get value
-          }
-          aDataFields+=':'; // delimiter
-          string valDB;
-          appendUTF8ToString(
-            val.c_str(),
-            valDB,
-            fPluginDSConfigP->fDataCharSet,
-            fPluginDSConfigP->fDataLineEndMode
-          );
-          StrToCStrAppend(valDB.c_str(),aDataFields,true); // allow 8-bit chars to be represented as-is (no \xXX escape needed)
-        } // if
-        aDataFields+="\r\n"; // CRLF at end
-        // we now have at least one field
-        createdone=true;
-        // next item in array
-        #ifdef ARRAYFIELD_SUPPORT
-        arrayIndex++;
-        #endif
-      } while(basefieldP->isArray()); // only arrays do loop
-    } // if writable field
-  } // for all field mappings
-  PDEBUGPRINTFX(DBG_USERDATA+DBG_DBAPI+DBG_EXOTIC+DBG_HOT,("generateItemData generated string for DBApi:"));
-  PDEBUGPUTSXX(DBG_USERDATA+DBG_DBAPI+DBG_EXOTIC,aDataFields.c_str(),0,true);
-  return createdone;
-} // TPluginApiDS::generateItemData
-
-*/
 
 #endif // DBAPI_TEXTITEMS
 
@@ -614,56 +500,81 @@ bool TPluginApiDS::postReadProcessItem(TMultiFieldItem &aItem, uInt16 aSetNo)
     TFieldMapList::iterator pos;
     TApiFieldMapItem *fmiP;
 
-    // create text representation for all mapped and writable fields
+    // post-process all mapped and writable fields
     for (pos=fmlP->begin(); pos!=fmlP->end(); pos++) {
       fmiP = static_cast<TApiFieldMapItem *>(*pos);
       if (
         fmiP->readable &&
-        fmiP->setNo==aSetNo &&
-        fmiP->as_param // only if explicitly marked as parameter
+        fmiP->setNo==aSetNo
       ) {
         // get field
         TItemField *basefieldP, *leaffieldP;
+        #ifdef ARRAYFIELD_SUPPORT
+        uInt16 arrayIndex=0;
+        #endif
         sInt16 fid = fmiP->fid;
         // determine base field (might be array)
         basefieldP = getMappedBaseFieldOrVar(aItem,fid);
         // ignore map if we have no field for it
         if (!basefieldP) continue;
-        // ignore all that can't have a blob proxy (non-strings)
-        if (!basefieldP->isBasedOn(fty_string)) continue;
-        // unlike with textItems that get the BLOBID from the DB,
-        // in asKey mode, BLOBID is just map name plus a possible array index.
-        // Plugin must be able to identify the BLOB using this plus the item ID.
-        // Plugin must also make sure an array element exists (value does not matter, can be empty)
-        // for each element that should be proxied here.
-        // - create the proxies (one for each array element)
-        #ifdef ARRAYFIELD_SUPPORT
-        uInt16 arrayIndex=0;
-        #endif
-        do {
-          // first check if there is an element at all
-          string blobid = fmiP->getName(); // map name
+        // We have a base field for this, check what to do
+        if (fPluginDSConfigP->fUserZoneOutput && !fmiP->floating_ts && basefieldP->elementsBasedOn(fty_timestamp)) {
+        	// userzoneoutput requested for non-floating timestamp field, move it!
           #ifdef ARRAYFIELD_SUPPORT
-          if (basefieldP->isArray()) {
-            leaffieldP = basefieldP->getArrayField(arrayIndex,true); // get existing leaf fields only
-            StringObjAppendPrintf(blobid,"[%d]",arrayIndex); // add array index to blobid
-            arrayIndex++;
-          }
-          else
-            leaffieldP = basefieldP; // leaf is base field
-          // if no leaf field, we'll need to exit here (we're done with the array)
-          if (leaffieldP==NULL) break;
-          #else
-          leaffieldP = basefieldP; // no arrays: leaf is always base field
+					arrayIndex=0;
           #endif
-          // this array element exists, create the proxy
-          TApiBlobProxy *apiProxyP = new TApiBlobProxy(this,!leaffieldP->isBasedOn(fty_blob),blobid.c_str(),aItem.getLocalID());
-          // Note: we do not support "READNOW" proxies here, as they are useless in ItemKey context: if the
-          //       BLOB cannot be read later, no need for as_aparam map exists and plugin should just put the value
-          //      directly via the SetKeyValue() API.
-          // attach proxy to the string or blob field
-          static_cast<TStringField *>(leaffieldP)->setBlobProxy(apiProxyP);
-        } while(basefieldP->isArray()); // only arrays do loop all array elements
+          do {
+            #ifdef ARRAYFIELD_SUPPORT
+            if (basefieldP->isArray()) {
+              leaffieldP = basefieldP->getArrayField(arrayIndex,true); // get existing leaf fields only
+              arrayIndex++;
+            }
+            else
+              leaffieldP = basefieldP; // leaf is base field
+            // if no leaf field, we'll need to exit here (we're done with the array)
+            if (leaffieldP==NULL) break;
+            #else
+            leaffieldP = basefieldP; // no arrays: leaf is always base field
+            #endif
+	          static_cast<TTimestampField *>(leaffieldP)->moveToContext(fSessionP->fUserTimeContext, false);
+          } while(basefieldP->isArray()); // only arrays do loop all array elements
+        }
+        if (fmiP->as_param && basefieldP->elementsBasedOn(fty_string)) {
+          // string based field (string or BLOB) mapped as parameter
+          // unlike with textItems that get the BLOBID from the DB,
+          // in asKey mode, BLOBID is just map name plus a possible array index.
+          // Plugin must be able to identify the BLOB using this plus the item ID.
+          // Plugin must also make sure an array element exists (value does not matter, can be empty)
+          // for each element that should be proxied here.
+          // - create the proxies (one for each array element)
+          #ifdef ARRAYFIELD_SUPPORT
+          arrayIndex=0;
+          #endif
+          do {
+            // first check if there is an element at all
+            string blobid = fmiP->getName(); // map name
+            #ifdef ARRAYFIELD_SUPPORT
+            if (basefieldP->isArray()) {
+              leaffieldP = basefieldP->getArrayField(arrayIndex,true); // get existing leaf fields only
+              StringObjAppendPrintf(blobid,"[%d]",arrayIndex); // add array index to blobid
+              arrayIndex++;
+            }
+            else
+              leaffieldP = basefieldP; // leaf is base field
+            // if no leaf field, we'll need to exit here (we're done with the array)
+            if (leaffieldP==NULL) break;
+            #else
+            leaffieldP = basefieldP; // no arrays: leaf is always base field
+            #endif
+            // this array element exists, create the proxy
+            TApiBlobProxy *apiProxyP = new TApiBlobProxy(this,!leaffieldP->isBasedOn(fty_blob),blobid.c_str(),aItem.getLocalID());
+            // Note: we do not support "READNOW" proxies here, as they are useless in ItemKey context: if the
+            //       BLOB cannot be read later, no need for as_aparam map exists and plugin should just put the value
+            //      directly via the SetKeyValue() API.
+            // attach proxy to the string or blob field
+            static_cast<TStringField *>(leaffieldP)->setBlobProxy(apiProxyP);
+          } while(basefieldP->isArray()); // only arrays do loop all array elements
+        }
       } // readable field mapping with explicit as_param mark
     } // for all field mappings
   } // if AsKey access
@@ -733,7 +644,7 @@ bool TPluginApiDS::writeBlobs(
       // omit all non-BLOB normal fields
       // Note: in ItemKey mode, blobs must have the as_aparam flag to be written as blobs.
       //       in textItem mode, all fty_blob based fields will ALWAYS be written as blobs.
-      if (!(fmiP->as_param || (basefieldP->isBasedOn(fty_blob) && !fPluginDSConfigP->fItemAsKey))) continue;
+      if (!(fmiP->as_param || (basefieldP->elementsBasedOn(fty_blob) && !fPluginDSConfigP->fItemAsKey))) continue;
       // yes, we want to write this field as a BLOB
       #ifdef ARRAYFIELD_SUPPORT
       uInt16 arrayIndex;
@@ -888,7 +799,7 @@ bool TPluginApiDS::deleteBlobs(
       // omit all non-BLOB normal fields
       // Note: in ItemKey mode, blobs must have the as_aparam flag to be written as blobs.
       //       in textItem mode, all fty_blob based fields will ALWAYS be written as blobs.
-      if (!(fmiP->as_param || (basefieldP->isBasedOn(fty_blob) && !fPluginDSConfigP->fItemAsKey))) continue;
+      if (!(fmiP->as_param || (basefieldP->elementsBasedOn(fty_blob) && !fPluginDSConfigP->fItemAsKey))) continue;
       // yes, we want to write this field as a BLOB
 
       #ifdef ARRAYFIELD_SUPPORT
@@ -999,26 +910,32 @@ bool TPluginApiDS::dsFilteredFetchesFromDB(bool aFilterChanged)
 {
   #ifndef SDK_ONLY_SUPPORT
   // if we are not connected, let immediate ancestor check it (e.g. SQL/ODBC)
+  // Note that this can happen when dsFilteredFetchesFromDB() is called via Alertscript to resolve filter dependencies
+  //   before the DS is actually connected. In this case, the return value is not checked so that's ok.
+  //   Before actually laoding or zapping the sync set this is called once again with connected data plugin.
   if (!fDBApi_Data.Created()) return inherited::dsFilteredFetchesFromDB(aFilterChanged);
   #endif
-  // Anyway, let DBApi know (even if all filters are empty)
-  string filters;
-  // - local DB filter (=static filter, from config)
-  filters = "staticfilter:";
-  filters += fLocalDBFilter.c_str();
-  // - dynamic sync set filter
-  filters += "\r\ndynamicfilter:";
-  filters += fSyncSetFilter.c_str();
-  // - invisible filter (those that MATCH this filter should NOT be included)
-  filters += "\r\ninvisiblefilter:";
-  filters += fPluginDSConfigP->fInvisibleFilter.c_str();
-  // - let plugin know and check (we can filter at DBlevel if plugin understands both start/end)
-  filters += "\r\n";
-  bool canfilter =
-    (fDBApi_Data.FilterSupport(filters.c_str())>=3) ||
-    (fLocalDBFilter.empty() && fSyncSetFilter.empty() && fPluginDSConfigP->fInvisibleFilter.empty()); // no filter set = we can "filter"
+  if (aFilterChanged || !fAPIFiltersTested) {
+  	fAPIFiltersTested = true;
+    // Anyway, let DBApi know (even if all filters are empty)
+    string filters;
+    // - local DB filter (=static filter, from config)
+    filters = "staticfilter:";
+    filters += fLocalDBFilter.c_str();
+    // - dynamic sync set filter
+    filters += "\r\ndynamicfilter:";
+    filters += fSyncSetFilter.c_str();
+    // - invisible filter (those that MATCH this filter should NOT be included)
+    filters += "\r\ninvisiblefilter:";
+    filters += fPluginDSConfigP->fInvisibleFilter.c_str();
+    // - let plugin know and check (we can filter at DBlevel if plugin understands both start/end)
+    filters += "\r\n";
+    fAPICanFilter =
+      (fDBApi_Data.FilterSupport(filters.c_str())>=3) ||
+      (fLocalDBFilter.empty() && fSyncSetFilter.empty() && fPluginDSConfigP->fInvisibleFilter.empty()); // no filter set = we can "filter"
+  }
   // if we can filter, that's sufficient
-  if (canfilter) return true;
+  if (fAPICanFilter) return true;
   // otherwise, let implementation test (not immediate anchestor, which might be a different API like ODBC)
   return TCustomImplDS::dsFilteredFetchesFromDB(aFilterChanged);
 } // TPluginApiDS::dsFilteredFetchesFromDB
@@ -1050,6 +967,12 @@ localstatus TPluginApiDS::apiReadSyncSet(bool aNeedAll)
           "singleuser", // no real user key
           NULL // no associated session level // fPluginAgentP->getDBApiSession()
         );
+        if (dberr==LOCERR_OK) {
+        	// make sure plugin now sees filters before starting to read sync set
+          // Note: due to late instantiation of the data plugin, previous calls to engFilteredFetchesFromDB() were not
+          //   evaluated by the plugin, so we need to do that here explicitly once again
+          engFilteredFetchesFromDB(false);
+        }
       }
     }
     else if (dberr==LOCERR_NOTIMP)
@@ -1106,8 +1029,9 @@ localstatus TPluginApiDS::apiReadSyncSet(bool aNeedAll)
     goto endread;
   }
   // we don't need to load the syncset if we are only refreshing from remote
-  // but we also must load it if we can't zap without it on slow refresh
-  if (!fRefreshOnly || (fSlowSync && apiNeedSyncSetToZap()) || implNeedSyncSetToRetrieve()) {
+  // but we also must load it if we can't zap without it on slow refresh, or when we can't retrieve items on non-slow refresh
+  // (we won't retrieve anything in case of slow refresh, because after zapping there's nothing left by definition)
+  if (!fRefreshOnly || (fSlowSync && apiNeedSyncSetToZap()) || (!fSlowSync && implNeedSyncSetToRetrieve())) {
     SYSYNC_TRY {
       // read the items
       #if defined(DBAPI_ASKEYITEMS) && defined(ENGINEINTERFACE_SUPPORT)
@@ -1257,12 +1181,8 @@ bool TPluginApiDS::apiNeedSyncSetToZap(void)
   // only handle here if we are in charge - otherwise let ancestor handle it
   if (!fDBApi_Data.Created()) return inherited::apiNeedSyncSetToZap();
   #endif
-  // we do not need the sync set to zap it (DBApi has a DeleteAllItems() function)
-  //return false;
-  //%%% NOTE: the DeleteAllItems() is a fake and is not passed to the datastore, and calls
-  //          ReadNextItem out of StartDataRead/EndDataRead bracket, and is not AsKey aware
-  //          so we DO NOT USE IT.
-  return true; // instead, we need the sync set to zap using generic zapSyncSet()
+  // only if we have deleteSyncSet on API level AND api can also apply all filters, we don't need the syncset to zap the datastore
+  return !(fPluginDSConfigP->fHasDeleteSyncSet && engFilteredFetchesFromDB(false));
 } // TPluginApiDS::apiNeedSyncSetToZap
 
 
@@ -1273,12 +1193,18 @@ localstatus TPluginApiDS::apiZapSyncSet(void)
   // only handle here if we are in charge - otherwise let ancestor handle it
   if (!fDBApi_Data.Created()) return inherited::apiZapSyncSet();
   #endif
-
-  // try to use plugin's specialized implementation
-  TSyError dberr = fDBApi_Data.DeleteSyncSet();
-  // do it one by one if DeleteAllItems() is not implemented
-  if (dberr==LOCERR_NOTIMP) {
-		dberr = zapSyncSet();
+  TSyError dberr = LOCERR_OK;
+	// API must be able to process current filters in order to execute a zap - otherwise we would delete
+  // more than the sync set defined by local filters.
+  bool apiCanZap = engFilteredFetchesFromDB(false);
+  if (apiCanZap) {
+    // try to use plugin's specialized implementation
+    dberr = fDBApi_Data.DeleteSyncSet();
+    apiCanZap = dberr!=LOCERR_NOTIMP; // API claims to be able to zap (but still might have failed with a DBerr in this case!)
+  }
+  // do it one by one if DeleteAllItems() is not implemented or plugin cannot apply current filters
+  if (!apiCanZap) {
+		dberr = zapSyncSetOneByOne();
   }
   // return status
   return dberr;
@@ -1650,6 +1576,9 @@ void TPluginApiDS::dsThreadMayChangeNow(void)
 TSyError TPluginApiDS::connectDataPlugin(void)
 {
 	TSyError err = LOCERR_NOTIMP;
+  // filtering capabilities need to be reevaluated anyway
+	fAPICanFilter = false;
+  fAPIFiltersTested = false;
   // only connect if we have plugin data support
   if (fPluginDSConfigP->fDBApiConfig_Data.Connected()) {
     err = LOCERR_OK;
@@ -1874,7 +1803,7 @@ localstatus TPluginApiDS::apiSaveAdminData(bool aDataCommitted, bool aSessionFin
       TPartialItemState pp= fPartialItemState;
       if (pp==pi_state_save_incoming) pp= pi_state_loaded_incoming; // adapt them before
       if (pp==pi_state_save_outgoing) pp= pi_state_loaded_outgoing;
-      adminData+="\r\npartialitemstate:"; StringObjAppendPrintf( adminData,"%hd",pp );
+      adminData+="\r\npartialitemstate:"; StringObjAppendPrintf( adminData,"%d",pp );
       // - fLastItemStatus   = status code (TSyError) of last item
       adminData+="\r\nlastitemstatus:"; StringObjAppendPrintf( adminData,"%hd",fLastItemStatus );
       // - fLastSourceURI    = item ID (string, if limited in length should be long enough for large IDs, >=64 chars recommended)
@@ -2289,12 +2218,12 @@ localstatus TPluginApiDS::apiLoadAdminData(
       #ifdef SYSYNC_SERVER
       case mapentry_tempidmap:
       	if (IS_SERVER) {
-          PDEBUGPRINTFX(DBG_DATA,(
+          PDEBUGPRINTFX(DBG_ADMIN+DBG_EXOTIC,(
             "fTempGUIDMap: restore mapping from %s to %s",
             mapEntry.remoteid.c_str(),
             mapEntry.localid.c_str()
           ));
-          
+
           fTempGUIDMap[mapEntry.remoteid]=mapEntry.localid; // tempGUIDs are accessed by remoteID=tempID
         }
         break;
@@ -2595,7 +2524,7 @@ void TApiBlobProxy::fetchBlob(size_t aNeededSize, bool aNeedsTotalSize, bool aNe
 // returns size of entire blob
 size_t TApiBlobProxy::getBlobSize(TStringField *aFieldP)
 {
-  fetchBlob(0,true,false); // only needs the size, but no data 
+  fetchBlob(0,true,false); // only needs the size, but no data
   return fBlobSize;
 } // TApiBlobProxy::getBlobSize
 

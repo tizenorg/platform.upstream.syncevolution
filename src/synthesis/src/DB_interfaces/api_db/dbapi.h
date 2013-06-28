@@ -6,7 +6,7 @@
  *  TDB_Api class
  *    Bridge to user programmable interface
  *
- *  Copyright (c) 2004-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2004-2011 by Synthesis AG + plan44.ch
  *
  *  The "TDB_Api" class acts as a standard interface between
  *  the SySync Server and a (user programmable) module "sync_dbapi".
@@ -134,40 +134,45 @@ class TDB_Api_Blk
 
 
 // -- internally used type definitions ---------
-typedef TSyError (*CreateM_Func)( CContext *mc, cAppCharP    moduleName,
-                                                cAppCharP       subName,
-                                                cAppCharP  mContextName, DB_Callback mCB );
-typedef CVersion (*Version_Func)( CContext  mc );
-typedef TSyError (*Context_Func)( CContext  mc );
+typedef TSyError  (*CreateM_Func)( CContext *mc, cAppCharP    moduleName,
+                                                 cAppCharP       subName,
+                                                 cAppCharP  mContextName, DB_Callback mCB );
+typedef CVersion  (*Version_Func)( CContext  mc );
+typedef TSyError  (*Context_Func)( CContext  mc );
 
 // ---------------------------------------------
-typedef TSyError (*CreateS_Func)( CContext *sc, cAppCharP  sessionName,  DB_Callback sCB );
-typedef TSyError  (*SvInfo_Func)( CContext  sc, cAppCharP  info );
-typedef int       (*PwMode_Func)( CContext  sc );
-typedef TSyError   (*Login_Func)( CContext  sc, cAppCharP  sUsername,
-                                                 appCharP *sPassword,
-                                                 appCharP *sUsrKey );
+typedef TSyError  (*CreateS_Func)( CContext *sc, cAppCharP  sessionName,  DB_Callback sCB );
+typedef TSyError   (*SvInfo_Func)( CContext  sc, cAppCharP  info );
+typedef int        (*PwMode_Func)( CContext  sc );
+typedef TSyError    (*Login_Func)( CContext  sc, cAppCharP  sUsername,
+                                                  appCharP *sPassword,
+                                                  appCharP *sUsrKey );
 // ---------------------------------------------
-typedef TSyError (*CreateD_Func)( CContext *ac, cAppCharP  aContextName, DB_Callback aCB,
-                                                cAppCharP  sDevKey,
-                                                cAppCharP  sUsrKey );
-typedef int         (*Text_Func)( CContext  ac, cAppCharP  aText );
-typedef void         (*DispProc)( CContext  ac, bool       allFields, cAppCharP specificItem );
+typedef TSyError  (*CreateD_Func)( CContext *ac, cAppCharP  aContextName, DB_Callback aCB,
+                                                 cAppCharP  sDevKey,
+                                                 cAppCharP  sUsrKey );
+typedef int          (*Text_Func)( CContext  ac, cAppCharP  aText );
+typedef void          (*DispProc)( CContext  ac, bool       allFields, cAppCharP specificItem );
 
-typedef TSyError (*LoadAdm_Func)( CContext  ac, cAppCharP  aLocDB,
-                                                cAppCharP  aRemDB,
-                                                 appCharP *adminData );
+typedef TSyError (*LoadAdm_SFunc)( CContext  ac, cAppCharP  aLocDB,
+                                                 cAppCharP  aRemDB,
+                                                  appCharP *adminData );
+typedef TSyError (*LoadAdm_KFunc)( CContext  ac, cAppCharP  aLocDB,
+                                                 cAppCharP  aRemDB,
+                                                      KeyH  adminKey );
+typedef TSyError (*SaveAdm_SFunc)( CContext  sc, cAppCharP  info );
+typedef TSyError (*SaveAdm_KFunc)( CContext  ac,      KeyH  adminKey );
 
-typedef bool      (*RdNMap_Func)( CContext  ac,     MapID  mID, bool aFirst );
-typedef TSyError  (*InsMap_Func)( CContext  ac,    cMapID  mID );
-typedef TSyError  (*UpdMap_Func)( CContext  ac,    cMapID  mID );
-typedef TSyError  (*DelMap_Func)( CContext  ac,    cMapID  mID );
+typedef bool       (*RdNMap_Func)( CContext  ac,     MapID  mID, bool aFirst );
+typedef TSyError   (*InsMap_Func)( CContext  ac,    cMapID  mID );
+typedef TSyError   (*UpdMap_Func)( CContext  ac,    cMapID  mID );
+typedef TSyError   (*DelMap_Func)( CContext  ac,    cMapID  mID );
 
-typedef void         (*VoidProc)( CContext  ac );
+typedef void          (*VoidProc)( CContext  ac );
 
-typedef TSyError   (*Adapt_Func)( CContext  ac,  appCharP *aItemData1,
-                                                 appCharP *aItemData2,
-                                                 appCharP *aLocalVars, sInt32 aIdentifier );
+typedef TSyError    (*Adapt_Func)( CContext  ac,  appCharP *aItemData1,
+                                                  appCharP *aItemData2,
+                                                  appCharP *aLocalVars, sInt32 aIdentifier );
 // ---------------------------------------------
 
 
@@ -369,12 +374,12 @@ class TDB_Api
     TSyError LoadAdminData     ( cAppCharP aLocDB,
                                  cAppCharP aRemDB, TDB_Api_Str &adminData );
     TSyError LoadAdminDataAsKey( cAppCharP aLocDB,
-                                 cAppCharP aRemDB,       KeyH   aItemKey  );
+                                 cAppCharP aRemDB,       KeyH   adminKey  );
 
     //! This functions stores the new <adminData> for this context
     //! And the same for AsKey (will be activated with ADMIN_AS_KEY)
     TSyError SaveAdminData      ( cAppCharP adminData );
-    TSyError SaveAdminData_AsKey( KeyH      aItemKey  );
+    TSyError SaveAdminData_AsKey( KeyH      adminKey  );
 
 
     // --- Map table handling

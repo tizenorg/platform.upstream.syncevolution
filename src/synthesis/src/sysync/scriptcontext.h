@@ -1,12 +1,12 @@
 /*
  *  File:         scriptcontext.cpp
  *
- *  Author:			  Lukas Zeller (luz@synthesis.ch)
+ *  Author:			  Lukas Zeller (luz@plan44.ch)
  *
  *  TScriptContext
  *    Environment to tokenize, prepare and run scripts
  *
- *  Copyright (c) 2002-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2002-2011 by Synthesis AG + plan44.ch
  *
  *  2002-09-11 : luz : created
  *

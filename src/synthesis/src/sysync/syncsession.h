@@ -4,7 +4,7 @@
  *    of multiple SyncML-Toolkit "Sessions" (Message composition/de-
  *    composition) as well as multiple database synchronisations.
  *
- *  Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  */
 
@@ -155,6 +155,13 @@ public:
   #ifdef SCRIPT_SUPPORT
   string fRuleScriptTemplate; // template for rule script
   #endif
+  // DevInf in XML format which is to be used instead of the one sent by peer.
+  // If set, it is evaluated after identifying the peer based on the DevInf
+  // that it has sent and before applying other remote rule workarounds.
+  // XML DevInf directly from XML config.
+  string fOverrideDevInfXML;
+  SmlDevInfDevInfPtr_t fOverrideDevInfP;
+  VoidPtr_t fOverrideDevInfBufferP;
   // list of subrules to activate
   TRemoteRulesList fSubRulesList;
   // flag if this is a final rule (if matches, no more rules will be checked)
@@ -827,7 +834,7 @@ protected:
   virtual SmlPcdataPtr_t newHeaderMeta(void);
   // - check remote devinf to detect special behaviour needed for some clients. Base class
   //   does not do anything on server level (configured rules are handled at session level)
-  virtual localstatus checkRemoteSpecifics(SmlDevInfDevInfPtr_t aDevInfP);
+  virtual localstatus checkRemoteSpecifics(SmlDevInfDevInfPtr_t aDevInfP, SmlDevInfDevInfPtr_t *aOverrideDevInfP);
   // - remote device is analyzed, possibly save status
   virtual void remoteAnalyzed(void) { /* nop */ };
   // SyncML Toolkit interface

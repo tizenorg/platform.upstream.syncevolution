@@ -78,6 +78,7 @@ subdtdDecodeWbxml(XltDecoderPtr_t pDecoder,SmlPcdataPtr_t *ppPcdata);
 /* WBXML version that this parser knows */
 #define _MAJOR_VERSION  1
 #define _MINOR_VERSION  2
+#define _MAX_PARSER_MINOR_VERSION 3 // luz: WBXML 1.3 seems to work identically in the SyncML context
 
 #define TAG_STATE 0
 #define ATTRIBUTE_STATE 1
@@ -464,11 +465,9 @@ wbxmlVersion(wbxmlScannerPrivPtr_t pScanner)
     Byte_t major, minor;
 
     minor = ((Byte_t)(*pScanner->pos & 0x0F));
-     major = ((Byte_t)((*pScanner->pos >> 4) + 1));
+    major = ((Byte_t)((*pScanner->pos >> 4) + 1));
 
-
-
-    if (major != _MAJOR_VERSION || minor > _MINOR_VERSION)
+    if (major != _MAJOR_VERSION || minor > _MAX_PARSER_MINOR_VERSION)
         return SML_DECODEERROR(SML_ERR_XLT_INCOMP_WBXML_VERS,pScanner,"wbxmlVersion");
 
     if (!readBytes(pScanner, 1))

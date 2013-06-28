@@ -7,7 +7,7 @@
  *        the Synthesis SyncML engine
  *        and the database layer
  *
- *  Copyright (c) 2004-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2004-2011 by Synthesis AG + plan44.ch
  *
  *
  * These are the definitions for the calling interface between the
@@ -156,12 +156,16 @@ enum Version {
   /** V1.6.2.X : 64 bit Java BLOB signature                      */
   VP_BLOB_JSignature     = 0x01060200,
 /*VP_091221                0x01060200   * V1.6.2.X : Released 21-Dec-09 */
-  /** V1.7.0.X : Current version, use 'Plugin_Version()'         */
-  VP_CurrentVersion      = 0x01070000,
+  /** V1.7.0.X : First release of the Android client             */
+  VP_Android_1st_Release = 0x01070000,
+/*VP_100429                0x01070000   * V1.7.0.X : Released 29-Apr-10 */
+/*                         0x01070200   * V1.7.2.X : never released as SDK */
+
+  /** V1.8.0.X : Current version, use 'Plugin_Version()'         */
+  VP_CurrentVersion      = 0x01080000,
 
   /** -------- : Bad/undefined version                           */
   VP_BadVersion          = 0xffffffff,
-
 
 /* ---- Engine support ---- */
   /** V1.0.7.0 : Engine supports "InsertMapItem"                 */
@@ -204,7 +208,9 @@ enum Version {
 #define Da_FS                "FilterSupport"
 
 #define Da_LA                "LoadAdminData"
+#define Da_LAK               "LoadAdminDataAsKey"
 #define Da_SA                "SaveAdminData"
+#define Da_SAK               "SaveAdminDataAsKey"
 #define Da_RM                "ReadNextMapItem"
 #define Da_IM                "InsertMapItem"
 #define Da_UM                "UpdateMapItem"
@@ -257,6 +263,7 @@ enum Version {
                                             /*   (supported for V1.3.7 and higher) */
 #define CA_ItemAsKey         "ITEM_AS_KEY"  /* Supports the AsKey" mode */
 #define CA_AdminAsKey        "ADMIN_AS_KEY" /* Supports the AsKey" mode for Load/SaveAdminData */
+#define CA_DeleteSyncSet     "DeleteSyncSet"/* DeleteSyncSet ist fully implemented */
 #define CA_Error             "ERROR"        /* Capability error */
 
 /* Predefined identifiers */
@@ -278,6 +285,9 @@ enum Version {
 #define Plugin_Datastore     "plugin_ds"
 #define Plugin_DS_General    "plugin_datageneral"
 #define Plugin_DS_Admin      "plugin_datastoreadmin"
+#define Plugin_DS_Admin_Str  "plugin_datastoreadmin_str"
+#define Plugin_DS_Admin_Key  "plugin_datastoreadmin_key"
+#define Plugin_DS_Admin_Map  "plugin_datastoreadmin_map"
 #define Plugin_DS_Data       "plugin_datastore"
 #define Plugin_DS_Data_Str   "plugin_datastore_str"
 #define Plugin_DS_Data_Key   "plugin_datastore_key"

@@ -1,13 +1,13 @@
 /**
  *  @File     odbcapids.cpp
  *
- *  @Author   Lukas Zeller (luz@synthesis.ch)
+ *  @Author   Lukas Zeller (luz@plan44.ch)
  *
  *  @brief TODBCApiDS
  *    ODBC based datastore API implementation
  *    @Note Currently also contains what will later become TCustomImplDS
  *
- *    Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *    Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  *  @Date 2005-09-16 : luz : created from odbcdbdatastore
  */
@@ -3138,7 +3138,7 @@ localstatus TODBCApiDS::apiZapSyncSet(void)
     if (sql.empty()) {
       // we have no statement that can zap everything at once, so we'll have to do
       // use generic one by one syncset deletion
-      sta = zapSyncSet();
+      sta = zapSyncSetOneByOne();
     }
     else {
       // we have SQL statement(s) for zapping, use it

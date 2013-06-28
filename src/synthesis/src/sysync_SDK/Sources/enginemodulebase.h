@@ -6,7 +6,7 @@
  *  @brief TEngineModuleBase
  *    engine bus bar class
  *
- *    Copyright (c) 2007-2009 by Synthesis AG (www.synthesis.ch)
+ *    Copyright (c) 2007-2011 by Synthesis AG + plan44.ch
  *
  */
 

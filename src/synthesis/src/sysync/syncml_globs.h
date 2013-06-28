@@ -1,12 +1,12 @@
 /*
  *  File:         syncml_globs.h
  *
- *  Authors:      Lukas Zeller (luz@synthesis.ch)
+ *  Authors:      Lukas Zeller (luz@plan44.ch)
  *                Beat Forster (bfo@synthesis.ch)
  *
  *  Global SyncML definitions/macros/constants
  *
- *  Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  */
 

@@ -1,13 +1,13 @@
 /*
  *  File:         syncagent.cpp
  *
- *  Author:			  Lukas Zeller (luz@synthesis.ch)
+ *  Author:			  Lukas Zeller (luz@plan44.ch)
  *
  *  TSyncAgent:   Provides functionality to run client or server
  *                sessions.
  *                Unifies former TSyncClient and TSyncServer
  *
- *  Copyright (c) 2002-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2002-2011 by Synthesis AG + plan44.ch
  *
  *  2009-09-30 : luz : created from syncclient.cpp and syncserver.cpp
  *
@@ -631,9 +631,11 @@ TSyncAgent::TSyncAgent(
   // - issue session start event here (in non-engine case this is done in TSyncSession constructor)
   SESSION_PROGRESS_EVENT(this,pev_sessionstart,NULL,0,0,0);
   #endif // ENGINE_LIBRARY
+  #ifdef SYSYNC_SERVER
   // reset data counts
   fIncomingBytes = 0;
   fOutgoingBytes = 0;
+  #endif
 
   // Specific for Client or Server
 	if (IS_CLIENT) {
@@ -1917,7 +1919,7 @@ bool TSyncAgent::ServerMessageStarted(SmlSyncHdrPtr_t aContentP, TStatusCommand 
     ));
     // - abort session after too many auth failures
     if (fAuthFailures>=MAX_AUTH_ATTEMPTS) {
-      PDEBUGPRINTFX(DBG_ERROR,("Too many (>=%hd) failures, aborting session",MAX_AUTH_ATTEMPTS));
+      PDEBUGPRINTFX(DBG_ERROR,("Too many (>=%d) failures, aborting session",MAX_AUTH_ATTEMPTS));
       AbortSession(400,true);
     }
     #endif        
@@ -2947,6 +2949,8 @@ done:
 } // TSyncAgent::SessionStep
 
 
+#ifdef PROGRESS_EVENTS
+
 bool TSyncAgent::HandleSessionProgressEvent(TEngineProgressInfo aProgressInfo)
 {
   // handle some events specially
@@ -2969,6 +2973,7 @@ bool TSyncAgent::HandleSessionProgressEvent(TEngineProgressInfo aProgressInfo)
   return !(fAbortRequested);
 } // TSyncAgent::HandleSessionProgressEvent
 
+#endif // PROGRESS_EVENTS
 
 #endif // ENGINE_LIBRARY
 
@@ -3674,6 +3679,17 @@ static TSyError readTimedOut(
 } // readTimedOut
 
 
+// - show if this is a server (for DB plugins)
+static TSyError readIsServer(
+  TStructFieldsKey *aStructFieldsKeyP, const TStructFieldInfo *aFldInfoP,
+  appPointer aBuffer, memSize aBufSize, memSize &aValSize
+)
+{
+  TAgentParamsKey *mykeyP = static_cast<TAgentParamsKey *>(aStructFieldsKeyP);
+  return TStructFieldsKey::returnInt(mykeyP->fAgentP->getSyncAppBase()->isServer(), sizeof(bool), aBuffer, aBufSize, aValSize);
+} // readIsServer
+
+
 #ifdef SYSYNC_SERVER
 
 // - server only: read respURI enable flag
@@ -3748,6 +3764,7 @@ static const TStructFieldInfo ServerParamFieldInfos[] =
   { "connectDoc", VALTYPE_TEXT, false, 0, 0, &readConnectDoc, NULL },
   { "timedout", VALTYPE_INT8, false, 0, 0, &readTimedOut, NULL },
   { "lastused", VALTYPE_TIME64, false, 0, 0, &readLastUsed, NULL },
+  { "isserver", VALTYPE_INT8, false, 0, 0, &readIsServer, NULL },
   #ifdef SYSYNC_SERVER
   { "sendrespuri", VALTYPE_INT8, true, 0, 0, &readSendRespURI, &writeSendRespURI },
   #endif

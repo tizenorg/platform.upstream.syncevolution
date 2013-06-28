@@ -7,7 +7,7 @@
  *  Example DBApi database adapter.
  *  TDBItem class for item handling
  *
- *  Copyright (c) 2005-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2005-2011 by Synthesis AG + plan44.ch
  *
  */
 
@@ -837,8 +837,9 @@ TSyError TDBItem::LoadDB( bool withKey, cAppCharP aPrefix, void* aCB )
       q= &ch;
       s= "";
       while (true) {
-        if (fread( q, 1,1, f ) != 1)
+        if (fread( q, 1,1, f ) != 1) {
           ; // error ignored
+        }
         
         if (feof( f )) break;
 

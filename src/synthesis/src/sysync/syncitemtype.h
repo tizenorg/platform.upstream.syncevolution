@@ -1,12 +1,12 @@
 /*
  *  File:         SyncItemType.h
  *
- *  Author:       Lukas Zeller (luz@synthesis.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TSyncItemType
  *    Type description and converter (template) for TSyncItem.
  *
- *  Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  *  2001-05-16 : luz : created
  *

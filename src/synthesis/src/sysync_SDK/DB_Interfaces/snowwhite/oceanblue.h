@@ -5,7 +5,7 @@
  *
  *  Base class for datastore plugins in C++
  *
- *  Copyright (c) 2008-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2008-2011 by Synthesis AG + plan44.ch
  *
  */
 
@@ -133,20 +133,23 @@ class OceanBlue
     #endif
 
     
-    virtual TSyError CreateContext  ( cAppCharP  sDevKey, cAppCharP sUsrKey );
-    virtual uInt32   ContextSupport ( cAppCharP  aContextRules );
-    virtual uInt32   FilterSupport  ( cAppCharP  aFilterRules  );
+    virtual TSyError CreateContext     ( cAppCharP  sDevKey, cAppCharP sUsrKey );
+    virtual uInt32   ContextSupport    ( cAppCharP  aContextRules );
+    virtual uInt32   FilterSupport     ( cAppCharP  aFilterRules  );
 
     // -- admin
-    virtual TSyError LoadAdminData  ( cAppCharP  aLocDB,
-                                      cAppCharP  aRemDB, 
-                                       appCharP &adminData );
-    virtual TSyError SaveAdminData  ( cAppCharP  adminData );
+    virtual TSyError LoadAdminData     ( cAppCharP  aLocDB,
+                                         cAppCharP  aRemDB, appCharP &adminData );
+    virtual TSyError LoadAdminDataAsKey( cAppCharP  aLocDB,
+                                         cAppCharP  aRemDB,     KeyH  adminKey  );
 
-    virtual bool     ReadNextMapItem   (  MapID  mID, bool aFirst );
-    virtual TSyError InsertMapItem     ( cMapID  mID );
-    virtual TSyError UpdateMapItem     ( cMapID  mID );
-    virtual TSyError DeleteMapItem     ( cMapID  mID );
+    virtual TSyError SaveAdminData                       ( cAppCharP  adminData );
+    virtual TSyError SaveAdminDataAsKey                       ( KeyH  adminKey  );
+
+    virtual bool     ReadNextMapItem      (  MapID  mID, bool aFirst );
+    virtual TSyError InsertMapItem        ( cMapID  mID );
+    virtual TSyError UpdateMapItem        ( cMapID  mID );
+    virtual TSyError DeleteMapItem        ( cMapID  mID );
 
     // -- read
     virtual TSyError StartDataRead  ( cAppCharP lastToken, cAppCharP resumeToken );

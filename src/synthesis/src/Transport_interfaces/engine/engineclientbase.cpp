@@ -3,7 +3,7 @@
  *    Engine library specific descendant of TSyncClientBase
  *    Global object, manages starting of client sessions.
  *
- *  Copyright (c) 2002-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2002-2011 by Synthesis AG + plan44.ch
  *
  *  2007-09-04 : luz : Created
  *

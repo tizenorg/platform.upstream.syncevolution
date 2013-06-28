@@ -10,7 +10,7 @@
  *  Options for the client side which links against
  *  libsynthesissdk.
  *
- *  Copyright (c) 2009-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2009-2011 by Synthesis AG + plan44.ch
  *
  */
 

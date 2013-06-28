@@ -264,6 +264,7 @@ Ret_t show_decode_error(Ret_t aRc, XltDecScannerPtr_t aScanner, char *aRoutineNa
           *p++ = ' ';
         }
         *p=0;
+        b-=numBytesShow; // rewind
         SMLERRPRINTFX(DBG_ERROR,(hexshow));
         p=hexshow;
         for (i=0; i<numBytesShow; i++) {
@@ -287,7 +288,7 @@ Ret_t show_decode_error(Ret_t aRc, XltDecScannerPtr_t aScanner, char *aRoutineNa
   return aRc;
 } // show_decode_error
 
-#endif
+#endif // SYDEBUG
 
 
 #ifdef __USE_EXTENSIONS__

@@ -1,12 +1,12 @@
 /*
  *  File:         stringutils.cpp
  *
- *  Authors:			Lukas Zeller (luz@synthesis.ch)
+ *  Authors:			Lukas Zeller (luz@plan44.ch)
  *                Beat Forster (bfo@synthesis.ch)
  *
  *  C++ string utils
  *
- *  Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  *  2002-05-01 : luz : extracted from sysync_utils
  */
@@ -796,7 +796,7 @@ void vStringObjPrintf(string &aStringObj, const char *aFormat, bool aAppend, va_
   #else
   const size_t bufsiz=2048;
   #endif
-  size_t actualsize;
+  ssize_t actualsize;
   char buf[bufsiz];
 
   buf[0]='\0';
@@ -810,7 +810,7 @@ void vStringObjPrintf(string &aStringObj, const char *aFormat, bool aAppend, va_
   #endif
   actualsize = vsnprintf(buf, bufsiz, aFormat, aArgs);
   #ifndef NO_VSNPRINTF
-  if (actualsize>=bufsiz) {
+  if (actualsize>=(ssize_t)bufsiz) {
     // default buffer was too small, create bigger dynamic buffer
     bufP = new char[actualsize+1];
     actualsize = vsnprintf(bufP, actualsize+1, aFormat, args);

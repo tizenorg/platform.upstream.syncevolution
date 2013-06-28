@@ -1,14 +1,14 @@
 /*
  *  File:         itemfield.h
  *
- *  Author:       Lukas Zeller (luz@synthesis.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TItemField
  *    Abstract class, holds a single field value
  *  TStringField, TIntegerField, TTelephoneField, TTimeStampField etc.
  *    Implementations of field types
  *
- *  Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  *  2001-08-08 : luz : created
  *
@@ -75,6 +75,7 @@ public:
   virtual TItemFieldTypes getType(void) const { return fty_none; } // no real type
   virtual TItemFieldTypes getCalcType(void) const { return getType(); };
   virtual bool isBasedOn(TItemFieldTypes aFieldType) const { return aFieldType==fty_none; };
+  virtual bool elementsBasedOn(TItemFieldTypes aFieldType) const { return isBasedOn(aFieldType); };
   // dependency on a local ID
   virtual void setParentLocalID(cAppCharP /* aParentLocalID */) { /* nop */ };
   // access to field contents
@@ -92,7 +93,7 @@ public:
   virtual void setAsString(cAppCharP /* aString */) { fAssigned=true; }; // basic setter, this one must be derived for all non-string descendants
   virtual void setAsString(cAppCharP aString, size_t aLen);
   virtual void setAsString(const string &aString) { setAsString(aString.c_str(),aString.size()); };
-  virtual void getAsString(string &aString) { aString.erase(); };
+  virtual void getAsString(string &aString) { aString.erase(); }; // empty string by default
   virtual void appendToString(string &aString, size_t aMaxLen=0) { string s; getAsString(s); if (aMaxLen) aString.append(s,0,aMaxLen); else aString.append(s); }; // generic append
   virtual cAppCharP getCStr(void) { return NULL; } // only real strings can return CStr (used for PalmOS optimization)
   virtual void getAsNormalizedString(string &aString) { getAsString(aString); };
@@ -165,7 +166,7 @@ class TArrayField : public TItemField
 {
   typedef TItemField inherited;
 public:
-  TArrayField(TItemFieldTypes aLeafFieldType);
+  TArrayField(TItemFieldTypes aLeafFieldType, GZones *aGZonesP);
   virtual ~TArrayField();
   // check array
   virtual bool isArray(void) const { return true; }
@@ -178,6 +179,7 @@ public:
   // access to type
   virtual TItemFieldTypes getType(void) const { return fty_none; } // array has no type
   virtual TItemFieldTypes getElementType(void) const { return fLeafFieldType; } // type of leaf fields (accessible even if array is empty)
+  virtual bool elementsBasedOn(TItemFieldTypes aFieldType) const;
   // some string operations
   // - assignment
   virtual bool isAssigned(void) { return !isEmpty() || fAssigned; }; // empty, but explicitly assigned so is assigned as well
@@ -206,6 +208,10 @@ public:
 protected:
   // type of contained leaf fields
   TItemFieldTypes fLeafFieldType;
+  // first field, is instantiated with array to allow type comparisons
+  TItemField *fFirstField;
+  // Zones for fields
+  GZones *fGZonesP;
   // actual field vector
   TFieldArray fArray;
 }; // TArrayField
@@ -313,7 +319,7 @@ public:
   virtual size_t StringObjFieldAppend(string &s, uInt16 aMaxStrLen);
   #endif
 protected:
-	virtual void stringWasAssigned(void) { fAssigned=true; }; // post-process string that was just assigned
+  virtual void stringWasAssigned(void) { fAssigned=true; }; // post-process string that was just assigned
   #ifdef STREAMFIELD_SUPPORT
   TBlobProxy *fBlobProxyP;
   #endif
@@ -672,8 +678,8 @@ private:
 #endif // ENGINEINTERFACE_SUPPORT
 
 
-}	// namespace sysync
+} // namespace sysync
 
-#endif	// ItemField_H
+#endif  // ItemField_H
 
 // eof

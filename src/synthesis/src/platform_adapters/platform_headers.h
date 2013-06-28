@@ -1,12 +1,12 @@
 /*
  *  File:         platform_headers.h
  *
- *  Author:			  Lukas Zeller (luz@synthesis.ch)
+ *  Author:			  Lukas Zeller (luz@plan44.ch)
  *
  *  Common include files for all platform-related standard headers
  *  (suitable for precompiled headers and/or prefix file)
  *
- *  Copyright (c) 2003-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2003-2011 by Synthesis AG + plan44.ch
  *
  *  2003-08-12 : luz : created
  *

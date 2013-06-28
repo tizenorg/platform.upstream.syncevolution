@@ -14,7 +14,7 @@
  *  is 1:1 used as datastore connector for the
  *  so called demo server/client.
  *
- *  Copyright (c) 2005-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2005-2011 by Synthesis AG + plan44.ch
  *
  *
  *  E X A M P L E    C O D E
@@ -934,30 +934,41 @@ void DispItems( CContext aContext, bool allFields, cAppCharP specificItem )
 #ifndef DISABLE_PLUGIN_DATASTOREADMIN
 /* -- ADMINISTRATION ------------------------------------------------------------ */
 /* (will be passed to the "admindata" module) */
-TSyError LoadAdminData( CContext aContext, cAppCharP aLocDB,
-                                           cAppCharP aRemDB, appCharP *adminData ) {
-  return DBC( aContext )->fAdmin.LoadAdminData     ( aLocDB,aRemDB,    adminData );
-} /* LoadAdminData */
+TSyError LoadAdminData     ( CContext    aContext,    cAppCharP    aLocDB,
+                                                      cAppCharP    aRemDB, appCharP  *adminData ) {
+  return DBC( aContext )->fAdmin.LoadAdminData                   ( aLocDB, aRemDB,    adminData );
+}     // LoadAdminData
 
-TSyError SaveAdminData( CContext aContext, cAppCharP adminData ) {
-  return DBC( aContext )->fAdmin.SaveAdminData     ( adminData );
-} /* SaveAdminData */
+TSyError LoadAdminDataAsKey( CContext /* aContext */, cAppCharP /* aLocDB */,
+                                                      cAppCharP /* aRemDB */, KeyH /* adminKey */ ) {
+  return LOCERR_NOTIMP;
+}     // LoadAdminDataAsKey
+
+
+TSyError SaveAdminData    ( CContext     aContext, cAppCharP  adminData ) {
+  return DBC( aContext )->fAdmin.SaveAdminData              ( adminData );
+}     // SaveAdminData
+
+TSyError SaveAdminDataAsKey( CContext /* aContext */, KeyH /* adminKey */ ) {
+  return LOCERR_NOTIMP;
+}     // SaveAdminDataAsKey
+
 
 bool   ReadNextMapItem( CContext aContext,  MapID mID, bool aFirst ) {
   return DBC( aContext )->fAdmin.ReadNextMapItem( mID,      aFirst );
-} /* ReadNextMapItem */
+}     // ReadNextMapItem
 
 TSyError InsertMapItem( CContext aContext, cMapID mID ) {
   return DBC( aContext )->fAdmin.InsertMapItem  ( mID );
-} /* InsertMapItem */
+}     // InsertMapItem
 
 TSyError UpdateMapItem( CContext aContext, cMapID mID ) {
   return DBC( aContext )->fAdmin.UpdateMapItem  ( mID );
-} /* UpdateMapItem */
+}     // UpdateMapItem
 
 TSyError DeleteMapItem( CContext aContext, cMapID mID ) {
   return DBC( aContext )->fAdmin.DeleteMapItem  ( mID );
-} /* DeleteMapItem */
+}     // DeleteMapItem
 #endif // DISABLE_PLUGIN_DATASTOREADMIN
 
 

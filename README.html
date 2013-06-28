@@ -5,7 +5,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="Docutils 0.6: http://docutils.sourceforge.net/" />
 <title>SyncEvolution</title>
-<meta name="date" content="2010-12-26" />
+<meta name="date" content="2011-07-14" />
 <style type="text/css">
 
 /*
@@ -315,9 +315,9 @@ ul.auto-toc {
 <tr class="field"><th class="docinfo-name">Manual section:</th><td class="field-body">1</td>
 </tr>
 <tr><th class="docinfo-name">Version:</th>
-<td>1.1.1</td></tr>
+<td>1.1.99.5a</td></tr>
 <tr><th class="docinfo-name">Date:</th>
-<td>2010-12-26</td></tr>
+<td>2011-07-14</td></tr>
 </tbody>
 </table>
 <div class="section" id="synopsis">
@@ -328,31 +328,31 @@ ul.auto-toc {
 <dt>Show information about configuration(s):</dt>
 <dd>syncevolution --print-servers|--print-configs|--print-peers</dd>
 <dt>Show information about a specific configuration:</dt>
-<dd>syncevolution --print-config [--quiet] &lt;config&gt; [main|&lt;source&gt; ...]</dd>
+<dd>syncevolution --print-config [--quiet] [--] &lt;config&gt; [main|&lt;source&gt; ...]</dd>
 <dt>List sessions:</dt>
-<dd>syncevolution --print-sessions [--quiet] &lt;config&gt;</dd>
+<dd>syncevolution --print-sessions [--quiet] [--] &lt;config&gt;</dd>
 <dt>Show information about SyncEvolution:</dt>
 <dd>syncevolution --help|-h|--version</dd>
 <dt>Run a synchronization as configured:</dt>
 <dd>syncevolution &lt;config&gt; [&lt;source&gt; ...]</dd>
 <dt>Run a synchronization with properties changed just for this run:</dt>
-<dd>syncevolution --run &lt;options for run&gt; &lt;config&gt; [&lt;source&gt; ...]</dd>
+<dd>syncevolution --run &lt;options for run&gt; [--] &lt;config&gt; [&lt;source&gt; ...]</dd>
 <dt>Restore data from the automatic backups:</dt>
-<dd>syncevolution --restore &lt;session directory&gt; --before|--after [--dry-run] &lt;config&gt; &lt;source&gt; ...</dd>
-<dt>Modify a configuration:</dt>
-<dd>syncevolution --configure &lt;options&gt; &lt;config&gt; [&lt;source&gt; ...]
-syncevolution --remove|--migrate &lt;options&gt; &lt;config&gt;</dd>
+<dd>syncevolution --restore &lt;session directory&gt; --before|--after [--dry-run] [--] &lt;config&gt; &lt;source&gt; ...</dd>
+<dt>Create, update or remove a configuration:</dt>
+<dd>syncevolution --configure &lt;options&gt; [--] &lt;config&gt; [&lt;source&gt; ...]
+syncevolution --remove|--migrate &lt;options&gt; [--] &lt;config&gt;</dd>
 <dt>List items:</dt>
-<dd>syncevolution --print-items &lt;config&gt; &lt;source&gt;</dd>
+<dd>syncevolution --print-items [--] &lt;config&gt; &lt;source&gt;</dd>
 <dt>Export item(s):</dt>
-<dd>syncevolution [--delimiter &lt;string&gt;] --export &lt;dir&gt;|&lt;file&gt;|- &lt;config&gt; &lt;source&gt; [&lt;luid&gt; ...]</dd>
+<dd>syncevolution [--delimiter &lt;string&gt;] --export &lt;dir&gt;|&lt;file&gt;|- [--] &lt;config&gt; &lt;source&gt; [&lt;luid&gt; ...]</dd>
 <dt>Add item(s):</dt>
-<dd>syncevolution [--delimiter &lt;string&gt;|none] --import &lt;dir&gt;|&lt;file&gt;|- &lt;config&gt; &lt;source&gt;</dd>
+<dd>syncevolution [--delimiter &lt;string&gt;|none] --import &lt;dir&gt;|&lt;file&gt;|- [--] &lt;config&gt; &lt;source&gt;</dd>
 <dt>Update item(s)</dt>
-<dd>syncevolution --update &lt;dir&gt; &lt;config&gt; &lt;source&gt;
-syncevolution [--delimiter &lt;string&gt;|none] --update &lt;file&gt;|- &lt;config&gt; &lt;source&gt; &lt;luid&gt; ...</dd>
+<dd>syncevolution --update &lt;dir&gt; [--] &lt;config&gt; &lt;source&gt;
+syncevolution [--delimiter &lt;string&gt;|none] --update &lt;file&gt;|- [--] &lt;config&gt; &lt;source&gt; &lt;luid&gt; ...</dd>
 <dt>Remove item(s):</dt>
-<dd>syncevolution --delete-items &lt;config&gt; &lt;source&gt; (&lt;luid&gt; ... | *)</dd>
+<dd>syncevolution --delete-items [--] &lt;config&gt; &lt;source&gt; (&lt;luid&gt; ... | *)</dd>
 </dl>
 </div>
 <div class="section" id="description">
@@ -540,8 +540,7 @@ give via &quot;--source-property type=&lt;backend&gt;&quot;, like this:</p>
 <pre class="literal-block">
 syncevolution --print-items --source-property type=evolution-contacts dummy-config dummy-source
 </pre>
-<p>The desired backend database can be chosen via &quot;--source-property
-evolutionsource&quot;.</p>
+<p>The desired backend database can be chosen via &quot;--source-property database&quot;.</p>
 </div>
 <div class="section" id="options">
 <h3>OPTIONS</h3>
@@ -576,16 +575,30 @@ option.  The information includes the log directory name (useful for
 --restore) and the synchronization report. In combination with
 --quiet, only the paths are listed.</dd>
 <dt>--configure|-c</dt>
-<dd>Modify the configuration files for the selected peer and/or sources.
-If no such configuration exists, then a new one is created using one
-of the template configurations (see --template option). When
-creating a new configuration and listing sources explicitly on the
+<dd><p class="first">Modify the configuration files for the selected peer and/or sources.</p>
+<p>If no such configuration exists, then a new one is created using one
+of the template configurations (see --template option). Choosing a
+template sets most of the relevant properties for the peer and the
+default set of sources (see above for a list of those). Anything
+specific to the user (like username/password) still has to be set
+manually.</p>
+<p>When creating a new configuration and listing sources explicitly on the
 command line, only those sources will be set to active in the new
 configuration, i.e. <cite>syncevolution -c memotoo addressbook</cite>
 followed by <cite>syncevolution memotoo</cite> will only synchronize the
 address book. The other sources are created in a disabled state.
 When modifying an existing configuration and sources are specified,
-then the source properties of only those sources are modified.</dd>
+then the source properties of only those sources are modified.</p>
+<p>By default, creating a config requires a template. Source names on the
+command line must match those in the template. This allows catching
+typos in the peer and source names. But it also prevents some advanced
+use cases. Therefore it is possible to disable these checks in two ways:</p>
+<pre class="last literal-block">
+- use `--template none` or
+- specify all required sync and source properties that are normally
+  in the templates on the command line (syncURL, backend, ...)
+</pre>
+</dd>
 <dt>--run|-r</dt>
 <dd>To prevent accidental sync runs when a configuration change was
 intended, but the <cite>--configure</cite> option was not used, <cite>--run</cite> must be
@@ -651,6 +664,22 @@ or in addition to listing individual luids to delete all items.</dd>
 current synchronization run or permanently when --configure is used
 to update the configuration. Can be used multiple times.  Specifying
 an unused property will trigger an error message.</p>
+<p>The &lt;property&gt; has the following format: <tt class="docutils literal"><span class="pre">&lt;name&gt;[&#64;&lt;context&gt;|&#64;&lt;peer&gt;&#64;&lt;context&gt;]</span></tt></p>
+<p>The optional &lt;context&gt; or &lt;peer&gt;&#64;&lt;context&gt; suffix limits the scope
+of the value to that particular configuration. This is currently
+only useful for a local sync, which involves a source and a target
+configuration.</p>
+<p>A string without a second &#64; sign inside is always interpreted as a
+context name, so in contrast to the &lt;server&gt; string, &quot;foo&quot; cannot be
+used to reference the &quot;<a class="reference external" href="mailto:foo&#64;default">foo&#64;default</a>&quot; configuration. Use the full name
+including the context for that.</p>
+<p>When no config or context is specified explicitly, a value is
+changed in all active configs, typically the one given with
+<tt class="docutils literal">&lt;server&gt;</tt>.  The priority of multiple values for the same config
+is <cite>more specific definition wins</cite>, so <tt class="docutils literal"><span class="pre">&lt;peer&gt;&#64;&lt;context&gt;</span></tt>
+overrides <tt class="docutils literal">&#64;&lt;context&gt;</tt>, which overrides <cite>no suffix given</cite>.
+Specifying some suffix which does not apply to the current operation
+does not trigger an error, so beware of typos.</p>
 <p class="last">When using the configuration layout introduced with 1.0, some of the
 sync properties are shared between peers, for example the directory
 where sessions are logged. Permanently changing such a shared
@@ -662,13 +691,36 @@ comment shows which properties are shared in which way.</p>
 <dt>--source-property|-z &lt;property&gt;=&lt;value&gt;|&lt;property&gt;=?|?</dt>
 <dd><p class="first">Same as --sync-property, but applies to the configuration of all active
 sources. <cite>--sync &lt;mode&gt;</cite> is a shortcut for <cite>--source-property sync=&lt;mode&gt;</cite>.</p>
-<p>When combined with <cite>--configure</cite>, the configuration of all sources
+<p>The &lt;property&gt; has the following format: <tt class="docutils literal"><span class="pre">[&lt;source&gt;/]&lt;name&gt;[&#64;&lt;context&gt;|&#64;&lt;peer&gt;&#64;&lt;context&gt;]</span></tt></p>
+<p>In it's simplest form without &lt;source&gt;, &lt;context&gt; or &lt;config&gt;,
+the name specifies one of the know properties.
+When combined with <cite>--configure</cite>, the configuration of all sources
 is modified. The value is applied to all sources unless sources are
 listed explicitly on the command line. So if you want to change a
 source property of just one specific sync source, then use
 <cite>--configure --source-property ... &lt;server&gt; &lt;source&gt;</cite>.</p>
+<p>Adding the &lt;source&gt;/ prefix makes it possible to set the same
+property differently for different sources in one command:</p>
+<pre class="literal-block">
+--configure --source-property addressbook/sync=two-way \
+            --source-property calendar/sync=one-way-from-server \
+            &lt;server&gt;
+</pre>
+<p>If the same property is set both with and without a &lt;source&gt;/ prefix,
+then the more specific value with that prefix is used for that source,
+regardless of the order on the command line. The following command
+disables all sources except for the addressbook:</p>
+<pre class="literal-block">
+--configure --source-property addressbook/sync=none \
+            --source-property sync=two-way \
+            &lt;server&gt;
+</pre>
 <p class="last">As with sync properties, some properties are shared between peers,
-in particular the selection of which local data to synchronize.</p>
+in particular the selection of which local data to synchronize.  The
+optional configuration suffix in <tt class="docutils literal">&lt;property&gt;</tt> also has the same
+meaning as for sync properties. That suffix is checked first, so
+&quot;sync&#64;foo&#64;default&quot; overrides &quot;addressbook/sync&quot;, even though
+&quot;addressbook/sync&quot; normally overrides &quot;sync&quot;.</p>
 </dd>
 <dt>--template|-l &lt;peer name&gt;|default|?&lt;device&gt;</dt>
 <dd><p class="first">Can be used to select from one of the built-in default configurations
@@ -706,11 +758,15 @@ they were not stored there already:</p>
 <pre class="literal-block">
 --keyring --configure --sync-property proxyPassword=foo
 </pre>
-<p class="last">When passwords were stored in the keyring, their value is set to a single
+<p>When passwords were stored in the keyring, their value is set to a single
 hyphen (&quot;-&quot;) in the configuration. This means that when running a
 synchronization without the --keyring argument, the password has to be
 entered interactively. The --print-config output always shows &quot;-&quot; instead
 of retrieving the password from the keyring.</p>
+<p class="last">The SyncEvolution daemon always uses the GNOME keyring, regardless of
+the --keyring command line parameter. Therefore --keyring only has an
+effect in combination with --daemon=no, or when SyncEvolution was compiled
+without daemon support (not the default).</p>
 </dd>
 <dt>--daemon[=yes/no]</dt>
 <dd>By default, the SyncEvolution command line is executed inside the
@@ -735,8 +791,8 @@ syncevolution --template ?
 <p>Create a new configuration, using the existing Memotoo template:</p>
 <pre class="literal-block">
 syncevolution --configure \
-              --sync-property &quot;username=123456&quot; \
-              --sync-property &quot;password=!&#64;#ABcd1234&quot; \
+              username=123456 \
+              &quot;password=!&#64;#ABcd1234&quot; \
               memotoo
 </pre>
 <p>Note that putting passwords into the command line, even for
@@ -759,7 +815,7 @@ syncevolution memotoo
 <p>Deactivate all sources:</p>
 <pre class="literal-block">
 syncevolution --configure \
-              --source-property sync=none \
+              sync=none \
               memotoo
 </pre>
 <p>Activate address book synchronization again, using the --sync shortcut:</p>
@@ -771,15 +827,15 @@ syncevolution --configure \
 <p>Change the password for a configuration:</p>
 <pre class="literal-block">
 syncevolution --configure \
-              --sync-property password=foo \
+              password=foo \
               memotoo
 </pre>
 <p>Set up another configuration for under a different account, using
 the same default databases as above:</p>
 <pre class="literal-block">
 syncevolution --configure \
-              --sync-property username=joe \
-              --sync-property password=foo \
+              username=joe \
+              password=foo \
               --template memotoo \
               memotoo_joe
 </pre>
@@ -788,17 +844,17 @@ local databases (can be used to simulate synchronizing between two
 clients, see <a class="reference internal" href="#exchanging-data">Exchanging Data</a>:</p>
 <pre class="literal-block">
 syncevolution --configure \
-              --sync-property &quot;username=123456&quot; \
-              --sync-property &quot;password=!&#64;#ABcd1234&quot; \
-              --source-property sync=none \
-               memotoo&#64;other
+              username=123456 \
+              password=!&#64;#ABcd1234&quot; \
+              sync=none \
+              memotoo&#64;other
 
 syncevolution --configure \
-              --source-property evolutionsource=&lt;name of other address book&gt; \
+              --source-property database=&lt;name of other address book&gt; \
               &#64;other addressbook
 
 syncevolution --configure \
-              --source-property sync=two-way \
+              sync=two-way \
               memotoo&#64;other addressbook
 
 syncevolution memotoo
@@ -809,6 +865,107 @@ and/or updates the configuration so that it looks like configurations
 created anew with the current syncevolution:</p>
 <pre class="literal-block">
 syncevolution --migrate memotoo
+</pre>
+</div>
+<div class="section" id="synchronization-beyond-syncml">
+<h3>Synchronization beyond SyncML</h3>
+<p>In the simple examples above, SyncEvolution exchanges data with
+servers via the SyncML protocol. Starting with release 1.2,
+SyncEvolution also supports other protocols like CalDAV and
+CardDAV.</p>
+<p>These protocols are implemented in backends which look like data
+sources. SyncEvolution then synchronizes data between a pair of
+backends. Because the entire sync logic (matching of items, merging)
+is done locally by SyncEvolution, this mode of operation is called
+<em>local sync</em>.</p>
+<p>Some examples of things that can be done with local sync:</p>
+<ul class="simple">
+<li>synchronize events with a CalDAV server and contacts with a CardDAV server</li>
+<li>mirror a local database as items in a directory, with format conversion
+and one-way or two-way data transfer (export vs. true syncing)</li>
+</ul>
+<p>Because local sync involves two sides, two configurations are
+needed. One is called the <em>target config</em>. By convention it must be
+called <tt class="docutils literal"><span class="pre">target-config&#64;&lt;some</span> context name&gt;</tt>, for example
+<tt class="docutils literal"><span class="pre">target-config&#64;google-calendar</span></tt>. The target config holds properties
+which apply to all sources inside that context, like user name,
+password and URL for the server. Once configured, the target config
+can be used to list/import/export/update items via the SyncEvolution
+command line. It cannot be used for synchronization because it does
+not defined what the items are supposed to be synchronized with.</p>
+<p>For synchronization, a second <em>sync config</em> is needed. This config has
+the same role as the traditional SyncML configs and is typically
+defined in the same implicit <tt class="docutils literal">&#64;default</tt> context as those
+configs. All configs in that context use the same local data. The sync
+config defines the database pairs and the sync mode (one-way, two-way, ...).</p>
+<p>The first step is to select a target config with
+<tt class="docutils literal"><span class="pre">syncURL=local://&#64;&lt;some</span> context name&gt;</tt>. Multiple sync configs can
+access the same target config. In the second step, the <tt class="docutils literal">uri</tt> of each
+source in the sync config must be set to the name of the corresponding
+source in the target config.  The <tt class="docutils literal">sync</tt> property in the sync config
+defines the direction of the data flow. It can be set temporarily when
+starting a synchronzation with the sync config.</p>
+<blockquote>
+<strong>Warning:</strong> in local sync, the sync config side acts as
+server. Therefore the <tt class="docutils literal"><span class="pre">from-server</span></tt> variants
+(<tt class="docutils literal"><span class="pre">one-way-from-server</span></tt>, <tt class="docutils literal"><span class="pre">refresh-from-server</span></tt>) transfer data
+from the sync config into the target config. The <tt class="docutils literal"><span class="pre">from-client</span></tt>
+variants transfer in the other direction, even if the target config
+happens to access data on a remote server.</blockquote>
+</div>
+<div class="section" id="caldav-and-carddav">
+<h3>CalDAV and CardDAV</h3>
+<p>This section explains how to use local syncing for CalDAV and
+CardDAV. Both protocols are based on WebDAV and are provided by the
+same backend. They share <tt class="docutils literal">username/password/syncURL</tt> properties
+defined in their target config.</p>
+<p>The credentials must be provided if the server is password
+protected. The <tt class="docutils literal">syncURL</tt> is optional if the <tt class="docutils literal">username</tt> is an email
+address and the server supports auto-discovery of its CalDAV and/or
+CardDAV services (using DNS SRV entries, <tt class="docutils literal"><span class="pre">.well-known</span></tt> URIs, properties
+of the current principal, ...).</p>
+<p>The <tt class="docutils literal">database</tt> property of each source can be set to the URL of a
+specific <em>collection</em> (= database in WebDAV terminology). If not set,
+then the WebDAV backend first locates the server based on <tt class="docutils literal">username</tt>
+or <tt class="docutils literal">syncURL</tt> and then scans it for the default event resp. contact
+collection. This is done once in the initial synchronization. At the end
+of a successful synchroniation, the automatic choice is made permanent
+by setting the <tt class="docutils literal">database</tt> property.</p>
+<blockquote>
+<strong>Warning:</strong> the protocols do not uniquely identify this default
+collection. The backend tries to make an educated guess, but it might
+pick the wrong one if the server provides more than one address book
+or calendar. A future version of SyncEvolution will support listing
+the available collections, but 1.2 does not yet support that.</blockquote>
+<p>Configuration templates for Google Calendar, Yahoo Calendar and a
+generic CalDAV/CardDAV server are included in SyncEvolution. The Yahoo
+template also contains an entry for contact synchronization, but using
+it is not recommended due to known server-side issues.</p>
+<p>The following commands set up synchronization with a generic WebDAV
+server that supports CalDAV, CardDAV and auto-discovery. For Google and Yahoo,
+replace <tt class="docutils literal">webdav</tt> with <tt class="docutils literal"><span class="pre">google-calendar</span></tt> resp. <tt class="docutils literal">yahoo</tt> and remove the
+<tt class="docutils literal">addressbook</tt> source when setting up the sync config.</p>
+<pre class="literal-block">
+# configure target config
+syncevolution --configure \
+             --template webdav \
+             username=123456 \
+             password=!&#64;#ABcd1234&quot; \
+             target-config&#64;webdav
+
+# configure sync config
+syncevolution --configure \
+              --template SyncEvolution_Client \
+              username= \
+              password= \
+              webdav \
+              calendar addressbook
+
+# initial slow sync
+syncevolution --sync slow webdav
+
+# incremental sync
+syncevolution webdav
 </pre>
 </div>
 <div class="section" id="notes">

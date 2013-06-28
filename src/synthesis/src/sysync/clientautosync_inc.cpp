@@ -4,9 +4,9 @@
  *  Include file for binfileagent.cpp and palmdbagent.cpp to provide
  *  autosync mechanisms.
  *
- *  Author:       Lukas Zeller (luz@synthesis.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
- *  Copyright (c) 2004-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2004-2011 by Synthesis AG + plan44.ch
  *
  *  2004-05-10 : luz : created from clientprovisioning_inc.cpp
  *

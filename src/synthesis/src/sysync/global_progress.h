@@ -1,7 +1,7 @@
 /*
  *  Include file to allow SyncML RTK to use progress callback
  *
- *  Copyright (c) 2003-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2003-2011 by Synthesis AG + plan44.ch
  */
 
 #ifndef GLOBAL_PROGRESS_H

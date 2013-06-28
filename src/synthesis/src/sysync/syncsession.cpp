@@ -4,7 +4,7 @@
  *    of multiple SyncML-Toolkit "Sessions" (Message composition/de-
  *    composition) as well as multiple database synchronisations.
  *
- *  Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  *  2001-05-07 : luz : Created
  *
@@ -26,6 +26,8 @@
   #include "platform_thread.h"
 #endif
 
+#include <xltdec.h>
+#include <xltdevinf.h>
 
 #ifndef SYNCSESSION_PART1_EXCLUDE
 
@@ -367,6 +369,9 @@ TRemoteRuleConfig::TRemoteRuleConfig(const char *aElementName, TConfigElement *a
 // config destructor
 TRemoteRuleConfig::~TRemoteRuleConfig()
 {
+  if (fOverrideDevInfBufferP)
+    smlFreeProtoElement(fOverrideDevInfBufferP);
+
   clear();
 } // TRemoteRuleConfig::~TRemoteRuleConfig
 
@@ -419,6 +424,9 @@ void TRemoteRuleConfig::clear(void)
 	fSubRule = false; // normal rule by default
   // - rules are final by default
   fFinalRule = true;
+  // no DevInf by default
+  fOverrideDevInfP = NULL;
+  fOverrideDevInfBufferP = NULL;
   // clear inherited
   inherited::clear();
 } // TRemoteRuleConfig::clear
@@ -500,6 +508,8 @@ bool TRemoteRuleConfig::localStartElement(const char *aElementName, const char *
     expectTristate(fForceUTC);
   else if (strucmp(aElementName,"forcelocaltime")==0)
     expectTristate(fForceLocaltime);
+  else if (strucmp(aElementName,"overridedevinf")==0)
+    expectString(fOverrideDevInfXML);
   // inclusion of subrules
   else if (strucmp(aElementName,"include")==0) {
 		// <include rule=""/>  
@@ -847,10 +857,82 @@ void TSessionConfig::localResolve(bool aLastPass)
   // resolve
   if (aLastPass) {
     #ifndef NO_REMOTE_RULES
-    // - resolve rules
+    // - resolve rules and parse OverrideDevInf
     TRemoteRulesList::iterator pos;
-    for(pos=fRemoteRulesList.begin();pos!=fRemoteRulesList.end();pos++)
+    for(pos=fRemoteRulesList.begin();pos!=fRemoteRulesList.end();pos++) {
       (*pos)->Resolve(aLastPass);
+
+      if (!(*pos)->fOverrideDevInfXML.empty()) {
+        // SMLTK expects full SyncML message
+        string buffer =
+          "<SyncML><SyncHdr>"
+          "<VerDTD>1.2</VerDTD>"
+          "<VerProto>SyncML/1.2</VerProto>"
+          "<SessionID>1</SessionID>"
+          "<MsgID>1</MsgID>"
+          "<Target><LocURI>foo</LocURI></Target>"
+          "<Source><LocURI>bar</LocURI></Source>"
+          "</SyncHdr>"
+          "<SyncBody>"
+          "<Results>"
+          "<CmdID>1</CmdID>"
+          "<MsgRef>1</MsgRef>"
+          "<CmdRef>1</CmdRef>"
+          "<Meta>"
+          "<Type>application/vnd.syncml-devinf+xml</Type>"
+          "</Meta>"
+          "<Item>"
+          "<Source>"
+          "<LocURI>./devinf12</LocURI>"
+          "</Source>"
+          "<Data>"
+          ;
+        buffer += (*pos)->fOverrideDevInfXML;
+        buffer +=
+          "</Data>"
+          "</Item>"
+          "</Results>"
+          "</SyncBody>"
+          "</SyncML>";
+        MemPtr_t xml = (unsigned char *)buffer.c_str();
+        XltDecoderPtr_t decoder = NULL;
+        SmlSyncHdrPtr_t hdr = NULL;
+        Ret_t ret = xltDecInit(SML_XML,
+                               xml + buffer.size(),
+                               &xml,
+                               &decoder,
+                               &hdr);
+        if (ret != SML_ERR_OK) {
+          fRootElementP->setError(true, "initializing scanner for DevInf failed");
+        } else {
+          smlFreeProtoElement(hdr);
+          SmlProtoElement_t element;
+          VoidPtr_t content = NULL;
+          ret = xltDecNext(decoder,
+                           xml + buffer.size(),
+                           &xml,
+                           &element,
+                           &content);
+          if (ret != SML_ERR_OK) {
+            fRootElementP->setError(true, "parsing of OverrideDevInf failed");
+          } else if (element != SML_PE_RESULTS ||
+                     !((SmlResultsPtr_t)content)->itemList ||
+                     !((SmlResultsPtr_t)content)->itemList->item ||
+                     !((SmlResultsPtr_t)content)->itemList->item->data ||
+                     ((SmlResultsPtr_t)content)->itemList->item->data->contentType != SML_PCDATA_EXTENSION ||
+                     ((SmlResultsPtr_t)content)->itemList->item->data->extension != SML_EXT_DEVINF) {
+            fRootElementP->setError(true, "parsing of DevInf returned unexpected result");
+            if (content)
+              smlFreeProtoElement(content);
+          } else {
+            (*pos)->fOverrideDevInfP = (SmlDevInfDevInfPtr_t)((SmlResultsPtr_t)content)->itemList->item->data->content;
+            (*pos)->fOverrideDevInfBufferP = content;
+          }
+        }
+        if (decoder)
+          xltDecTerminate(decoder);
+      }
+    }
     #endif
     TLocalDSList::iterator pos2;
     for(pos2=fDatastores.begin();pos2!=fDatastores.end();pos2++)
@@ -3516,10 +3598,16 @@ localstatus TSyncSession::analyzeRemoteDevInf(
       ));
     }
     // detect remote specific server behaviour if needed
-    sta = checkRemoteSpecifics(aDevInfP);
+    SmlDevInfDevInfPtr_t CTCapDevInfP = aDevInfP;
+    sta = checkRemoteSpecifics(aDevInfP, &CTCapDevInfP);
     if (sta!=LOCERR_OK) {
       remoteAnalyzed(); // analyzed to reject
       goto done;
+    }
+    // switch to DevInf provided by remote rules
+    if (CTCapDevInfP != aDevInfP) {
+      PDEBUGPRINTFX(DBG_REMOTEINFO,("using CTCaps provided in DevInf of remote rule"));
+      aDevInfP = CTCapDevInfP;
     }
     // Types and datastores may not be changed/added if sync has allready started
     if (fRemoteDevInfLock) {
@@ -4314,7 +4402,7 @@ bool TSyncSession::SessionLogin(
 // does not do anything on server level (configured rules are handled at session level)
 // - NOTE: aDevInfP can be NULL to specify that remote device has not sent any devInf at all
 //         and this is a blind sync attempt (so best-guess workaround settings might apply)
-localstatus TSyncSession::checkRemoteSpecifics(SmlDevInfDevInfPtr_t aDevInfP)
+localstatus TSyncSession::checkRemoteSpecifics(SmlDevInfDevInfPtr_t aDevInfP, SmlDevInfDevInfPtr_t *aOverrideDevInfP)
 {
   #if defined(SYSER_REGISTRATION) || !defined(NO_REMOTE_RULES)
   localstatus sta = LOCERR_OK;
@@ -4426,6 +4514,10 @@ localstatus TSyncSession::checkRemoteSpecifics(SmlDevInfDevInfPtr_t aDevInfP)
   for(pos=fActiveRemoteRules.begin();pos!=fActiveRemoteRules.end();pos++) {      
     // activate this rule
     TRemoteRuleConfig *ruleP = *pos;
+    if (ruleP->fOverrideDevInfP && aOverrideDevInfP) {
+      // processing in caller will continue with updated DevInf
+      *aOverrideDevInfP = ruleP->fOverrideDevInfP;
+    }
     // - apply options that have a value
     if (ruleP->fLegacyMode>=0) fLegacyMode = ruleP->fLegacyMode;
     if (ruleP->fLenientMode>=0) fLenientMode = ruleP->fLenientMode;
@@ -4485,6 +4577,9 @@ localstatus TSyncSession::checkRemoteSpecifics(SmlDevInfDevInfPtr_t aDevInfP)
     #endif
   } // for all activated rules
   PDEBUGENDBLOCK("RemoteRules");
+  // something failed in applying remote rules?
+  if (sta!=LOCERR_OK)
+    return sta;
   #endif // NO_REMOTE_RULES
   // Final adjustments
   #ifndef NO_REMOTE_RULES

@@ -1,12 +1,12 @@
 /**
  *  @File     binfile.cpp
  *
- *  @Author   Lukas Zeller (luz@synthesis.ch)
+ *  @Author   Lukas Zeller (luz@plan44.ch)
  *
  *  @brief TBinFile
  *    Standard C file implementation of TBinFile
  *
- *    Copyright (c) 2003-2009 by Synthesis AG (www.synthesis.ch)
+ *    Copyright (c) 2003-2011 by Synthesis AG + plan44.ch
  *
  *  @Date 2006-03-28 : luz : created
  */
@@ -102,8 +102,9 @@ bool TBinFile::platformTruncateFile(uInt32 aNewSize)
   #if defined(LINUX) || defined(MACOSX)
     fflush(fCBinFile); // unbuffer everything
     int fd = fileno(fCBinFile); // get file descriptor
-    if (ftruncate(fd,aNewSize))
+    if (ftruncate(fd,aNewSize)) {
       ; // error ignored
+    }
   #elif defined(WIN32)
     fflush(fCBinFile); // unbuffer everything
     HANDLE h = (HANDLE)fileno(fCBinFile); // get file descriptor

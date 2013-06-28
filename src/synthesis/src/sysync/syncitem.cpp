@@ -1,7 +1,7 @@
 /*
  *  File:         SyncItem.cpp
  *
- *  Author:			  Lukas Zeller (luz@synthesis.ch)
+ *  Author:			  Lukas Zeller (luz@plan44.ch)
  *
  *  TSyncItem
  *    Abstract Base class of all data containing items.
@@ -9,7 +9,7 @@
  *    which holds type information and conversion
  *    features.
  *
- *  Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  *  2001-06-18 : luz : created
  *
@@ -36,6 +36,18 @@ const char * const sysync::compareRelevanceNames[numEQmodes] = {
   "always",   // always relevant, fields that must always match (first-time sync match set)
   "n/a"
 };
+
+
+const char * const sysync::comparisonModeNames[numEQmodes] = {
+  "all",    // compare all fields, even irrelevant ones
+  "n/a", // n/a (scripted)
+  "conflict", // compare fields relevant for (normal sync) conflict detection
+  "slowsync", // compare fields relevant for slow sync match
+  "firstsync", // compare fields relevant for first time slow sync match (possibly relaxed comparison rules)
+  "age", // no test for equality, only for age (returns SYSYNC_NOT_COMPARABLE if age comparison not possible)
+};
+
+
 
 /*
  * Implementation of TSyncItem

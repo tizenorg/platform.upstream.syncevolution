@@ -21,9 +21,9 @@ $(srcdir)/Makefile.am: $(srcdir)/Makefile.am.in $(srcdir)/gen-makefile-am.sh
 # incompatible way, increment CURRENT and reset AGE and REVISION to
 # zero. When fixing something without interface change, increment
 # REVISION.
-ENGINE_CURRENT = 4
+ENGINE_CURRENT = 5
 ENGINE_REVISION = 0
-ENGINE_AGE = 4
+ENGINE_AGE = 5
 
 CLEANFILES =
 EXTRA_DIST =
@@ -107,6 +107,7 @@ else
 XMLPARSE_CFLAGS_BUILTIN = -I$(srcdir)/Targets/ReleasedProducts/clientEngine_autotools/systemxml
 endif
 
+libsynthesissdk_la_LIBADD = libsmltk.la # san.cpp calls sml* functions directly
 libsynthesissdk_la_LDFLAGS = -static
 libsynthesissdk_la_CFLAGS = $(PIC_CXXFLAGS)
 libsynthesissdk_la_CXXFLAGS = $(PIC_CXXFLAGS)

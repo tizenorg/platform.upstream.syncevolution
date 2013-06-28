@@ -2,7 +2,7 @@
  *  SySyTool
  *    Synthesis SyncML Diagnostic Tool
  *
- *  Copyright (c) 2004-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2004-2011 by Synthesis AG + plan44.ch
  *
  */
 
@@ -42,7 +42,7 @@ bool gSilent = false; // -s
 static void printTitle(void)
 {
 	CONSOLEPRINTF((
-	  "Synthesis SyncML Diagnostic Tool %d.%d.%d.%d - (c) 2004-" RELEASE_YEAR_TXT " by Synthesis AG\n",
+	  "Synthesis SyncML Diagnostic Tool %d.%d.%d.%d - (c) 2004-" REAL_RELEASE_YEAR_TXT " by Synthesis AG\n",
     SYSYNC_VERSION_MAJOR,
     SYSYNC_VERSION_MINOR,
     SYSYNC_SUBVERSION,

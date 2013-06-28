@@ -1,12 +1,12 @@
 /**
  *  @File     pluginapids.h
  *
- *  @Author   Lukas Zeller (luz@synthesis.ch)
+ *  @Author   Lukas Zeller (luz@plan44.ch)
  *
  *  @brief TPluginApiDS
  *    Plugin based datastore API implementation
  *
- *    Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *    Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  *  @Date 2005-10-06 : luz : created from apidbdatastore
  */
@@ -116,7 +116,8 @@ public:
   uInt16 fPluginDbgMask_Data;
   uInt16 fPluginDbgMask_Admin;
   // capabilities of connected plugin
-  bool fItemAsKey;
+  bool fItemAsKey; // supports items as key
+  bool fHasDeleteSyncSet; // implements deleting sync set using DeleteSyncSet()
   // public methods
   // - create appropriate datastore from config, calls addTypeSupport as well
   virtual TLocalEngineDS *newLocalDataStore(TSyncSession *aSessionP);
@@ -367,6 +368,9 @@ private:
   TDB_Api fDBApi_Admin; ///< access to admin
   // config pointer
   TPluginDSConfig *fPluginDSConfigP;
+  // filter testing
+	bool fAPICanFilter;
+	bool fAPIFiltersTested;  
 }; // TPluginApiDS
 
 

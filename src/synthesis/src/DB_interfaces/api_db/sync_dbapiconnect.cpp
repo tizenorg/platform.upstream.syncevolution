@@ -7,7 +7,7 @@
  *        the Synthesis SyncML engine
  *        and the database layer
  *
- *  Copyright (c) 2005-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2005-2011 by Synthesis AG + plan44.ch
  *
  *
  *  This module contains the method table and connection
@@ -226,29 +226,47 @@ TSyError DBApi_DLLAssign( appPointer aMod, appPointer aField, memSize aFieldSize
   } // if
 
 
+  if (strcmp( aKey.c_str(),Plugin_DS_Admin_Str )==0) {
+    js1= j.SgnS_X( jt  + jt + jvt );  // "(ILjava/lang/String;Ljava/lang/String;LVAR_String;)S"
+
+    return ConnectFunctions( aMod, aField,aFieldSize, true,
+          // ---- datastore admin asStr ----
+             Da_LA,     js1.c_str(),
+             Da_SA,     jsT.c_str(),
+             NULL );
+  } // if
+
+  if (strcmp( aKey.c_str(),Plugin_DS_Admin_Key )==0) {
+    js1= j.SgnS_X( jt  + jt + j.fr ); // "(ILjava/lang/String;Ljava/lang/String;I)S"
+    js2= j.SgnS_X           ( j.fr ); // "(II)S"
+
+    return ConnectFunctions( aMod, aField,aFieldSize, true,
+          // ---- datastore admin asKey ----
+             Da_LAK,    js1.c_str(),
+             Da_SAK,    js2.c_str(),
+             NULL );
+  } // if
+
   // "InsertMapItem" can be used now
   keyOld= strcmp( aKey.c_str(),Plugin_DS_Admin_OLD )==0;
-  keyCur= strcmp( aKey.c_str(),Plugin_DS_Admin     )==0;
+  keyCur= strcmp( aKey.c_str(),Plugin_DS_Admin_Map )==0;
 
   if   (keyCur || keyOld) {
     cAppCharP   proc_insM= "";
     if (keyCur) proc_insM= Da_IM;
 
-    js1= j.SgnS_X( jt  + jt + jvt ); // "(ILjava/lang/String;Ljava/lang/String;LVAR_String;)S"
-    js2= j.SgnZ_X( jmi + "Z" );      // "(ILMapID;Z)Z"
-    js3= j.SgnS_X( jmi );            // "(ILMapID;)S"
+    js1= j.SgnZ_X( jmi + "Z" ); // "(ILMapID;Z)Z"
+    js2= j.SgnS_X( jmi );       // "(ILMapID;)S"
 
     return ConnectFunctions( aMod, aField,aFieldSize, true,
           // ---- datastore admin ----
-             Da_LA,     js1.c_str(),
-             Da_SA,     jsT.c_str(),
-             Da_RM,     js2.c_str(),
-             proc_insM, js3.c_str(),
-             Da_UM,     js3.c_str(), // 2nd
-             Da_DM,     js3.c_str(), // 3rd
+             Da_RM,     js1.c_str(),
+             proc_insM, js2.c_str(),
+             Da_UM,     js2.c_str(), // 2nd
+             Da_DM,     js2.c_str(), // 3rd
              NULL );
   } // if
-
+   
 
   // "DeleteBlob" can be used now
   keyOld = strcmp( aKey.c_str(),Plugin_DS_Data_OLD1 )==0;
@@ -376,12 +394,18 @@ TSyError DBApi_DLLAssign( appPointer aMod, appPointer aField, memSize aFieldSize
              "",    "", /*     */
              "",    "", /*-----*/
 
-             "",    "", /*-----* admin */
+                        /*-----* admin */
+             "",    "", /* str */
+             "",    "", /*     */
+                        /*-----*/
+             "",    "", /* key */
+             "",    "", /*     */
+                        /*-----*/
+             "",    "", /*     */
+             "",    "", /* map */
              "",    "", /*     */
              "",    "", /*     */
-             "",    "", /*     */
-             "",    "", /*     */
-             "",    "", /*-----*/
+                        /*-----*/
 
                         /*-----* data read/write */
              "",    "", /* rd  */
@@ -474,12 +498,18 @@ TSyError DBApi_DLLAssign( appPointer aMod, appPointer aField, memSize aFieldSize
             "",    "", /*     */
             "",    "", /*-----*/
 
-            "",    "", /*-----* admin */
+                       /*-----* admin */
+            "",    "", /* str */
+            "",    "", /*     */
+                       /*-----*/
+            "",    "", /* key */
+            "",    "", /*     */
+                       /*-----*/
+            "",    "", /*     */
+            "",    "", /* map */
             "",    "", /*     */
             "",    "", /*     */
-            "",    "", /*     */
-            "",    "", /*     */
-            "",    "", /*-----*/
+                       /*-----*/
 
                        /*-----* data read/write */
             "",    "", /* rd  */

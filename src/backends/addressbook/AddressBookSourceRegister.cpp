@@ -62,9 +62,7 @@ static RegisterSyncSource registerMe("iPhone/Mac OS X Address Book",
                                      false,
 #endif
                                      createSource,
-                                     "Mac OS X or iPhone Address Book = addressbook = contacts = apple-contacts\n"
-                                     "   vCard 2.1 (default) = text/x-vcard\n"
-                                     "   vCard 3.0 = text/vcard\n",
+                                     "Mac OS X or iPhone Address Book = addressbook = contacts = apple-contacts\n",
                                      Values() +
                                      (Aliases("apple-contacts") + "Mac OS X Address Book" + "iPhone Address Book"));
 
@@ -99,7 +97,7 @@ namespace {
 
 static class VCard21Test : public RegisterSyncSourceTest {
 public:
-    VCard21Test() : RegisterSyncSourceTest("addressbook_vcard21", "vcard21") {}
+    VCard21Test() : RegisterSyncSourceTest("addressbook_eds_contact", "eds_contact") {}
 
     virtual void updateConfig(ClientTestConfig &config) const
     {
@@ -109,7 +107,7 @@ public:
 
 static class VCard30Test : public RegisterSyncSourceTest {
 public:
-    VCard30Test() : RegisterSyncSourceTest("addressbook_vcard30", "vcard30") {}
+    VCard30Test() : RegisterSyncSourceTest("addressbook_eds_contact", "eds_contact") {}
 
     virtual void updateConfig(ClientTestConfig &config) const
     {

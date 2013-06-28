@@ -12,8 +12,20 @@
 /* addressbook available */
 #undef ENABLE_ADDRESSBOOK
 
+/* Akonadi available */
+#undef ENABLE_AKONADI
+
 /* define if bluez library is available */
 #undef ENABLE_BLUETOOTH
+
+/* Buteo available */
+#undef ENABLE_BUTEO
+
+/* enable buteo tests */
+#undef ENABLE_BUTEO_TESTS
+
+/* DAV available */
+#undef ENABLE_DAV
 
 /* overrides the default D-Bus timeout so that synchronous calls never time
    out */
@@ -27,6 +39,9 @@
 
 /* file available */
 #undef ENABLE_FILE
+
+/* libical in use */
+#undef ENABLE_ICAL
 
 /* enable integration tests inside the final library */
 #undef ENABLE_INTEGRATION_TESTS
@@ -57,6 +72,9 @@
 
 /* QtContacts available */
 #undef ENABLE_QTCONTACTS
+
+/* Qt D-Bus bindings available */
+#undef ENABLE_QT_DBUS
 
 /* sqlite available */
 #undef ENABLE_SQLITE
@@ -94,8 +112,14 @@
 /* we have GTK+ 2.18 or better */
 #undef GTK_2_18
 
+/* define if mlite could be used in dbus service */
+#undef HAS_MLITE
+
 /* define if libnotify could be used in dbus service */
 #undef HAS_NOTIFY
+
+/* Define to 1 if you have the <Akonadi/Collection> header file. */
+#undef HAVE_AKONADI_COLLECTION
 
 /* Define to 1 if you have the `bind_textdomain_codeset' function. */
 #undef HAVE_BIND_TEXTDOMAIN_CODESET
@@ -130,11 +154,20 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
+/* Define to 1 if you have the <kwallet.h> header file. */
+#undef HAVE_KWALLET_H
+
 /* Define if your <locale.h> file defines LC_MESSAGES. */
 #undef HAVE_LC_MESSAGES
 
 /* have recent enough libical with _r variants */
 #undef HAVE_LIBICAL_R
+
+/* ne_options2() and NE_CAP_* defines available */
+#undef HAVE_LIBNEON_OPTIONS
+
+/* ne_session_system_proxy() available */
+#undef HAVE_LIBNEON_SYSTEM_PROXY
 
 /* enable GNOME specific libsoup */
 #undef HAVE_LIBSOUP_SOUP_GNOME_FEATURES_H
@@ -178,6 +211,10 @@
 /* compiling for iPhone */
 #undef IPHONE
 
+/* Define to the sub-directory in which libtool stores uninstalled libraries.
+   */
+#undef LT_OBJDIR
+
 /* we have Mx-Gtk 0.99.1 or better */
 #undef MX_GTK_0_99_1
 
@@ -199,6 +236,9 @@
 /* Define to the one symbol short name of this package. */
 #undef PACKAGE_TARNAME
 
+/* Define to the home page for this package. */
+#undef PACKAGE_URL
+
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
 
@@ -208,11 +248,17 @@
 /* default value for SSLServerCertificates option */
 #undef SYNCEVOLUTION_SSL_SERVER_CERTIFICATES
 
+/* binary is meant for end-users */
+#undef SYNCEVOLUTION_STABLE_RELEASE
+
 /* "using Synthesis engine" */
 #undef SYNTHESIS
 
 /* define if gnome keyring should be used in dbus service */
 #undef USE_GNOME_KEYRING
+
+/* KWallet available */
+#undef USE_KDE_KWALLET
 
 /* Use Moblin UI widgets */
 #undef USE_MOBLIN_UX

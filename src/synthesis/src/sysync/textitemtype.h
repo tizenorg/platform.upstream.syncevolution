@@ -1,12 +1,12 @@
 /*
  *  File:         TextItemType.h
  *
- *  Author:			  Lukas Zeller (luz@synthesis.ch)
+ *  Author:			  Lukas Zeller (luz@plan44.ch)
  *
  *  TTextItemType
  *    base class for plain text based items (notes, emails...)
  *
- *  Copyright (c) 2002-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2002-2011 by Synthesis AG + plan44.ch
  *
  *  2002-05-29 : luz : created from MimeDirItemType
  *

@@ -7,7 +7,7 @@
  *    base class for data object based items (EMAILOBJ, FILEOBJ, FOLDEROBJ)
  *    implemented for OMA DS V1.2
  *
- *  Copyright (c) 2005-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2005-2011 by Synthesis AG + plan44.ch
  *
  *  2005-07-20 : bfo : created from TextItemType
  *
@@ -57,6 +57,7 @@ void TTagMapDefinition::clear(void)
 
 
 #ifdef CONFIGURABLE_TYPE_SUPPORT
+
 // server config element parsing
 bool TTagMapDefinition::localStartElement(const char *aElementName, const char **aAttributes, sInt32 aLine)
 {
@@ -76,7 +77,8 @@ bool TTagMapDefinition::localStartElement(const char *aElementName, const char *
   // ok
   return true;
 } // TTagMapDefinition::localStartElement
-#endif
+
+#endif // CONFIGURABLE_TYPE_SUPPORT
 
 
 TTagMapDefinition::~TTagMapDefinition() {
@@ -88,7 +90,7 @@ TTagMapDefinition::~TTagMapDefinition() {
 // -------------------------------------------------------------------------------------------
 // XML based datatype config
 TDataObjConfig::TDataObjConfig(const char* aName, TConfigElement *aParentElement) :
-  TMultiFieldTypeConfig(aName,aParentElement)
+  inherited(aName,aParentElement)
 {
   clear();
 } // TDataObjConfig::TDataObjConfig
@@ -134,6 +136,7 @@ TSyncItemType *TDataObjConfig::newSyncItemType(TSyncSession *aSessionP, TSyncDat
 
 
 #ifdef CONFIGURABLE_TYPE_SUPPORT
+
 // config element parsing
 bool TDataObjConfig::localStartElement(const char *aElementName, const char **aAttributes, sInt32 aLine)
 {
@@ -141,7 +144,6 @@ bool TDataObjConfig::localStartElement(const char *aElementName, const char **aA
   if (strucmp(aElementName,"tagmap")==0) {
     // <tagmap field="SUBJECT">
     const char* nam = getAttr(aAttributes,"field");
-
     if (!fFieldListP)
       return fail("'use' must be specfied before first <tagmap>");
     // search field
@@ -157,15 +159,14 @@ bool TDataObjConfig::localStartElement(const char *aElementName, const char **aA
     expectChildParsing(*tagmapP);
     return true;
   } // if
-
   // - none known here
-  if (TMultiFieldTypeConfig::localStartElement(aElementName,aAttributes,aLine)) return true;
-
-  // let the profile parse as if it was inside a "textprofile"
+  if (inherited::localStartElement(aElementName,aAttributes,aLine))
+  	return true;
+  // let the profile parse as if it was inside a <textprofile> or <mimeprofile>
   if (fProfileConfigP)
     return delegateParsingTo(fProfileConfigP,aElementName,aAttributes,aLine);
-
-  return false; // cannot parse
+	// cannot parse
+  return false;
 } // TDataObjConfig::localStartElement
 
 
@@ -176,10 +177,12 @@ void TDataObjConfig::localResolve(bool aLastPass)
   // resolve inherited
   inherited::localResolve(aLastPass);
 } // TDataObjConfig::localResolve
-#endif
+
+#endif // CONFIGURABLE_TYPE_SUPPORT
 
 
 #ifdef HARDCODED_TYPE_SUPPORT
+
 TTagMapDefinition *TDataObjConfig::addTagMap( sInt16 aFid, const char* aXmlTag,
                                               bool aBoolType, bool aEmbedded,
                                               const char* aParent )
@@ -198,7 +201,8 @@ TTagMapDefinition *TDataObjConfig::addTagMap( sInt16 aFid, const char* aXmlTag,
   // return pointer
   return tagmapP;
 } // TDataObjConfig::addTagMap
-#endif
+
+#endif // HARDCODED_TYPE_SUPPORT
 
 
 
@@ -218,10 +222,13 @@ TDataObjType::TDataObjType(
 {
   // save typed config pointer again
   fTypeCfgP = static_cast<TDataObjConfig *>(aTypeCfgP);
-  // create the profile handler
-  fProfileHandlerP =  static_cast<TDataObjConfig *>(aTypeCfgP)->fProfileConfigP->newProfileHandler(this);
-  // set profile mode
-  fProfileHandlerP->setProfileMode(fTypeCfgP->fProfileMode);
+  // create the profile handler if there is one at all (a profile is optional)
+  if (fTypeCfgP->fProfileConfigP) {
+  	// create the handler
+	  fProfileHandlerP = fTypeCfgP->fProfileConfigP->newProfileHandler(this);
+    // set profile mode
+    fProfileHandlerP->setProfileMode(fTypeCfgP->fProfileMode);
+  }
 } // TDataObjType::TDataObjType
 
 
@@ -235,6 +242,7 @@ TDataObjType::~TDataObjType()
 
 
 #ifdef OBJECT_FILTERING
+
 // get field index of given filter expression identifier.
 sInt16 TDataObjType::getFilterIdentifierFieldIndex(const char *aIdentifier, uInt16 aIndex)
 {
@@ -271,7 +279,8 @@ sInt16 TDataObjType::getFilterIdentifierFieldIndex(const char *aIdentifier, uInt
   // if no field ID found so far, look up in field list
   return TMultiFieldItemType::getFilterIdentifierFieldIndex(aIdentifier, aIndex);
 } // TDataObjType::getFilterIdentifierFieldIndex
-#endif
+
+#endif // OBJECT_FILTERING
 
 
 
@@ -747,26 +756,6 @@ bool TDataObjType::parseData(const char *aText, stringSize aSize, TMultiFieldIte
   // Go thru all the tags and build temporary stack at <tList>
   int  level= 0;
   int  direction;
-  // bool found;
-
-  /*
-  VVV     vEl;
-  typedef std::list<VVV> VList;
-  VList  vv;
-  VList::iterator vx;
-
-  vEl.a= "beat";  vv.push_back( vEl );
-  vEl.a= "ee";    vv.push_back( vEl );
-  vEl.a= "luz";   vv.push_back( vEl );
-  vEl.a= "gugus"; vv.push_back( vEl );
-  vEl.a= "gurk";
-
-  for (vx= vv.begin();
-       vx!=vv.end(); vx++) {
-    printf( "soso '%s'\n", (*vx).a.c_str() );
-  }
-  */
-
   const char*     p= aText;
   if     (strstr( p, BeginCDATA )==p) p+= strlen( BeginCDATA );
   while (NextTag( p, tag,attr, vPos,vSize, level,direction )) {
@@ -906,9 +895,8 @@ bool TDataObjType::parseData(const char *aText, stringSize aSize, TMultiFieldIte
   } // while
 
   #ifdef SYDEBUG
-    PDEBUGPRINTFX(DBG_PARSE,("Successfully parsed: "));
-//%%%not again!    PDEBUGPUTSX(DBG_PARSE+DBG_USERDATA+DBG_EXOTIC, aText );
-    aItem.debugShowItem(DBG_DATA+DBG_PARSE);
+  PDEBUGPRINTFX(DBG_PARSE,("Successfully parsed: "));
+  aItem.debugShowItem(DBG_DATA+DBG_PARSE);
   #endif
 
   return true;

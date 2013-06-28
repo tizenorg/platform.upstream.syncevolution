@@ -1,13 +1,13 @@
 /**
  *  @File     customimpl.cpp
  *
- *  @Author   Lukas Zeller (luz@synthesis.ch)
+ *  @Author   Lukas Zeller (luz@plan44.ch)
  *
  *  @brief TCustomImplDS
  *    Base class for customizable datastores (mainly extended DB mapping features
  *    common to all derived classes like ODBC, DBAPI etc.).
  *
- *    Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *    Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  *  @Date 2005-12-05 : luz : separated from odbcapids
  */
@@ -1658,14 +1658,13 @@ localstatus TCustomImplDS::implStartDataRead()
     sta = inherited::implStartDataRead();
     if (sta==LOCERR_OK) {
       // now make sure the syncset is loaded
-      if (!makeSyncSetLoaded(
+			sta = makeSyncSetLoaded(
         fSlowSync // all items with data needed for slow sync
         #ifdef OBJECT_FILTERING
         || fFilteringNeededForAll // all item data needed for dynamic filtering
         #endif
         || CRC_CHANGE_DETECTION // all item data needed when binfile must detect changes using CRC
-      ))
-        sta = 510; // error
+      );
     }
   }
   else
@@ -2162,6 +2161,9 @@ localstatus TCustomImplDS::implGetItem(
             // mark entry as waiting for delete status
             // NOTES: - we cannot delete the map entry until we get a confirmItemOp() for it
             //        - the pendingStatus flag does not need to be persistent between sessions, so we don't set the changed flag here!
+						//				- the flag is important in case a server-delete vs client-replace conflict occurs which the client wins. In that
+						//          case implProcessItem needs to be able to tell that still having a map entry does NOT mean we do have
+						//					the record still in the DB.
             entry.mapflags |= mapflag_pendingDeleteStatus;
             (*fDeleteMapPos)=entry; // save updated entry in list
             // found one to report
@@ -2760,8 +2762,11 @@ bool TCustomImplDS::implProcessItem(
       remoteID=myitemP->getRemoteID();
       // first see if we have a map entry for this remote ID
       localID.erase(); // none yet
-      // Note: even items detected for deletion still have a map item until deletion is confirmed by the remote party,
-      //       so we'll be able to update already "deleted" items (in case they are not really gone, but only invisible in the sync set)
+      // Note:
+			// - even items detected for deletion still have a map item until deletion is confirmed by the remote party,
+      //   so we'll be able to update already "deleted" items (in case they are not really gone, but only invisible in the sync set)
+			// - we can use mapflag_pendingDeleteStatus (which does not need persistence in the DB, so works even for not resume-enabled backends)
+			//   to keep still existing and deleted items apart.
       mappos=findMapByRemoteID(remoteID); // search for it
       if (mappos!=fMapTable.end()) {
         localID = (*mappos).localid; // assign it if we have it
@@ -2774,10 +2779,13 @@ bool TCustomImplDS::implProcessItem(
       ///       in localEngineDS, but will be moved here later possibly
       case sop_add :
       	// check for duplicated add
-        // Note: server must check it here, because map lookup is needed. Contrarily, client
-        //       can check it on localengineds level against the pending maps list with isAddFromLastSession().
-        if (IS_SERVER && mappos!=fMapTable.end()) {
-        	// we already know this item
+        // Notes:
+				// - server must check it here, because map lookup is needed. Contrarily, client
+        //   can check it on localengineds level against the pending maps list with isAddFromLastSession().
+				// - if mapflag_pendingDeleteStatus is set, the item still has a map entry, but does not exist in the DB any more
+				//   so do not report 418 here!
+        if (IS_SERVER && mappos!=fMapTable.end() && ((*mappos).mapflags & mapflag_pendingDeleteStatus)==0) {
+        	// we already know this item (and it was not already detected as deleted from the DB, so should exist there)
           // - status "already exists"
           aStatusCommand.setStatusCode(418);
           ok = false;
@@ -3111,29 +3119,79 @@ bool TCustomImplDS::implEndDataWrite(void)
 
 
 // delete sync set one by one
-localstatus TCustomImplDS::zapSyncSet(void)
+localstatus TCustomImplDS::zapSyncSetOneByOne(void)
 {
   TSyncSetList::iterator pos;
   localstatus sta;
-  // - create dummy item
   TStatusCommand dummy(getSession());
-  TMultiFieldItem *delitemP =
-    static_cast<TMultiFieldItem *>(newItemForRemote(ity_multifield));
-  delitemP->setSyncOp(sop_delete);
-  PDEBUGPRINTFX(DBG_DATA,(
-    "Zapping datastore: deleting %ld items from database",
-    (long)fSyncSetList.size()
-  ));
+  // check if we need to apply filters
+  bool filteredDelete = fFilteringNeededForAll || fFilteringNeeded;
+  TSyncItem *delitemP = NULL;
+  if (!filteredDelete) {
+    PDEBUGPRINTFX(DBG_DATA,("Zapping datastore unfiltered: deleting %ld items from database",(long)fSyncSetList.size()));
+	}
+  else {
+    PDEBUGPRINTFX(DBG_DATA,("Zapping datastore with filter: deleting only filter passing items of max %ld items",(long)fSyncSetList.size()));  	
+  }
   for (pos=fSyncSetList.begin(); pos!=fSyncSetList.end(); ++pos) {
+    if (filteredDelete) {
+    	// we need to inspect further, as we may NOT delete the entire sync set
+      // - get the item with data (we become owner of it!)
+      getItemFromSyncSetItem(*pos,delitemP);
+      // - check filters
+      bool passes=postFetchFiltering(delitemP);
+			if (!passes)
+      	continue; // don't delete this one, it does not pass the filter
+      // - delete now
+	    PDEBUGPRINTFX(DBG_DATA,("- item '%s' passes filter -> deleting",delitemP->getLocalID()));
+    }
+    else {
+    	// all items loaded need to be deleted
+      // - create dummy item
+      delitemP = newItemForRemote(ity_multifield);
+	    delitemP->setLocalID((*pos)->localid.c_str());
+    }
     // delete
-    delitemP->setLocalID((*pos)->localid.c_str());
-    sta = apiDeleteItem(*delitemP);
+    sta = apiDeleteItem(*(static_cast<TMultiFieldItem *>(delitemP)));
+    // forget the item
+	  delete delitemP;
     // success or "211 - not deleted" is ok.
     if (sta!=LOCERR_OK && sta!=211) return sta;
   }
-  delete delitemP;
   return LOCERR_OK; // zapped ok
-} // TCustomImplDS::zapSyncSet
+} // TCustomImplDS::zapSyncSetOneByOne
+
+
+// private helper: get item with data from sync set list. Retrieves item if not already
+// there from loading the sync set
+// Note: can be called with aSyncSetItemP==NULL, which causes directly loading from DB
+//       in all cases. 
+localstatus TCustomImplDS::getItemFromSyncSetItem(TSyncSetItem *aSyncSetItemP, TSyncItem *&aItemP)
+{
+  if (aSyncSetItemP && aSyncSetItemP->itemP) {
+    // already fetched - pass it to caller and remove link in syncsetitem
+    aItemP = aSyncSetItemP->itemP;
+    aSyncSetItemP->itemP = NULL; // syncsetitem does not own it any longer
+  }
+  else {
+    // item not yet fetched (or already retrieved once), fetch it now
+    // - create new empty TMultiFieldItem
+    aItemP =
+      (TMultiFieldItem *) newItemForRemote(ity_multifield);
+    if (!aItemP)
+      return 510;
+    // - assign local id, as it is required e.g. by DoDataSubstitutions
+    aItemP->setLocalID(aSyncSetItemP->localid.c_str());
+    // - set default operation
+    aItemP->setSyncOp(sop_replace);
+    // Now fetch item (read phase)
+    localstatus sta = apiFetchItem(*((TMultiFieldItem *)aItemP),true,aSyncSetItemP);
+    if (sta!=LOCERR_OK)
+      return sta; // error
+  }
+  // ok
+  return LOCERR_OK;
+} // TCustomImplDS::getItemFromSyncSetItem
 
 
 #ifndef BINFILE_ALWAYS_ACTIVE
@@ -3178,11 +3236,11 @@ localstatus TCustomImplDS::implSaveResumeMarks(void)
 //       these routines are never called and can't harm
 
 // private helper
-bool TCustomImplDS::makeSyncSetLoaded(bool aNeedAll)
+localstatus TCustomImplDS::makeSyncSetLoaded(bool aNeedAll)
 {
-  localstatus sta = LOCERR_OK;
-
+  localstatus sta = LOCERR_OK; // assume loaded ok
   if (!fSyncSetLoaded) {
+  	// not yet loaded, try to load
     PDEBUGBLOCKFMTCOLL(("ReadSyncSet","Reading Sync Set from Database","datastore=%s",getName()));
     SYSYNC_TRY {
       sta = apiReadSyncSet(aNeedAll);
@@ -3197,7 +3255,7 @@ bool TCustomImplDS::makeSyncSetLoaded(bool aNeedAll)
     if (sta==LOCERR_OK)
       fSyncSetLoaded=true; // is now loaded
   }
-  return fSyncSetLoaded; // ok only if now loaded
+  return sta; // ok only if now loaded
 } // TCustomImplDS::makeSyncSetLoaded
 
 
@@ -3236,7 +3294,7 @@ bool TCustomImplDS::getNextItem(TSyncItem *&aItemP)
 
 #ifdef CHANGEDETECTION_AVAILABLE
 
-/// get first item from the sync set, including data
+/// get item's ID and modification status from the sync set, not including data
 /// @return false if no item found
 bool TCustomImplDS::getFirstItemInfo(localid_out_t &aLocalID, bool &aItemHasChanged)
 {
@@ -3248,7 +3306,7 @@ bool TCustomImplDS::getFirstItemInfo(localid_out_t &aLocalID, bool &aItemHasChan
 
 
 
-/// get next item's ID and modification status from the sync set.
+/// get next item's ID and modification status from the sync set, not including data
 /// @return false if no item found
 bool TCustomImplDS::getNextItemInfo(localid_out_t &aLocalID, bool &aItemHasChanged)
 {
@@ -3300,38 +3358,6 @@ localstatus TCustomImplDS::getItemByID(localid_t aLocalID, TSyncItem *&aItemP)
     return getItemFromSyncSetItem(*syncsetpos,aItemP);
   }
 } // TCustomImplDS::getItemByID
-
-
-// private helper: get item with data from sync set list. Retrieves item if not already
-// there from loading the sync set
-// Note: can be called with aSyncSetItemP==NULL, which causes directly loading from DB
-//       in all cases. 
-localstatus TCustomImplDS::getItemFromSyncSetItem(TSyncSetItem *aSyncSetItemP, TSyncItem *&aItemP)
-{
-  if (aSyncSetItemP && aSyncSetItemP->itemP) {
-    // already fetched - pass it to caller and remove link in syncsetitem
-    aItemP = aSyncSetItemP->itemP;
-    aSyncSetItemP->itemP = NULL; // syncsetitem does not own it any longer
-  }
-  else {
-    // item not yet fetched (or already retrieved once), fetch it now
-    // - create new empty TMultiFieldItem
-    aItemP =
-      (TMultiFieldItem *) newItemForRemote(ity_multifield);
-    if (!aItemP)
-      return 510;
-    // - assign local id, as it is required e.g. by DoDataSubstitutions
-    aItemP->setLocalID(aSyncSetItemP->localid.c_str());
-    // - set default operation
-    aItemP->setSyncOp(sop_replace);
-    // Now fetch item (read phase)
-    localstatus sta = apiFetchItem(*((TMultiFieldItem *)aItemP),true,aSyncSetItemP);
-    if (sta!=LOCERR_OK)
-      return sta; // error
-  }
-  // ok
-  return LOCERR_OK;
-} // TCustomImplDS::getItemFromSyncSetItem
 
 
 /// update item by local ID in the sync set. Caller retains ownership of aItemP
@@ -3414,9 +3440,11 @@ localstatus TCustomImplDS::zapDatastore(void)
   // make sure we have the sync set if we need it to zap it
   if (apiNeedSyncSetToZap()) {
     // make sure we have the sync set
-    if (!makeSyncSetLoaded(false)) return 510; // error
+    localstatus sta = makeSyncSetLoaded(false); 
+    if (sta!=LOCERR_OK)
+    	return sta; // error
   }
-  // Zap the sync set in this datastore (will possibly call zapSyncSet)
+  // Zap the sync set in this datastore (will possibly call zapSyncSetOneByOne if there's no more efficient way to do it than one by one)
   return apiZapSyncSet();
 } // TCustomImplDS::zapDatastore
 
@@ -3435,7 +3463,7 @@ cAppCharP paramScan(cAppCharP aParams,cAppCharP aParamName, string &aValue)
   cAppCharP q,r;
   int nl,vl;
   bool quotedvalue=false;
-  if (!p) return false;
+  if (!p) return NULL;
   while (*p && *p==';') {
     // skip param intro
     p++;
@@ -3643,7 +3671,7 @@ bool TCustomImplDS::generateItemFieldData(
       StringObjAppendPrintf(aDataFields,"[%d]",arrayIndex);
     #endif
     // append value
-    if (aBasefieldP->isBasedOn(fty_blob)) {
+    if (aBasefieldP->elementsBasedOn(fty_blob)) {
       // - for blobs we use a BlobID and send the data later
       aDataFields += ";BLOBID=";
       aDataFields += aBaseFieldName;
@@ -3810,7 +3838,7 @@ sInt16 TDBItemKey::getFidFor(cAppCharP aName, stringSize aNameSz)
 
 TItemField *TDBItemKey::getBaseFieldFromFid(sInt16 aFid)
 {
-	if (!fItemP) return false; // no item, no field is accessible
+	if (!fItemP) return NULL; // no item, no field is accessible
   return fCustomImplDS->getMappedBaseFieldOrVar(*fItemP, aFid);
 } // TDBItemKey::getBaseFieldFromFid
 

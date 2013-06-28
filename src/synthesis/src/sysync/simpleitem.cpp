@@ -1,12 +1,12 @@
 /*
  *  File:         SimpleItem.cpp
  *
- *  Author:			  Lukas Zeller (luz@synthesis.ch)
+ *  Author:			  Lukas Zeller (luz@plan44.ch)
  *
  *  TSimpleItem
  *    Simple item, no internal structure but just a string
  *
- *  Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  *  2001-06-18 : luz : created
  *

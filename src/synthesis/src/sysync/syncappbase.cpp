@@ -4,7 +4,7 @@
  *    as singular object only, manages "global" things such
  *    as config reading and session dispatching
  *
- *  Copyright (c) 2002-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2002-2011 by Synthesis AG + plan44.ch
  *
  *  2002-03-06 : luz : Created
  */
@@ -1805,7 +1805,7 @@ static int _CALLING_ CFileReader(
   FILE *cfgfile = (FILE *)aContext;
   // read from file
   size_t len = fread(aBuffer, 1, aMaxSize, cfgfile);
-  if (len<0) {
+  if (len<=0) {
     if (!feof(cfgfile))
       return appFalse; // not EOF, other error: failed
     len=0; // nothing read, end of file
@@ -1861,8 +1861,9 @@ localstatus TSyncAppBase::readXMLConfigFile(cAppCharP aFilePath)
     #endif
     CONSOLEPRINTF(("- Config file read from '%s'",aFilePath));
     #ifdef SYDEBUG
-    if (getRootConfig()->fDebugConfig.fSessionDebugLogs || getRootConfig()->fDebugConfig.fGlobalDebugLogs)
+    if (getRootConfig()->fDebugConfig.fSessionDebugLogs || getRootConfig()->fDebugConfig.fGlobalDebugLogs) {
       CONSOLEPRINTF(("- Debug log path: %s",getRootConfig()->fDebugConfig.fDebugInfoPath.c_str()));
+    }
     // signal where config came from
     fConfigFilePath=aFilePath;
     #endif
@@ -2537,14 +2538,34 @@ SmlEncoding_t TSyncAppBase::encodingFromData(cAppPointer aData, memSize aDataSiz
 	SmlEncoding_t enc = SML_UNDEF;
   if (aData && aDataSize>=5) {
   	// check for WBXML intro sequences
+    // Only SyncML 2.0 (OMA-TS-DS_Syntax-V2_0-20090212-C.doc, Paragraph 5.4, WBXML Usage) specifies it explicitly:
+    //   For the purposes of OMA-DS, WBXML 1.1, WBXML 1.2 and WBXML 1.3 are functionally equivalent, and
+    //   all MUST be accepted in implementations that support WBXML. Effectively, this merely requires the
+    //   WBXML parser to accept 01, 02 or 03 as the first byte of the document.
+    // About WBXML Versions, the WireShark Wiki http://wiki.wireshark.org/WAP_Binary_XML says:
+    //   The initial WBXML 1.0 specification was not adopted. It is significantly different from the subsequent WBXML
+    //   versions (1.1, 1.2 and 1.3). Those subsequent versions are almost identical.
+    // Now check for valid WBXML versions: First byte is vvvvmmmm where v=major version-1, m=minor version
+    uInt8 wbxmlvers = *((cUInt8P)aData);
     if (
-      (memcmp((cAppCharP)aData,"\x02\x00\x00",3)==0) || // WBXML V2 + Public identifier as string
-      (memcmp((cAppCharP)aData,"\x02\xA4\x01",3)==0) || // WBXML V2 + Public identifier 0x1201 for SyncML 1.2
-      (memcmp((cAppCharP)aData,"\x02\x9F\x53",3)==0) || // WBXML V2 + Public identifier 0x0FD3 for SyncML 1.1
-      (memcmp((cAppCharP)aData,"\x02\x9F\x51",3)==0)    // WBXML V2 + Public identifier 0x0FD1 for SyncML 1.0
-    )
-      enc=SML_WBXML;
-    else {
+    	wbxmlvers=='\x01' || // WBXML 1.1
+    	wbxmlvers=='\x02' || // WBXML 1.2
+      wbxmlvers=='\x03'    // WBXML 1.3
+    ) {
+    	// WBXML version ok, check FPI
+      // - a WBXML integer defines the FPI (multi-byte, MSByte first, Bit 7 is continuation flag, Bit 6..0 are data. LSByte has Bit7=0)
+      cAppCharP fpi = ((cAppCharP)aData)+1;
+      if (
+        (*fpi=='\x01') || // FPI==1 means "unknown public identifier". Some Funambol servers use this
+        (memcmp(fpi,"\x00\x00",2)==0) || // Public identifier as string
+        (memcmp(fpi,"\xA4\x01",2)==0) || // Public identifier 0x1201 for SyncML 1.2
+        (memcmp(fpi,"\x9F\x53",2)==0) || // Public identifier 0x0FD3 for SyncML 1.1
+        (memcmp(fpi,"\x9F\x51",2)==0)    // Public identifier 0x0FD1 for SyncML 1.0
+      )
+        enc=SML_WBXML;
+    }
+    // check XML now if not detected WBXML.
+    if (enc==SML_UNDEF) {
     	// could be XML
       // - skip UTF-8 BOM if there is one
       cUInt8P p = (cUInt8P)aData;
@@ -2819,7 +2840,7 @@ localstatus TSyncAppBase::appEnableStatus(void)
       #endif
       {
         #ifdef EXPIRES_AFTER_DAYS
-        // (bfo found that we need to chec for > demo days too, as
+        // (bfo found that we need to check for > demo days too, as
         // otherwise some clever guys could install with the
         // clock 20 years in the future and then set the clock back)
         uInt32 vers;

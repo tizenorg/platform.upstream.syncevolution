@@ -5,7 +5,7 @@
  *    Interfaces between C-coded SyncML toolkit and SySync
  *    C++ framework.
  *
- *  Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  *  2001-05-07 : luz : Created
  *

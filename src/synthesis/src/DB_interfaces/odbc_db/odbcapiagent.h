@@ -1,12 +1,12 @@
 /**
  *  @File     odbcapiagent.h
  *
- *  @Author   Lukas Zeller (luz@synthesis.ch)
+ *  @Author   Lukas Zeller (luz@plan44.ch)
  *
  *  @brief TODBCApiAgent
  *    ODBC based agent (client or server session) implementation
  *
- *    Copyright (c) 2001-2009 by Synthesis AG (www.synthesis.ch)
+ *    Copyright (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  *  @Date 2005-10-06 : luz : created from odbcdbagent
  */
@@ -95,8 +95,8 @@ typedef struct {
   bool mybuffer;
   #ifdef ODBCAPI_SUPPORT
   SQLPOINTER ParameterValuePtr;
-  SQLINTEGER BufferLength;
-  SQLINTEGER StrLen_or_Ind;
+  SQLLEN BufferLength;
+  SQLLEN StrLen_or_Ind;
   #elif defined(SQLITE_SUPPORT)
   appPointer ParameterValuePtr;
   memSize BufferLength;
@@ -227,7 +227,7 @@ SQLRETURN SafeSQLGetData(
   SQLSMALLINT   TargetType,
   SQLPOINTER    TargetValuePtr,
   SQLINTEGER    BufferLength,
-  SQLINTEGER *    StrLen_or_IndPtr);
+  SQLLEN * 			StrLen_or_IndPtr);
 
 SQLRETURN SafeSQLCloseCursor(
   SQLHSTMT  StatementHandle);

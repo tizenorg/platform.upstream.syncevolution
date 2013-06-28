@@ -7,7 +7,7 @@
  *    base class for data object based items (EMAILOBJ, FILEOBJ, FOLDEROBJ)
  *    implemented for OMA DS V1.2
  *
- *  Copyright (c) 2005-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2005-2011 by Synthesis AG + plan44.ch
  *
  *  2005-07-20 : bfo : created from TextItemType
  *

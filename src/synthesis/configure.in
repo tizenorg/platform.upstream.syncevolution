@@ -2,7 +2,7 @@ dnl Invoke autogen.sh to produce a configure script.
 
 AC_INIT(src/sysync/engineinterface.cpp)
 AC_CONFIG_MACRO_DIR([m4])
-AM_INIT_AUTOMAKE(syncevolution, 0.8-beta2)
+AM_INIT_AUTOMAKE(synthesis, 3.4)
 AM_CONFIG_HEADER(config.h)
 AC_LIBTOOL_DLOPEN
 

@@ -1,12 +1,12 @@
 /**
  *  @File     engine_defs.h
  *
- *  @Author   Lukas Zeller (luz@synthesis.ch)
+ *  @Author   Lukas Zeller (luz@plan44.ch)
  *            Beat Forster (bfo@synthesis.ch)
  *
  *  @brief Definitions needed for the common engine interface
  *
- *    Copyright (c) 2007-2009 by Synthesis AG (www.synthesis.ch)
+ *    Copyright (c) 2007-2011 by Synthesis AG + plan44.ch
  *
  */
 
@@ -367,7 +367,17 @@ enum TProgressEventEnum {
   /** deleting (zapping datastore), extra1=progress, extra2=total */
   PEV_DELETING = 18,
   /** datastore alerted (extra1=0 for normal, 1 for slow, 2 for first time slow,
-      extra2=1 for resumed session, extra3=syncmode: 0=twoway, 1=fromserver, 2=fromclient) */
+      extra2=1 for resumed session, extra3=syncmode: 0=twoway, 1=fromserver, 2=fromclient)
+      
+      This used to be reported only in client mode, directly after receiving and checking
+      the ALERT command from the server. Now this event is also reported in server mode
+      at that point in time where the final sync mode is known (in other words, after
+      the client acknowledged the alerted sync mode).
+
+      Note that a server cannot reliably distinguish between "refresh-from-server" and
+      "slow" sync. A client might delete all its data and then do a "slow" sync - the
+      Synthesis engine itself does that.
+  */
   PEV_ALERTED = 19,
   /** sync started */
   PEV_SYNCSTART = 20,

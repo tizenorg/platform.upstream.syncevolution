@@ -7,7 +7,7 @@
  *        the Synthesis SyncML engine
  *        and the database layer
  *
- *  Copyright (c) 2005-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2005-2011 by Synthesis AG + plan44.ch
  *
  *
  * This module contains the method table and connection
@@ -93,13 +93,30 @@ typedef struct {
 
 
 typedef struct {
-  void* LoadAdminData;            /* datastore admin */
+  void* LoadAdminData;        /* datastore admin str */
   void* SaveAdminData;
-  void* ReadNextMapItem;
+} DS_Adm_Str_Methods;
+
+
+typedef struct {
+  void* LoadAdminDataAsKey;   /* datastore admin key */
+  void* SaveAdminDataAsKey;
+} DS_Adm_Key_Methods;
+
+
+typedef struct {
+  void* ReadNextMapItem;      /* datastore admin map */
   void* InsertMapItem;
   void* UpdateMapItem;
   void* DeleteMapItem;
-} DS_Admin_Methods;
+} DS_Adm_Map_Methods;
+
+
+typedef struct {
+  DS_Adm_Str_Methods str;         /* datastore admin */
+  DS_Adm_Key_Methods key;
+  DS_Adm_Map_Methods map;
+} DS_Adm_Methods;
 
 
 typedef struct {                /* string read/write */
@@ -154,11 +171,11 @@ typedef struct {                        /* adaptitem */
 typedef struct {       /* --- datastore handling --- */
   void* CreateContext;                       /* open */
 
-  DS_General_Methods dsg;                 /* general */
-  DS_Admin_Methods   dsAdmin;          /* data admin */
-  DS_Data_Methods    dsData;      /* data read/write */
-  DS_Blob_Methods    dsBlob;                /* BLOBs */
-  DS_Adapt_Methods   dsAdapt;           /* adaptitem */
+  DS_General_Methods   dsg;               /* general */
+  DS_Adm_Methods       dsAdm;          /* data admin */
+  DS_Data_Methods      dsData;         /* data rd/wr */
+  DS_Blob_Methods      dsBlob;              /* BLOBs */
+  DS_Adapt_Methods     dsAdapt;         /* adaptitem */
 
   void* DisposeObj;
   void* DeleteContext;                      /* close */

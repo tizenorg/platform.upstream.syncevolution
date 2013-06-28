@@ -1,12 +1,12 @@
 /*
  *  File:         scriptcontext.cpp
  *
- *  Author:       Lukas Zeller (luz@synthesis.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TScriptContext
  *    Environment to tokenize, prepare and run scripts
  *
- *  Copyright (c) 2002-2009 by Synthesis AG (www.synthesis.ch)
+ *  Copyright (c) 2002-2011 by Synthesis AG + plan44.ch
  *
  *  2002-09-11 : luz : created
  *
@@ -2448,8 +2448,8 @@ void TScriptContext::Tokenize(TSyncAppBase *aAppBaseP, cAppCharP aScriptName, sI
           continue;
         }
         else if (isdigit(c)) {
-          size_t argidx = c-'1';
-          if (argidx>=0 && argidx<aMacroArgsP->size()) {
+          ssize_t argidx = c-'1';
+          if (argidx>=0 && (size_t)argidx<aMacroArgsP->size()) {
           	// found macro argument, replace in input string
             itext.replace(i-1, 2, (*aMacroArgsP)[argidx]);
             // no nested macro argument eval, just advance pointer behind replacement text

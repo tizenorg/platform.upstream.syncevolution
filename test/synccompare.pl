@@ -49,7 +49,17 @@
 
 
 use strict;
-use encoding 'utf8';
+
+# Various crashes have been encountered in the Perl interpreter
+# executable when enabling UTF-8. It is only needed for nicer
+# side-by-side comparison of changes (correct column width),
+# so not much functionality is lost by disabling this.
+# use encoding 'utf8';
+
+# Instead enable writing the result as UTF-8. Input
+# files are read as UTF-8 via PerlIO parameters in open().
+binmode(STDOUT, ":utf8");
+
 use Algorithm::Diff;
 
 # ignore differences caused by specific servers or local backends?
@@ -62,6 +72,8 @@ my $mobical = $server =~ /mobical/;
 my $memotoo = $server =~ /memotoo/;
 my $nokia_7210c = $server =~ /nokia_7210c/;
 my $ovi = $server =~ /Ovi/;
+my $unique_uid = $ENV{CLIENT_TEST_UNIQUE_UID};
+my $full_timezones = $ENV{CLIENT_TEST_FULL_TIMEZONES}; # do not simplify VTIMEZONE definitions
 
 # TODO: this hack ensures that any synchronization is limited to
 # properties supported by Synthesis. Remove this again.
@@ -70,6 +82,9 @@ my $ovi = $server =~ /Ovi/;
 my $egroupware = $server =~ /egroupware/;
 my $funambol = $server =~ /funambol/;
 my $google = $server =~ /google/;
+my $google_valarm = $ENV{CLIENT_TEST_GOOGLE_VALARM};
+my $yahoo = $server =~ /yahoo/;
+my $apple = $server =~ /apple/;
 my $evolution = $client =~ /evolution/;
 my $addressbook = $client =~ /addressbook/;
 
@@ -104,17 +119,23 @@ sub splitvalue {
   return join("", @res);
 }
 
-# parameters: text, width to use for reformatted lines
-# returns list of lines without line breaks
-sub Normalize {
-  $_ = shift;
-  my $width = shift;
+# normalize the DATE-TIME duration unless the VALUE isn't a duration
+sub NormalizeTrigger {
+    my $value = shift;
+    $value =~ s/([+-]?)P(?:(\d*)D)?T(?:(\d*)H)?(?:(\d*)M)?(?:(\d*)S)?/$1 .
+      "P" . (int($2) ? ($2 . "D") : "") . "T" .
+      (int($3) ? ($3 . "H") : "") .
+      (int($4) ? ($4 . "M") : "") .
+      (int($5) ? ($5 . "S") : "")/e;
+    return $value;
+}
 
-  s/\r//g;
+# called for one VCALENDAR (with single VEVENT/VTODO/VJOURNAL) or VCARD,
+# returns normalized one
+sub NormalizeItem {
+    my $width = shift;
+    $_ = shift;
 
-  my @items = ();
-
-  foreach $_ ( split( /(?:(?<=\nEND:VCARD)|(?<=\nEND:VCALENDAR))\n*/ ) ) {
     # undo line continuation
     s/\n\s//gs;
     # ignore charset specifications, assume UTF-8
@@ -124,6 +145,14 @@ sub Normalize {
     # in calendar events the UID needs to be preserved to handle
     # meeting invitations/replies correctly
     s/((VCARD|VJOURNAL).*)^UID:[^\n]*\n/$1/msg;
+
+    # intentional changes to UID are acceptable when running with CLIENT_TEST_UNIQUE_UID
+    if ($unique_uid) {
+        s/UID:UNIQUE-UID-\d+-/UID:/g;
+    }
+
+    # merge all CATEGORIES properties into one comma-separated one
+    while ( s/^CATEGORIES:([^\n]*)\n(.*)^CATEGORIES:([^\n]*)\n/CATEGORIES:$1,$3\n$2/ms ) {}
 
     # exact order of categories is irrelevant
     s/^CATEGORIES:(\S+)/"CATEGORIES:" . sortlist($1)/mge;
@@ -146,6 +175,9 @@ sub Normalize {
 
     # EXDATE;VALUE=DATE is the default, no need to show it
     s/^EXDATE;VALUE=DATE:/EXDATE:/mg;
+
+    # default opacity is OPAQUE
+    s/^TRANSP:OPAQUE\r?\n?//gm;
 
     # multiple EXDATEs may be joined into one, use separate properties as normal form
     s/^(EXDATE[^:]*):(.*)(\r?\n)/splitvalue($1, $2, $3)/mge;
@@ -198,9 +230,9 @@ sub Normalize {
     s/^((ATTENDEE|ORGANIZER).*):[Mm][Aa][Ii][Ll][Tt][Oo]:/$1:mailto:/mg;
 
     # remove fields which may differ
-    s/^(PRODID|CREATED|DTSTAMP|LAST-MODIFIED|REV):.*\r?\n?//gm;
+    s/^(PRODID|CREATED|DTSTAMP|LAST-MODIFIED|REV)(;X-VOBJ-FLOATINGTIME-ALLOWED=(TRUE|FALSE))?:.*\r?\n?//gm;
     # remove optional fields
-    s/^(METHOD|X-WSS-[A-Z]*):.*\r?\n?//gm;
+    s/^(METHOD|X-WSS-[A-Z]*|X-WR-[A-Z]*|CALSCALE):.*\r?\n?//gm;
 
     # trailing line break(s) in a DESCRIPTION may or may not be
     # removed or added by servers
@@ -215,6 +247,11 @@ sub Normalize {
     }
     s/^X-EVOLUTION-(SPOUSE|MANAGER|ASSISTANT|ANNIVERSARY)/X-$1/gm;
 
+    # some properties are always lost because we don't transmit them
+    if ($ENV{CLIENT_TEST_SERVER}) {
+        s/^(X-FOOBAR-EXTENSION|X-TEST)(;[^:;\n]*)*:.*\r?\n?//gm;
+    }
+
     # if there is no DESCRIPTION in a VJOURNAL, then use the
     # summary: that's what is done when exchanging such a
     # VJOURNAL as plain text
@@ -222,31 +259,57 @@ sub Normalize {
         s/^SUMMARY:(.*)$/SUMMARY:$1\nDESCRIPTION:$1/m;
     }
 
-    # Strip trailing digits from TZID. They are appended by
-    # Evolution and SyncEvolution to distinguish VTIMEZONE
-    # definitions which have the same TZID, but different rules.
-    s/(^TZID:|;TZID=)([^;:]*?) \d+/$1$2/gm;
+    # strip configurable X- parameters or properties
+    my $strip = $ENV{CLIENT_TEST_STRIP_PROPERTIES};
+    if ($strip) {
+        s/^$strip(;[^:;\n]*)*:.*\r?\n?//gm;
+    }
+    $strip = $ENV{CLIENT_TEST_STRIP_PARAMETERS};
+    if ($strip) {
+        while (s/^(\w+)([^:\n]*);$strip=\d+/$1$2/mg) {}
+    }
 
-    # Strip trailing -(Standard) from TZID. Evolution 2.24.5 adds
-    # that (not sure exactly where that comes from).
-    s/(^TZID:|;TZID=)([^;:]*?)-\(Standard\)/$1$2/gm;
+    if (!$full_timezones) {
+        # Strip trailing digits from TZID. They are appended by
+        # Evolution and SyncEvolution to distinguish VTIMEZONE
+        # definitions which have the same TZID, but different rules.
+        s/(^TZID:|;TZID=)([^;:]*?) \d+/$1$2/gm;
 
-    # VTIMEZONE and TZID do not have to be preserved verbatim as long
-    # as the replacement is still representing the same timezone.
-    # Reduce TZIDs which specify a proper location
-    # to their location part and strip the VTIMEZONE - makes the
-    # diff shorter, too.
-    my $location = "[^\n]*((?:Africa|America|Antarctica|Arctic|Asia|Atlantic|Australia|Brazil|Canada|Chile|Egypt|Eire|Europe|Hongkong|Iceland|India|Iran|Israel|Jamaica|Japan|Kwajalein|Libya|Mexico|Mideast|Navajo|Pacific|Poland|Portugal|Singapore|Turkey|Zulu)[-a-zA-Z0-9_/]*)";
-    s;^BEGIN:VTIMEZONE.*?^TZID:$location.*^END:VTIMEZONE;BEGIN:VTIMEZONE\n  TZID:$1 [...]\nEND:VTIMEZONE;gms;
-    s;TZID=$location;TZID=$1;gm;
+        # Strip trailing -(Standard) from TZID. Evolution 2.24.5 adds
+        # that (not sure exactly where that comes from).
+        s/(^TZID:|;TZID=)([^;:]*?)-\(Standard\)/$1$2/gm;
+
+        # VTIMEZONE and TZID do not have to be preserved verbatim as long
+        # as the replacement is still representing the same timezone.
+        # Reduce TZIDs which specify a proper location
+        # to their location part and strip the VTIMEZONE - makes the
+        # diff shorter, too.
+        my $location = "[^\n]*((?:Africa|America|Antarctica|Arctic|Asia|Atlantic|Australia|Brazil|Canada|Chile|Egypt|Eire|Europe|Hongkong|Iceland|India|Iran|Israel|Jamaica|Japan|Kwajalein|Libya|Mexico|Mideast|Navajo|Pacific|Poland|Portugal|Singapore|Turkey|Zulu)[-a-zA-Z0-9_/]*)";
+        s;^BEGIN:VTIMEZONE.*?^TZID:$location.*^END:VTIMEZONE;BEGIN:VTIMEZONE\n  TZID:$1 [...]\nEND:VTIMEZONE;gms;
+        s;TZID="?$location"?;TZID=$1;gm;
+    }
 
     # normalize iCalendar 2.0
     if (/^BEGIN:(VEVENT|VTODO|VJOURNAL)$/m) {
         # CLASS=PUBLIC is the default, no need to show it
         s/^CLASS:PUBLIC\r?\n//m;
+        # RELATED=START is the default behavior
+        s/^TRIGGER([^\n:]*);RELATED=START/TRIGGER$1/mg;
+        # VALUE=DURATION is the default behavior
+        s/^TRIGGER([^\n:]*);VALUE=DURATION/TRIGGER$1/mg;
+        s/^(TRIGGER.*):(\S*)/$1 . ":" . NormalizeTrigger($2)/mge;
     }
 
-    if ($scheduleworld || $egroupware || $synthesis || $addressbook || $funambol ||$google || $mobical || $memotoo) {
+    # Added by EDS >= 2.32, presumably to cache some internal computation.
+    # Because it can be recreated, it doesn't have to be preserved during
+    # sync and such changes can be ignored:
+    #
+    # RRULE:BYDAY=SU;COUNT=10;FREQ=WEEKLY  |   RRULE;X-EVOLUTION-ENDDATE=20080608T 
+    #                                      >    070000Z:BYDAY=SU;COUNT=10;FREQ=WEEK
+    #                                      >    LY                                 
+    s/^(\w+)([^:\n]*);X-EVOLUTION-ENDDATE=[0-9TZ]*/$1$2/mg;
+
+    if ($scheduleworld || $egroupware || $synthesis || $addressbook || $funambol ||$google || $mobical || $memotoo || $yahoo) {
       # does not preserve X-EVOLUTION-UI-SLOT=
       s/^(\w+)([^:\n]*);X-EVOLUTION-UI-SLOT=\d+/$1$2/mg;
     }
@@ -277,16 +340,46 @@ sub Normalize {
       s/^PHOTO(.*?): .*\n/^PHOTO$1: [...]\n/mg; 
       # FN propertiey is not correct 
       s/^FN:.*\n/FN$1: [...]\n/mg;
-      # ';' in NOTE is lost by the server: ; in middle is replace by white space
-      # while ; in the end is omitted.
-      while (s!^NOTE:(.*)\\\;(.+)\n!NOTE:$1 $2\n!mg) {}
-      s!^NOTE:(.*)\\\;\n!NOTE:$1\n!mg;
-      # ';' in ORG is lost 
-      while (s!^ORG:(.*)\;(.*)\n!ORG:$1 $2\n!mg) {}
       # Not support car type in telephone
       s!^TEL\;TYPE=CAR(.*)\n!TEL$1\n!mg;
       # some properties are lost
-      s/^(X-EVOLUTION-FILE-AS|NICKNAME|BDAY|CATEGORIES|CALURI|FBURL|ROLE|URL|X-AIM|X-EVOLUTION-UI-SLOT|X-ANNIVERSARY|X-ASSISTANT|X-EVOLUTION-BLOG-URL|X-EVOLUTION-VIDEO-URL|X-GROUPWISE|X-ICQ|X-MANAGER|X-SPOUSE|X-MOZILLA-HTML|X-YAHOO)(;[^:;\n]*)*:.*\r?\n?//gm;
+      s/^(X-EVOLUTION-FILE-AS|NICKNAME|BDAY|CATEGORIES|CALURI|FBURL|ROLE|URL|X-AIM|X-EVOLUTION-UI-SLOT|X-ANNIVERSARY|X-ASSISTANT|X-EVOLUTION-BLOG-URL|X-EVOLUTION-VIDEO-URL|X-GROUPWISE|X-ICQ|X-GADUGADU|X-JABBER|X-MSN|X-SIP|X-SKYPE|X-MANAGER|X-SPOUSE|X-MOZILLA-HTML|X-YAHOO)(;[^:;\n]*)*:.*\r?\n?//gm;
+
+      #several properties are not preserved by Google in icalendar2.0 format
+      s/^(SEQUENCE|X-EVOLUTION-ALARM-UID)(;[^:;\n]*)*:.*\r?\n?//gm;
+
+      # Google adds calendar owner as attendee of meetings, regardless
+      # whether it was on the original attendee list. Ignore this
+      # during testing by removing all attendees with @googlemail.com
+      # email address.
+      s/^ATTENDEE.*googlemail.com\r?\n//gm;
+    }
+
+    if ($apple) {
+        # remove some parameters added by Apple Calendar server in CalDAV
+        s/^(ORGANIZER[^:]*);SCHEDULE-AGENT=NONE/$1/gm;
+        s/^(ORGANIZER[^:]*);SCHEDULE-STATUS=5.3/$1/gm;
+        # seems to require a fixed number of recurrences; hmm, okay...
+        s/^RRULE:COUNT=400;FREQ=DAILY/RRULE:FREQ=DAILY/gm;
+
+        # X- properties are stored, but not X- parameters
+        s/^(\w+)([^:\n]*);X-EVOLUTION-UI-SLOT=\d+/$1$2/mg;
+    }
+
+    if ($google || $yahoo) {
+      # default status is CONFIRMED
+      s/^STATUS:CONFIRMED\r?\n?//gm;
+    }
+
+    # Google randomly (?!) adds a standard alarm to events.
+    if ($google_valarm) {
+        s/BEGIN:VALARM\nDESCRIPTION:This is an event reminder\nACTION:DISPLAY\nTRIGGER:-PT10M\n(X-KDE-KCALCORE-ENABLED:TRUE\n)END:VALARM\n//s;
+    }
+
+    if ($yahoo) {
+        s/^(X-MICROSOFT-[-A-Z0-9]*)(;[^:;\n]*)*:.*\r?\n?//gm;
+        # some properties cannot be stored
+        s/^(FN)(;[^:;\n]*)*:.*\r?\n?//gm;
     }
 
     if ($addressbook) {
@@ -441,7 +534,7 @@ sub Normalize {
     }
     if ($memotoo) {
       if (/^BEGIN:VCARD/m ) {
-        s/^(FN|FBURL|CALURI|CATEGORIES|ROLE|X-MOZILLA-HTML|PHOTO|X-EVOLUTION-FILE-AS|X-EVOLUTION-BLOG-URL|X-EVOLUTION-VIDEO-URL|X-GROUPWISE|X-ICQ|X-YAHOO)(;[^:;\n]*)*:.*\r?\n?//gm;
+        s/^(FN|FBURL|CALURI|CATEGORIES|ROLE|X-MOZILLA-HTML|PHOTO|X-EVOLUTION-FILE-AS|X-EVOLUTION-BLOG-URL|X-EVOLUTION-VIDEO-URL|X-GADUGADU|X-JABBER|X-MSN|X-SIP|X-SKYPE|X-GROUPWISE)(;[^:;\n]*)*:.*\r?\n?//gm;
         # only preserves ORG "Company", but loses "Department" and "Office"
         s/^ORG:([^;:\n]+)(;[^;:\n]+)(;[^\n]*)/ORG:$1$2/mg;
         # only preserves first 6 fields of 'ADR'
@@ -452,8 +545,6 @@ sub Normalize {
       }
       if (/^BEGIN:VEVENT/m ) {
         s/^(UID|SEQUENCE|TRANSP|RECURRENCE-ID|X-EVOLUTION-ALARM-UID|ORGANIZER)(;[^:;\n]*)*:.*\r?\n?//gm;
-        # RELATED=START is the default behavior though server will lost it
-        s/^TRIGGER([^\n:]*);RELATED=START/TRIGGER$1/mg;
         # some parameters of 'ATTENDEE' will be lost by server
         s/^ATTENDEE([^\n:]*);CUTYPE=([^\n;:]*)/ATTENDEE$1/mg;
         s/^ATTENDEE([^\n:]*);LANGUAGE=([^\n;:]*)/ATTENDEE$1/mg;
@@ -544,10 +635,40 @@ sub Normalize {
       }
     }
 
-    push @items, ${$formatted[0]}[0];
-  }
+    return ${$formatted[0]}[0];
+}
 
-  return split( /\n/, join( "\n\n", sort @items ));
+# parameters: text, width to use for reformatted lines
+# returns list of lines without line breaks
+sub Normalize {
+    $_ = shift;
+    my $width = shift;
+
+    s/\r//g;
+
+    my @items = ();
+
+    # split into individual items
+    foreach $_ ( split( /(?:(?<=\nEND:VCARD)|(?<=\nEND:VCALENDAR))\n*/ ) ) {
+        if (/END:VEVENT\s+BEGIN:VEVENT/s) {
+            # remove multiple events from calendar item
+            s/(BEGIN:VEVENT.*END:VEVENT\n)//s;
+            my $events = $1;
+            my $calendar = $_;
+            my $event;
+            # inject every single one back into the calendar and process the result
+            foreach $event ( split ( /(?:(?<=\nEND:VEVENT))\n*/, $events ) ) {
+                $_ = $calendar;
+                s/\nEND:VCALENDAR/\n$event\nEND:VCALENDAR/;
+                push @items, NormalizeItem($width, $_);
+            }
+        } else {
+            # already a single item
+            push @items, NormalizeItem($width, $_);
+        }
+    }
+
+    return split( /\n/, join( "\n\n", sort @items ));
 }
 
 # number of columns available for output:

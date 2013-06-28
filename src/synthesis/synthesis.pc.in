@@ -6,5 +6,5 @@ includedir=@includedir@
 Name: synthesis
 Description: Synthesis SyncML SDK, Client and Server Engine
 Version: @VERSION@
-Libs: -L${libdir} -lsynthesissdk -lsynthesis
+Libs: -L${libdir} -lsynthesissdk -lsmltk -lsynthesis
 Cflags: -I${includedir}

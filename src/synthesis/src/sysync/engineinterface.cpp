@@ -1,11 +1,11 @@
 /**
  *  @File     engineinterface.cpp
  *
- *  @Author   Lukas Zeller (luz@synthesis.ch)
+ *  @Author   Lukas Zeller (luz@plan44.ch)
  *
  *  @brief TEngineInterface - common interface to SySync engine for SDK
  *
- *    Copyright (c) 2007-2009 by Synthesis AG (www.synthesis.ch)
+ *    Copyright (c) 2007-2011 by Synthesis AG + plan44.ch
  *
  */
 
@@ -971,7 +971,9 @@ static TSyError writeLicenseCode(
 } // writeLicenseCode
 
 
-// - read registration status code
+// - read (and recalculate) registration status code
+//   (i.e. status of currently installed license. Note that even if this returns non-ok, the app
+//   might still be able to sync, e.g. due to a free demo period)
 static TSyError readRegStatus(
   TStructFieldsKey *aStructFieldsKeyP, const TStructFieldInfo *aFldInfoP,
   appPointer aBuffer, memSize aBufSize, memSize &aValSize
@@ -986,6 +988,26 @@ static TSyError readRegStatus(
   }
   return LOCERR_OK;
 } // readRegStatus
+
+
+// - read (and recalculate) application enable status code
+//   (i.e. if app can sync now. Note that this does not necessarily mean that a valid license is installed,
+//   read "regStatus" for that).
+static TSyError readEnabledStatus(
+  TStructFieldsKey *aStructFieldsKeyP, const TStructFieldInfo *aFldInfoP,
+  appPointer aBuffer, memSize aBufSize, memSize &aValSize
+)
+{
+  aValSize=2;
+  if (aBufSize>=aValSize) {
+    // recalculate all license dependent variables and current enabled status
+    // Note: includes checking for daysleft
+    localstatus sta = aStructFieldsKeyP->getEngineInterface()->getSyncAppBase()->appEnableStatus();
+    // copy from config
+    *((uInt16*)aBuffer)=sta;
+  }
+  return LOCERR_OK;
+} // readEnabledStatus
 
 
 #if defined(EXPIRES_AFTER_DAYS) && defined(ENGINEINTERFACE_SUPPORT)
@@ -1035,6 +1057,7 @@ static const TStructFieldInfo LicensingFieldInfos[] =
 	#endif  
   // - read-only info about licensing status from syncappbase
   { "regStatus", VALTYPE_INT16, false, 0, 0, &readRegStatus, NULL },
+  { "enabledStatus", VALTYPE_INT16, false, 0, 0, &readEnabledStatus, NULL },
   { "regOK", VALTYPE_ENUM, false, OFFS_SZ_AB(fRegOK) },
   { "productCode", VALTYPE_ENUM, false, OFFS_SZ_AB(fRegProductCode) },
   { "productFlags", VALTYPE_ENUM, false, OFFS_SZ_AB(fRegProductFlags) },

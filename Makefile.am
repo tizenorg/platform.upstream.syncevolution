@@ -7,7 +7,7 @@ dist_doc_DATA =
 SUBDIRS = src
 if COND_CORE
 SUBDIRS += po test
-dist_doc_DATA += README NEWS COPYING $(TEST_README_FILES)
+dist_doc_DATA += README NEWS COPYING $(TEST_README_FILES) test/syncevo-http-server-logging.conf
 if COND_HTML_README
 dist_doc_DATA += README.html
 endif
@@ -27,7 +27,6 @@ EXTRA_DIST = \
 	configure-post.in \
 	gen-autotools.sh \
 	autogen.sh \
-	Makefile-gen.am \
 	Doxyfile
 
 MAINTAINERCLEANFILES = Makefile.in config.h.in config.guess config.sub configure depcomp install-sh ltmain.sh missing mkinstalldirs 
@@ -43,7 +42,7 @@ if COND_DBUS
 # in order to be found
 distbin : $(dist_doc_DATA) INSTALL-tar-gz all
 	@ [ "$(BINSUFFIX)" ] || (echo "please invoke with e.g. 'make distbin BINSUFFIX=debian-3.1'"; exit 1 )
-	@ [ "$(prefix)" == "/usr" ] || (echo "please reconfigure with --prefix=/usr"; exit 1 )
+	@ [ "$(prefix)" = "/usr" ] || (echo "please reconfigure with --prefix=/usr"; exit 1 )
 	rm -rf $(distdir)
 	$(MAKE) DESTDIR=`pwd`/$(distdir) install
 	$(MAKE) DESTDIR=`pwd`/$(distdir) installcheck
@@ -139,7 +138,7 @@ deb rpm : dist/$(distdir) dist/debian/control description-pak
 		--pkgaltsource='http://www.estamos.de/projects/SyncML/' \
 		--pkggroup='gnome' \
 		cp -r `pwd`/$</usr/* /usr
-	if [ $@ == "rpm" ]; then cp /usr/src/rpm/RPMS/*/${PKGNAME}-${VERSION}-2.*.rpm .; fi
+	if [ $@ = "rpm" ]; then cp /usr/src/rpm/RPMS/*/${PKGNAME}-${VERSION}-2.*.rpm .; fi
 
 .PHONY: dist/$(distdir) clean_dist
 dist/$(distdir): all
@@ -176,25 +175,22 @@ clean-local: clean-html
 clean-html:
 	rm -rf html
 
-# Because backend-related variables need to be substituted in
-# Makefile-gen.am and configure.in we need an explicit rule to redo that work
-# so that "make" rebuilds derived files correctly.
-CONFIG_SUBS =  src/backends/addressbook/configure-sub.in src/backends/evolution/configure-sub.in src/backends/file/configure-sub.in src/backends/kcalextended/configure-sub.in src/backends/maemo/configure-sub.in src/backends/qtcontacts/configure-sub.in src/backends/sqlite/configure-sub.in src/backends/xmlrpc/configure-sub.in
-$(srcdir)/configure.in: configure-pre.in configure-post.in $(CONFIG_SUBS)
-	rm -f $@
-	cat $(srcdir)/configure-pre.in >>$@
-	for sub in $(srcdir)/src/backends/*/configure-sub.in; do \
-	    echo "# vvvvvvvvvvvvvv $$sub vvvvvvvvvvvvvv" >>$@; \
-	    cat $$sub >>$@; \
-	    echo "AC_CONFIG_FILES(`echo $$sub | sed -e 's;^$(srcdir)/;;' -e s/configure-sub.in/Makefile/`)" >>$@; \
-	    echo "# ^^^^^^^^^^^^^^ $$sub ^^^^^^^^^^^^^^" >>$@; \
-	    echo >>$@; \
-	done
-	cat $(srcdir)/configure-post.in >>$@
+# configure.in is updated
+# by gen-autotools.sh. This scripts is run
+# each time "make all" (which depends on "Makefile")
+# runs; this is easier than trying to anticipated
+# when the script would produce different output.
+# The no-op "true" seem to be necessary for make to
+# re-check the configure.in time stamps.
+$(srcdir)/configure.in: check-autotools
+	@ true
 
-$(srcdir)/Makefile.am: Makefile-gen.am
-	sed -e 's;[@]CONFIG_SUBS[@];$(CONFIG_SUBS);' \
-	    $< >$@
+# Rebuilding the autotools files should never be necessary
+# with source tar balls. Some parts of it depend on "git describe".
+# So avoid it when there is no .git repo.
+.PHONY: check-autotools
+check-autotools:
+	@ cd $(srcdir) && ( [ ! -e .git ] || ./gen-autotools.sh )
 
 dist-hook:
 	@if test -d "$(srcdir)/.git"; \
