@@ -1235,7 +1235,7 @@ TMimeDirProfileHandler::TMimeDirProfileHandler(
   fDoNotFoldContent = false; // standard requires folding
   fTreatRemoteTimeAsLocal = false; // only for broken implementations
   fTreatRemoteTimeAsUTC = false; // only for broken implementations
-  fAppliedRemoteRuleP = NULL; // no dependency
+  fActiveRemoteRules.clear(); // no dependency on certain remote rules
 } // TMimeDirProfileHandler::TMimeDirProfileHandler
 
 
@@ -3018,7 +3018,7 @@ void TMimeDirProfileHandler::generateLevels(
             // - just remember
             otherRulePropP=propP;
           }
-          else if (propP->ruleDependency==fAppliedRemoteRuleP) {
+          else if (isActiveRule(propP->ruleDependency)) {
             // specific for the applied rule
             expandPropP=propP; // default to expand current prop
             // now we have expanded a rule-specific property (blocks expanding of "other"-rule dependent prop)
@@ -4258,7 +4258,7 @@ bool TMimeDirProfileHandler::parseLevels(
                 // - just remember for now
                 otherRulePropP=propP;
               }
-              else if (propP->ruleDependency==fAppliedRemoteRuleP) {
+              else if (isActiveRule(propP->ruleDependency)) {
                 // specific for the applied rule
                 parsePropP=propP; // default to expand current prop
                 // now we have expanded a rule-specific property (blocks parsing of "other"-rule dependent prop)
@@ -4433,12 +4433,9 @@ void TMimeDirProfileHandler::getOptionsFromDatastore(void)
     fDoNotFoldContent = fRelatedDatastoreP->getSession()->fDoNotFoldContent;
     fTreatRemoteTimeAsLocal = fRelatedDatastoreP->getSession()->fTreatRemoteTimeAsLocal;
     fTreatRemoteTimeAsUTC = fRelatedDatastoreP->getSession()->fTreatRemoteTimeAsUTC;
-		fAppliedRemoteRuleP =
-		  #ifndef NO_REMOTE_RULES
-    	fRelatedDatastoreP->getSession()->fAppliedRemoteRuleP;
-      #else
-      NULL;
-      #endif
+    #ifndef NO_REMOTE_RULES
+		fActiveRemoteRules = fRelatedDatastoreP->getSession()->fActiveRemoteRules; // copy the list
+    #endif
   }
 }
 
@@ -5107,18 +5104,35 @@ void TMimeDirProfileHandler::setProfileMode(sInt32 aMode)
 
 
 #ifndef NO_REMOTE_RULES
+
 void TMimeDirProfileHandler::setRemoteRule(const string &aRemoteRuleName)
 {
   TSessionConfig *scP = getSession()->getSessionConfig();
   TRemoteRulesList::iterator pos;
   for(pos=scP->fRemoteRulesList.begin();pos!=scP->fRemoteRulesList.end();pos++) {
     if((*pos)->fElementName == aRemoteRuleName) {
-      fAppliedRemoteRuleP = *pos;
+    	// only this rule must be active
+      fActiveRemoteRules.clear();
+      fActiveRemoteRules.push_back(*pos);
       break;
     }
   }
 } // TMimeDirProfileHandler::setRemoteRule
-#endif
+
+
+// check if given rule (by name, or if aRuleName=NULL by rule pointer) is active
+bool TMimeDirProfileHandler::isActiveRule(TRemoteRuleConfig *aRuleP)
+{
+  TRemoteRulesList::iterator pos;
+  for(pos=fActiveRemoteRules.begin();pos!=fActiveRemoteRules.end();pos++) {
+  	if ((*pos)==aRuleP)
+    	return true;
+  }
+  // no match
+  return false;
+} // TMimeDirProfileHandler::isActiveRule
+
+#endif // NO_REMOTE_RULES
 
 
 // - check mode

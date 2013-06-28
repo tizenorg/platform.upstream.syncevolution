@@ -600,6 +600,8 @@ public:
   string getFirmwareVersion();
   // - device type, only used for clients
   string getDevTyp();
+  // - device ID, can be customized via "customdeviceid" config var
+  bool getMyDeviceID(string &devid);
   // - hardwired information (cannot change, always identifying Synthesis engine and its version
   cAppCharP getOEM(void) { return SYSYNC_OEM; } // hardwired, not configurable in target options
   cAppCharP getSoftwareVersion(void) { return SYSYNC_FULL_VERSION_STRING; } // hardwired to real version number

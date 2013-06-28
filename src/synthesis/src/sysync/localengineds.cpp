@@ -435,7 +435,7 @@ public:
     TLocalEngineDS *dsP = static_cast<TLocalEngineDS *>(aFuncContextP->getCallerContext());
     aTermP->setAsString(dsP->getRemoteDatastore()->getFullName());
   }; // func_RemoteDBName
-  
+
 
   #ifdef SYSYNC_CLIENT
 
@@ -952,7 +952,7 @@ bool TLocalDSConfig::localStartElement(const char *aElementName, const char **aA
       return fail("Missing 'name' attribute in 'alias'");
     fAliasNames.push_back(name);
     expectEmpty();
-	}    
+	}
   #endif
   else if (strucmp(aElementName,"maxitemspermessage")==0)
     expectUInt32(fMaxItemsPerMessage);
@@ -1410,6 +1410,84 @@ bool TLocalEngineDS::dsSetClientSyncParams(
   bool aFilterInclusive
 )
 {
+  // - set remote params
+  fRemoteDBPath=aRemoteDBPath;
+  AssignString(fDBUser,aDBUser);
+  AssignString(fDBPassword,aDBPassword);
+	// check for running under control of a superdatastore
+  // - aRemoteDBPath might contain a special prefix: "<super>remote", with "super" specifying the
+  //   name of a local superdatastore to run the sync with
+  string opts;
+	if (!fRemoteDBPath.empty() && fRemoteDBPath.at(0)=='<') {
+  	// we have an option prefix
+    size_t pfxe = fRemoteDBPath.find('>', 1);
+    if (pfxe!=string::npos) {
+    	// extract options
+    	opts.assign(fRemoteDBPath, 1, pfxe-1);
+      // store remote path cleaned from options
+      fRemoteDBPath.erase(0,pfxe+1);
+    }
+  }
+  if (!opts.empty()) {
+	  #ifdef SUPERDATASTORES
+  	// For now, the only option withing angle brackets is the name of the superdatastore, so opts==superdatastorename
+		// - look for superdatastore having the specified name
+    TSuperDSConfig *superdscfgP = static_cast<TSuperDSConfig *>(getSession()->getSessionConfig()->getLocalDS(opts.c_str()));
+    if (superdscfgP && superdscfgP->isAbstractDatastore()) {
+    	// see if we have an instance of this already
+      fAsSubDatastoreOf = static_cast<TSuperDataStore *>(getSession()->findLocalDataStore(superdscfgP));
+      if (fAsSubDatastoreOf) {
+      	// that superdatastore already exists, just override client sync params with those already set
+      	aSyncMode = fAsSubDatastoreOf->fSyncMode;
+      	aSlowSync = fAsSubDatastoreOf->fSlowSync;
+        aRecordFilterQuery = fAsSubDatastoreOf->fRemoteRecordFilterQuery.c_str();
+      }
+      else {
+      	// instantiate new superdatastore
+	      fAsSubDatastoreOf = static_cast<TSuperDataStore *>(superdscfgP->newLocalDataStore(getSession()));
+        if (fAsSubDatastoreOf) {
+          fSessionP->fLocalDataStores.push_back(fAsSubDatastoreOf);
+          // configure it with the same parameters as the subdatastore
+          if (!fAsSubDatastoreOf->dsSetClientSyncParams(
+            aSyncMode,
+            aSlowSync,
+            fRemoteDBPath.c_str(), // already cleaned from <xxx> prefix
+            aDBUser,
+            aDBPassword,
+            aLocalPathExtension,
+            aRecordFilterQuery,
+            aFilterInclusive
+          ))
+          	return false; // failed
+        }
+      }
+      if (fAsSubDatastoreOf) {
+      	// find link config for this superdatastore
+        TSubDSLinkConfig *lcfgP = NULL;
+        TSubDSConfigList::iterator pos;
+        for(pos=superdscfgP->fSubDatastores.begin();pos!=superdscfgP->fSubDatastores.end();pos++) {
+        	if ((*pos)->fLinkedDSConfigP==fDSConfigP) {
+          	// this is the link
+            lcfgP = *pos;
+            break;
+          }
+        }
+        if (lcfgP) {
+          // now link into superdatastore
+          fAsSubDatastoreOf->addSubDatastoreLink(lcfgP,this);        
+        }
+        else {
+          PDEBUGPRINTFX(DBG_ERROR,("Warning: '%s' is not a subdatastore of '%s'", getName(), opts.c_str()));
+          return false; // failed        
+        }        
+      }
+    }
+    else {
+    	PDEBUGPRINTFX(DBG_ERROR,("Warning: No superdatastore name '%s' exists -> can't run '%s' under superdatastore control", opts.c_str(), getName()));
+      return false; // failed
+    }
+    #endif // SUPERDATASTORES
+  }
   // sync mode
   fSyncMode=aSyncMode;
   fSlowSync=aSlowSync;
@@ -1425,15 +1503,11 @@ bool TLocalEngineDS::dsSetClientSyncParams(
     fLocalDBPath+='/';
     fLocalDBPath+=aLocalPathExtension;
   }
-  // - set remote params
-  fRemoteDBPath=aRemoteDBPath;
-  AssignString(fDBUser,aDBUser);
-  AssignString(fDBPassword,aDBPassword);
   // - we have the params for syncing now
   return changeState(dssta_clientparamset)==LOCERR_OK;
 } // TLocalEngineDS::dsSetClientSyncParams
 
-#endif
+#endif // SYSYNC_CLIENT
 
 
 
@@ -1736,6 +1810,7 @@ const char *TLocalEngineDS::parseFilterCGI(cAppCharP aCGI, TSyncItemType *aItemT
       logop=0; // now consumed
       paraNest++;
       aFilter+='(';
+      p++;
     }
     else {
       // must be term: ident op val
@@ -1867,6 +1942,7 @@ const char *TLocalEngineDS::parseFilterCGI(cAppCharP aCGI, TSyncItemType *aItemT
           // this is not an error but only means end of filter expression
           goto endFilter;
         }
+        aFilter+=')';
         paraNest--;
         p++;
       } while (true);
@@ -2268,8 +2344,10 @@ TAlertCommand *TLocalEngineDS::engProcessSyncAlert(
       fSessionP->getReadOnly() || // session level read-only flag (probably set by login)
       fDSConfigP->fReadOnly; // or datastore config
     #ifdef SUPERDATASTORES
-    // check if not already alerted as subdatastore
-    if (fAsSubDatastoreOf) {
+    // if running as subdatastore of a superdatastore already, this call mus be from a superdatastore as well (aAsSubDatastoreOf!=NULL)
+    // Note: On a client, fAsSubDatastoreOf is set earlier in dsSetClientSyncParams()
+    //       On a server, fAsSubDatastoreOf will be set now to avoid alerting as sub- and normal datastore at the same time.
+    if (fAsSubDatastoreOf && !aAsSubDatastoreOf) {
       // bad, cannot be alerted directly AND as subdatastore
       aStatusCommand.setStatusCode(400);
       ADDDEBUGITEM(aStatusCommand,"trying to alert already alerted subdatastore");
@@ -2277,7 +2355,7 @@ TAlertCommand *TLocalEngineDS::engProcessSyncAlert(
       return NULL;
     }
     // set subdatastore mode
-    fAsSubDatastoreOf=aAsSubDatastoreOf;
+    fAsSubDatastoreOf = aAsSubDatastoreOf;
     #endif
     // reset type info
     fLocalSendToRemoteTypeP = NULL;
@@ -2607,22 +2685,6 @@ TAlertCommand *TLocalEngineDS::engProcessSyncAlert(
           fSyncMode
         );
         #endif // PROGRESS_EVENTS
-        //%%% To make client-side filtering work, determining send/receive types must be done
-        //    before loading the sync set.
-        //		Therefore these two init steps are now in the new engInitForClientSync() routine, which is now called
-        //    in syncclient.cpp immediately before starting to generate sync commands.
-        //    (Alternatively, engInitForSyncOps() could be placed here before switching to dssta_dataaccessstarted.
-        //    Tried that, works, but has the disadvantage that in case server sends devInf after answering alerts,
-        //    type resolution would fail or be forced to blind flight)
-        /*
-        // - prepare engine for sync (determining types)
-        // - let local datastore (derived DB-specific class) prepare for sync
-        sta = changeState(dssta_dataaccessstarted);
-        if (sta==LOCERR_OK && isStarted(false)) {
-          // already started now, change state
-          sta = changeState(dssta_syncsetready);
-        }
-        */
       } // client Case
       #endif // SYSYNC_CLIENT
     }
@@ -2838,7 +2900,7 @@ localstatus TLocalEngineDS::engInitForSyncOps(
   }
   #ifndef NO_REMOTE_RULES
   // check if rule match type will override what we found so far
-  if (fSessionP->fAppliedRemoteRuleP) {
+  if (!fSessionP->fActiveRemoteRules.empty()) {
     // have a look at our rulematch types
     TRuleMatchTypesContainer::iterator pos;
     TSyncItemType *ruleMatchTypeP = NULL;
@@ -2858,11 +2920,15 @@ localstatus TLocalEngineDS::engInitForSyncOps(
           n=strlen(p);
           e=p+n;
         }
-        // compare
-        if (strwildcmp(fSessionP->fAppliedRemoteRuleP->getName(), p, 0, n)==0) {
-          ruleMatchTypeP=(*pos).itemTypeP; // get the matching type
-          break;
+        // see if that matches with any of the active rules
+        TRemoteRulesList::iterator apos;
+        for(apos=fSessionP->fActiveRemoteRules.begin();apos!=fSessionP->fActiveRemoteRules.end();apos++) {
+          if (strwildcmp((*apos)->getName(), p, 0, n)==0) {
+            ruleMatchTypeP=(*pos).itemTypeP; // get the matching type
+            break;
+          }
         }
+        if (ruleMatchTypeP) break; // found a rule match type
         // test next match target
         p=e;
       }
@@ -2891,8 +2957,7 @@ localstatus TLocalEngineDS::engInitForSyncOps(
         RemoteSendToLocalTypeP=remCorrTypeP;
         // Show that we are using ruleMatch type
         PDEBUGPRINTFX(DBG_DATA+DBG_HOT,(
-          "Remote rule '%s' overrides default type usage - forcing type '%s' for send and receive",
-          fSessionP->fAppliedRemoteRuleP->getName(),
+          "An active remote rule overrides default type usage - forcing type '%s' for send and receive",
           ruleMatchTypeP->getTypeConfig()->getName()
         ));
         // done
@@ -3273,20 +3338,25 @@ localstatus TLocalEngineDS::engInitSyncAnchors(
 #ifdef SYSYNC_CLIENT
 
 // initialize Sync alert for datastore according to Parameters set with dsSetClientSyncParams()
-localstatus TLocalEngineDS::engPrepareClientSyncAlert(TSuperDataStore *aAsSubDatastoreOf)
+localstatus TLocalEngineDS::engPrepareClientSyncAlert(void)
+{
+  #ifdef SUPERDATASTORES
+  // no operation here if running under control of a superdatastore.
+  // superdatastore's engPrepareClientSyncAlert() will call engPrepareClientRealDSSyncAlert of all subdatastores at the right time
+  if (fAsSubDatastoreOf)
+  	return LOCERR_OK;
+  #endif
+  // this is a real datastore
+  return engPrepareClientDSForAlert();
+} // TLocalEngineDS::engPrepareClientSyncAlert
+
+
+
+// initialize Sync alert for datastore according to Parameters set with dsSetClientSyncParams()
+localstatus TLocalEngineDS::engPrepareClientDSForAlert(void)
 {
   localstatus sta;
 
-  #ifdef SUPERDATASTORES
-  // check if not already alerted as subdatastore
-  if (fAsSubDatastoreOf) {
-    // bad, cannot be alerted directly AND as subdatastore
-    DEBUGPRINTFX(DBG_ERROR,("trying to prepare alert for already alerted subdatastore"));
-    return LOCERR_WRONGUSAGE;
-  }
-  // set subdatastore mode
-  fAsSubDatastoreOf=aAsSubDatastoreOf;
-  #endif
   #ifdef SCRIPT_SUPPORT
   // AlertPrepareScript to add filters and CGI
   // - rebuild early (before all of the other DS scripts in makeAdminReady caused by engInitSyncAnchors below!)
@@ -3302,7 +3372,7 @@ localstatus TLocalEngineDS::engPrepareClientSyncAlert(TSuperDataStore *aAsSubDat
   // - save the identifying name of the DB
   fIdentifyingDBName = fLocalDBPath;
   // - get information about last session out of database
-  sta=engInitSyncAnchors(
+  sta = engInitSyncAnchors(
     relativeURI(fLocalDBPath.c_str()),
     fRemoteDBPath.c_str()
   );
@@ -3317,10 +3387,10 @@ localstatus TLocalEngineDS::engPrepareClientSyncAlert(TSuperDataStore *aAsSubDat
   if (fResumeAlertCode!=0 && fSessionP->getSyncMLVersion()>=syncml_vers_1_2) {
     // we have a suspended session, try to resume
     PDEBUGPRINTFX(DBG_PROTO,("Found suspended session with Alert Code = %hd",fResumeAlertCode));
-    fResuming=true;
+    fResuming = true;
   }
   return LOCERR_OK; // ok
-} // TLocalEngineDS::engPrepareClientSyncAlert
+} // TLocalEngineDS::engPrepareClientDSForAlert
 
 
 // generate Sync alert for datastore after initialisation with engPrepareClientSyncAlert()
@@ -3332,7 +3402,7 @@ localstatus TLocalEngineDS::engGenerateClientSyncAlert(
 {
   aAlertCommandP=NULL;
   #ifdef SUPERDATASTORES
-  if (fAsSubDatastoreOf) return LOCERR_OK; // NOP, ok
+  if (fAsSubDatastoreOf) return LOCERR_OK; // NOP, ok, only superdatastore creates an alert!
   #endif
 
   PDEBUGPRINTFX(DBG_PROTO,(
@@ -3440,8 +3510,23 @@ localstatus TLocalEngineDS::engGenerateClientSyncAlert(
 // - determine types to exchange
 // - make sync set ready
 localstatus TLocalEngineDS::engInitForClientSync(void)
+{  
+  #ifdef SUPERDATASTORES
+  // no init in case we are under control of a superdatastore -> the superdatastore will do that
+  if (fAsSubDatastoreOf)
+  	return LOCERR_OK;
+  #endif
+  return engInitDSForClientSync();
+} // TLocalEngineDS::engInitForClientSync
+
+
+  
+// Init engine for client sync
+// - determine types to exchange
+// - make sync set ready
+localstatus TLocalEngineDS::engInitDSForClientSync(void)
 {
-  // - prepare engine for sync (determining types)
+	// make ready for syncops
   localstatus sta = engInitForSyncOps(getRemoteDBPath());
   if (sta==LOCERR_OK) {
     // - let local datastore (derived DB-specific class) prepare for sync
@@ -3452,7 +3537,7 @@ localstatus TLocalEngineDS::engInitForClientSync(void)
     }
   }
   return sta;
-} // TLocalEngineDS::engInitForClientSync
+} // TLocalEngineDS::engInitDSForClientSync
 
 
 #endif // Client
@@ -5875,23 +5960,24 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
 /// @note superdatastore does it itself to have correct order of things happening
 void TLocalEngineDS::engRequestEnded(void)
 {
-  // variant for independent non-super/non-sub datastore
-  if (!fAsSubDatastoreOf) {
-    // If DS 1.2: Make sure everything is ready for a resume in case there's an abort (implicit Suspend)
-    // before the next request. Note that the we cannot wait for session timeout, as the resume attempt
-    // from the client probably arrives much earlier.
-    // Note: It is ESSENTIAL not to save the state until sync set is ready, because saving state will
-    //   cause DB access, and DB access is not permitted while sync set is possibly still loading
-    //   (possibly in a separate thread!). So dssta_syncmodestable (as in <=3.0.0.2) is NOT enough here!
-    if (testState(dssta_syncsetready)) {
-      // make sure all unsent items are marked for resume
-      engSaveSuspendState(false); // only if not already aborted
-    }
-    // let datastore prepare for end of request
-    dsRequestEnded();
-    // and let it prepare for end of this thread as well
-    dsThreadMayChangeNow();
+  #ifdef SUPERDATASTORES
+  if (fAsSubDatastoreOf)
+  	return;
+  #endif
+  // If DS 1.2: Make sure everything is ready for a resume in case there's an abort (implicit Suspend)
+  // before the next request. Note that the we cannot wait for session timeout, as the resume attempt
+  // from the client probably arrives much earlier.
+  // Note: It is ESSENTIAL not to save the state until sync set is ready, because saving state will
+  //   cause DB access, and DB access is not permitted while sync set is possibly still loading
+  //   (possibly in a separate thread!). So dssta_syncmodestable (as in <=3.0.0.2) is NOT enough here!
+  if (testState(dssta_syncsetready)) {
+    // make sure all unsent items are marked for resume
+    engSaveSuspendState(false); // only if not already aborted
   }
+  // let datastore prepare for end of request
+  dsRequestEnded();
+  // and let it prepare for end of this thread as well
+  dsThreadMayChangeNow();
 } // TLocalEngineDS::engRequestEnded
 
 #endif // SYSYNC_SERVER
@@ -6105,7 +6191,7 @@ bool TLocalEngineDS::engProcessRemoteItemAsClient(
     }
     else {
       // if the DB has a error string to show, add it here
-      aStatusCommand.addItemString(lastDBErrorText().c_str());    
+      aStatusCommand.addItemString(lastDBErrorText().c_str());
     }
     return ok;
   }
@@ -6313,14 +6399,15 @@ bool TLocalEngineDS::engGenerateMapItems(TMapCommand *aMapCommandP, cAppCharP aL
   do {
     // check if already done
     if (pos==fPendingAddMaps.end()) break; // done
-    // add item
+    // get ID
     string locID = (*pos).first;
     dsFinalizeLocalID(locID); // make sure we have the permanent version in case datastore implementation did deliver temp IDs
-    // add local ID prefix, if any
-    if (aLocalIDPrefix && *aLocalIDPrefix)
-      locID.insert(0,aLocalIDPrefix);
+    // create prefixed version of ID
+    string prefixedLocID;
+    AssignString(prefixedLocID, aLocalIDPrefix); // init with prefix (if any)
+    prefixedLocID += locID; // append local ID
     // add it to map command
-    aMapCommandP->addMapItem(locID.c_str(),(*pos).second.c_str());
+    aMapCommandP->addMapItem(prefixedLocID.c_str(),(*pos).second.c_str());
     // check if we could send this command
     #ifdef USE_SML_EVALUATION
     if (
@@ -6337,10 +6424,10 @@ bool TLocalEngineDS::engGenerateMapItems(TMapCommand *aMapCommandP, cAppCharP aL
       // yes, it should work
       PDEBUGPRINTFX(DBG_PROTO,(
         "Mapitem generated: localID='%s', remoteID='%s'",
-        locID.c_str(),
+        prefixedLocID.c_str(),
         (*pos).second.c_str()
       ));
-      // move sent ones to unconfirmed list
+      // move sent ones to unconfirmed list (Note: use real locID, without prefix!)
       fUnconfirmedMaps[locID]=(*pos).second;
       // remove item from to-be-sent list
       TStringToStringMap::iterator temp_pos = pos++; // make copy and set iterator to next

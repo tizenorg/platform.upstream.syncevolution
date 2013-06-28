@@ -34,25 +34,26 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+@ENABLE_GNOME_BLUETOOTH_PANEL_TRUE@am__append_1 = gnome-bluetooth
 EXTRA_PROGRAMS = $(am__EXEEXT_1) abort-redirect$(EXEEXT)
 TESTS = $(am__EXEEXT_2)
 bin_PROGRAMS = syncevolution$(EXEEXT) $(am__EXEEXT_2)
 @COND_DBUS_TRUE@libexec_PROGRAMS = syncevo-dbus-server$(EXEEXT)
-@ENABLE_MODULES_FALSE@am__append_1 = $(SYNCSOURCES)
 @ENABLE_MODULES_FALSE@am__append_2 = $(SYNCSOURCES)
-@ENABLE_MODULES_TRUE@am__append_3 = $(BACKEND_REGISTRIES)
-@ENABLE_MODULES_FALSE@am__append_4 = $(BACKEND_REGISTRIES)
+@ENABLE_MODULES_FALSE@am__append_3 = $(SYNCSOURCES)
+@ENABLE_MODULES_TRUE@am__append_4 = $(BACKEND_REGISTRIES)
+@ENABLE_MODULES_FALSE@am__append_5 = $(BACKEND_REGISTRIES)
 
 # distribute test system?
 # yes: install client-test in bindir, test files in datadir
-@ENABLE_TESTING_TRUE@am__append_5 = client-test
 @ENABLE_TESTING_TRUE@am__append_6 = client-test
+@ENABLE_TESTING_TRUE@am__append_7 = client-test
 # The "all" dependency causes a rebuild even if the actual input files
 # haven't changed. If client-test is part of the regular targets built
 # by "all", then it must not depend on all!
-@ENABLE_TESTING_FALSE@am__append_7 = client-test
-@ENABLE_TESTING_FALSE@am__append_8 = $(CLIENT_LIB_TEST_FILES)
-@ENABLE_TESTING_FALSE@am__append_9 = all
+@ENABLE_TESTING_FALSE@am__append_8 = client-test
+@ENABLE_TESTING_FALSE@am__append_9 = $(CLIENT_LIB_TEST_FILES)
+@ENABLE_TESTING_FALSE@am__append_10 = all
 subdir = src
 DIST_COMMON = $(am__nobase_dist_doc_DATA_DIST) \
 	$(nobase_dist_template_DATA) $(srcdir)/Makefile.am \
@@ -303,11 +304,16 @@ FFLAGS = @FFLAGS@
 FILE_CFLAGS = @FILE_CFLAGS@
 FILE_LIBS = @FILE_LIBS@
 GETTEXT_PACKAGE = @GETTEXT_PACKAGE@
+GLIB216_CFLAGS = @GLIB216_CFLAGS@
+GLIB216_LIBS = @GLIB216_LIBS@
 GLIB_CFLAGS = @GLIB_CFLAGS@
 GLIB_GENMARSHAL = @GLIB_GENMARSHAL@
 GLIB_LIBS = @GLIB_LIBS@
 GMOFILES = @GMOFILES@
 GMSGFMT = @GMSGFMT@
+GNOMEBLUETOOTH_CFLAGS = @GNOMEBLUETOOTH_CFLAGS@
+GNOMEBLUETOOTH_DIR = @GNOMEBLUETOOTH_DIR@
+GNOMEBLUETOOTH_LIBS = @GNOMEBLUETOOTH_LIBS@
 GOBJECT_CFLAGS = @GOBJECT_CFLAGS@
 GOBJECT_LIBS = @GOBJECT_LIBS@
 GREP = @GREP@
@@ -337,6 +343,8 @@ KEYRING_CFLAGS = @KEYRING_CFLAGS@
 KEYRING_LIBS = @KEYRING_LIBS@
 LDFLAGS = @LDFLAGS@
 LIBEXECDIR = @LIBEXECDIR@
+LIBICAL_AVAILABLE_CFLAGS = @LIBICAL_AVAILABLE_CFLAGS@
+LIBICAL_AVAILABLE_LIBS = @LIBICAL_AVAILABLE_LIBS@
 LIBOBJS = @LIBOBJS@
 LIBOPENOBEX_CFLAGS = @LIBOPENOBEX_CFLAGS@
 LIBOPENOBEX_LIBS = @LIBOPENOBEX_LIBS@
@@ -356,6 +364,8 @@ MSGFMT = @MSGFMT@
 MSGFMT_OPTS = @MSGFMT_OPTS@
 MSGMERGE = @MSGMERGE@
 NMEDIT = @NMEDIT@
+NSS_CFLAGS = @NSS_CFLAGS@
+NSS_LIBS = @NSS_LIBS@
 OBJEXT = @OBJEXT@
 PACKAGE = @PACKAGE@
 PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
@@ -378,7 +388,7 @@ SQLITE_LIBS = @SQLITE_LIBS@
 STABLE_VERSION = @STABLE_VERSION@
 STRIP = @STRIP@
 SYNCEVOLUTION_CXXFLAGS = @SYNCEVOLUTION_CXXFLAGS@
-SYNCEVOLUTION_LDADD = @SYNCEVOLUTION_LDADD@ $(am__append_1)
+SYNCEVOLUTION_LDADD = @SYNCEVOLUTION_LDADD@ $(am__append_2)
 SYNCEVOLUTION_LOCALEDIR = @SYNCEVOLUTION_LOCALEDIR@
 SYNCSOURCES = @SYNCSOURCES@
 SYNTHESIS = @SYNTHESIS@
@@ -461,14 +471,15 @@ service_in_files = org.syncevolution.service.in
 @COND_DBUS_FALSE@@COND_GUI_TRUE@DBUS_DIRS = dbus/interfaces
 @COND_DBUS_TRUE@DBUS_DIRS = gdbus dbus
 @COND_GUI_TRUE@GUI_DIR = gtk-ui
-SUBDIRS = $(SYNTHESIS_SUBDIR) $(DBUS_DIRS) syncevo $(BACKENDS) $(GUI_DIR)
-DIST_SUBDIRS = gdbus dbus syncevo $(BACKENDS) gtk-ui
+SUBDIRS = $(SYNTHESIS_SUBDIR) $(DBUS_DIRS) syncevo $(BACKENDS) \
+	$(GUI_DIR) $(am__append_1)
+DIST_SUBDIRS = gdbus dbus syncevo $(BACKENDS) gtk-ui gnome-bluetooth
 BUILT_SOURCES = 
 AM_CPPFLAGS = $(SUBDIRS:%=-I$(srcdir)/%) -I$(srcdir)/../test -I$(top_srcdir) $(BACKEND_CPPFLAGS)
 bin_SCRIPTS = synccompare
-SYNCEVOLUTION_DEP = $(am__append_2)
-EXTRA_DIST = shlibs.local Makefile-gen.am syncclient_sample_config.xml \
-	$(service_in_files) $(am__append_3)
+SYNCEVOLUTION_DEP = $(am__append_3)
+EXTRA_DIST = shlibs.local Makefile-gen.am $(service_in_files) \
+	$(am__append_4)
 TEMPLATE_FILES = templates/README \
 	templates/servers/Funambol/config.ini \
 	templates/servers/Funambol/template.ini \
@@ -502,7 +513,7 @@ DISTCLEANFILES = synccompare
 MAINTAINERCLEANFILES = Makefile.in
 CLEANFILES = libstdc++.a client-test $(CLIENT_LIB_TEST_FILES) \
 	org.syncevolution.service abort-redirect.log
-CORE_SOURCES = $(am__append_4)
+CORE_SOURCES = $(am__append_5)
 
 # The files which register backends have to be compiled into
 # "client-test" and "syncevolution" in order to pull in the
@@ -555,7 +566,7 @@ client_test_SOURCES = \
 	../test/client-test-main.cpp \
 	$(CORE_SOURCES)
 
-nodist_client_test_SOURCES = ../test/test.cpp $(am__append_8)
+nodist_client_test_SOURCES = ../test/test.cpp $(am__append_9)
 
 # list of test file base files
 #
@@ -599,7 +610,7 @@ client_test_LDADD = $(CORE_LDADD) $(SYNTHESIS_ENGINE)
 # runs the binary with out-dated auxiliary files.
 client_test_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) \
 	$(CLIENT_LIB_TEST_FILES) testcase2patch synccompare templates \
-	$(am__append_9)
+	$(am__append_10)
 @ENABLE_TESTING_TRUE@nobase_dist_doc_DATA = $(CLIENT_LIB_TEST_FILES)
 abort_redirect_SOURCES = ../test/abort-redirect.cpp
 abort_redirect_CPPFLAGS = -DHAVE_CONFIG_H $(AM_CPPFLAGS)

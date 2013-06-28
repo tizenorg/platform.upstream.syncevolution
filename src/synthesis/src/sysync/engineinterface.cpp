@@ -1858,8 +1858,8 @@ static TSyError internal_ConnectEngine(
       // - flag static
       engine->fCIisStatic= true;
       // - prepare callback and pass to engine
-      (*aCIP)->callbackVersion = aCallbackVersion;
-      engine->fCI = *aCIP;
+      (*aCIP)->callbackVersion = aCallbackVersion; // fill in the outside callback version
+      engine->fCI = *aCIP;                         // engine uses the structure provided by the uiapp
       // - connect the engine
       err = engine->Connect("", aPrgVersion, aDebugFlags);
     }

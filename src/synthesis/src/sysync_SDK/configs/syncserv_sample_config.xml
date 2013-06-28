@@ -38,12 +38,11 @@
     <!-- SyncML message dumping options -->
     <msgdump>no</msgdump> <!-- do not dump syncml traffic 1:1 to files -->
     <xmltranslate>no</xmltranslate> <!-- do not try to translate syncml traffic into XML (DO NOT SET THIS OPTION IN PRODUCTIVE SERVERS!) -->
+
   </debug>
 
 
   <scripting>
-    <!-- Global script function definitions -->
-
     <function><![CDATA[
       // create a UID
       string newuid() {
@@ -52,7 +51,7 @@
     ]]></function>
 
 
-  <!-- define script macros for scripts that are used by both vCalendar 1.0 and iCalendar 2.0 -->
+    <!-- define script macros for scripts that are used by both vCalendar 1.0 and iCalendar 2.0 -->
 
     <macro name="VCALENDAR_INCOMING_SCRIPT"><![CDATA[
       STRING MATCHES[];
@@ -179,8 +178,6 @@
         }
       }
     ]]></macro>
-
-
     <!-- The following email handling scripts are defined as script MACROS because they
          are used in multiple <datatype> definitions below. This avoids duplicating these
          script's source code in the config file -->
@@ -348,7 +345,6 @@
 
 
   <datatypes>
-
     <!-- list of internal fields representing vCard data -->
     <fieldlist name="contacts">
       <field name="SYNCLVL" type="integer" compare="never"/>
@@ -413,7 +409,6 @@
       <field name="PHOTO_TYPE" type="integer" compare="never" merge="fillempty"/>
 
     </fieldlist>
-
     <!-- vCard profile -->
     <mimeprofile name="vCard" fieldlist="contacts">
 
@@ -553,6 +548,7 @@
       </profile>
     </mimeprofile>
 
+
     <!-- vCard 2.1 datatype, using vCard profile defined above -->
     <datatype name="vCard21" basetype="vcard">
       <version>2.1</version>
@@ -564,8 +560,6 @@
       <version>3.0</version>
       <use mimeprofile="vCard"/>
     </datatype>
-
-
     <!-- common field list for events and todos (both represented by vCalendar/iCalendar) -->
     <fieldlist name="calendar">
       <field name="SYNCLVL" type="integer" compare="never"/>
@@ -631,8 +625,6 @@
       <field name="ORGANIZER_CN" array="no" type="string" compare="never"/>
 
     </fieldlist>
-
-
     <!-- vCalendar with VTODO and VEVENT variants -->
     <mimeprofile name="vCalendar" fieldlist="calendar">
 
@@ -1089,7 +1081,6 @@
       </profile>
     </mimeprofile>
 
-
     <!-- vCalendar 1.0 datatype, using vCalendar profile defined above -->
     <datatype name="vCalendar10" basetype="vcalendar">
       <version>1.0</version>
@@ -1121,7 +1112,6 @@
 
     </datatype>
 
-
     <!-- list of internal fields representing plain text note data -->
     <fieldlist name="Note">
       <field name="SYNCLVL" type="integer" compare="never"/>
@@ -1143,7 +1133,7 @@
       </linemap>
     </textprofile>
 
-    <datatype name="note" basetype="text">
+    <datatype name="note10" basetype="text">
       <use profile="Note"/>
       <typestring>text/plain</typestring>
       <versionstring>1.0</versionstring>
@@ -1154,7 +1144,6 @@
       <typestring>text/plain</typestring>
       <versionstring>1.1</versionstring>
     </datatype>
-
 
     <!-- list of internal fields representing vBookmark data -->
     <fieldlist name="bookmarks">
@@ -1177,7 +1166,7 @@
     </fieldlist>
 
     <!-- vBookmark profile -->
-    <mimeprofile name="vbookmark" fieldlist="bookmarks">
+    <mimeprofile name="vBookmark" fieldlist="bookmarks">
 
       <profile name="VBKM" nummandatory="0">
         <property name="VERSION">
@@ -1215,13 +1204,11 @@
     </mimeprofile>
 
     <!-- vBookmark datatype, using vBookmark profile defined above -->
-    <datatype name="vbookmark" basetype="mimedir">
+    <datatype name="vBookmark10" basetype="mimedir">
       <typestring>text/x-vbookmark</typestring>
       <versionstring>1.0</versionstring>
-      <use profile="vbookmark"/>
+      <use profile="vBookmark"/>
     </datatype>
-
-
 
     <!-- list of internal fields representing email data -->
     <fieldlist name="email">
@@ -1246,7 +1233,6 @@
       <field name="ATT_SIZES" array="yes" type="integer" compare="never"/>
       <field name="ATT_CONTENTS" array="yes" type="blob" compare="never"/>
     </fieldlist>
-
 
     <!-- this is the text profile used to generate and decode RFC2822/MIME-Multipart
          email messages. -->
@@ -1344,7 +1330,6 @@
       </linemap>
     </textprofile>
 
-
     <datatype name="email" basetype="text">
       <use profile="rfc2822_email"/>
       <typestring>text/message</typestring> <!-- this is P800-like -->
@@ -1378,7 +1363,6 @@
       ]]></filterscript>
 
     </datatype>
-
 
     <!-- Note: This is a proprietary extension datatype for Synthesis AG Windows Mobile SyncML clients.
          This format is a compressed form of the standard RFC2822 format. For one, the entire data
@@ -1423,8 +1407,6 @@
 
     </datatype>
 
-
-
     <datatype name="email_sonyericsson" basetype="text">
       <use profile="rfc2822_email"/>
       <typestring>message/rfc822</typestring> <!-- this is M600i/P990-like -->
@@ -1458,7 +1440,6 @@
       ]]></filterscript>
 
     </datatype>
-
 
     <datatype name="email_nokia9500" basetype="text">
       <use profile="rfc2822_email"/>
@@ -2005,7 +1986,7 @@
       </fieldmap>
 
       <typesupport>
-        <use datatype="note" mode="rw" preferred="yes"/>
+        <use datatype="note10" mode="rw" preferred="yes"/>
         <use datatype="note11" mode="rw"/>
       </typesupport>
 
@@ -2077,7 +2058,7 @@
 
       <!-- datatypes supported by this datastore -->
       <typesupport>
-        <use datatype="vbookmark" mode="rw" preferred="yes"/>
+        <use datatype="vBookmark10" mode="rw" preferred="yes"/>
       </typesupport>
 
     </datastore>
@@ -2886,14 +2867,13 @@
     </remoterule>
 
 
-    <remoterule name="SyncJe_Outlook">
-      <!-- Rule for NextHaus SyncJe Outlook Edition -->
-      <model>SyncJe Outlook Edition</model>
+    <remoterule name="SyncJe_Outlook">
+      <!-- Rule for NextHaus SyncJe Outlook Edition -->
+      <model>SyncJe Outlook Edition</model>
 
-      <ignorectcap>yes</ignorectcap> <!-- can do contact photo sync, but is missing in CTCap -->
+      <ignorectcap>yes</ignorectcap> <!-- can do contact photo sync, but is missing in CTCap -->
       <descriptivename>NextHaus SyncJe Outlook Client</descriptivename>
-    </remoterule>
-
+    </remoterule>
 
     <!-- End of remote rule list. -->
 

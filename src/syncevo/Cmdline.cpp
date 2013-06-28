@@ -197,7 +197,7 @@ bool Cmdline::run() {
                     SyncConfig::getPeerTemplates(devices), false);
         } else {
             //limiting at templates for syncml clients only.
-            devices.push_back (SyncConfig::DeviceList::value_type (m_template, SyncConfig::MATCH_FOR_SERVER_MODE));
+            devices.push_back (SyncConfig::DeviceDescription("", m_template, SyncConfig::MATCH_FOR_SERVER_MODE));
             dumpConfigTemplates("Available configuration templates:",
                     SyncConfig::matchPeerTemplates(devices), true);
         }
@@ -1370,6 +1370,7 @@ public:
                               "peers/scheduleworld/config.ini:ConsumerReady = 1\n"
 
                               "peers/scheduleworld/sources/addressbook/.internal.ini:# adminData = \n"
+                              "peers/scheduleworld/sources/addressbook/.internal.ini:# synthesisID = 0\n"
                               "peers/scheduleworld/sources/addressbook/config.ini:sync = two-way\n"
                               "sources/addressbook/config.ini:type = addressbook:text/vcard\n"
                               "peers/scheduleworld/sources/addressbook/config.ini:type = addressbook:text/vcard\n"
@@ -1379,6 +1380,7 @@ public:
                               "sources/addressbook/config.ini:# evolutionpassword = \n"
 
                               "peers/scheduleworld/sources/calendar/.internal.ini:# adminData = \n"
+                              "peers/scheduleworld/sources/calendar/.internal.ini:# synthesisID = 0\n"
                               "peers/scheduleworld/sources/calendar/config.ini:sync = two-way\n"
                               "sources/calendar/config.ini:type = calendar\n"
                               "peers/scheduleworld/sources/calendar/config.ini:type = calendar\n"
@@ -1388,6 +1390,7 @@ public:
                               "sources/calendar/config.ini:# evolutionpassword = \n"
 
                               "peers/scheduleworld/sources/memo/.internal.ini:# adminData = \n"
+                              "peers/scheduleworld/sources/memo/.internal.ini:# synthesisID = 0\n"
                               "peers/scheduleworld/sources/memo/config.ini:sync = two-way\n"
                               "sources/memo/config.ini:type = memo\n"
                               "peers/scheduleworld/sources/memo/config.ini:type = memo\n"
@@ -1397,6 +1400,7 @@ public:
                               "sources/memo/config.ini:# evolutionpassword = \n"
 
                               "peers/scheduleworld/sources/todo/.internal.ini:# adminData = \n"
+                              "peers/scheduleworld/sources/todo/.internal.ini:# synthesisID = 0\n"
                               "peers/scheduleworld/sources/todo/config.ini:sync = two-way\n"
                               "sources/todo/config.ini:type = todo\n"
                               "peers/scheduleworld/sources/todo/config.ini:type = todo\n"
@@ -1884,7 +1888,8 @@ protected:
             string expected = ScheduleWorldConfig();
             expected += "\n"
                 "peers/scheduleworld/sources/xyz/.internal.ini:# adminData = \n"
-                "peers/scheduleworld/sources/xyz/config.ini:# sync = two-way\n"
+                "peers/scheduleworld/sources/xyz/.internal.ini:# synthesisID = 0\n"
+                "peers/scheduleworld/sources/xyz/config.ini:# sync = disabled\n"
                 "peers/scheduleworld/sources/xyz/config.ini:# type = select backend\n"
                 "peers/scheduleworld/sources/xyz/config.ini:uri = dummy\n"
                 "sources/xyz/config.ini:# type = select backend\n"
@@ -2074,6 +2079,7 @@ protected:
             "ConfigDate" +
             "deviceData" +
             "adminData" +
+            "synthesisID" +
             "lastNonce" +
             "last";
         BOOST_FOREACH(string &prop, props) {
@@ -2532,36 +2538,7 @@ private:
                              "todo/config.ini:sync = disabled");
 
         return config;
-    }
-
-    /** temporarily set env variable, restore old value on destruction */
-    class ScopedEnvChange {
-    public:
-        ScopedEnvChange(const string &var, const string &value) :
-            m_var(var)
-        {
-            const char *oldval = getenv(var.c_str());
-            if (oldval) {
-                m_oldvalset = true;
-                m_oldval = oldval;
-            } else {
-                m_oldvalset = false;
-            }
-            setenv(var.c_str(), value.c_str(), 1);
-        }
-        ~ScopedEnvChange()
-        {
-            if (m_oldvalset) {
-                setenv(m_var.c_str(), m_oldval.c_str(), 1);
-            } else {
-                unsetenv(m_var.c_str());
-            } 
-        }
-    private:
-        string m_var, m_oldval;
-        bool m_oldvalset;
-    };
-            
+    }          
 
     /** create directory hierarchy, overwriting previous content */
     void createFiles(const string &root, const string &content, bool append = false) {

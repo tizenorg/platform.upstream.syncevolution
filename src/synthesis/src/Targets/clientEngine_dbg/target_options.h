@@ -16,7 +16,8 @@
   #define WIN32  // needed for others
 #endif
 
-// Release version status#undef RELEASE_VERSION
+// Release version status
+#undef RELEASE_VERSION
 #define RELEASE_SYDEBUG 2 // extended DBG included
 //#define OPTIONAL_SYDEBUG 1
 
@@ -58,9 +59,6 @@
 #define DEFAULT_EMAILS_ONLYLAST true
 #define DEFAULT_EMAILS_DAYSBEFORE 10
 
-// Outlook specifics
-// =================
-
 
 // Eval limit options
 // ==================
@@ -73,7 +71,7 @@
 
 // Identification for update check and demo period
 #define SYSER_VARIANT_CODE SYSER_VARIANT_PRO
-#define SYSER_PRODUCT_CODE SYSER_PRODCODE_CLIENT_OUTLOOK_PRO
+#define SYSER_PRODUCT_CODE SYSER_PRODCODE_CLIENT_LIB_WIN32
 #define SYSER_EXTRA_ID SYSER_EXTRA_ID_PROTO
 
 

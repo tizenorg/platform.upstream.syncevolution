@@ -1651,6 +1651,8 @@ sInt32 TBinfileClientConfig::newProfile(const char *aProfileName, bool aSetDefau
   // Note: create target also for not available datastores
   TLocalDSList::iterator pos;
   for (pos=fDatastores.begin();pos!=fDatastores.end();pos++) {
+    if ((*pos)->isAbstractDatastore()) continue; // don't try to create targets for abstract datastores (like superdatastores)
+    // non-abstract datastores at this point are always binfile-based by definition (this is a binfileimplclient, and this is one of its datastores)
     TBinfileDSConfig *cfgP = static_cast<TBinfileDSConfig *>(*pos);
     cfgP->initTarget(target,profile.profileID,aSetDefaults ? NULL : "",aSetDefaults && DEFAULT_DATASTORES_ENABLED); // remote datastore names default to local ones, empty if not default
     // copy from template
@@ -2148,6 +2150,7 @@ sInt32 TBinfileClientConfig::findOrCreateTargetIndexByDBInfo(
     // does not exist yet, create it now
     TLocalDSList::iterator pos;
     for (pos=fDatastores.begin();pos!=fDatastores.end();pos++) {
+      if ((*pos)->isAbstractDatastore()) continue; // only non-abstract datastores are guaranteed binfileds and have a target
       TBinfileDSConfig *cfgP = static_cast<TBinfileDSConfig *>(*pos);
       if (
         cfgP->fLocalDBTypeID==aLocalDBTypeID &&
@@ -2631,7 +2634,7 @@ localstatus TBinfileImplClient::SelectProfile(uInt32 aProfileSelector, bool aAut
   // detect special tunnel session's selection
   bool tunnel = aProfileSelector==TUNNEL_PROFILE_ID;
 	// select profile if active
-	if (fConfigP->fBinfilesActive) {  
+	if (fConfigP->fBinfilesActive) {
     if (tunnel) {
       aProfileSelector=DEFAULT_PROFILE_ID;
     }

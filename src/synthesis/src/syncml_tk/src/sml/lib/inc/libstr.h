@@ -86,6 +86,7 @@
   SML_API_DEF String_t  smlLibStrcat(const char *pTarget, const char *pSource) LIB_FUNC;
   SML_API_DEF int   smlLibStrcmp(const char *pTarget, const char *pSource) LIB_FUNC;
   SML_API_DEF int   smlLibStrncmp(const char *pTarget, const char *pSource, int count) LIB_FUNC;
+  SML_API_DEF int   smlLibStrnCasecmp(const char *pTarget, const char *pSource, int count) LIB_FUNC;
   SML_API_DEF String_t  smlLibStrchr(const char *pString, char character) LIB_FUNC;
   SML_API_DEF int   smlLibStrlen(const char *pString) LIB_FUNC;
 #endif

@@ -871,16 +871,16 @@ public:
 
 
   // string REMOTERULENAME()
-  // returns name of applied remote rule, empty if none
+  // returns name of the LAST matched remote rule (or subrule), empty if none
+  // Note: this is legacy from 3.4.0.4 onwards, as we now have a list of multiple active rules 
   static void func_Remoterulename(TItemField *&aTermP, TScriptContext *aFuncContextP)
   {
     #ifndef NO_REMOTE_RULES
-    string r;
     if (aFuncContextP->getSession()) {
       // there is a session
-      if (aFuncContextP->getSession()->fAppliedRemoteRuleP) {
-        // there is a rule applied
-        aTermP->setAsString(aFuncContextP->getSession()->fAppliedRemoteRuleP->getName());
+      if (!aFuncContextP->getSession()->fActiveRemoteRules.empty()) {
+        // there is at least one rule applied, get the last one in the list
+        aTermP->setAsString(aFuncContextP->getSession()->fActiveRemoteRules.back()->getName());
         return;
       }
     }
@@ -888,6 +888,26 @@ public:
     // no remote rule applied
     aTermP->assignEmpty();
   }; // func_Remoterulename
+
+
+  // boolean ISACTIVERULE(string rulename)
+  // checks if given rule is currently activated 
+  static void func_isActiveRule(TItemField *&aTermP, TScriptContext *aFuncContextP)
+  {
+    #ifndef NO_REMOTE_RULES
+    string r;
+    aFuncContextP->getLocalVar(0)->getAsString(r);
+    if (aFuncContextP->getSession()) {
+      // there is a session, return status
+      aTermP->setAsBoolean(aFuncContextP->getSession()->isActiveRule(r.c_str()));
+      return;
+    }
+    #endif
+    // remote rules not supported or no session active
+    aTermP->assignEmpty();
+  }; // func_Remoterulename
+
+
 
 
   // TREATASLOCALTIME(integer flag)
@@ -2022,11 +2042,9 @@ public:
       if (profileHandlerP) {
       	// now we can convert
         // - set the mode code (none = 0 = default)
-        // TODO? Shouldn't this check whether arg #2 was passed at all? If not,
-        // the code will segfault when trying to call getAsInteger()
         profileHandlerP->setProfileMode(aFuncContextP->getLocalVar(2)->getAsInteger());
         profileHandlerP->setRelatedDatastore(NULL); // no datastore in particular is related
-#ifndef NO_REMOTE_RULES
+				#ifndef NO_REMOTE_RULES
         // - try to find remote rule
         TItemField *field = aFuncContextP->getLocalVar(3);
         if (field) {
@@ -2034,7 +2052,7 @@ public:
           if (!s.empty())
             profileHandlerP->setRemoteRule(s);
         }
-#endif
+				#endif
         // - convert
 	    	aFuncContextP->getLocalVar(0)->getAsString(s);
         ok = profileHandlerP->parseText(s.c_str(), s.size(), *itemP);
@@ -2163,6 +2181,7 @@ const TBuiltInFuncDef BuiltInFuncDefs[] = {
   { "SWAP", TBuiltinStdFuncs::func_Swap, fty_none, 2, param_swap },
   { "TYPENAME", TBuiltinStdFuncs::func_TypeName, fty_string, 1, param_oneVariant },
   { "REMOTERULENAME", TBuiltinStdFuncs::func_Remoterulename, fty_string, 0, NULL },
+  { "ISACTIVERULE", TBuiltinStdFuncs::func_isActiveRule, fty_integer, 1, param_oneString },
   { "LOCALURI", TBuiltinStdFuncs::func_LocalURI, fty_string, 0, NULL },
   { "NOW", TBuiltinStdFuncs::func_Now, fty_timestamp, 0, NULL },
   { "SYSTEMNOW", TBuiltinStdFuncs::func_SystemNow, fty_timestamp, 0, NULL },

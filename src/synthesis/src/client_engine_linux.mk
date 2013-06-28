@@ -217,7 +217,7 @@ clientEngine:
 
 sysync_client_engine.so: $(OBJS)
 	$(LD) -shared -Xlinker -soname=sysync_client_engine $(LDFLAGS) $(OBJS) $(LIBS)\
-	-o sysync_SDK/bin/Linux/sysync_client_engine.so
+	 -o sysync_SDK/bin/Linux/sysync_client_engine.so
 
 ifeq ($(TARGET), sysync_client_engine.so)
 $(WDOP)/%.c.o:   $(WD)/%.c

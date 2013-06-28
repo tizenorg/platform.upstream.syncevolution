@@ -110,6 +110,8 @@ public:
   TSuperDataStore(TSuperDSConfig *aDSConfigP, TSyncSession *aSessionP, const char *aName, uInt32 aCommonSyncCapMask=0);
   virtual ~TSuperDataStore();
   virtual void dsResetDataStore(void) { InternalResetDataStore(); inherited::dsResetDataStore(); };
+  // add links to subdatastores
+	void addSubDatastoreLink(TSubDSLinkConfig *aDSLinkConfigP, TLocalEngineDS *aDatastoreP);
   // abort
   virtual void engAbortDataStoreSync(TSyError aReason, bool aLocalProblem, bool aResumable=true);
   virtual bool isAborted(void); // test abort status
@@ -217,6 +219,11 @@ protected:
   // - returns true if DB implementation supports resume (saving of resume marks, alert code, pending maps, tempGUIDs)
   virtual bool dsResumeSupportedInDB(void);
   #ifdef SYSYNC_CLIENT
+  // Client only: initialize Sync alert for datastore according to Parameters set with dsSetClientSyncParams()
+  /// @note initializes anchors and makes calls to isFirstTimeSync() valid
+  virtual localstatus engPrepareClientSyncAlert(void);
+  // Client only: init engine for client sync (superdatastore aware)
+  virtual localstatus engInitForClientSync(void);
   // Client only: called to generate Map items
   // - Returns true if now finished for this datastore
   // - also sets fState to dss_done when finished

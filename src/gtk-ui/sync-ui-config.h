@@ -24,10 +24,11 @@
 #include "syncevo-session.h"
 #include "syncevo-server.h"
 
-/* need a separate struct for sources because we need to know local support ... */
 typedef struct source_config {
     char *name;
     gboolean supported_locally;
+
+    SyncevoSourcePhase phase;
 
     gboolean stats_set;
     long status;
@@ -45,6 +46,7 @@ typedef struct source_config {
 
 typedef struct server_config {
     char *name;
+    char *pretty_name;
     char *password;
     /* any field in config has changed */
     gboolean changed;
@@ -59,6 +61,7 @@ typedef struct server_config {
     SyncevoConfig *config;
 } server_config;
 
+gboolean source_config_is_usable (source_config *source);
 gboolean source_config_is_enabled (source_config *source);
 void source_config_free (source_config *source);
 

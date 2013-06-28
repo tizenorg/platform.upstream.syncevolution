@@ -39,9 +39,12 @@
 
 SE_BEGIN_CXX
 
-ObexTransportAgent::ObexTransportAgent (OBEX_TRANS_TYPE type) :
+ObexTransportAgent::ObexTransportAgent (OBEX_TRANS_TYPE type, GMainLoop *loop) :
     m_status(INACTIVE),
     m_transType(type),
+    m_context(g_main_context_ref(loop ?
+                                 g_main_loop_get_context(loop) :
+                                 g_main_context_default())),
     m_address(""),
     m_port(-1),
     m_buffer(NULL),
@@ -103,6 +106,14 @@ void ObexTransportAgent::connect() {
     m_obexReady = false;
     if(m_transType == OBEX_BLUETOOTH) {
         if(m_port == -1) {
+            EDSAbiWrapperInit();
+            // sdp_connect may be a pointer when EVOLUTION_COMPATIBILITY is enabled.
+            // Must check whether we really have an implementation of the sdp_ calls
+            // before using them.
+            if (!SyncEvoHaveLibbluetooth) {
+                SE_THROW_EXCEPTION (TransportException, "no suitable libbluetooth found, try setting Bluetooth channel manually (obex-bt://<mac>+<channel>)");
+            }
+            
             //use sdp to detect the appropriate channel
             //Do not use BDADDR_ANY to avoid a warning
             bdaddr_t bdaddr, anyaddr ={{0,0,0,0,0,0}};
@@ -351,7 +362,7 @@ TransportAgent::Status ObexTransportAgent::wait(bool noReply) {
     cxxptr<Channel> channel;
 
     while (!m_obexReady) {
-        g_main_context_iteration (NULL, TRUE);
+        g_main_context_iteration (m_context, TRUE);
         if (m_status == FAILED) {
             if (m_obexEvent) {
                 obexEvent = m_obexEvent;
@@ -391,7 +402,7 @@ TransportAgent::Status ObexTransportAgent::wait(bool noReply) {
         }
 
         while (!m_obexReady) {
-            g_main_context_iteration (NULL, FALSE);
+            g_main_context_iteration (m_context, TRUE);
             if (m_status == FAILED) {
                 SE_THROW_EXCEPTION (TransportException, 
                         "ObexTransprotAgent: Underlying transport error");
@@ -502,10 +513,10 @@ void ObexTransportAgent::sdp_callback_impl (uint8_t type, uint16_t status, uint8
 
 	    int seqSize = 0;
         uint8_t dtdp;
-#ifdef HAVE_BLUEZ_BUFSIZE
-        scanned = sdp_extract_seqtype(rsp, bufSize, &dtdp, &seqSize);
-#elif defined(HAVE_BLUEZ_SAFE)
+#if defined(HAVE_BLUEZ_SAFE) || defined(EVOLUTION_COMPATIBILITY)
         scanned = sdp_extract_seqtype_safe(rsp, bufSize, &dtdp, &seqSize);
+#elif defined(HAVE_BLUEZ_BUFSIZE)
+        scanned = sdp_extract_seqtype(rsp, bufSize, &dtdp, &seqSize);
 #else
         scanned = sdp_extract_seqtype(rsp, &dtdp, &seqSize);
 #endif
@@ -521,10 +532,10 @@ void ObexTransportAgent::sdp_callback_impl (uint8_t type, uint16_t status, uint8
             int recSize;
 
             recSize = 0;
-#ifdef HAVE_BLUEZ_BUFSIZE
-            rec = sdp_extract_pdu(rsp, bufSize, &recSize);
-#elif defined(HAVE_BLUEZ_SAFE)
+#if defined(HAVE_BLUEZ_SAFE) || defined(EVOLUTION_COMPATIBILITY) 
             rec = sdp_extract_pdu_safe(rsp, bufSize, &recSize);
+#elif defined(HAVE_BLUEZ_BUFSIZE)
+            rec = sdp_extract_pdu(rsp, bufSize, &recSize);
 #else
             rec = sdp_extract_pdu(rsp, &recSize);
 #endif
@@ -770,7 +781,7 @@ void ObexTransportAgent::obex_callback (obex_object_t *object, int mode, int eve
                         m_connectStatus = END;
                         OBEX_TransportDisconnect (m_handle->get());
                         m_status = CLOSED;
-                    } else {
+                    } else if (obex_rsp !=0) {
                         SE_LOG_ERROR (NULL, NULL, "ObexTransport Error %d", obex_rsp);
                         m_status = FAILED;
                         return;

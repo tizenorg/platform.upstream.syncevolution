@@ -101,6 +101,10 @@ typedef struct {
 
 #ifndef NO_REMOTE_RULES
 
+class TRemoteRuleConfig; // forward
+
+typedef std::list<TRemoteRuleConfig *> TRemoteRulesList;
+
 // remote party special rule
 class TRemoteRuleConfig: public TConfigElement
 {
@@ -144,15 +148,19 @@ public:
   TCharSets fDefaultInCharset; // default charset for input interpretation
   TSyError fRejectStatusCode; // if >=0, attempt to connect will always be rejected with given status code
   sInt8 fForceUTC; // force sending time in UTC (overrides SyncML 1.1 <utc/> devInf flag)
-  sInt8 fForceLocaltime; // force sending time in localtime (overrides SyncML 1.1 <utc/> devInf flag)
+  sInt8 fForceLocaltime; // force sending time in localtime (overrides SyncML 1.1 <utc/> devInf flag)    
   #ifndef MINIMAL_CODE
   string fRemoteDescName; // descriptive name of remote
   #endif
   #ifdef SCRIPT_SUPPORT
   string fRuleScriptTemplate; // template for rule script
   #endif
+  // list of subrules to activate
+  TRemoteRulesList fSubRulesList;
   // flag if this is a final rule (if matches, no more rules will be checked)
   bool fFinalRule;
+  // flag if this is a subrule (cannot match by itself)
+  bool fSubRule;
 protected:
   // check config elements
   #ifndef HARDCODED_CONFIG
@@ -162,7 +170,6 @@ protected:
 }; // TRemoteRuleConfig
 
 
-typedef std::list<TRemoteRuleConfig *> TRemoteRulesList;
 
 #endif // NO_REMOTE_RULES
 
@@ -637,7 +644,8 @@ public:
   TCharSets fDefaultOutCharset; // default charset for output generation
   TCharSets fDefaultInCharset; // default charset for input interpretation
   #ifndef NO_REMOTE_RULES
-  TRemoteRuleConfig *fAppliedRemoteRuleP; // applied remote rule
+  bool isActiveRule(cAppCharP aRuleName, TRemoteRuleConfig *aRuleP=NULL); // check if given rule (by name, or if aRuleName=NULL by rule pointer) is active
+  TRemoteRulesList fActiveRemoteRules; // list of remote rules currently active in this session
   #endif
   // legacy mode
   bool fLegacyMode; // if set, remote will see the types marked preferred="legacy" in devInf as preferred types, not the regular preferred ones
@@ -862,10 +870,6 @@ protected:
   #ifdef SCRIPT_SUPPORT
   // Session level script context
   TScriptContext *fSessionScriptContextP;
-  // Active RemoteRule's scipt. Note that this is copied from the config
-  // as it might differ from session to session (and can't be resolved in
-  // the config globally)
-  string fRuleScript; // rule script, copied from active RemoteRule
   #endif
   // Session options
   bool fReadOnly;

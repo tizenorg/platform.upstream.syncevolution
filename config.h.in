@@ -117,6 +117,9 @@
 /* Define if your <locale.h> file defines LC_MESSAGES. */
 #undef HAVE_LC_MESSAGES
 
+/* have recent enough libical with _r variants */
+#undef HAVE_LIBICAL_R
+
 /* enable GNOME specific libsoup */
 #undef HAVE_LIBSOUP_SOUP_GNOME_FEATURES_H
 
@@ -194,6 +197,9 @@
 
 /* Use Moblin UI widgets */
 #undef USE_MOBLIN_UX
+
+/* choose implementation of SHA-256 */
+#undef USE_SHA256
 
 /* Version number of package */
 #undef VERSION

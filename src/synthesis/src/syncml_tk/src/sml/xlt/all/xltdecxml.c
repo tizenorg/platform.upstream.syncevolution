@@ -629,7 +629,8 @@ xmlHTMLEntity(xmlScannerPrivPtr_t pScanner, MemPtr_t *begin, int *len)
         { "gt", '>' },
         { "lt", '<' },
         { "apos", '\'' },
-        { "quot", '"' }
+        { "quot", '"' },
+        { "#43", '+'}
     };
     MemPtr_t entity = pScanner->pos + 1;
     int i;

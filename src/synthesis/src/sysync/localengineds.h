@@ -207,6 +207,8 @@ public:
   virtual void clear();
   // - check for alias names
 	uInt16 isDatastoreAlias(cAppCharP aDatastoreURI);
+  // - returns true for datastores that are abstract, i.e. don't have a backend implementation (like superdatastores, or non-derived localengineds)
+  virtual bool isAbstractDatastore(void) { return true; }; // pure localengineds is abstract. First derivate towards backend (stdlogicds) will override this with "false". 
 protected:
   // check config elements
   #ifndef HARDCODED_CONFIG
@@ -665,15 +667,19 @@ public:
   #ifdef SYSYNC_CLIENT
   /// initialize Sync alert for datastore according to Parameters set with dsSetClientSyncParams()
   /// @note initializes anchors and makes calls to isFirstTimeSync() valid
-  localstatus engPrepareClientSyncAlert(TSuperDataStore *aAsSubDatastoreOf);
+  SUPERDS_VIRTUAL localstatus engPrepareClientSyncAlert(void);
+  /// internal helper to be called by engPrepareClientSyncAlert() from this class and from superdatastore
+  localstatus engPrepareClientDSForAlert(void);
   /// generate Sync alert for datastore
   /// @note this could be repeatedly called due to auth failures at beginning of session
   /// @note this is a NOP for subDatastores (should not be called in this case, anyway)
   localstatus engGenerateClientSyncAlert(TAlertCommand *&aAlertCommandP);
-  // Init engine for client sync
+  // Init engine for client sync (superdatastore aware)
   // - determine types to exchange
   // - make sync set ready
-  localstatus engInitForClientSync(void);
+  SUPERDS_VIRTUAL localstatus engInitForClientSync(void);
+  // - non-superdatastore aware base functionality
+	localstatus engInitDSForClientSync(void);
   #endif
   /// Internal events during sync for derived classes
   /// @note local DB authorisation must be established already before calling these

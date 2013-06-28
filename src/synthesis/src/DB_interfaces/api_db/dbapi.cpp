@@ -422,6 +422,18 @@ void TDB_Api_Blk::DisposeBlk()
 } // DisposeBlk
 
 
+// Returns true if <ps> is name or #<n>
+static bool BuiltIn( string &ps, int &n, cAppCharP name )
+{
+  if (strucmp( ps.c_str(), name      )==0)             return true;
+
+  string                   s= "#" + IntStr( n++ );
+  if (strucmp( ps.c_str(), s.c_str() )==0) { ps= name; return true; }
+
+  return false;
+} // BuiltIn
+
+
 
 /* --- connect to library ------------------------------------------------- */
 /*! These are the built-in linked libraries, which can be accessed directly
@@ -432,98 +444,94 @@ void TDB_Api_Blk::DisposeBlk()
  *  The SDK concept allows to have some routines unimplemented,
  *  they will be provided by the "no_dbapi" built-in module.
  */
-static TSyError DBApi_LibAssign( appPointer aMod, cAppCharP aName, appPointer aField, int aFSize,
+static TSyError DBApi_LibAssign( appPointer aMod, string &ps, appPointer aField, int aFSize,
                                                   cAppCharP aKey= "" )
 {
   TSyError err= DB_NotFound;
-
-  string        p= Plugin_MainName( aName );
-                p= NoBracks( p );
-  cAppCharP ps= p.c_str();
+  int n= 0; // incremental counter starting with 0
 
                        // the blind adapter is always available and acts as default as well
-  if        (strucmp( ps,""           )==0 ||
-             strucmp( ps,"no_dbapi"   )==0) err=    no_dbapi::AssignMethods( aMod, aField,aFSize, aKey );
+  if        (strucmp( ps.c_str(),   ""   )==0 ||
+             BuiltIn( ps,n, "no_dbapi"   )) err=    no_dbapi::AssignMethods( aMod, aField,aFSize, aKey );
 
   #ifdef DBAPI_DEMO    // demo (C) adapter, which will be delivered with SDK
-    else if (strucmp( ps,"SDK_demodb" )==0) err=  SDK_demodb::AssignMethods( aMod, aField,aFSize, aKey );
+    else if (BuiltIn( ps,n, "SDK_demodb" )) err=  SDK_demodb::AssignMethods( aMod, aField,aFSize, aKey );
   #endif
 
   #ifdef DBAPI_EXAMPLE // other (C++) linked versions of the demo adapter (for test)
-    else if (strucmp( ps,"example1"   )==0) err=    example1::AssignMethods( aMod, aField,aFSize, aKey );
-    else if (strucmp( ps,"example2"   )==0) err=    example2::AssignMethods( aMod, aField,aFSize, aKey );
+    else if (BuiltIn( ps,n, "example1"   )) err=    example1::AssignMethods( aMod, aField,aFSize, aKey );
+    else if (BuiltIn( ps,n, "example2"   )) err=    example2::AssignMethods( aMod, aField,aFSize, aKey );
   #endif
 
   #ifdef DBAPI_SILENT  // a silent adapter, which always says, everthing is ok
-    else if (strucmp( ps,"silent"     )==0) err=      silent::AssignMethods( aMod, aField,aFSize, aKey );
+    else if (BuiltIn( ps,n, "silent"     )) err=      silent::AssignMethods( aMod, aField,aFSize, aKey );
   #endif
 
   #ifdef DBAPI_TEXT    // "text_db" implementation, which emulates the "textdb"
-    else if (strucmp( ps,"SDK_textdb" )==0) err=  SDK_textdb::AssignMethods( aMod, aField,aFSize, aKey );
+    else if (BuiltIn( ps,n, "SDK_textdb" )) err=  SDK_textdb::AssignMethods( aMod, aField,aFSize, aKey );
   #endif
 
   #ifdef DBAPI_SNOWWHITE // "oceanblue/snowwhite" implementation
-    else if (strucmp( ps,"snowwhite"  )==0) err=   oceanblue::AssignMethods( aMod, aField,aFSize, aKey );
+    else if (BuiltIn( ps,n, "snowwhite"  )) err=   oceanblue::AssignMethods( aMod, aField,aFSize, aKey );
   #endif
 
   #ifdef PLUGIN_DLL    // plugin bridges
     #ifdef    JNI_SUPPORT  // the Java (JNI) adapter
-      else if (strucmp( ps,"JNI"      )==0) err=     SDK_jni::AssignMethods( aMod, aField,aFSize, aKey );
+      else if (BuiltIn( ps,n, "JNI"      )) err=     SDK_jni::AssignMethods( aMod, aField,aFSize, aKey );
     #endif
 
     #ifdef CSHARP_SUPPORT  // the C# adapter
-      else if (strucmp( ps,"CSHARP"   )==0) err=  SDK_csharp::AssignMethods( aMod, aField,aFSize, aKey );
+      else if (BuiltIn( ps,n, "CSHARP"   )) err=  SDK_csharp::AssignMethods( aMod, aField,aFSize, aKey );
     #endif
 
     #ifdef   DBAPI_TUNNEL  // direct access to internal adapters
-      else if (strucmp( ps,"tunnel"   )==0) err=  SDK_tunnel::AssignMethods( aMod, aField,aFSize, aKey );
+      else if (BuiltIn( ps,n, "tunnel"   )) err=  SDK_tunnel::AssignMethods( aMod, aField,aFSize, aKey );
     #endif
 
     #ifdef   DBAPI_LOGGER  // dbapi logger bridge
-      else if (strucmp( ps,"logger"   )==0) err=      logger::AssignMethods( aMod, aField,aFSize, aKey );
+      else if (BuiltIn( ps,n, "logger"   )) err=      logger::AssignMethods( aMod, aField,aFSize, aKey );
     #endif
   #endif
 
   #ifdef DBAPI_FILEOBJ     // dbapi fileobj
-    else if (strucmp( ps,"FILEOBJ"    )==0) err= SDK_fileobj::AssignMethods( aMod, aField,aFSize, aKey );
+    else if (BuiltIn( ps,n, "FILEOBJ"    )) err= SDK_fileobj::AssignMethods( aMod, aField,aFSize, aKey );
   #endif
 
   #ifdef ADAPTITEM_SUPPORT // "script-like" adapt item
-    else if (strucmp( ps,"ADAPTITEM"  )==0) err=   SDK_adapt::AssignMethods( aMod, aField,aFSize, aKey );
+    else if (BuiltIn( ps,n, "ADAPTITEM"  )) err=   SDK_adapt::AssignMethods( aMod, aField,aFSize, aKey );
   #endif
 
   #ifdef UIAPI_DEMO   // demo (C++) UI interface adapter, which will be delivered with SDK
-    else if (strucmp( ps,"SDK_ui"     )==0) err=      SDK_ui::AssignMethods( aMod, aField,aFSize, aKey );
+    else if (BuiltIn( ps,n, "SDK_ui"     )) err=      SDK_ui::AssignMethods( aMod, aField,aFSize, aKey );
   #endif
 
   #ifdef IPHONE_PLUGINS_STATIC   // iPhone OS does not allow DLL plugins at this time, so we must link them statically
     #ifdef HARDCODED_CONTACTS
-    else if (strucmp( ps,"iPhone_addressbook")==0) err= iPhone_addressbook::AssignMethods( aMod, aField,aFSize, aKey );
+    else if (BuiltIn( ps,n, "iPhone_addressbook")) err= iPhone_addressbook::AssignMethods( aMod, aField,aFSize, aKey );
     #endif
     #ifdef HARDCODED_CALENDAR
-    else if (strucmp( ps,"iPhone_calendar"   )==0) err=    iPhone_calendar::AssignMethods( aMod, aField,aFSize, aKey );
+    else if (BuiltIn( ps,n, "iPhone_calendar"   )) err=    iPhone_calendar::AssignMethods( aMod, aField,aFSize, aKey );
     #endif
     #ifdef HARDCODED_TODO
-    else if (strucmp( ps,"iPhone_todos"      )==0) err=       iPhone_todos::AssignMethods( aMod, aField,aFSize, aKey );
+    else if (BuiltIn( ps,n, "iPhone_todos"      )) err=       iPhone_todos::AssignMethods( aMod, aField,aFSize, aKey );
     #endif
     #ifdef HARDCODED_NOTES
-    else if (strucmp( ps,"iPhone_notes"      )==0) err=       iPhone_notes::AssignMethods( aMod, aField,aFSize, aKey );
+    else if (BuiltIn( ps,n, "iPhone_notes"      )) err=       iPhone_notes::AssignMethods( aMod, aField,aFSize, aKey );
     #endif
     #ifdef HARDCODED_EMAILS
-    else if (strucmp( ps,"iPhone_emails"     )==0) err=      iPhone_emails::AssignMethods( aMod, aField,aFSize, aKey );
+    else if (BuiltIn( ps,n, "iPhone_emails"     )) err=      iPhone_emails::AssignMethods( aMod, aField,aFSize, aKey );
     #endif
 
     #ifdef HARDCODED_CUSTOM
-    else if (strucmp( ps,"iPhone_db0" )==0) err=  iPhone_db0::AssignMethods( aMod, aField,aFSize, aKey );
-    else if (strucmp( ps,"iPhone_db1" )==0) err=  iPhone_db1::AssignMethods( aMod, aField,aFSize, aKey );
-    else if (strucmp( ps,"iPhone_db2" )==0) err=  iPhone_db2::AssignMethods( aMod, aField,aFSize, aKey );
-    else if (strucmp( ps,"iPhone_db3" )==0) err=  iPhone_db3::AssignMethods( aMod, aField,aFSize, aKey );
+    else if (BuiltIn( ps,n, "iPhone_db0" )) err=  iPhone_db0::AssignMethods( aMod, aField,aFSize, aKey );
+    else if (BuiltIn( ps,n, "iPhone_db1" )) err=  iPhone_db1::AssignMethods( aMod, aField,aFSize, aKey );
+    else if (BuiltIn( ps,n, "iPhone_db2" )) err=  iPhone_db2::AssignMethods( aMod, aField,aFSize, aKey );
+    else if (BuiltIn( ps,n, "iPhone_db3" )) err=  iPhone_db3::AssignMethods( aMod, aField,aFSize, aKey );
     #endif
   #endif
 
-
-
-  else ModuleConnectionError( NULL, aName );
+  else  if  (strucmp( ps.c_str(), "#" )==0) err= LOCERR_UNKSUBSYSTEM;
+  else  if (!BuiltIn( ps,n, "" )) ModuleConnectionError( NULL, AddBracks( ps ).c_str() );
 
   return err;
 } // DBApi_LibAssign
@@ -554,31 +562,33 @@ TDB_Api_Config::~TDB_Api_Config()
 
 static void connect_no_dbapi( appPointer &aMod, API_Methods &m )
 {
+  string no_dbapi= "";
+
   DisconnectModule( aMod    ); // avoid memory leak
   ConnectModule   ( aMod,"" ); // default: no db_api -> all methods return false
 //---- module --------------------------------
-  DBApi_LibAssign ( aMod,"", &m.start,        sizeof(m.start),        Plugin_Start );
-  DBApi_LibAssign ( aMod,"", &m.param,        sizeof(m.param),        Plugin_Param );
-  DBApi_LibAssign ( aMod,"", &m,              sizeof(m) );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.start,        sizeof(m.start),        Plugin_Start );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.param,        sizeof(m.param),        Plugin_Param );
+  DBApi_LibAssign ( aMod,no_dbapi, &m,              sizeof(m) );
 
 //---- session -------------------------------
-  DBApi_LibAssign ( aMod,"", &m.se,           sizeof(m.se),           Plugin_Session   );
-  DBApi_LibAssign ( aMod,"", &m.se.seAdapt,   sizeof(m.se.seAdapt),   Plugin_SE_Adapt  );
-  DBApi_LibAssign ( aMod,"", &m.se.seAuth,    sizeof(m.se.seAuth),    Plugin_SE_Auth   );
-  DBApi_LibAssign ( aMod,"", &m.se.dvAdmin,   sizeof(m.se.dvAdmin),   Plugin_DV_Admin  );
-  DBApi_LibAssign ( aMod,"", &m.se.dvTime,    sizeof(m.se.dvTime),    Plugin_DV_DBTime );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.se,           sizeof(m.se),           Plugin_Session     );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.se.seAdapt,   sizeof(m.se.seAdapt),   Plugin_SE_Adapt    );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.se.seAuth,    sizeof(m.se.seAuth),    Plugin_SE_Auth     );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.se.dvAdmin,   sizeof(m.se.dvAdmin),   Plugin_DV_Admin    );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.se.dvTime,    sizeof(m.se.dvTime),    Plugin_DV_DBTime   );
 
 //---- datastore -----------------------------
-  DBApi_LibAssign ( aMod,"", &m.ds,           sizeof(m.ds),           Plugin_Datastore   );
-  DBApi_LibAssign ( aMod,"", &m.ds.dsg,       sizeof(m.ds.dsg),       Plugin_DS_General  );
-  DBApi_LibAssign ( aMod,"", &m.ds.dsAdapt,   sizeof(m.ds.dsAdapt),   Plugin_DS_Adapt    );
-  DBApi_LibAssign ( aMod,"", &m.ds.dsAdmin,   sizeof(m.ds.dsAdmin),   Plugin_DS_Admin    );
-  DBApi_LibAssign ( aMod,"", &m.ds.dsData,    sizeof(m.ds.dsData),    Plugin_DS_Data     );
-  DBApi_LibAssign ( aMod,"", &m.ds.dsData.str,sizeof(m.ds.dsData.str),Plugin_DS_Data_Str );
-  DBApi_LibAssign ( aMod,"", &m.ds.dsData.key,sizeof(m.ds.dsData.key),Plugin_DS_Data_Key );
-  DBApi_LibAssign ( aMod,"", &m.ds.dsBlob,    sizeof(m.ds.dsBlob),    Plugin_DS_Blob     );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.ds,           sizeof(m.ds),           Plugin_Datastore   );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.ds.dsg,       sizeof(m.ds.dsg),       Plugin_DS_General  );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.ds.dsAdapt,   sizeof(m.ds.dsAdapt),   Plugin_DS_Adapt    );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.ds.dsAdmin,   sizeof(m.ds.dsAdmin),   Plugin_DS_Admin    );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.ds.dsData,    sizeof(m.ds.dsData),    Plugin_DS_Data     );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.ds.dsData.str,sizeof(m.ds.dsData.str),Plugin_DS_Data_Str );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.ds.dsData.key,sizeof(m.ds.dsData.key),Plugin_DS_Data_Key );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.ds.dsBlob,    sizeof(m.ds.dsBlob),    Plugin_DS_Blob     );
 //---- ui context ----------------------------
-  DBApi_LibAssign ( aMod,"", &m.ui,           sizeof(m.ui),           Plugin_UI );
+  DBApi_LibAssign ( aMod,no_dbapi, &m.ui,           sizeof(m.ui),           Plugin_UI );
   DisconnectModule( aMod    ); // no longer used, avoid memory leak
 } // connect_no_dbapi
 
@@ -649,15 +659,15 @@ TSyError TDB_Api_Config::DBApi_Assign( cAppCharP aItem, appPointer aField,
   TSyError err= LOCERR_OK;
 
   if (FlagOK( aItem,aKey )) {
-    if (is_lib) err= DBApi_LibAssign( fMod, fModName.c_str(), aField,aFieldSize, aKey );
+    if (is_lib) err= DBApi_LibAssign( fMod, fPlugin, aField,aFieldSize, aKey );
     else {      err= DB_Forbidden; // only allowed, if PLUGIN_DLL is active
       #ifdef PLUGIN_DLL
-                err= DBApi_DLLAssign( fMod,                   aField,aFieldSize, aKey, false );
+                err= DBApi_DLLAssign( fMod,          aField,aFieldSize, aKey, false );
       #endif
     } // if
 
     DEBUG_Exotic_INT( &fCB.Callback,MyDB, "DBApi_Assign", "aKey='%s' (size=%d) err=%d",
-                                                           aKey, aFieldSize, err );
+                                                           aKey, aFieldSize,   err );
   } // if
 
   return err;
@@ -756,6 +766,7 @@ TSyError TDB_Api_Config::Connect( cAppCharP aModName, CContext &globContext,
     NextToken      ( fOptions, fModMain, " " ); // separate <mOptions>
     fModName=                  fModMain;
                     CutBracks( fModMain );
+    fPlugin =                  fModMain;
 
     if (in_bracks) fModName = AddBracks( fModName );
 
@@ -792,8 +803,11 @@ TSyError TDB_Api_Config::Connect( cAppCharP aModName, CContext &globContext,
     fSDKversion= pv( 0 );      // get the plugin's version before making the first tests
     DEBUG_INT( mCB,MyDB, "Connect", "fSDKversion=%s", VersionStr( fSDKversion ).c_str() );
 
+    string sn= fModSub;
+    if    (sn=="[#]" && !(fPlugin=="logger")) sn= ""; // remove the recursion breaker
+
     CreateM_Func p=  (CreateM_Func)m.start.Module_CreateContext;
-        err=     p( &mContext, fModMain.c_str(),fModSub.c_str(), mContextName, mCB );
+        err=     p( &mContext, fModMain.c_str(), sn.c_str(), mContextName, mCB );
     if (err==LOCERR_ALREADY) err= LOCERR_OK; // this is not an error, just avoid multiple assignment
     DEBUG_INT( mCB,MyDB, "Connect", "mContext=%08X err=%d", mContext,err );
 
@@ -816,13 +830,14 @@ TSyError TDB_Api_Config::Connect( cAppCharP aModName, CContext &globContext,
   // !Supported( VP_EngineVersionParam ): only JNI signature changes
   // !Supported( VP_MD5_Nonce_IN       ): only JNI signature changes
 
-    cAppCharP                           vda= Plugin_DS_Admin;
-    if (!Supported( VP_InsertMapItem )) vda= Plugin_DS_Admin_OLD;
-    cAppCharP                           vdd= Plugin_DS_Data;
-    if (!Supported( VP_FLI_DSS       )) vdd= Plugin_DS_Data_OLD2;
-    if (!Supported( VP_ResumeToken   )) vdd= Plugin_DS_Data_OLD1;
-    cAppCharP                           vdb= Plugin_DS_Blob;
-    if (!Supported( VP_DeleteBlob    )) vdb= Plugin_DS_Blob_OLD;
+    cAppCharP                             vda= Plugin_DS_Admin;
+    if (!Supported( VP_InsertMapItem   )) vda= Plugin_DS_Admin_OLD;
+    cAppCharP                             vdd= Plugin_DS_Data;
+    if (!Supported( VP_FLI_DSS         )) vdd= Plugin_DS_Data_OLD2;
+    if (!Supported( VP_ResumeToken     )) vdd= Plugin_DS_Data_OLD1;
+    cAppCharP                             vdb= Plugin_DS_Blob;
+    if (!Supported( VP_BLOB_JSignature )) vdb= Plugin_DS_Blob_OLD2; // new BLOB signature
+    if (!Supported( VP_DeleteBlob      )) vdb= Plugin_DS_Blob_OLD1;
 
   //---- module ---------------------------------
     if (!err) err=     DBApi_Assign( "", &m.param,        sizeof(m.param),        Plugin_Param );
@@ -948,12 +963,13 @@ TSyError TDB_Api_Config::PluginParams( cAppCharP mConfigParams )
 {
   typedef TSyError     (*PlugProc)( CContext mContext,
                                    cAppCharP mConfigParams,  CVersion engineVersion );
-  typedef TSyError (*OLD_PlugProc)( CContext mContext,
-                                   cAppCharP mConfigParams ); // w/o <engineVersion>
+//typedef TSyError (*OLD_PlugProc)( CContext mContext,
+//                                 cAppCharP mConfigParams ); // w/o <engineVersion>
 
   TSyError err;
   if (!fConnected) return DB_Error;
 
+  /*
   // new param supported for Plugin Version >= 1.0.X.4
   if (Supported( VP_EngineVersionParam )) {
     PlugProc     p=     (PlugProc)m.param.Module_PluginParams;
@@ -963,7 +979,10 @@ TSyError TDB_Api_Config::PluginParams( cAppCharP mConfigParams )
     OLD_PlugProc p= (OLD_PlugProc)m.param.Module_PluginParams; // w/o the SDK version parameter
     err=         p( mContext, mConfigParams );
   } // if
+  */
 
+  PlugProc    p= (PlugProc)m.param.Module_PluginParams;
+         err= p( mContext, mConfigParams, EngineSDKVersion() );
   if    (err==LOCERR_ALREADY) err= LOCERR_OK;
   return err;
 } // PluginParams

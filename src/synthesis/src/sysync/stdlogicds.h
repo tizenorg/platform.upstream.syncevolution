@@ -113,7 +113,6 @@ public:
   virtual bool isStarted(bool aWait);
   /// @}
 
-
 protected:
   /// @name dsXXXX (usually abstract) virtuals defining the interface to derived datastore classes (implementation, api)
   ///   These are usually designed such that they should always call inherited::dsXXX to let the entire chain

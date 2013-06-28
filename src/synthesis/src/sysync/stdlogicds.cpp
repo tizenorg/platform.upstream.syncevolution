@@ -528,6 +528,10 @@ localstatus TStdLogicDS::startDataAccessForServer(void)
       &DBFuncTable, // context's function table
       this // datastore pointer needed for context
     );
+    // - datastoreinitscript might abort the sync with this datastore, check for that and exit if so
+    if (isAborted()) {
+    	return getAbortStatusCode();
+    }
     #endif
     // - init post fetch filtering, sets fFilteringNeededForAll and fFilteringNeeded correctly
     initPostFetchFiltering();
@@ -914,6 +918,10 @@ localstatus TStdLogicDS::startDataAccessForClient(void)
     &DBFuncTable, // context's function table
     this // datastore pointer needed for context
   );
+  // - datastoreinitscript might abort the sync with this datastore, check for that and exit if so
+  if (isAborted()) {
+    return getAbortStatusCode();
+  }
   #endif
   // - init post fetch filtering, sets fFilteringNeededForAll and fFilteringNeeded correctly
   initPostFetchFiltering();

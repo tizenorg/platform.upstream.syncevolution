@@ -851,6 +851,9 @@ class SyncConfig {
         // The matched percentage of the template, larger the better.
         int m_rank;
 
+        //a unique identity of the device that the template is for, used by caller
+        std::string m_id;
+
         // A string identify which fingerprint the template is matched with.
         std::string m_fingerprint;
 
@@ -863,10 +866,11 @@ class SyncConfig {
         std::string m_matchedModel;
 
         TemplateDescription (const std::string &name, const std::string &description, 
-                const int rank, const std::string &fingerprint, const std::string &path, const std::string &model)
+                const int rank, const std::string id, const std::string &fingerprint, const std::string &path, const std::string &model)
             :   m_name (name),
                 m_description (description),
                 m_rank (rank),
+                m_id (id),
                 m_fingerprint (fingerprint),
                 m_path (path),
                 m_matchedModel(model)
@@ -889,7 +893,24 @@ class SyncConfig {
     };
 
     typedef list<boost::shared_ptr <TemplateDescription> > TemplateList;
-    typedef list<std::pair <std::string, SyncConfig::MatchMode> > DeviceList;
+
+    struct DeviceDescription {
+        /** the id of the device */
+        std::string m_deviceId;
+        /** the finger print of the device used for matching templates */
+        std::string m_fingerprint;
+        /** match mode used for matching templates */
+        MatchMode m_matchMode;
+        DeviceDescription(const std::string &deviceId,
+                          const std::string &fingerprint,
+                          MatchMode mode)
+            :m_deviceId(deviceId), m_fingerprint(fingerprint), m_matchMode(mode)
+        {}
+        DeviceDescription() : m_matchMode(INVALID)
+        {}
+    };
+
+    typedef list<DeviceDescription> DeviceList;
 
     /**
      * returns list of servers in either the old (.sync4j) or
@@ -975,20 +996,12 @@ class SyncConfig {
      * - lower case
      * - non-printable and unsafe characters (colon, slash, backslash)
      *   replaced by underscore
+     * - when no context specified: search for peer config first in @default,
+     *   then also in other contexts in alphabetical order
      * - @default stripped
      * - empty string replaced with "@default"
      */
     static string normalizeConfigString(const string &config);
-
-    /**
-     * Normalize and in addition, set original context.
-     *
-     * @param config      one of the various ways of selecting a configuration
-     *                    (@default, scheduleworld, scheduleworld@foo, ...)
-     * @retval normal     normalized form of config string       
-     * @retval context    empty if no specified, otherwise normalized value
-     */
-    static void normalizeConfigString(const string &config, string &normal, string &context);
 
     /**
      * Split a config string (normalized or not) into the peer part
@@ -1208,8 +1221,9 @@ class SyncConfig {
     virtual void checkProxyPassword(ConfigUserInterface &ui);
     virtual void saveProxyPassword(ConfigUserInterface &ui);
     virtual void setProxyPassword(const string &value, bool temporarily = false);
-    virtual const char*  getSyncURL() const;
+    virtual vector<string>  getSyncURL() const;
     virtual void setSyncURL(const string &value, bool temporarily = false);
+    virtual void setSyncURL(const vector<string> &value, bool temporarily = false);
     virtual const char*  getClientAuthType() const;
     virtual void setClientAuthType(const string &value, bool temporarily = false);
     virtual unsigned long getMaxMsgSize() const;
@@ -1543,8 +1557,16 @@ class SyncSourceConfig {
     /** same as SyncConfig::savePassword() */
     virtual void savePassword(ConfigUserInterface &ui, const string &serverName, FilterConfigNode& globalConfigNode);
 
+    /** selects the backend database to use */
     virtual const char *getDatabaseID() const;
     virtual void setDatabaseID(const string &value, bool temporarily = false);
+
+    /**
+     * internal property: unique integer ID for the source, needed by Synthesis XML <dbtypeid>,
+     * zero if unset
+     */
+    virtual const int getSynthesisID() const;
+    virtual void setSynthesisID(int value, bool temporarily = false);
 
     /**
      * Returns the data source type configured as part of the given

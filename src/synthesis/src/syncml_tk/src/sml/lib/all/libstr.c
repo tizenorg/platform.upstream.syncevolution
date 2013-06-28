@@ -108,6 +108,9 @@ SML_API int smlLibStrcmp(const char *pTarget, const char *pSource){
 SML_API int smlLibStrncmp(const char *pTarget, const char *pSource, int count){
   return strncmp((char *)pTarget, (char *)pSource, count);
 }
+SML_API int smlLibStrnCasecmp(const char *pTarget, const char *pSource, int count){
+  return strncasecmp((char *)pTarget, (char *)pSource, count);
+}
 SML_API String_t smlLibStrchr(const char *pString, char character){
   return strchr((char *)pString, character);
 }

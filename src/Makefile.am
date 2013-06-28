@@ -20,7 +20,10 @@ GUI_DIR = gtk-ui
 endif
 
 SUBDIRS = $(SYNTHESIS_SUBDIR) $(DBUS_DIRS) syncevo $(BACKENDS) $(GUI_DIR)
-DIST_SUBDIRS = gdbus dbus syncevo $(BACKENDS) gtk-ui
+if ENABLE_GNOME_BLUETOOTH_PANEL
+SUBDIRS += gnome-bluetooth
+endif
+DIST_SUBDIRS = gdbus dbus syncevo $(BACKENDS) gtk-ui gnome-bluetooth
 BUILT_SOURCES =
 
 AM_CPPFLAGS = $(SUBDIRS:%=-I$(srcdir)/%) -I$(srcdir)/../test -I$(top_srcdir) $(BACKEND_CPPFLAGS)
@@ -39,7 +42,7 @@ else
 SYNCEVOLUTION_LDADD += $(SYNCSOURCES)
 SYNCEVOLUTION_DEP += $(SYNCSOURCES)
 endif
-EXTRA_DIST = shlibs.local Makefile-gen.am syncclient_sample_config.xml $(service_in_files)
+EXTRA_DIST = shlibs.local Makefile-gen.am $(service_in_files)
 
 TEMPLATE_FILES = templates/README templates/servers/Funambol/config.ini templates/servers/Funambol/template.ini templates/servers/Funambol/sources/calendar/config.ini templates/servers/Funambol/sources/todo/config.ini templates/servers/Funambol/sources/addressbook/config.ini templates/servers/Funambol/sources/memo/config.ini templates/servers/ScheduleWorld/config.ini templates/servers/ScheduleWorld/template.ini templates/servers/ScheduleWorld/sources/calendar/config.ini templates/servers/ScheduleWorld/sources/todo/config.ini templates/servers/ScheduleWorld/sources/addressbook/config.ini templates/servers/ScheduleWorld/sources/memo/config.ini templates/clients/phone/nokia/S40/7210c/config.ini templates/clients/phone/nokia/S40/7210c/template.ini templates/clients/phone/nokia/S40/7210c/sources/calendar/config.ini templates/clients/phone/nokia/S40/7210c/sources/calendar+todo/config.ini templates/clients/phone/nokia/S40/7210c/sources/todo/config.ini templates/clients/phone/nokia/S40/7210c/sources/addressbook/config.ini templates/clients/phone/nokia/S40/7210c/sources/memo/config.ini templates/clients/default/template.ini templates/clients/SyncEvolution/config.ini templates/clients/SyncEvolution/template.ini templates/clients/SyncEvolution/sources/calendar/config.ini templates/clients/SyncEvolution/sources/todo/config.ini templates/clients/SyncEvolution/sources/addressbook/config.ini templates/clients/SyncEvolution/sources/memo/config.ini
 templatedir = $(datadir)/syncevolution/

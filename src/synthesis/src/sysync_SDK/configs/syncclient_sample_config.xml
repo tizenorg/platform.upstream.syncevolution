@@ -14,6 +14,7 @@
     <sessionlogs>yes</sessionlogs> <!-- by default, create a session log file for every sync session (might be disabled for special users/devices in scripts) -->
     <!-- debug format options -->
     <logformat>html</logformat> <!-- html is nicely colored and easily viewable with a web browser. Other options: "xml", "text" -->
+    <folding>auto</folding> <!-- dynamic folding of blocks enabled, automatically expanded or collapsed default. Other options: "none", "expanded", "collapsed" -->
     <timestamp>yes</timestamp> <!-- show timestamps for structure elements in log -->
     <timestampall>no</timestampall> <!-- don't show timestamp for every log line -->
     <timedsessionlognames>yes</timedsessionlognames> <!-- session logs also have the session start timestamp in the filename - makes them more easily sortable -->
@@ -28,6 +29,7 @@
     <!-- additional debug info switches -->
     <enable option="userdata"/> <!-- Make this <disable ...> if you don't want user data in the logs -->
     <disable option="scripts"/> <!-- Make this <enable ...> to show script execution in logs  -->
+    <disable option="match"/> <!-- Make this <enable ...> to show slow sync matching. CAN PRODUCE ENORMOUS LOGS and HEAVILY IMPACT PERFORMANCE for large slow syncs - use with care!  -->
     <disable option="exotic"/> <!-- Make this <enable ...> to include very in-detail info. CAN PRODUCE ENORMOUS LOGS and HEAVILY IMPACT PERFORMANCE for large slow syncs - use with care!  -->
     <!-- see manual for more debug info switches -->
     <!-- global log options -->
@@ -36,6 +38,7 @@
     <!-- SyncML message dumping options -->
     <msgdump>no</msgdump> <!-- do not dump syncml traffic 1:1 to files -->
     <xmltranslate>no</xmltranslate> <!-- do not try to translate syncml traffic into XML (DO NOT SET THIS OPTION IN PRODUCTIVE SERVERS!) -->
+
   </debug>
 
   <transport type="xpt">
@@ -55,7 +58,7 @@
     ]]></function>
 
 
-		<!-- define script macros for scripts that are used by both vCalendar 1.0 and iCalendar 2.0 -->
+    <!-- define script macros for scripts that are used by both vCalendar 1.0 and iCalendar 2.0 -->
 
     <macro name="VCALENDAR_INCOMING_SCRIPT"><![CDATA[
       STRING MATCHES[];
@@ -117,7 +120,7 @@
         if (SUMMARY==EMPTY) SUMMARY="unnamed"; // set dummy summary if we still don't have one
         // due shaping for non-iCalendar 2.0
         if (ITEMDATATYPE()=="vCalendar10" && ALLDAYCOUNT(DUE,DUE,TRUE,TRUE)>0) {
-        	DUE = DATEONLY(DUE);
+          DUE = DATEONLY(DUE);
         }
       }
       // Common alarm handling
@@ -187,9 +190,9 @@
 
 
   <datatypes>
-
     <!-- list of internal fields representing vCard data -->
     <fieldlist name="contacts">
+      <field name="SYNCLVL" type="integer" compare="never"/>
       <field name="REV" type="timestamp" compare="never" age="yes"/>
 
       <!-- Name elements -->
@@ -251,7 +254,6 @@
       <field name="PHOTO_TYPE" type="integer" compare="never" merge="fillempty"/>
 
     </fieldlist>
-
     <!-- vCard profile -->
     <mimeprofile name="vCard" fieldlist="contacts">
 
@@ -391,6 +393,7 @@
       </profile>
     </mimeprofile>
 
+
     <!-- vCard 2.1 datatype, using vCard profile defined above -->
     <datatype name="vCard21" basetype="vcard">
       <version>2.1</version>
@@ -402,10 +405,9 @@
       <version>3.0</version>
       <use mimeprofile="vCard"/>
     </datatype>
-
-
     <!-- common field list for events and todos (both represented by vCalendar/iCalendar) -->
     <fieldlist name="calendar">
+      <field name="SYNCLVL" type="integer" compare="never"/>
       <field name="ISEVENT" type="integer" compare="always"/>
 
       <field name="DMODIFIED" type="timestamp" compare="never" age="yes"/>
@@ -468,8 +470,6 @@
       <field name="ORGANIZER_CN" array="no" type="string" compare="never"/>
 
     </fieldlist>
-
-
     <!-- vCalendar with VTODO and VEVENT variants -->
     <mimeprofile name="vCalendar" fieldlist="calendar">
 
@@ -502,7 +502,7 @@
 
         <subprofile onlyformode="standard" name="VTIMEZONE" mode="vtimezones"/>
 
-        <!-- sub-profile for todoz -->
+        <!-- sub-profile for tasks -->
         <subprofile name="VTODO" nummandatory="1" showifselectedonly="yes" field="ISEVENT" value="0">
 
           <property name="LAST-MODIFIED">
@@ -926,7 +926,6 @@
       </profile>
     </mimeprofile>
 
-
     <!-- vCalendar 1.0 datatype, using vCalendar profile defined above -->
     <datatype name="vCalendar10" basetype="vcalendar">
       <version>1.0</version>
@@ -957,7 +956,6 @@
       ]]></outgoingscript>
 
     </datatype>
-
 
     <!-- list of internal fields representing plain text note data -->
     <fieldlist name="Note">
@@ -991,7 +989,6 @@
       <typestring>text/plain</typestring>
       <versionstring>1.1</versionstring>
     </datatype>
-
 
     <!-- list of internal fields representing vBookmark data -->
     <fieldlist name="bookmarks">
@@ -1035,8 +1032,9 @@
 
         <!-- non-standard properties -->
 
-        <property name="CATEGORIES">
-          <value field="CATEGORIES"/>
+        <!-- inherit CATEGORIES from vCard 3.0, i.e. comma separated -->
+        <property name="CATEGORIES" values="list" valueseparator="," altvalueseparator=";">
+          <value field="CATEGORIES" combine=","/>
         </property>
 
         <property name="CLASS" suppressempty="yes">

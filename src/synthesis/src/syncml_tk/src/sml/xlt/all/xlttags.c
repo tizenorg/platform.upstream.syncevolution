@@ -179,7 +179,7 @@ SmlPcdataExtension_t getExtByName(String_t ns) {
   for (;dtd->ext != SML_EXT_LAST; dtd++) {
     const char *dtdname=dtd->name;
     if (!dtdname) continue; /* skip empty names (should not appear but better be on the safe side) */
-    if (dtd->ext==SML_EXT_UNDEFINED && smlLibStrncmp("SYNCML:SYNCML",ns,13)==0) {
+    if (dtd->ext==SML_EXT_UNDEFINED && smlLibStrnCasecmp("SYNCML:SYNCML",ns,13)==0) {
       // SyncML namespace is ok without checking version!
       ext = SML_EXT_UNDEFINED;
       break;

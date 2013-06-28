@@ -105,7 +105,7 @@ TSyError DBApi_DLLAssign( appPointer aMod, appPointer aField, memSize aFieldSize
              NULL );
   } // if
 
-
+  /*
   // compatibility to older version ( w/o <engineVersion> )
   keyOld= strcmp( aKey.c_str(),Plugin_Param_OLD )==0;
   keyCur= strcmp( aKey.c_str(),Plugin_Param     )==0;
@@ -114,6 +114,11 @@ TSyError DBApi_DLLAssign( appPointer aMod, appPointer aField, memSize aFieldSize
     // additional param for newer version
     if (keyCur) js1= j.SgnS_X( jt + "I" ); // "(ILjava/lang/String;I)S"
     else        js1=           jsT;        // "(ILjava/lang/String;)S"
+  */
+
+  if (strcmp( aKey.c_str(),Plugin_Param )==0) {
+    // additional param for newer version
+    js1= j.SgnS_X( jt + "I" ); // "(ILjava/lang/String;I)S"
 
     return ConnectFunctions( aMod, aField,aFieldSize, true,
           // ---- start of plugin connection
@@ -320,22 +325,26 @@ TSyError DBApi_DLLAssign( appPointer aMod, appPointer aField, memSize aFieldSize
              NULL );
   } // if
 
-  keyOld= strcmp( aKey.c_str(),Plugin_DS_Blob_OLD  )==0;
-  keyCur= strcmp( aKey.c_str(),Plugin_DS_Blob      )==0;
+  keyOld = strcmp( aKey.c_str(),Plugin_DS_Blob_OLD1 )==0;
+  keyOld2= strcmp( aKey.c_str(),Plugin_DS_Blob_OLD2 )==0;
+  keyCur = strcmp( aKey.c_str(),Plugin_DS_Blob      )==0;
 
-  if (keyCur || keyOld) {
-    const char* proc_delB= "";
-    if (keyCur) proc_delB= Da_DB;
+  if (keyCur || keyOld || keyOld2) {
+    cAppCharP    proc_delB= "";
+    if  (keyCur) proc_delB= Da_DB;
 
-    js1 = j.SgnS_X( jii                                     // "(ILItemID;Ljava/lang/String;LVAR_byteArray; ...
-                  + jt                                      // ... LVAR_int;LVAR_int;ZLVAR_boolean;)S"
+            string bvsz= j.fvr; string bsz= j.fr;
+    if (!keyCur) { bvsz=   jvi;        bsz=  "I"; }
+
+    js1 = j.SgnS_X( jii                                   // "(ILItemID;Ljava/lang/String;LVAR_byteArray; ...
+                  + jt                                    // ... LVAR_int;LVAR_int;ZLVAR_boolean;)S"
                   + LCP( jP, c_VAR_byteArray )
-                  + j.fvr
-                  + j.fvr + "Z"
+                  + bvsz
+                  + bvsz + "Z"
                   + LCP( jP, c_VAR_bool ) );
 
-    js2 = j.SgnS_X( jii + jt + "[B" + j.fr + j.fr + "ZZ" ); // "(ILItemID;Ljava/lang/String;[BIIZZ)S"
-    js3 = j.SgnS_X( jii + jt                             ); // "(ILItemID;Ljava/lang/String;)S"
+    js2 = j.SgnS_X( jii + jt + "[B" + bsz + bsz + "ZZ" ); // "(ILItemID;Ljava/lang/String;[BIIZZ)S"
+    js3 = j.SgnS_X( jii + jt                           ); // "(ILItemID;Ljava/lang/String;)S"
 
     return ConnectFunctions( aMod, aField,aFieldSize, true,
           // ---- datastore data ----

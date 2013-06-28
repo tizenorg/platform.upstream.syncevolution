@@ -55,6 +55,7 @@ bool getPlatformString(TPlatformStringID aStringID, string &aString)
   char buffer[bufsiz];
   buffer[0]=0; // terminate for safety
   string str;
+  string aSub;
   struct passwd *userInfoP=NULL;
 
   switch (aStringID) {
@@ -105,11 +106,15 @@ bool getPlatformString(TPlatformStringID aStringID, string &aString)
       // My specific subdirectory for storing my app data/prefs
       userInfoP = getpwuid(getuid());
       aString = userInfoP->pw_dir; // user home dir
+      aSub = APPDATA_SUBDIR;
       #ifdef ANDROID
-      aString += "/data/com.sysync/" APPDATA_SUBDIR; // application specific subdir for android
+      aString += "/data/com.sysync"; // application specific subdir for android
+      if (!aSub.empty()) aString+= "/"; // slash only if subdir is really there
       #else
-      aString += "/.sysync/" APPDATA_SUBDIR; // application specific subdir
+      aString += "/.sysync/"; // application specific subdir
+      // don't adapt it here to avoid potential problems on other platforms
       #endif
+      aString += aSub;
       break;
     #endif
     /*

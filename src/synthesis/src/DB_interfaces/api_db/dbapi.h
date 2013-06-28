@@ -218,8 +218,11 @@ class TDB_Api_Config
     bool             is_lib; // flag: as internal library
     TDB_Api_Callback fCB;    // Callback wrapper
 
-    cAppCharP ModName()    { return fModName.c_str(); } // the <moduleName>
-    cAppCharP ModOptions() { return fOptions.c_str(); } // the module's parameters
+    cAppCharP ModName()     { return fModName.c_str(); } // the <moduleName>
+    cAppCharP ModOptions()  { return fOptions.c_str(); } // the module's parameters
+    cAppCharP ModPlugin()   { return fPlugin.c_str();  } // the main module's name
+    cAppCharP ModMainName() { return fModMain.c_str(); } // the main module's name (with optional extension ":..."
+    cAppCharP ModSubName()  { return fModSub.c_str();  } // the sub  module's name (with params)
 
     void DisposeStr( TDB_Api_Str &s );
   private:
@@ -236,7 +239,8 @@ class TDB_Api_Config
 
     string             fModName;     // local copy of <aModName>
     string             fOptions;     // local copy of module's paramters
-    string             fModMain;     // main part  of <aModName> w/o brackets
+    string             fPlugin;      // main part  of <aModName> w/o brackets  w/o extension
+    string             fModMain;     // main part  of <aModName> w/o brackets, with optional extension
     string             fModSub;      // sub  part  of <aModName> w/o brackets
     string             fDesc;        // module's description
 

@@ -1255,25 +1255,13 @@ void initRRuleExpansion(
 }
 
 
-// negative aAtLeastDays allowed only with aModulo==1 (because of undefined % operator for negatives - altough it is normally truncate towards zero = remainder)
-// - advances cursor by at least aAtLeastDays
-// - if advance is more than aNoModuloDays, advance will be one aModulo interval
-static void adjustCursor(TRRuleExpandStatus &es, lineardate_t aAtLeastDays, sInt16 aModulo=1, sInt16 aNoModuloDays=0)
+// advance cursor by given number of days
+static void adjustCursor(TRRuleExpandStatus &es, lineardate_t aDays)
 {
-	lineardate_t days = 0;
-  days = aAtLeastDays; // default to simply add days
-  if (aModulo>1) {
-    // we need to make sure remainder is 0 and advance extra
-    lineardate_t extradays = aAtLeastDays % aModulo;
-    // only if extradays exceeds given range (which usually represents the reach of the current mask, e.g. remaining days in the week)
-    if (extradays>aNoModuloDays) {
-      days += aModulo-extradays;
-    }
-  }
   // now days = number of days to advance
-  es.cursor += days*linearDateToTimeFactor;
+  es.cursor += aDays*linearDateToTimeFactor;
   // adjust weekday
-  es.cursorWDay += days % DaysPerWk;
+  es.cursorWDay += aDays % DaysPerWk;
   if (es.cursorWDay<0) es.cursorWDay += DaysPerWk;
   else if (es.cursorWDay>=DaysPerWk) es.cursorWDay -= DaysPerWk;    
   #ifdef SYNTHESIS_UNIT_TEST
@@ -1283,6 +1271,21 @@ static void adjustCursor(TRRuleExpandStatus &es, lineardate_t aAtLeastDays, sInt
   printf("  es.cursor = %04hd-%02hd-%02hd %02hd:%02hd:%02hd / Day=%hd, lt=%lld\n",y,m,d,h,mi,s,es.cursorWDay,es.cursor);
   #endif
 }
+
+
+static lineardate_t makeMultiple(lineardate_t d, sInt16 aMultiple, sInt16 aMaxRemainder=0)
+{
+  if (aMultiple>1) {
+    // we need to make sure remainder is 0 and advance extra
+    lineardate_t r = d % aMultiple; // remainder
+    if (r>aMaxRemainder) {
+			// round up to next multiple
+    	d += aMultiple - r;
+    }
+  }
+	return d;	
+}
+
 
 // simple and fast cursor increment
 static void incCursor(TRRuleExpandStatus &es)
@@ -1340,7 +1343,7 @@ lineartime_t getNextOccurrence(TRRuleExpandStatus &es)
   	// Daily: can be calculated directly
     if (!es.started) {
     	// calculate first occurrence
-    	adjustCursor(es, es.expansionStartDayOffset, es.interval); // move cursor to first day
+    	adjustCursor(es, makeMultiple(es.expansionStartDayOffset, es.interval)); // move cursor to first day
     }
     else {
       // calculate next occurrence
@@ -1356,11 +1359,14 @@ lineartime_t getNextOccurrence(TRRuleExpandStatus &es)
       if (es.firstmask==0)
         es.firstmask = 1<<es.cursorWDay; // set start day in mask
       // advance cursor to first day of expansion period
-      sInt16 woffs = es.cursorWDay-es.weekstart; // how many days back to next week start
-      if (woffs<0) woffs+=DaysPerWk; // we want to go BACK to next week start
-      adjustCursor(es, -woffs, 1); // back to previous start of week
-    	adjustCursor(es, es.expansionStartDayOffset, es.interval*DaysPerWk, DaysPerWk-woffs-1); // advance by intervals when advance exeeds rest of week (covered by mask)
-      adjustCursor(es, woffs, 1); // forward again to start weekday
+      // - go back to start of very first week covered by the recurrence
+      sInt16 woffs = es.cursorWDay-es.weekstart; // how many days back to next week start from dtstart
+      if (woffs<0) woffs+=DaysPerWk; // we want to go BACK to previous week start
+      adjustCursor(es, -woffs); // back to previous start of week (=start of first week covered by recurrence)
+      lineardate_t d = es.expansionStartDayOffset+woffs; // days from beginning of first week to beginning day of expansion
+      // if we exceed reach of mask in current interval, round up to beginning of next interval
+      d = makeMultiple(d,es.interval*DaysPerWk,DaysPerWk-1); // expand into next interval if needed 
+    	adjustCursor(es, d); // now advance cursor to 
 	    if (expansionEnd(es)) goto done; // could by beyond current expanding scope due to interval jump 
 		}
     // calculate first/next occurrence (if not first occurrence, do not check initially but advance first)

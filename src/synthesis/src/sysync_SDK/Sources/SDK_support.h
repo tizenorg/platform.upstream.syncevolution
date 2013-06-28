@@ -119,6 +119,9 @@ void Description ( string &s, string desc );
 /*! Add a <guid> string to <s> */
 void GuidStr     ( string &s, string guidStr );
 
+/*! Add a <plugin> string to <s> */
+void BuiltIn     ( string &s, string  plugin );
+
 /*! Add global context <gContext> information to <s> */
 void GContext    ( string &s, GlobContext* gContext );
 

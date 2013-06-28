@@ -1005,7 +1005,7 @@ localstatus TSyncAgent::NextMessage(bool &aDone)
     else
     #endif
     {
-      if (!getLocalDeviceID(fLocalURI) || devidWithUserHash()) {
+      if (!getSyncAppBase()->getMyDeviceID(fLocalURI) || devidWithUserHash()) {
         // Device ID is not really unique, make a hash including user name to make it pseudo-unique
         // create MD5 hash from non-unique ID and user name
         // Note: when compiled with GUARANTEED_UNIQUE_DEVICID, devidWithUserHash() is always false.
@@ -1088,9 +1088,9 @@ localstatus TSyncAgent::NextMessage(bool &aDone)
     bool anyslowsyncs=false;
     TLocalEngineDS *localDS;
     for (pos=fLocalDataStores.begin(); pos!=fLocalDataStores.end(); ++pos) {
-      // prepare alert
+      // prepare alert (Note: datastore may be run by a superdatastore)
       localDS = *pos;
-      status=localDS->engPrepareClientSyncAlert(NULL); // not as superdatastore
+      status=localDS->engPrepareClientSyncAlert();
       if (status!=LOCERR_OK) {
         // local database error
         return localError(status); // not found
@@ -1138,7 +1138,7 @@ localstatus TSyncAgent::NextMessage(bool &aDone)
       localDS = *pos;
       if (!localDS->isSubDatastore()) {
         TAlertCommand *alertcmdP;
-        status=localDS->engGenerateClientSyncAlert(alertcmdP);
+        status = localDS->engGenerateClientSyncAlert(alertcmdP);
         if (status!=0) {
           // local database error
           return status; // not found
@@ -1164,12 +1164,14 @@ localstatus TSyncAgent::NextMessage(bool &aDone)
           	// prepare engine for sync (%%% new routine in 3.2.0.3, summarizing engInitForSyncOps() and
             // switching to dssta_dataaccessstarted, i.e. loading sync set), but do in only once
             if (!((*pos)->testState(dssta_syncsetready))) {
-            	// not yet started
-	          	status = (*pos)->engInitForClientSync();
-	            if (status!=LOCERR_OK) {
+              // not yet started
+              status = (*pos)->engInitForClientSync();
+              if (status!=LOCERR_OK ) {
                 // failed
-                AbortSession(status,true);
-                return getAbortReasonStatus();
+                if (status!=LOCERR_DATASTORE_ABORT) {
+                  AbortSession(status,true);
+                  return getAbortReasonStatus();
+                } 
               }
             }
             // start or continue (which is largely nop, as continuing works via unfinished sync command)
@@ -2334,13 +2336,19 @@ void TSyncAgent::getBufferedAnswer(MemPtr_t &aAnswer, MemSize_t &aAnswerSize)
 // returns remaining time for request processing [seconds]
 sInt32 TSyncAgent::RemainingRequestTime(void)
 {
-  // if no request timeout specified, use session timeout
-  sInt32 t = fRequestMaxTime ? fRequestMaxTime : getSessionConfig()->fSessionTimeout;
-  // calculate number of remaining seconds
-  return
-    t==0 ?
-      0x7FFFFFFF : // "infinite"
-      t - (sInt32)((getSystemNowAs(TCTX_UTC)-getLastRequestStarted()) / (lineartime_t)secondToLinearTimeFactor);
+	if (IS_CLIENT) {
+  	// clients don't process requests, so there's no limit
+  	return 0x7FFFFFFF; // "infinite"
+  }
+  else {
+    // if no request timeout specified, use session timeout
+    sInt32 t = fRequestMaxTime ? fRequestMaxTime : getSessionConfig()->fSessionTimeout;
+    // calculate number of remaining seconds
+    return
+      t==0 ?
+        0x7FFFFFFF : // "infinite"
+        t - (sInt32)((getSystemNowAs(TCTX_UTC)-getLastRequestStarted()) / (lineartime_t)secondToLinearTimeFactor);
+  }
 } // TSyncAgent::RemainingRequestTime
 
 

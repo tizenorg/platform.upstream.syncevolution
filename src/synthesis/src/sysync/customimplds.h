@@ -250,6 +250,8 @@ public:
   virtual TFieldMapArrayItem *newFieldMapArrayItem(TCustomDSConfig *aCustomDSConfig, TConfigElement *aParentElement)
     { return new TFieldMapArrayItem(aCustomDSConfig,aParentElement); };
   #endif
+  // returns false for datastores that are not abstract, i.e. have a backend implementation (=all stdlogicds derivates)
+  virtual bool isAbstractDatastore(void) { return false; }; // customimplds is the foundation for a implemented backend - so it is no longer abstract
 protected:
   // Add (probably datastore-specific) limits such as MaxSize and NoTruncate to types
   virtual void addTypeLimits(TLocalEngineDS *aLocalDatastoreP, TSyncSession *aSessionP);

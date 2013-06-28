@@ -185,31 +185,41 @@ TSuperDataStore::TSuperDataStore(TSuperDSConfig *aDSConfigP, TSyncSession *aSess
     SYSYNC_THROW(TSyncException(DEBUGTEXT("TSuperDataStore::TSuperDataStore called with NULL config","lds1")));
   // reset first
   InternalResetDataStore();
-  // create links to subdatastores
-  TSubDSConfigList::iterator pos;
-  TSubDatastoreLink link;
-  for(pos=aDSConfigP->fSubDatastores.begin();pos!=aDSConfigP->fSubDatastores.end();pos++) {
-    // start not yet pending
-    link.fStartPending=false;
-    // set link to subdatastore link config
-    link.fDSLinkConfigP=*pos;
-    // find actual datastore by "handle" (= config pointer)
-    link.fDatastoreLinkP=aSessionP->findLocalDataStore(link.fDSLinkConfigP->fLinkedDSConfigP);
-    // if actual datastore does not yet exist, create it now. This can be
-    // the case for clients, where datastores are only instantiated when
-    // directly addressed by a SyncRequest (which will not happen for
-    // subdatastores normally)
-    if (!link.fDatastoreLinkP) {
-      // add
-      link.fDatastoreLinkP=aSessionP->addLocalDataStore(link.fDSLinkConfigP->fLinkedDSConfigP);
+  // for server, all configured subdatastores are automatically linked in
+  // (for client, only those that are active will be linked in at dsSetClientParams() time)
+  if (IS_SERVER) {
+    // create links to subdatastores
+    TSubDSConfigList::iterator pos;
+    for(pos=aDSConfigP->fSubDatastores.begin();pos!=aDSConfigP->fSubDatastores.end();pos++) {
+  		// add link
+      addSubDatastoreLink(*pos,NULL); // search datastore
     }
-    // save link
-    fSubDSLinks.push_back(link);
   }
-  // Important: We need to get the iterator now again, as the implicit
-  //   iterator init via InternalResetDataStore() is invalid because the list was empty then.
-  fCurrentGenDSPos=fSubDSLinks.begin();
 } // TSuperDataStore::TSuperDataStore
+
+
+void TSuperDataStore::addSubDatastoreLink(TSubDSLinkConfig *aDSLinkConfigP, TLocalEngineDS *aDatastoreP)
+{
+  TSubDatastoreLink link;
+  // start not yet pending
+  link.fStartPending = false;
+  // set link to subdatastore's config
+  link.fDSLinkConfigP = aDSLinkConfigP;
+  if (aDatastoreP)
+    link.fDatastoreLinkP = aDatastoreP; // we already know the datastore (for client, it might not yet be in session list of datastores)
+  else
+  	link.fDatastoreLinkP = fSessionP->findLocalDataStore(link.fDSLinkConfigP->fLinkedDSConfigP); // find actual datastore by "handle" (= config pointer)
+  // make sure datastore is instantiated
+  if (!link.fDatastoreLinkP) {
+    // instantiate now (should not happen on server, as all datastores are instantiated on a server anyway)
+    link.fDatastoreLinkP=fSessionP->addLocalDataStore(link.fDSLinkConfigP->fLinkedDSConfigP);
+  }
+  // save link
+  fSubDSLinks.push_back(link);	
+  // Important: We need to get the iterator now again, in case the list was empty before
+  // (because the iterator set in InternalResetDataStore() is invalid because it was created for an empty list).
+  fCurrentGenDSPos=fSubDSLinks.begin();
+}
 
 
 void TSuperDataStore::InternalResetDataStore(void)
@@ -292,14 +302,15 @@ TAlertCommand *TSuperDataStore::engProcessSyncAlert(
         substatus               // status that might be modified
       );
       if (subalertcmdP) {
-        // get rid of this, we don't need it
+        // get rid of this, we don't need it (server case only, client case does not generate an alert command here anyway)
         delete subalertcmdP;
       }
-      else {
+      // check if processing alert had a problem
+      if (substatus.getStatusCode()!=0) {
         // basic problem with one of the subdatastores
         // - propagate error code
         aStatusCommand.setStatusCode(substatus.getStatusCode());
-        // - cancel alert
+        // - no alert to send
         return NULL;
       }
       // this one is pending for start
@@ -777,17 +788,14 @@ void TSuperDataStore::engFinishDataStoreSync(localstatus aErrorStatus)
 // ----------------------------------
 
 
-// Abstracts of TLocalEngineDS
-// ----------------------------
-
 
 // called at sync alert (before generating for client, after receiving for server)
 // - obtains combined anchor from subdatastores
 // - combines them into a common anchor (if possible)
 // - updates fFirstTimeSync as well
 localstatus TSuperDataStore::engInitSyncAnchors(
-  cAppCharP aDatastoreURI,      // local datastore URI
-  cAppCharP aRemoteDBID         // ID of remote datastore (to find session information in local DB)
+  cAppCharP aDatastoreURI,      // (Note: unused in superdatastore) local datastore URI
+  cAppCharP aRemoteDBID         // (Note: unused in superdatastore) ID of remote datastore (to find session information in local DB)
 )
 {
   bool allanchorsequal=true;
@@ -798,20 +806,19 @@ localstatus TSuperDataStore::engInitSyncAnchors(
   TSubDSLinkList::iterator pos;
   for (pos=fSubDSLinks.begin();pos!=fSubDSLinks.end();pos++) {
     if (pos==fSubDSLinks.begin()) {
-      /* not needed, because engInitSyncAnchors() will be called only after all subdatastore's
-         engProcessSyncAlert() was called, which in turn contains a call to engInitSyncAnchors()
-         This means we can safely assume we have the fLastRemoteAnchor/fNextLocalAnchor info
-         ready here.
-         In fact, calling this here AGAIN had the effect that the state of the first
-         subdatastore would be set BACK to dssta_adminready (instead of the required dssta_syncmodestable,
-         and in turn when the first sync command arrived, it would be rejected with "SYNC received too early".
-      // init anchors of subdatastore
-      sta = pos->fDatastoreLinkP->engInitSyncAnchors(aDatastoreURI, aRemoteDBID);
-      if (sta!=LOCERR_OK)
-        break; // exit, we cannot init
-      */
-      // assign references of first datastore
-      // - this must be same from all subdatastores
+    	// Server case note:
+    	//   Subdatastore's engInitSyncAnchors() MUST NOT be called here, because this routine will
+      //   always be called after all subdatastore's engProcessSyncAlert() was called
+      //   which in turn contains a call to engInitSyncAnchors().
+      // Client case note:
+    	//   Subdatastore's engInitSyncAnchors() MUST NOT be called here, because this routine will
+      //   be called from TSuperDataStore::engPrepareClientSyncAlert() after iterating through
+      //   subdatastores and calling their engPrepareClientDSForAlert(), which in turn
+      //   contains a call to engInitSyncAnchors(). 
+      // This means we can safely assume we have the fLastRemoteAnchor/fNextLocalAnchor info
+      // ready here.
+      // - Assign references of first datastore
+			//   Note: remote anchor must be same from all subdatastores
       fLastRemoteAnchor=pos->fDatastoreLinkP->fLastRemoteAnchor;
       // - these are used from the first datastore, and might differ (a few seconds,
       //   that is) for other datastores
@@ -1160,6 +1167,83 @@ bool TSuperDataStore::engGenerateSyncCommands(
 
 #ifdef SYSYNC_CLIENT
 
+// Client only: initialize Sync alert for datastore according to Parameters set with dsSetClientSyncParams()
+localstatus TSuperDataStore::engPrepareClientSyncAlert(void)
+{
+	localstatus sta;
+  
+  // not resuming by default
+	fResuming = false;
+  fResumeAlertCode = 0;
+	// prepare all subdatastores that were parametrized to participate in a sync by dsSetClientSyncParams()
+  TSubDSLinkList::iterator pos;
+  for (pos=fSubDSLinks.begin();pos!=fSubDSLinks.end();pos++) {
+  	TLocalEngineDS *dsP = pos->fDatastoreLinkP;
+    if (dsP->testState(dssta_clientparamset)) {
+    	// configured for sync, prepare for alert
+      sta = dsP->engPrepareClientDSForAlert();
+      if (sta!=LOCERR_OK)
+      	return sta; // error
+      // collect slow sync status
+      fSlowSync = fSlowSync || dsP->fSlowSync;
+    	// collect resume alert code
+      if (dsP->fResuming) {
+      	// subdatastore would like to resume
+        if (fResumeAlertCode!=0 && fResumeAlertCode!=dsP->fResumeAlertCode) {
+        	// different idea about what to resume -> can't resume
+          PDEBUGPRINTFX(DBG_ERROR,("subdatastores differ in resume alert code -> cancel resume of superdatastore"));
+          fResuming = false;
+        }
+        else {
+        	// resume is possible (but might be cancelled if another subdatastore disagrees 
+        	fResumeAlertCode = dsP->fResumeAlertCode;
+        	fResuming = true;
+        }
+      }
+    }
+  }
+  // now init my own anchors and firstsync state, which are a combination of my subdatastore's
+  sta = engInitSyncAnchors(NULL,NULL);
+  if (sta!=LOCERR_OK)
+    return sta; // error
+  // determine final resume state
+  if (fResuming) {
+    PDEBUGPRINTFX(DBG_PROTO,("Found suspended session with Alert Code = %hd for all subdatastores",fResumeAlertCode));
+	}
+  else {
+  	// superdatastore can't resume, cancel all subdatastore's resumes that might be set
+	  for (pos=fSubDSLinks.begin();pos!=fSubDSLinks.end();pos++) {
+    	pos->fDatastoreLinkP->fResuming = false;
+    }
+  }
+  // all successful
+  return LOCERR_OK;
+} // TSuperDataStore::engPrepareClientSyncAlert
+  
+  
+
+// Init engine for client sync
+// - determine types to exchange
+// - make sync set ready
+localstatus TSuperDataStore::engInitForClientSync(void)
+{
+	localstatus sta = LOCERR_OK;
+  // first let all subdatastores init for sync
+  TSubDSLinkList::iterator pos;
+  for (pos=fSubDSLinks.begin();pos!=fSubDSLinks.end();pos++) {
+    sta = pos->fDatastoreLinkP->engInitDSForClientSync();
+    if (sta!=LOCERR_OK)
+    	return sta;
+  }
+  // now change my own state
+  return inherited::engInitDSForClientSync();
+} // TSuperDataStore::engInitForClientSync
+
+
+
+
+
+
 // Client only: returns number of unsent map items
 sInt32 TSuperDataStore::numUnsentMaps(void)
 {
@@ -1200,7 +1284,7 @@ bool TSuperDataStore::engGenerateMapItems(TMapCommand *aMapCommandP, cAppCharP a
     if (pos==fSubDSLinks.end()) break; // done
     // create current prefix
     AssignString(prefix,aLocalIDPrefix);
-    prefix.append(fCurrentGenDSPos->fDSLinkConfigP->fGUIDPrefix);
+    prefix.append(pos->fDSLinkConfigP->fGUIDPrefix);
     // generate Map items
     ok=pos->fDatastoreLinkP->engGenerateMapItems(aMapCommandP,prefix.c_str());
     // exit if not yet finished with generating map items for this datastore

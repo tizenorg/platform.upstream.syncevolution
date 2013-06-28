@@ -369,6 +369,7 @@ void SubSystem  ( string &s,   string subName ) {
 void Manufacturer( string &s, string    name ) { AddCapa( s, CA_Manufacturer, name ); }
 void Description ( string &s, string    desc ) { AddCapa( s, CA_Description,  desc ); }
 void GuidStr     ( string &s, string guidStr ) { AddCapa( s, CA_GUID,      guidStr ); }
+void BuiltIn     ( string &s, string  plugin ) { AddCapa( s, CA_Plugin,     plugin ); }
 
 
 // Add global context <gContext> information to <s>
@@ -935,7 +936,6 @@ bool GlobContextFound( string dbName, GlobContext* &g )
     g= g->next;
   } // while
 
-//printf( "ContextFound: %08X '%s'\n", g, dbName.c_str() );
   return g!=NULL && g->ref!=NULL;
 } // GlobContextFound
 

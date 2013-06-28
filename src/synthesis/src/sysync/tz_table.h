@@ -48,6 +48,11 @@ typedef enum {
   tctx_tz_Atlantic,                 //  -4    Atlantik (Kanada)
   tctx_tz_Atlantic_2006,            //  -4    Atlantik (Kanada)
   tctx_tz_Atlantic_2007,            //  -4    Atlantik (Kanada)
+  tctx_tz_ART_ARST,                 //  -3    Buenos Aires
+  tctx_tz_ART_ARST_2006,            //  -3    Buenos Aires
+  tctx_tz_ART_ARST_2007,            //  -3    Buenos Aires
+  tctx_tz_ART_ARST_2008,            //  -3    Buenos Aires
+  tctx_tz_ART_ARST_2009,            //  -3    Buenos Aires
   tctx_tz_AUS_Central,              //   9.5  Darwin
   tctx_tz_AUS_Eastern,              //  10    Canberra, Melbourne, Sydney
   tctx_tz_Azerbaijan,               //   4    Baku
@@ -178,7 +183,7 @@ typedef enum {
   tctx_tz_Pacific_Mexico,           //  -8    Tijuana, Niederkalifornien (Mexiko)
   tctx_tz_Romance,                  //   1    Bruessel, Kopenhagen, Madrid, Paris
   tctx_tz_Russian,                  //   3    Moskau, St. Petersburg, Wolgograd
-  tctx_tz_SA_Eastern,               //  -3    Buenos Aires, Georgetown
+  tctx_tz_SA_Eastern,               //  -3    Buenos Aires, Georgetown (OLD)
   tctx_tz_SA_Pacific,               //  -5    Bogota, Lima, Quito, Rio Branco
   tctx_tz_SA_Western,               //  -4    Caracas, La Paz
   tctx_tz_Samoa,                    // -11    Midway-Inseln, Samoa
@@ -338,6 +343,11 @@ const tbl_tz_entry tbl_tz[tctx_numtimezones] =
   { "Atlantic",          "America/Halifax",         -240, 60, " ",    "", {  3, 0,2, 2,0 },  { 11, 0,1, 2,0 } },  //  -4
   { "Atlantic",          "America/Halifax",         -240, 60, " ","2006", {  4, 0,1, 2,0 },  { 10, 0,5, 2,0 } },  //  -4
   { "Atlantic",          "America/Halifax",         -240, 60, " ","2007", {  3, 0,2, 2,0 },  { 11, 0,1, 2,0 } },  //  -4
+  { "ART/ARST",          "America/Buenos_Aires",    -180, 60, " ",    "", {  0, 0,0, 0,0 },  {  0, 0,0, 0,0 } },  //  -3
+  { "ART/ARST",          "America/Buenos_Aires",    -180, 60, " ","2006", {  0, 0,0, 0,0 },  {  0, 0,0, 0,0 } },  //  -3
+  { "ART/ARST",          "America/Buenos_Aires",    -180, 60, " ","2007", { 12,-1,29,23,59}, {  1,-1,1, 0,0 } },  //  -3
+  { "ART/ARST",          "America/Buenos_Aires",    -180, 60, " ","2008", { 10, 6,3,23,59},  {  3, 6,3,23,59} },  //  -3
+  { "ART/ARST",          "America/Buenos_Aires",    -180, 60, " ","2009", { 10, 6,3,23,59},  {  3, 6,2,23,59} },  //  -3
   { "AUS_Central",       "Australia/Darwin",         570,  0, " ",    "", {  0, 0,0, 0,0 },  {  0, 0,0, 0,0 } },  //   9.5
   { "AUS_Eastern",       "Australia/Sydney",         600, 60, " ",    "", { 10, 0,5, 2,0 },  {  3, 0,5, 3,0 } },  //  10
   { "Azerbaijan",        "Asia/Baku",                240, 60, " ",    "", {  3, 0,5, 4,0 },  { 10, 0,5, 5,0 } },  //   4

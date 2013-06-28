@@ -73,15 +73,7 @@ void ConfigProperty::throwValueError(const ConfigNode &node, const string &name,
 
 string SyncConfig::normalizeConfigString(const string &config)
 {
-    string normal, context;
-    normalizeConfigString(config, normal, context);
-    return normal;
-}
-
-void SyncConfig::normalizeConfigString(const string &config, string &normal, string &context)
-{
-    context = "";
-    normal = config;
+    string normal = config;
     boost::to_lower(normal);
     BOOST_FOREACH(char &character, normal) {
         if (!isprint(character) ||
@@ -92,21 +84,35 @@ void SyncConfig::normalizeConfigString(const string &config, string &normal, str
         }
     }
     if (boost::ends_with(normal, "@default")) {
-        context = "default";
         normal.resize(normal.size() - strlen("@default"));
     } else if (boost::ends_with(normal, "@")) {
         normal.resize(normal.size() - 1);
     } else {
-        // context specified?
         size_t at = normal.rfind('@');
-        if (at != normal.npos) {
-            context = normal.substr(at + 1);
+        if (at == normal.npos) {
+            // No explicit context. Pick the first server which matches
+            // when ignoring their context. Peer list is sorted by name,
+            // therefore shorter config names (= without context) are
+            // found first, as intended.
+            BOOST_FOREACH(const StringPair &entry, getConfigs()) {
+                string entry_peer, entry_context;
+                splitConfigString(entry.first, entry_peer, entry_context);
+                if (normal == entry_peer) {
+                    // found a matching, existing config, use it
+                    normal = entry.first;
+                    break;
+                }
+            }
         }
     }
+
     if (normal.empty()) {
-        // leave context empty, it wasn't set explicitly
+        // default context is meant with the empty string,
+        // better make that explicit
         normal = "@default";
     }
+
+    return normal;
 }
 
 void SyncConfig::splitConfigString(const string &config, string &peer, string &context)
@@ -155,23 +161,7 @@ SyncConfig::SyncConfig(const string &peer,
 
     string root;
 
-    string context;
-    normalizeConfigString(peer, m_peer, context);
-    if (context.empty()) {
-        // No explicit context. Pick the first server which matches
-        // when ignoring their context. Peer list is sorted by name,
-        // therefore shorter config names (= without context) are
-        // found first, as intended.
-        BOOST_FOREACH(const StringPair &entry, getConfigs()) {
-            string entry_peer, entry_context;
-            splitConfigString(entry.first, entry_peer, entry_context);
-            if (m_peer == entry_peer) {
-                // found a matching, existing config, use it
-                m_peer = entry.first;
-                break;
-            }
-        }
-    }
+    m_peer = normalizeConfigString(peer);
 
     // except for SHARED_LAYOUT (set below),
     // everything is below the directory called like
@@ -438,17 +428,17 @@ SyncConfig::TemplateList SyncConfig::matchPeerTemplates(const DeviceList &peers,
         } else {
             TemplateConfig templateConf (sDir);
             BOOST_FOREACH (const DeviceList::value_type &entry, peers){
-                int rank = templateConf.metaMatch (entry.first, entry.second);
+                int rank = templateConf.metaMatch (entry.m_fingerprint, entry.m_matchMode);
                 if (fuzzyMatch){
                     if (rank > TemplateConfig::NO_MATCH) {
                         result.push_back (boost::shared_ptr<TemplateDescription>(
                                     new TemplateDescription(templateConf.getName(),
-                                        templateConf.getDescription(), rank, entry.first, sDir, templateConf.getFingerprint())));
+                                        templateConf.getDescription(), rank, entry.m_deviceId, entry.m_fingerprint, sDir, templateConf.getFingerprint())));
                     }
                 } else if (rank == TemplateConfig::BEST_MATCH){
                     result.push_back (boost::shared_ptr<TemplateDescription>(
                                 new TemplateDescription(templateConf.getName(),
-                                    templateConf.getDescription(), rank, entry.first, sDir, templateConf.getFingerprint())));
+                                    templateConf.getDescription(), rank, entry.m_deviceId, entry.m_fingerprint, sDir, templateConf.getFingerprint())));
                     break;
                 }
             }
@@ -479,7 +469,7 @@ boost::shared_ptr<SyncConfig> SyncConfig::createPeerTemplate(const string &serve
         templateConfig = server;
     } else {
         SyncConfig::DeviceList devices;
-        devices.push_back (std::make_pair(server, MATCH_ALL));
+        devices.push_back (DeviceDescription("", server, MATCH_ALL));
         templateConfig = "";
         TemplateList templates = matchPeerTemplates (devices, false);
         if (!templates.empty()) {
@@ -497,11 +487,7 @@ boost::shared_ptr<SyncConfig> SyncConfig::createPeerTemplate(const string &serve
     boost::shared_ptr<PersistentSyncSourceConfig> source;
 
     config->setDefaults(false);
-    // The prefix is important: without it, myFUNAMBOL 6.x and 7.0 map
-    // all SyncEvolution instances to the single phone that they support,
-    // which leads to unwanted slow syncs when switching between multiple
-    // instances.
-    config->setDevID(string("sc-pim-") + UUID());
+    config->setDevID(string("syncevolution-") + UUID());
 
     // create sync source configs and set non-default values
     config->setSourceDefaults("addressbook", false);
@@ -894,7 +880,7 @@ ConstSyncSourceNodes SyncConfig::getSyncSourceNodes(const string &name,
 
 static ConfigProperty syncPropSyncURL("syncURL",
                                       "Identifies how to contact the peer,\n"
-                                      "best explained with some examples.\n"
+                                      "best explained with some examples:\n"
                                       "HTTP(S) SyncML servers:\n"
                                       "  http://my.funambol.com/sync\n"
                                       "  http://sync.scheduleworld.com/funambol/ds\n"
@@ -903,7 +889,15 @@ static ConfigProperty syncPropSyncURL("syncURL",
                                       "the channel chosen automatically:\n"
                                       "  obex-bt://00:0A:94:03:F3:7E\n"
                                       "If the automatism fails, the channel can also be specified:\n"
-                                      "  obex-bt://00:0A:94:03:F3:7E+16\n");
+                                      "  obex-bt://00:0A:94:03:F3:7E+16\n"
+                                      "For peers contacting us via Bluetooth, the MAC address is\n"
+                                      "used to identify it before the sync starts. Multiple\n"
+                                      "urls can be specified in one syncURL property:\n"
+                                      "  obex-bt://00:0A:94:03:F3:7E obex-bt://00:01:02:03:04:05\n"
+                                      "In the future this might be used to contact the peer\n"
+                                      "via one of several transports; right now, only the first\n"
+                                      "one is tried." // MB #9446
+                                      );
 
 static ConfigProperty syncPropDevID("deviceId",
                                     "The SyncML server gets this string and will use it to keep track of\n"
@@ -949,12 +943,8 @@ static BoolConfigProperty syncPropPreventSlowSync("preventSlowSync",
                                                   "  this as 'user wants to start from scratch') => the sync would\n"
                                                   "  recreate all the client's data, even if the user really wanted\n"
                                                   "  to have it deleted, therefore slow sync is prevented\n"
-                                                  "Slow syncs are not yet detected when running as server and in the\n"
-                                                  "client when the server's anchor is wrong.\n"
-                                                  "This option is not enabled by default because it forces users\n"
-                                                  "to deal with slow syncs, which is a deviation from previous\n"
-                                                  "behavior.",
-                                                  "0");
+                                                  "Slow syncs are not yet detected when running as server.\n",
+                                                  "1");
 static BoolConfigProperty syncPropUseProxy("useProxy",
                                            "set to T to choose an HTTP proxy explicitly; otherwise the default\n"
                                            "proxy settings of the underlying HTTP transport mechanism are used;\n"
@@ -988,7 +978,7 @@ static ULongConfigProperty syncPropMaxMsgSize("maxMsgSize",
                                               "peer can be told to never sent items larger than a certain\n"
                                               "threshold (maxObjSize). Presumably the peer has to truncate or\n"
                                               "skip larger items. Sizes are specified as number of bytes.",
-                                              "20000");
+                                              "150000");
 static UIntConfigProperty syncPropMaxObjSize("maxObjSize", "", "4000000");
 
 static BoolConfigProperty syncPropCompression("enableCompression", "enable compression of network traffic (not currently supported)");
@@ -1395,8 +1385,23 @@ void SyncConfig::saveProxyPassword(ConfigUserInterface &ui) {
     syncPropProxyPassword.savePassword(ui, m_peer, *getNode(syncPropProxyPassword), "", boost::shared_ptr<FilterConfigNode>());
 }
 void SyncConfig::setProxyPassword(const string &value, bool temporarily) { m_cachedProxyPassword = ""; syncPropProxyPassword.setProperty(*getNode(syncPropProxyPassword), value, temporarily); }
-const char *SyncConfig::getSyncURL() const { return m_stringCache.getProperty(*getNode(syncPropSyncURL), syncPropSyncURL); }
+vector<string> SyncConfig::getSyncURL() const { 
+    string s = m_stringCache.getProperty(*getNode(syncPropSyncURL), syncPropSyncURL);
+    vector<string> urls;
+    // workaround for g++ 4.3/4.4:
+    // http://stackoverflow.com/questions/1168525/c-gcc4-4-warning-array-subscript-is-above-array-bounds
+    static const string sep(" \t");
+    boost::split(urls, s, boost::is_any_of(sep));
+    return urls;
+}
 void SyncConfig::setSyncURL(const string &value, bool temporarily) { syncPropSyncURL.setProperty(*getNode(syncPropSyncURL), value, temporarily); }
+void SyncConfig::setSyncURL(const vector<string> &value, bool temporarily) { 
+    stringstream urls;
+    BOOST_FOREACH (string url, value) {
+        urls<<url<<" ";
+    }
+    return setSyncURL (urls.str(), temporarily);
+}
 const char *SyncConfig::getClientAuthType() const { return m_stringCache.getProperty(*getNode(syncPropClientAuthType), syncPropClientAuthType); }
 void SyncConfig::setClientAuthType(const string &value, bool temporarily) { syncPropClientAuthType.setProperty(*getNode(syncPropClientAuthType), value, temporarily); }
 unsigned long  SyncConfig::getMaxMsgSize() const { return syncPropMaxMsgSize.getPropertyValue(*getNode(syncPropMaxMsgSize)); }
@@ -1699,7 +1704,7 @@ StringConfigProperty SyncSourceConfig::m_sourcePropSync("sync",
                                            "  one-way-from-client = transmit changes from client\n"
                                            "  one-way-from-server = transmit changes from server\n"
                                            "  none (or disabled)  = synchronization disabled",
-                                           "two-way",
+                                           "disabled",
                                            "",
                                            Values() +
                                            (Aliases("two-way")) +
@@ -1884,6 +1889,8 @@ static EvolutionPasswordConfigProperty sourcePropPassword("evolutionpassword", "
 static ConfigProperty sourcePropAdminData(SourceAdminDataName,
                                           "used by the Synthesis library internally; do not modify");
 
+static IntConfigProperty sourcePropSynthesisID("synthesisID", "unique integer ID, necessary for libsynthesis", "0");
+
 ConfigPropertyRegistry &SyncSourceConfig::getRegistry()
 {
     static ConfigPropertyRegistry registry;
@@ -1897,6 +1904,7 @@ ConfigPropertyRegistry &SyncSourceConfig::getRegistry()
         registry.push_back(&sourcePropUser);
         registry.push_back(&sourcePropPassword);
         registry.push_back(&sourcePropAdminData);
+        registry.push_back(&sourcePropSynthesisID);
 
         // obligatory source properties
         SyncSourceConfig::m_sourcePropSync.setObligatory(true);
@@ -1905,6 +1913,7 @@ ConfigPropertyRegistry &SyncSourceConfig::getRegistry()
         // non-shared properties (other hidden nodes don't
         // exist at the moment)
         sourcePropAdminData.setHidden(true);
+        sourcePropSynthesisID.setHidden(true);
 
         // No global source properties. Does not make sense
         // conceptually.
@@ -2020,6 +2029,9 @@ SourceType SyncSourceConfig::getSourceType(const SyncSourceNodes &nodes) {
 }
 SourceType SyncSourceConfig::getSourceType() const { return getSourceType(m_nodes); }
 void SyncSourceConfig::setSourceType(const string &value, bool temporarily) { sourcePropSourceType.setProperty(*getNode(sourcePropSourceType), value, temporarily); }
+
+const int SyncSourceConfig::getSynthesisID() const { return sourcePropSynthesisID.getPropertyValue(*getNode(sourcePropSynthesisID)); }
+void SyncSourceConfig::setSynthesisID(int value, bool temporarily) { sourcePropSynthesisID.setProperty(*getNode(sourcePropSynthesisID), value, temporarily); }
 
 ConfigPasswordKey EvolutionPasswordConfigProperty::getPasswordKey(const string &descr,
                                                                   const string &serverName,
@@ -2164,6 +2176,9 @@ class SyncConfigTest : public CppUnit::TestFixture {
 private:
     void normalize()
     {
+        ScopedEnvChange xdg("XDG_CONFIG_HOME", "/dev/null");
+        ScopedEnvChange home("HOME", "/dev/null");
+
         CPPUNIT_ASSERT_EQUAL(std::string("@default"),
                              SyncConfig::normalizeConfigString(""));
         CPPUNIT_ASSERT_EQUAL(std::string("@default"),

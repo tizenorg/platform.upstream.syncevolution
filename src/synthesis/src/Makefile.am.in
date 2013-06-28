@@ -22,7 +22,7 @@ $(srcdir)/Makefile.am: $(srcdir)/Makefile.am.in $(srcdir)/gen-makefile-am.sh
 # zero. When fixing something without interface change, increment
 # REVISION.
 ENGINE_CURRENT = 3
-ENGINE_REVISION = 0
+ENGINE_REVISION = 1
 ENGINE_AGE = 3
 
 CLEANFILES =

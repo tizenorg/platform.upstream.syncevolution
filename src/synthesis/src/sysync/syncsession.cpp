@@ -415,6 +415,8 @@ void TRemoteRuleConfig::clear(void)
   #ifndef MINIMAL_CODE
   fRemoteDescName.erase();
   #endif
+  fSubRulesList.clear(); // no included subrules
+	fSubRule = false; // normal rule by default
   // - rules are final by default
   fFinalRule = true;
   // clear inherited
@@ -428,22 +430,22 @@ void TRemoteRuleConfig::clear(void)
 bool TRemoteRuleConfig::localStartElement(const char *aElementName, const char **aAttributes, sInt32 aLine)
 {
   // checking the elements
-  // - identification of remote
-  if (strucmp(aElementName,"manufacturer")==0)
+  // - identification of remote (irrelevant for subrules)
+  if (!fSubRule && strucmp(aElementName,"manufacturer")==0)
     expectString(fManufacturer);
-  else if (strucmp(aElementName,"model")==0)
+  else if (!fSubRule && strucmp(aElementName,"model")==0)
     expectString(fModel);
-  else if (strucmp(aElementName,"oem")==0)
+  else if (!fSubRule && strucmp(aElementName,"oem")==0)
     expectString(fOem);
-  else if (strucmp(aElementName,"firmware")==0)
+  else if (!fSubRule && strucmp(aElementName,"firmware")==0)
     expectString(fFirmwareVers);
-  else if (strucmp(aElementName,"software")==0)
+  else if (!fSubRule && strucmp(aElementName,"software")==0)
     expectString(fSoftwareVers);
-  else if (strucmp(aElementName,"hardware")==0)
+  else if (!fSubRule && strucmp(aElementName,"hardware")==0)
     expectString(fHardwareVers);
-  else if (strucmp(aElementName,"deviceid")==0)
+  else if (!fSubRule && strucmp(aElementName,"deviceid")==0)
     expectString(fDevId);
-  else if (strucmp(aElementName,"devicetype")==0)
+  else if (!fSubRule && strucmp(aElementName,"devicetype")==0)
     expectString(fDevTyp);
   // - options
   else if (strucmp(aElementName,"legacymode")==0)
@@ -498,15 +500,26 @@ bool TRemoteRuleConfig::localStartElement(const char *aElementName, const char *
     expectTristate(fForceUTC);
   else if (strucmp(aElementName,"forcelocaltime")==0)
     expectTristate(fForceLocaltime);
-  /*
-  // Some extra tweaking params for unstable devices and connections
-  else if (strucmp(aElementName,"maxobjspersession")==0)
-    expectUInt32(fMaxObjsPerSession); // max number of object add/deletes sent per session
-  else if (strucmp(aElementName,"maxkbspersession")==0)
-    expectUInt32(fMaxKBsPerSession); // max number of kilobytes content data sent per session
-  else if (strucmp(aElementName,"maxmessagesize")==0)
-    expectUInt32(fMaxMessageSize); // do not send larger messages than these (except if otherwise item cannot be sent)
-  */
+  // inclusion of subrules
+  else if (strucmp(aElementName,"include")==0) {
+		// <include rule=""/>  
+    expectEmpty();
+    const char* nam = getAttr(aAttributes,"rule");
+    if (!nam)
+    	return fail("<include> must specify \"rule\"");
+    else {
+    	// find rule
+      TRemoteRulesList::iterator pos;
+      TSessionConfig *scfgP = static_cast<TSessionConfig *>(getParentElement());
+      for(pos=scfgP->fRemoteRulesList.begin();pos!=scfgP->fRemoteRulesList.end();pos++) {
+        if (strucmp(nam,(*pos)->getName())==0) {
+			    fSubRulesList.push_back(*pos);
+          return true; // done
+        }
+      }
+    	return fail("rule '%s' for <include> not found (must be defined before included)",nam);
+    }
+  }
   // rule script. Note that this is special, as it is NOT resolved in the config, but
   // copied to the session first, as it might differ between sessions.
   #ifdef SCRIPT_SUPPORT
@@ -687,12 +700,14 @@ bool TSessionConfig::localStartElement(const char *aElementName, const char **aA
 {
   // checking the elements
   #ifndef NO_REMOTE_RULES
-  if (strucmp(aElementName,"remoterule")==0) {
+  bool isSubRule = strucmp(aElementName,"subrule")==0;
+  if (strucmp(aElementName,"remoterule")==0 || isSubRule) {
     // check for optional name attribute
     const char* nam = getAttr(aAttributes,"name");
     if (!nam) nam="unnamed";
     // create rule
     TRemoteRuleConfig *ruleP = new TRemoteRuleConfig(nam,this);
+    ruleP->fSubRule = isSubRule;
     fRemoteRulesList.push_back(ruleP);
     expectChildParsing(*ruleP);
   }
@@ -1011,11 +1026,11 @@ TSyncSession::TSyncSession(
       getSyncAppBase()->getModel().c_str(), getSyncAppBase()->getManufacturer().c_str()
     ));
     // show platform we're on
-    string uri;
-    getPlatformString(pfs_device_uri,uri);
+    string devid;
+    getSyncAppBase()->getMyDeviceID(devid);
     PDEBUGPRINTFX(DBG_HOT,(
       "---- Running on " SYSYNC_PLATFORM_NAME ", URI/deviceID='%s'",
-      uri.c_str()
+      devid.c_str()
     ));
     // show process and thread ID of the main session thread
     #ifdef MULTI_THREAD_SUPPORT
@@ -1027,12 +1042,19 @@ TSyncSession::TSyncSession(
     #endif
     // show platform details
     string dname,vers;
+    // - as determined by engine itself
     getPlatformString(pfs_device_name,dname);
     getPlatformString(pfs_platformvers,vers);
     PDEBUGPRINTFX(DBG_HOT,(
       "---- Platform Hardware Name/Version = '%s', Firmware/OS Version = '%s'",
       dname.c_str(),
       vers.c_str()
+    ));
+    // - as configured
+    PDEBUGPRINTFX(DBG_HOT,(
+      "---- Configured Hardware Version = '%s', Firmware Version = '%s'",
+      getSyncAppBase()->getHardwareVersion().c_str(),
+      getSyncAppBase()->getFirmwareVersion().c_str()
     ));
     // show time zone infos
     lineartime_t tim;
@@ -1279,8 +1301,8 @@ void TSyncSession::InternalResetSessionEx(bool terminationCall)
   // - immediately abort SYNC command in progress
   fLocalSyncDatastoreP = NULL;
   #ifndef NO_REMOTE_RULES
-  // - no remote rule applied
-  fAppliedRemoteRuleP = NULL;
+  // - no remote rules applied
+  fActiveRemoteRules.clear();
   #endif
   // - set defaults for >=SyncML 1.1 features
   fRemoteWantsNOC = false; // no, unless requested
@@ -1505,8 +1527,6 @@ void TSyncSession::InternalResetSessionEx(bool terminationCall)
   // tristates!!
   fEnumDefaultPropParams=getSessionConfig()->fEnumDefaultPropParams;
   #ifdef SCRIPT_SUPPORT
-  // - rule script is empty at start of session
-  fRuleScript.erase();
   // call session init script
   if (!terminationCall && !fTerminated) {
     TScriptContext::execute(
@@ -3657,6 +3677,7 @@ bool TSyncSession::processSyncOpItem(
   // check for aborted datastore
   if (fLocalSyncDatastoreP->CheckAborted(aStatusCommand)) return false;
   // check if we can process it now
+  // Note: request time limit is active in server only.
   if (!fLocalSyncDatastoreP->engIsStarted(false) || RemainingRequestTime()<0) {
     aQueueForLater=true; // re-execute later...
     return true; // ...but otherwise ok
@@ -4315,94 +4336,103 @@ localstatus TSyncSession::checkRemoteSpecifics(SmlDevInfDevInfPtr_t aDevInfP)
   PDEBUGBLOCKDESC("RemoteRules","Checking for remote rules");
   // get config for session
   TSessionConfig *scP = getSessionConfig();
-  // look if we have a matching rule for this device
+  // look if we have matching rule(s) for this device
   TRemoteRulesList::iterator pos;
   for(pos=scP->fRemoteRulesList.begin();pos!=scP->fRemoteRulesList.end();pos++) {
+    TRemoteRuleConfig *ruleP = *pos;
     // compare with devinf (or test for default-rule if aDevInfP is NULL
     if (
-      ((*pos)->fManufacturer.empty() || (aDevInfP && strwildcmp(smlPCDataToCharP(aDevInfP->man),(*pos)->fManufacturer.c_str())==0)) &&
-      ((*pos)->fModel.empty() || (aDevInfP && strwildcmp(smlPCDataToCharP(aDevInfP->mod),(*pos)->fModel.c_str())==0)) &&
-      ((*pos)->fOem.empty() || (aDevInfP && strwildcmp(smlPCDataToCharP(aDevInfP->oem),(*pos)->fOem.c_str())==0)) &&
-      ((*pos)->fFirmwareVers.empty() || (aDevInfP && (*pos)->fFirmwareVers==smlPCDataToCharP(aDevInfP->fwv))) &&
-      ((*pos)->fSoftwareVers.empty() || (aDevInfP && (*pos)->fSoftwareVers==smlPCDataToCharP(aDevInfP->swv))) &&
-      ((*pos)->fHardwareVers.empty() || (aDevInfP && (*pos)->fHardwareVers==smlPCDataToCharP(aDevInfP->hwv))) &&
-      ((*pos)->fDevId.empty() || (aDevInfP && (*pos)->fDevId==smlPCDataToCharP(aDevInfP->devid))) &&
-      ((*pos)->fDevTyp.empty() || (aDevInfP && (*pos)->fDevTyp==smlPCDataToCharP(aDevInfP->devtyp)))
+    	!ruleP->fSubRule && // subrules never apply directly
+      (ruleP->fManufacturer.empty() || (aDevInfP && strwildcmp(smlPCDataToCharP(aDevInfP->man),ruleP->fManufacturer.c_str())==0)) &&
+      (ruleP->fModel.empty() || (aDevInfP && strwildcmp(smlPCDataToCharP(aDevInfP->mod),ruleP->fModel.c_str())==0)) &&
+      (ruleP->fOem.empty() || (aDevInfP && strwildcmp(smlPCDataToCharP(aDevInfP->oem),ruleP->fOem.c_str())==0)) &&
+      (ruleP->fFirmwareVers.empty() || (aDevInfP && ruleP->fFirmwareVers==smlPCDataToCharP(aDevInfP->fwv))) &&
+      (ruleP->fSoftwareVers.empty() || (aDevInfP && ruleP->fSoftwareVers==smlPCDataToCharP(aDevInfP->swv))) &&
+      (ruleP->fHardwareVers.empty() || (aDevInfP && ruleP->fHardwareVers==smlPCDataToCharP(aDevInfP->hwv))) &&
+      (ruleP->fDevId.empty() || (aDevInfP && ruleP->fDevId==smlPCDataToCharP(aDevInfP->devid))) &&
+      (ruleP->fDevTyp.empty() || (aDevInfP && ruleP->fDevTyp==smlPCDataToCharP(aDevInfP->devtyp)))
     ) {
-      // found, apply rules
-      TRemoteRuleConfig *ruleP = *pos;
-      PDEBUGPRINTFX(DBG_HOT,("Found special rule '%s' for remote party, applying",ruleP->getName()));
-      // set options
-      // - only device specific
-      fAppliedRemoteRuleP = ruleP; // save pointer to applied rule
-      // - apply options that have a value
-      if (ruleP->fLegacyMode>=0) fLegacyMode = ruleP->fLegacyMode;
-      if (ruleP->fLenientMode>=0) fLenientMode = ruleP->fLenientMode;
-      if (ruleP->fLimitedFieldLengths>=0) fLimitedRemoteFieldLengths = ruleP->fLimitedFieldLengths;
-      if (ruleP->fDontSendEmptyProperties>=0) fDontSendEmptyProperties = ruleP->fDontSendEmptyProperties;
-      if (ruleP->fDoQuote8BitContent>=0) fDoQuote8BitContent = ruleP->fDoQuote8BitContent;
-      if (ruleP->fDoNotFoldContent>=0) fDoNotFoldContent = ruleP->fDoNotFoldContent;
-      if (ruleP->fNoReplaceInSlowsync>=0) fNoReplaceInSlowsync = ruleP->fNoReplaceInSlowsync;
-      if (ruleP->fTreatRemoteTimeAsLocal>=0) fTreatRemoteTimeAsLocal = ruleP->fTreatRemoteTimeAsLocal;
-      if (ruleP->fTreatRemoteTimeAsUTC>=0) fTreatRemoteTimeAsUTC = ruleP->fTreatRemoteTimeAsUTC;
-      if (ruleP->fVCal10EnddatesSameDay>=0) fVCal10EnddatesSameDay = ruleP->fVCal10EnddatesSameDay;
-      if (ruleP->fIgnoreDevInfMaxSize>=0) fIgnoreDevInfMaxSize = ruleP->fIgnoreDevInfMaxSize;
-      if (ruleP->fIgnoreCTCap>=0) fIgnoreCTCap = ruleP->fIgnoreCTCap;
-      if (ruleP->fDSPathInDevInf>=0) fDSPathInDevInf = ruleP->fDSPathInDevInf;
-      if (ruleP->fDSCgiInDevInf>=0) fDSCgiInDevInf = ruleP->fDSCgiInDevInf;
-      if (ruleP->fUpdateClientDuringSlowsync>=0) fUpdateClientDuringSlowsync = ruleP->fUpdateClientDuringSlowsync;
-      if (ruleP->fUpdateServerDuringSlowsync>=0) fUpdateServerDuringSlowsync = ruleP->fUpdateServerDuringSlowsync;
-      if (ruleP->fAllowMessageRetries>=0) fAllowMessageRetries = ruleP->fAllowMessageRetries;
-      if (ruleP->fStrictExecOrdering>=0) fStrictExecOrdering = ruleP->fStrictExecOrdering;
-      if (ruleP->fTreatCopyAsAdd>=0) fTreatCopyAsAdd = ruleP->fTreatCopyAsAdd;
-      if (ruleP->fCompleteFromClientOnly>=0) fCompleteFromClientOnly = ruleP->fCompleteFromClientOnly;
-      if (ruleP->fRequestMaxTime>=0) fRequestMaxTime = ruleP->fRequestMaxTime;
-      if (ruleP->fDefaultOutCharset!=chs_unknown) fDefaultOutCharset = ruleP->fDefaultOutCharset;
-      if (ruleP->fDefaultInCharset!=chs_unknown) fDefaultInCharset = ruleP->fDefaultInCharset;
-      // - possibly override decisions that are otherwise made by session
-      //   Note: this is not a single option because we had this before rule options were tristates.
-      if (ruleP->fForceUTC>0) fRemoteCanHandleUTC=true;
-      if (ruleP->fForceLocaltime>0) fRemoteCanHandleUTC=false;
-      // - install rule script
-      #ifdef SCRIPT_SUPPORT
-      if (!ruleP->fRuleScriptTemplate.empty()) fRuleScript = (*pos)->fRuleScriptTemplate;
-      #endif
-      // - descriptive name for the device (for log)
-      #ifndef MINIMAL_CODE
-      if (!ruleP->fRemoteDescName.empty()) fRemoteDescName = (*pos)->fRemoteDescName;
-      #endif
-      // - test for rejection
-      if (ruleP->fRejectStatusCode!=DONT_REJECT) {
-        // reject operation with this device
-        sta = (*pos)->fRejectStatusCode;
-        PDEBUGPRINTFX(DBG_ERROR,("remote party rejected by configured 'remoterule', status=%hd",sta));
-        AbortSession(sta,true);
-        return sta;
-      }
-      // done only if this rule is final
+      // found matching rule
+      PDEBUGPRINTFX(DBG_HOT,("Found <remoterule> '%s' matching for this peer",ruleP->getName()));
+      // remember it
+      fActiveRemoteRules.push_back(ruleP);
+      // add included subrules
+		  TRemoteRulesList::iterator spos;
+  		for(spos=ruleP->fSubRulesList.begin();spos!=ruleP->fSubRulesList.end();spos++) {
+	      fActiveRemoteRules.push_back(*spos);
+	      PDEBUGPRINTFX(DBG_HOT,("- rule also activates sub-rule '%s'",(*spos)->getName()));
+			}
+      // if this rule is final, don't check for further matches
       if (ruleP->fFinalRule) break;
-    }
-  } // for
-  // - resolve and execute rule script
-  #ifdef SCRIPT_SUPPORT
-  if (!fRuleScript.empty()) {
-    // resolve variable references
-    TScriptContext::linkIntoContext(fRuleScript,fSessionScriptContextP,this);
-    // execute now
-    PDEBUGPRINTFX(DBG_HOT,("Executing rulescript."));
-    TScriptContext::execute(
-      fSessionScriptContextP,
-      fRuleScript,
-      NULL, // context's function table
-      NULL // datastore pointer needed for context
-    );
+    }  
   }
-  #endif // SCRIPT_SUPPORT
+  // process activated rules and subrules
+  for(pos=fActiveRemoteRules.begin();pos!=fActiveRemoteRules.end();pos++) {      
+    // activate this rule
+    TRemoteRuleConfig *ruleP = *pos;
+    // - apply options that have a value
+    if (ruleP->fLegacyMode>=0) fLegacyMode = ruleP->fLegacyMode;
+    if (ruleP->fLenientMode>=0) fLenientMode = ruleP->fLenientMode;
+    if (ruleP->fLimitedFieldLengths>=0) fLimitedRemoteFieldLengths = ruleP->fLimitedFieldLengths;
+    if (ruleP->fDontSendEmptyProperties>=0) fDontSendEmptyProperties = ruleP->fDontSendEmptyProperties;
+    if (ruleP->fDoQuote8BitContent>=0) fDoQuote8BitContent = ruleP->fDoQuote8BitContent;
+    if (ruleP->fDoNotFoldContent>=0) fDoNotFoldContent = ruleP->fDoNotFoldContent;
+    if (ruleP->fNoReplaceInSlowsync>=0) fNoReplaceInSlowsync = ruleP->fNoReplaceInSlowsync;
+    if (ruleP->fTreatRemoteTimeAsLocal>=0) fTreatRemoteTimeAsLocal = ruleP->fTreatRemoteTimeAsLocal;
+    if (ruleP->fTreatRemoteTimeAsUTC>=0) fTreatRemoteTimeAsUTC = ruleP->fTreatRemoteTimeAsUTC;
+    if (ruleP->fVCal10EnddatesSameDay>=0) fVCal10EnddatesSameDay = ruleP->fVCal10EnddatesSameDay;
+    if (ruleP->fIgnoreDevInfMaxSize>=0) fIgnoreDevInfMaxSize = ruleP->fIgnoreDevInfMaxSize;
+    if (ruleP->fIgnoreCTCap>=0) fIgnoreCTCap = ruleP->fIgnoreCTCap;
+    if (ruleP->fDSPathInDevInf>=0) fDSPathInDevInf = ruleP->fDSPathInDevInf;
+    if (ruleP->fDSCgiInDevInf>=0) fDSCgiInDevInf = ruleP->fDSCgiInDevInf;
+    if (ruleP->fUpdateClientDuringSlowsync>=0) fUpdateClientDuringSlowsync = ruleP->fUpdateClientDuringSlowsync;
+    if (ruleP->fUpdateServerDuringSlowsync>=0) fUpdateServerDuringSlowsync = ruleP->fUpdateServerDuringSlowsync;
+    if (ruleP->fAllowMessageRetries>=0) fAllowMessageRetries = ruleP->fAllowMessageRetries;
+    if (ruleP->fStrictExecOrdering>=0) fStrictExecOrdering = ruleP->fStrictExecOrdering;
+    if (ruleP->fTreatCopyAsAdd>=0) fTreatCopyAsAdd = ruleP->fTreatCopyAsAdd;
+    if (ruleP->fCompleteFromClientOnly>=0) fCompleteFromClientOnly = ruleP->fCompleteFromClientOnly;
+    if (ruleP->fRequestMaxTime>=0) fRequestMaxTime = ruleP->fRequestMaxTime;
+    if (ruleP->fDefaultOutCharset!=chs_unknown) fDefaultOutCharset = ruleP->fDefaultOutCharset;
+    if (ruleP->fDefaultInCharset!=chs_unknown) fDefaultInCharset = ruleP->fDefaultInCharset;
+    // - possibly override decisions that are otherwise made by session
+    //   Note: this is not a single option because we had this before rule options were tristates.
+    if (ruleP->fForceUTC>0) fRemoteCanHandleUTC=true;
+    if (ruleP->fForceLocaltime>0) fRemoteCanHandleUTC=false;
+    // - descriptive name for the device (for log)
+    #ifndef MINIMAL_CODE
+    if (!ruleP->fRemoteDescName.empty()) fRemoteDescName = ruleP->fRemoteDescName;
+    #endif
+    // - test for rejection
+    if (ruleP->fRejectStatusCode!=DONT_REJECT) {
+      // reject operation with this device
+      sta = ruleP->fRejectStatusCode;
+      PDEBUGPRINTFX(DBG_ERROR,("remote party rejected by <remoterule> '%s', status=%hd",ruleP->getName(),sta));
+      AbortSession(sta,true);
+      return sta;
+    }
+    // - execute rule script
+    #ifdef SCRIPT_SUPPORT
+    if (!ruleP->fRuleScriptTemplate.empty()) {
+    	// copy from template
+    	string ruleScript = ruleP->fRuleScriptTemplate;
+      // resolve variable references
+      TScriptContext::linkIntoContext(ruleScript,fSessionScriptContextP,this);
+      // execute now
+      PDEBUGPRINTFX(DBG_HOT,("Executing rulescript for rule '%s'",ruleP->getName()));
+      TScriptContext::execute(
+        fSessionScriptContextP,
+        ruleScript,
+        NULL, // context's function table
+        NULL // datastore pointer needed for context
+      );
+    }
+    #endif
+  } // for all activated rules
   PDEBUGENDBLOCK("RemoteRules");
   #endif // NO_REMOTE_RULES
   // Final adjustments
   #ifndef NO_REMOTE_RULES
-  if (!fAppliedRemoteRuleP)
+  if (fActiveRemoteRules.empty())
   #endif
   {
   	// no remote rule (none found or mechanism excluded by NO_REMOTE_RULES)
@@ -4429,7 +4459,7 @@ localstatus TSyncSession::checkRemoteSpecifics(SmlDevInfDevInfPtr_t aDevInfP)
     }
   }
   // show summary
-  PDEBUGPRINTFX(DBG_HOT+DBG_REMOTEINFO,("Summary of all behaviour options (possibly set by remote rule)"));
+  PDEBUGPRINTFX(DBG_HOT+DBG_REMOTEINFO,("Summary of all behaviour options (possibly modified by remote rule(s))"));
   #ifndef MINIMAL_CODE
   PDEBUGPRINTFX(DBG_HOT+DBG_REMOTEINFO,("- Remote Description        : %s",fRemoteDescName.c_str()));
   #endif
@@ -4461,6 +4491,25 @@ localstatus TSyncSession::checkRemoteSpecifics(SmlDevInfDevInfPtr_t aDevInfP)
   return LOCERR_OK;
 } // TSyncSession::checkRemoteSpecifics
 
+
+#ifndef NO_REMOTE_RULES
+
+// check if given rule (by name, or if aRuleName=NULL by rule pointer) is active
+bool TSyncSession::isActiveRule(cAppCharP aRuleName, TRemoteRuleConfig *aRuleP)
+{
+  TRemoteRulesList::iterator pos;
+  for(pos=fActiveRemoteRules.begin();pos!=fActiveRemoteRules.end();pos++) {
+  	if (
+    	(aRuleName==NULL && (*pos)==aRuleP) || // match by pointer...
+      (strucmp(aRuleName,(*pos)->getName())==0) // ...or name
+    )
+    	return true;
+  }
+  // no match
+  return false;
+} // TSyncSession::isActiveRule
+
+#endif // NO_REMOTE_RULES
 
 
 // access to config

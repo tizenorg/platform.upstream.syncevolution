@@ -559,6 +559,16 @@ void TDebugLoggerBase::DebugPrintf(uInt32 aDbgMask, cAppCharP aFormat, ...)
 } // TDebugLoggerBase::DebugVPrintf
 
 
+// open new Block without attribute list
+void TDebugLoggerBase::DebugOpenBlock(cAppCharP aBlockName, cAppCharP aBlockTitle, bool aCollapsed)
+{
+  // we need a format and debug not completely off
+  if (getMask() && aBlockName) {
+    DebugOpenBlock(aBlockName,aBlockTitle,aCollapsed,NULL);
+  }
+} // TDebugLoggerBase::DebugOpenBlock
+
+
 // open new Block with attribute list, printf style
 void TDebugLoggerBase::DebugOpenBlock(cAppCharP aBlockName, cAppCharP aBlockTitle, bool aCollapsed, cAppCharP aBlockFmt, ...)
 {
@@ -596,17 +606,6 @@ void TDebugLoggerBase::DebugOpenBlockCollapsed(cAppCharP aBlockName, cAppCharP a
     va_end(args);
   }
 } // TDebugLoggerBase::DebugOpenBlockCollapsed
-
-
-// open new Block without attribute list
-void TDebugLoggerBase::DebugOpenBlock(cAppCharP aBlockName, cAppCharP aBlockTitle, bool aCollapsed)
-{
-  // we need a format and debug not completely off
-  if (getMask() && aBlockName) {
-    static va_list va;
-    DebugVOpenBlock(aBlockName,aBlockTitle,aCollapsed,NULL,va);
-  }
-} // TDebugLoggerBase::DebugOpenBlock
 
 
 // output text to debug channel

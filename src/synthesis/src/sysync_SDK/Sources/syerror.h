@@ -157,6 +157,12 @@ enum TSyErrorEnum {
   LOCERR_BADURL = 20046,
   /** server not found */
   LOCERR_SRVNOTFOUND = 20047,
+  /**
+   * ABORTDATASTORE() parameter to flag the current datastore as bad
+   * without aborting the whole session. Exact reason for abort depends
+   * on caller of that macro.
+   */
+  LOCERR_DATASTORE_ABORT = 20048,
 
   /** cURL error code */
   LOCERR_CURL = 21000,

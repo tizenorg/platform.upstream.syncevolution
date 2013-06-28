@@ -500,8 +500,11 @@ private:
   // - time handling
   bool fTreatRemoteTimeAsLocal;
   bool fTreatRemoteTimeAsUTC;
-  // - dependency on certain remote rule
-  TRemoteRuleConfig *fAppliedRemoteRuleP;
+  #ifndef NO_REMOTE_RULES
+  // - dependency on certain remote rule(s)
+  TRemoteRulesList fActiveRemoteRules; // list of active remote rules that might influence behaviour
+	bool isActiveRule(TRemoteRuleConfig *aRuleP); // check if given rule is among the active ones
+  #endif
   // vars
   TMIMEProfileConfig *fProfileCfgP; // the MIME-DIR profile config element
   // property definitions

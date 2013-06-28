@@ -39,7 +39,7 @@ namespace sysync {
 
 #define SYSER_EXTRA_ID_GOOSYNC 10 // Toffa.com Goosync special version
 #define SYSER_EXTRA_ID_FONELINK 11 // novamedia FoneLink special version
-
+#define SYSER_EXTRA_ID_SOOCIAL 12 // soocial.com special version
 
 
 // product codes

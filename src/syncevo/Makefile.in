@@ -78,8 +78,8 @@ am__libsyncevolution_la_SOURCES_DIST = ConfigTree.h ConfigNode.h \
 	CurlTransportAgent.h CurlTransportAgent.cpp \
 	SoupTransportAgent.h SoupTransportAgent.cpp util.cpp util.h \
 	lcs.h lcs.cpp Cmdline.cpp Cmdline.h SyncSource.h \
-	SyncSource.cpp SynthesisDBPlugin.cpp SyncEvolutionXML.c \
-	SyncContext.h SyncContext.cpp SyncConfig.h SyncConfig.cpp \
+	SyncSource.cpp SynthesisDBPlugin.cpp SyncContext.h \
+	SyncContext.cpp SyncConfig.h SyncConfig.cpp \
 	DevNullConfigNode.h MultiplexConfigNode.h \
 	MultiplexConfigNode.cpp FilterConfigNode.h \
 	FilterConfigNode.cpp SafeConfigNode.h SafeConfigNode.cpp \
@@ -102,7 +102,6 @@ am__objects_2 = libsyncevolution_la-eds_abi_wrapper.lo \
 	libsyncevolution_la-Cmdline.lo \
 	libsyncevolution_la-SyncSource.lo \
 	libsyncevolution_la-SynthesisDBPlugin.lo \
-	libsyncevolution_la-SyncEvolutionXML.lo \
 	libsyncevolution_la-SyncContext.lo \
 	libsyncevolution_la-SyncConfig.lo \
 	libsyncevolution_la-MultiplexConfigNode.lo \
@@ -113,7 +112,10 @@ am__objects_2 = libsyncevolution_la-eds_abi_wrapper.lo \
 	libsyncevolution_la-FileConfigTree.lo \
 	libsyncevolution_la-TrackingSyncSource.lo $(am__objects_1)
 am_libsyncevolution_la_OBJECTS = $(am__objects_2)
-libsyncevolution_la_OBJECTS = $(am_libsyncevolution_la_OBJECTS)
+nodist_libsyncevolution_la_OBJECTS =  \
+	libsyncevolution_la-SyncEvolutionXML.lo
+libsyncevolution_la_OBJECTS = $(am_libsyncevolution_la_OBJECTS) \
+	$(nodist_libsyncevolution_la_OBJECTS)
 libsyncevolution_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) \
@@ -139,14 +141,25 @@ CXXLD = $(CXX)
 CXXLINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
-SOURCES = $(libsyncevolution_la_SOURCES)
+SOURCES = $(libsyncevolution_la_SOURCES) \
+	$(nodist_libsyncevolution_la_SOURCES)
 DIST_SOURCES = $(am__libsyncevolution_la_SOURCES_DIST)
+RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
+	html-recursive info-recursive install-data-recursive \
+	install-dvi-recursive install-exec-recursive \
+	install-html-recursive install-info-recursive \
+	install-pdf-recursive install-ps-recursive install-recursive \
+	installcheck-recursive installdirs-recursive pdf-recursive \
+	ps-recursive uninstall-recursive
 pkgconfigDATA_INSTALL = $(INSTALL_DATA)
 DATA = $(pkgconfig_DATA)
 libsyncevolution_includeHEADERS_INSTALL = $(INSTALL_HEADER)
 HEADERS = $(libsyncevolution_include_HEADERS)
+RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
+  distclean-recursive maintainer-clean-recursive
 ETAGS = etags
 CTAGS = ctags
+DIST_SUBDIRS = $(SUBDIRS)
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 ADDRESSBOOK_CFLAGS = @ADDRESSBOOK_CFLAGS@
@@ -206,11 +219,16 @@ FFLAGS = @FFLAGS@
 FILE_CFLAGS = @FILE_CFLAGS@
 FILE_LIBS = @FILE_LIBS@
 GETTEXT_PACKAGE = @GETTEXT_PACKAGE@
+GLIB216_CFLAGS = @GLIB216_CFLAGS@
+GLIB216_LIBS = @GLIB216_LIBS@
 GLIB_CFLAGS = @GLIB_CFLAGS@
 GLIB_GENMARSHAL = @GLIB_GENMARSHAL@
 GLIB_LIBS = @GLIB_LIBS@
 GMOFILES = @GMOFILES@
 GMSGFMT = @GMSGFMT@
+GNOMEBLUETOOTH_CFLAGS = @GNOMEBLUETOOTH_CFLAGS@
+GNOMEBLUETOOTH_DIR = @GNOMEBLUETOOTH_DIR@
+GNOMEBLUETOOTH_LIBS = @GNOMEBLUETOOTH_LIBS@
 GOBJECT_CFLAGS = @GOBJECT_CFLAGS@
 GOBJECT_LIBS = @GOBJECT_LIBS@
 GREP = @GREP@
@@ -240,6 +258,8 @@ KEYRING_CFLAGS = @KEYRING_CFLAGS@
 KEYRING_LIBS = @KEYRING_LIBS@
 LDFLAGS = @LDFLAGS@
 LIBEXECDIR = @LIBEXECDIR@
+LIBICAL_AVAILABLE_CFLAGS = @LIBICAL_AVAILABLE_CFLAGS@
+LIBICAL_AVAILABLE_LIBS = @LIBICAL_AVAILABLE_LIBS@
 LIBOBJS = @LIBOBJS@
 LIBOPENOBEX_CFLAGS = @LIBOPENOBEX_CFLAGS@
 LIBOPENOBEX_LIBS = @LIBOPENOBEX_LIBS@
@@ -259,6 +279,8 @@ MSGFMT = @MSGFMT@
 MSGFMT_OPTS = @MSGFMT_OPTS@
 MSGMERGE = @MSGMERGE@
 NMEDIT = @NMEDIT@
+NSS_CFLAGS = @NSS_CFLAGS@
+NSS_LIBS = @NSS_LIBS@
 OBJEXT = @OBJEXT@
 PACKAGE = @PACKAGE@
 PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
@@ -362,6 +384,7 @@ target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AM_CPPFLAGS = @BACKEND_CPPFLAGS@ @GLIB_CFLAGS@ -I$(top_srcdir)/test -I$(top_srcdir)/src -DSYNCEVO_BACKEND=\"$(backendsearchdir)\"
+SUBDIRS = configs
 MAINTAINERCLEANFILES = Makefile.in
 lib_LTLIBRARIES = libsyncevolution.la
 SYNCEVOLUTION_SOURCES = ConfigTree.h ConfigNode.h HashConfigNode.h \
@@ -373,14 +396,14 @@ SYNCEVOLUTION_SOURCES = ConfigTree.h ConfigNode.h HashConfigNode.h \
 	CurlTransportAgent.cpp SoupTransportAgent.h \
 	SoupTransportAgent.cpp util.cpp util.h lcs.h lcs.cpp \
 	Cmdline.cpp Cmdline.h SyncSource.h SyncSource.cpp \
-	SynthesisDBPlugin.cpp SyncEvolutionXML.c SyncContext.h \
-	SyncContext.cpp SyncConfig.h SyncConfig.cpp \
-	DevNullConfigNode.h MultiplexConfigNode.h \
-	MultiplexConfigNode.cpp FilterConfigNode.h \
-	FilterConfigNode.cpp SafeConfigNode.h SafeConfigNode.cpp \
-	PrefixConfigNode.h PrefixConfigNode.cpp FileConfigNode.h \
-	FileConfigNode.cpp FileConfigTree.h FileConfigTree.cpp \
-	TrackingSyncSource.h TrackingSyncSource.cpp $(am__append_3)
+	SynthesisDBPlugin.cpp SyncContext.h SyncContext.cpp \
+	SyncConfig.h SyncConfig.cpp DevNullConfigNode.h \
+	MultiplexConfigNode.h MultiplexConfigNode.cpp \
+	FilterConfigNode.h FilterConfigNode.cpp SafeConfigNode.h \
+	SafeConfigNode.cpp PrefixConfigNode.h PrefixConfigNode.cpp \
+	FileConfigNode.h FileConfigNode.cpp FileConfigTree.h \
+	FileConfigTree.cpp TrackingSyncSource.h TrackingSyncSource.cpp \
+	$(am__append_3)
 libsyncevolution_includedir = $(includedir)/syncevo
 libsyncevolution_include_HEADERS = \
 	declarations.h \
@@ -405,13 +428,22 @@ pkgconfig_DATA = syncevolution.pc
 DISTCLEANFILES = syncevolution.pc
 EXTRA_DIST = syncevolution.pc.in installcheck-local.sh
 libsyncevolution_la_SOURCES = $(SYNCEVOLUTION_SOURCES)
-libsyncevolution_la_LIBADD = @EPACKAGE_LIBS@ @GLIB_LIBS@ $(SYNTHESIS_LIBS) $(TRANSPORT_LIBS) @LIBS@ $(SYNCEVOLUTION_LDADD)
-libsyncevolution_la_CXXFLAGS = $(TRANSPORT_CFLAGS) $(SYNCEVOLUTION_CXXFLAGS) $(SYNTHESIS_CFLAGS)
-libsyncevolution_la_CPPFLAGS = $(AM_CPPFLAGS) -DTEMPLATE_DIR=\""$(datadir)/syncevolution/templates"\" -DLIBDIR=\""$(libdir)"\"
+nodist_libsyncevolution_la_SOURCES = SyncEvolutionXML.c
+CLEANFILES = SyncEvolutionXML.c
+libsyncevolution_la_LIBADD = @EPACKAGE_LIBS@ @GLIB_LIBS@ $(SYNTHESIS_LIBS) $(TRANSPORT_LIBS) @LIBS@ $(SYNCEVOLUTION_LDADD) $(NSS_LIBS)
+libsyncevolution_la_CXXFLAGS = $(TRANSPORT_CFLAGS) $(SYNCEVOLUTION_CXXFLAGS) $(SYNTHESIS_CFLAGS) $(NSS_CFLAGS)
+libsyncevolution_la_CPPFLAGS = $(AM_CPPFLAGS) \
+	-DXML_CONFIG_DIR=\""$(datadir)/syncevolution/xml"\" \
+	-DTEMPLATE_DIR=\""$(datadir)/syncevolution/templates"\" \
+	-DLIBDIR=\""$(libdir)"\"
+
 libsyncevolution_la_DEPENDENCIES = $(SYNTHESIS_DEP)
 @ENABLE_MODULES_FALSE@libsyncevolution_la_LDFLAGS = -static
 @ENABLE_MODULES_TRUE@libsyncevolution_la_LDFLAGS = 
-all: all-am
+
+# command which embeds its input lines into a C-style string that runs across multiple lines
+TO_C_STRING = sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\(.*\)/"\1\\n"/'
+all: all-recursive
 
 .SUFFIXES:
 .SUFFIXES: .c .cpp .lo .o .obj
@@ -765,6 +797,76 @@ uninstall-libsyncevolution_includeHEADERS:
 	  rm -f "$(DESTDIR)$(libsyncevolution_includedir)/$$f"; \
 	done
 
+# This directory's subdirectories are mostly independent; you can cd
+# into them and run `make' without going through this Makefile.
+# To change the values of `make' variables: instead of editing Makefiles,
+# (1) if the variable is set in `config.status', edit `config.status'
+#     (which will cause the Makefiles to be regenerated when you run `make');
+# (2) otherwise, pass the desired values on the `make' command line.
+$(RECURSIVE_TARGETS):
+	@failcom='exit 1'; \
+	for f in x $$MAKEFLAGS; do \
+	  case $$f in \
+	    *=* | --[!k]*);; \
+	    *k*) failcom='fail=yes';; \
+	  esac; \
+	done; \
+	dot_seen=no; \
+	target=`echo $@ | sed s/-recursive//`; \
+	list='$(SUBDIRS)'; for subdir in $$list; do \
+	  echo "Making $$target in $$subdir"; \
+	  if test "$$subdir" = "."; then \
+	    dot_seen=yes; \
+	    local_target="$$target-am"; \
+	  else \
+	    local_target="$$target"; \
+	  fi; \
+	  (cd $$subdir && $(MAKE) $(AM_MAKEFLAGS) $$local_target) \
+	  || eval $$failcom; \
+	done; \
+	if test "$$dot_seen" = "no"; then \
+	  $(MAKE) $(AM_MAKEFLAGS) "$$target-am" || exit 1; \
+	fi; test -z "$$fail"
+
+$(RECURSIVE_CLEAN_TARGETS):
+	@failcom='exit 1'; \
+	for f in x $$MAKEFLAGS; do \
+	  case $$f in \
+	    *=* | --[!k]*);; \
+	    *k*) failcom='fail=yes';; \
+	  esac; \
+	done; \
+	dot_seen=no; \
+	case "$@" in \
+	  distclean-* | maintainer-clean-*) list='$(DIST_SUBDIRS)' ;; \
+	  *) list='$(SUBDIRS)' ;; \
+	esac; \
+	rev=''; for subdir in $$list; do \
+	  if test "$$subdir" = "."; then :; else \
+	    rev="$$subdir $$rev"; \
+	  fi; \
+	done; \
+	rev="$$rev ."; \
+	target=`echo $@ | sed s/-recursive//`; \
+	for subdir in $$rev; do \
+	  echo "Making $$target in $$subdir"; \
+	  if test "$$subdir" = "."; then \
+	    local_target="$$target-am"; \
+	  else \
+	    local_target="$$target"; \
+	  fi; \
+	  (cd $$subdir && $(MAKE) $(AM_MAKEFLAGS) $$local_target) \
+	  || eval $$failcom; \
+	done && test -z "$$fail"
+tags-recursive:
+	list='$(SUBDIRS)'; for subdir in $$list; do \
+	  test "$$subdir" = . || (cd $$subdir && $(MAKE) $(AM_MAKEFLAGS) tags); \
+	done
+ctags-recursive:
+	list='$(SUBDIRS)'; for subdir in $$list; do \
+	  test "$$subdir" = . || (cd $$subdir && $(MAKE) $(AM_MAKEFLAGS) ctags); \
+	done
+
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
 	list='$(SOURCES) $(HEADERS) $(LISP) $(TAGS_FILES)'; \
 	unique=`for i in $$list; do \
@@ -775,10 +877,23 @@ ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
 	mkid -fID $$unique
 tags: TAGS
 
-TAGS:  $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
+TAGS: tags-recursive $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
 		$(TAGS_FILES) $(LISP)
 	tags=; \
 	here=`pwd`; \
+	if ($(ETAGS) --etags-include --version) >/dev/null 2>&1; then \
+	  include_option=--etags-include; \
+	  empty_fix=.; \
+	else \
+	  include_option=--include; \
+	  empty_fix=; \
+	fi; \
+	list='$(SUBDIRS)'; for subdir in $$list; do \
+	  if test "$$subdir" = .; then :; else \
+	    test ! -f $$subdir/TAGS || \
+	      tags="$$tags $$include_option=$$here/$$subdir/TAGS"; \
+	  fi; \
+	done; \
 	list='$(SOURCES) $(HEADERS)  $(LISP) $(TAGS_FILES)'; \
 	unique=`for i in $$list; do \
 	    if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
@@ -791,7 +906,7 @@ TAGS:  $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
 	    $$tags $$unique; \
 	fi
 ctags: CTAGS
-CTAGS:  $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
+CTAGS: ctags-recursive $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
 		$(TAGS_FILES) $(LISP)
 	tags=; \
 	list='$(SOURCES) $(HEADERS)  $(LISP) $(TAGS_FILES)'; \
@@ -838,22 +953,40 @@ distdir: $(DISTFILES)
 	    || exit 1; \
 	  fi; \
 	done
+	list='$(DIST_SUBDIRS)'; for subdir in $$list; do \
+	  if test "$$subdir" = .; then :; else \
+	    test -d "$(distdir)/$$subdir" \
+	    || $(MKDIR_P) "$(distdir)/$$subdir" \
+	    || exit 1; \
+	    distdir=`$(am__cd) $(distdir) && pwd`; \
+	    top_distdir=`$(am__cd) $(top_distdir) && pwd`; \
+	    (cd $$subdir && \
+	      $(MAKE) $(AM_MAKEFLAGS) \
+	        top_distdir="$$top_distdir" \
+	        distdir="$$distdir/$$subdir" \
+		am__remove_distdir=: \
+		am__skip_length_check=: \
+	        distdir) \
+	      || exit 1; \
+	  fi; \
+	done
 check-am: all-am
-check: check-am
+check: check-recursive
 all-am: Makefile $(LTLIBRARIES) $(DATA) $(HEADERS)
-installdirs:
+installdirs: installdirs-recursive
+installdirs-am:
 	for dir in "$(DESTDIR)$(libdir)" "$(DESTDIR)$(pkgconfigdir)" "$(DESTDIR)$(libsyncevolution_includedir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
-install: install-am
-install-exec: install-exec-am
-install-data: install-data-am
-uninstall: uninstall-am
+install: install-recursive
+install-exec: install-exec-recursive
+install-data: install-data-recursive
+uninstall: uninstall-recursive
 
 install-am: all-am
 	@$(MAKE) $(AM_MAKEFLAGS) install-exec-am install-data-am
 
-installcheck: installcheck-am
+installcheck: installcheck-recursive
 install-strip:
 	$(MAKE) $(AM_MAKEFLAGS) INSTALL_PROGRAM="$(INSTALL_STRIP_PROGRAM)" \
 	  install_sh_PROGRAM="$(INSTALL_STRIP_PROGRAM)" INSTALL_STRIP_FLAG=-s \
@@ -862,6 +995,7 @@ install-strip:
 mostlyclean-generic:
 
 clean-generic:
+	-test -z "$(CLEANFILES)" || rm -f $(CLEANFILES)
 
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
@@ -871,61 +1005,61 @@ maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
 	-test -z "$(MAINTAINERCLEANFILES)" || rm -f $(MAINTAINERCLEANFILES)
-clean: clean-am
+clean: clean-recursive
 
 clean-am: clean-generic clean-libLTLIBRARIES clean-libtool \
 	mostlyclean-am
 
-distclean: distclean-am
+distclean: distclean-recursive
 	-rm -rf ./$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
 
-dvi: dvi-am
+dvi: dvi-recursive
 
 dvi-am:
 
-html: html-am
+html: html-recursive
 
-info: info-am
+info: info-recursive
 
 info-am:
 
 install-data-am: install-libsyncevolution_includeHEADERS \
 	install-pkgconfigDATA
 
-install-dvi: install-dvi-am
+install-dvi: install-dvi-recursive
 
 install-exec-am: install-libLTLIBRARIES
 
-install-html: install-html-am
+install-html: install-html-recursive
 
-install-info: install-info-am
+install-info: install-info-recursive
 
 install-man:
 
-install-pdf: install-pdf-am
+install-pdf: install-pdf-recursive
 
-install-ps: install-ps-am
+install-ps: install-ps-recursive
 
 installcheck-am: installcheck-local
 
-maintainer-clean: maintainer-clean-am
+maintainer-clean: maintainer-clean-recursive
 	-rm -rf ./$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
-mostlyclean: mostlyclean-am
+mostlyclean: mostlyclean-recursive
 
 mostlyclean-am: mostlyclean-compile mostlyclean-generic \
 	mostlyclean-libtool
 
-pdf: pdf-am
+pdf: pdf-recursive
 
 pdf-am:
 
-ps: ps-am
+ps: ps-recursive
 
 ps-am:
 
@@ -933,31 +1067,45 @@ uninstall-am: uninstall-libLTLIBRARIES \
 	uninstall-libsyncevolution_includeHEADERS \
 	uninstall-pkgconfigDATA
 
-.MAKE: install-am install-strip
+.MAKE: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) install-am \
+	install-strip
 
-.PHONY: CTAGS GTAGS all all-am check check-am clean clean-generic \
-	clean-libLTLIBRARIES clean-libtool ctags distclean \
-	distclean-compile distclean-generic distclean-libtool \
-	distclean-tags distdir dvi dvi-am html html-am info info-am \
-	install install-am install-data install-data-am install-dvi \
-	install-dvi-am install-exec install-exec-am install-html \
-	install-html-am install-info install-info-am \
-	install-libLTLIBRARIES install-libsyncevolution_includeHEADERS \
-	install-man install-pdf install-pdf-am install-pkgconfigDATA \
-	install-ps install-ps-am install-strip installcheck \
-	installcheck-am installcheck-local installdirs \
-	maintainer-clean maintainer-clean-generic mostlyclean \
-	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
-	pdf pdf-am ps ps-am tags uninstall uninstall-am \
+.PHONY: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) CTAGS GTAGS \
+	all all-am check check-am clean clean-generic \
+	clean-libLTLIBRARIES clean-libtool ctags ctags-recursive \
+	distclean distclean-compile distclean-generic \
+	distclean-libtool distclean-tags distdir dvi dvi-am html \
+	html-am info info-am install install-am install-data \
+	install-data-am install-dvi install-dvi-am install-exec \
+	install-exec-am install-html install-html-am install-info \
+	install-info-am install-libLTLIBRARIES \
+	install-libsyncevolution_includeHEADERS install-man \
+	install-pdf install-pdf-am install-pkgconfigDATA install-ps \
+	install-ps-am install-strip installcheck installcheck-am \
+	installcheck-local installdirs installdirs-am maintainer-clean \
+	maintainer-clean-generic mostlyclean mostlyclean-compile \
+	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
+	tags tags-recursive uninstall uninstall-am \
 	uninstall-libLTLIBRARIES \
 	uninstall-libsyncevolution_includeHEADERS \
 	uninstall-pkgconfigDATA
 
 
-SyncEvolutionXML.c: $(srcdir)/../syncclient_sample_config.xml
-	echo "const char *SyncEvolutionXML =" > $@
-	sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\(.*\)/"\1\\n"/' $< >>$@
-	echo ";" >>$@
+# Don't depend on specific XML files. Instead recreate
+# SyncEvolutionXML.c each time make is invoked (allows including new
+# fragments in the binary without rerunning configure).
+SyncEvolutionXML.c: GenSyncEvolutionXML
+.PHONY: GenSyncEvolutionXML
+GenSyncEvolutionXML:
+	echo "const char *SyncEvolutionXMLClient =" > SyncEvolutionXML.c.new
+	(cd $(srcdir)/configs && perl update-samples.pl syncevolution.xml client ) | \
+	   perl -p -e 's;</datatypes>;  <fieldlists/>\n    <profiles/>\n    <datatypedefs/>\n  </datatypes>;' | \
+	   $(TO_C_STRING) >>SyncEvolutionXML.c.new
+	echo ";" >>SyncEvolutionXML.c.new
+	echo "const char *SyncEvolutionXMLClientRules =" >> SyncEvolutionXML.c.new
+	(cd $(srcdir)/configs && cat remoterules/*.xml remoterules/client/*.xml) | $(TO_C_STRING) >>SyncEvolutionXML.c.new
+	echo ";" >>SyncEvolutionXML.c.new
+	if cmp SyncEvolutionXML.c SyncEvolutionXML.c.new >/dev/null; then rm SyncEvolutionXML.c.new; else mv SyncEvolutionXML.c.new SyncEvolutionXML.c; fi
 
 # include boost in distribution
 #dist-hook:

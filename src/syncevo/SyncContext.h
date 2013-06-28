@@ -153,6 +153,11 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
         }
     };
 
+    /*
+     * The URL this SyncContext is actually using, since we may support multiple
+     * urls in the configuration.
+     * */
+    string m_usedSyncURL;
   public:
     /**
      * SyncContext using a volatile config
@@ -344,10 +349,14 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
      * session. Called by Synthesis DB plugin to find active
      * sources.
      *
+     * @param name     can be both <SyncSource::getName()> as well as <prefix>_<SyncSource::getName()>
+     *                 (necessary when renaming sources in the Synthesis XML config)
+     *
      * @TODO: roll SourceList into SyncContext and
      * make this non-static
      */
     static SyncSource *findSource(const char *name);
+    static const char m_findSourceSeparator = '@';
 
     /**
      * Find the active sync context for the given session.
@@ -475,20 +484,38 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
     /**
      * Return skeleton Synthesis client XML configuration.
      *
-     * If it contains a <datastore/> element, then that element will
-     * be replaced by the configurations of all active sync
-     * sources. Otherwise the configuration is used as-is.
+     * The <scripting/>, <datatypes/>, <clientorserver/> elements (if
+     * present) are replaced by the caller with fragments found in the
+     * file system. When <datatypes> already has content, that content
+     * may contain <fieldlists/>, <profiles/>, <datatypedefs/>, which
+     * will be replaced by definitions gathered from backends.
      *
      * The default implementation of this function takes the configuration from
      * (in this order):
-     * - ./syncevolution.xml
-     * - <server config dir>/syncevolution.xml
-     * - built-in default
+     * - $(XDG_CONFIG_HOME)/syncevolution-xml
+     * - $(datadir)/syncevolution/xml
+     * Files with identical names are read from the first location where they
+     * are found. If $(SYNCEVOLUTION_XML_CONFIG_DIR) is set, then it overrides
+     * the previous two locations.
      *
+     * The syncevolution.xml file is read from the first place where it is found.
+     * In addition, further .xml files in sub-directories are gathered and get
+     * inserted into the syncevolution.xml template.
+     *
+     * If none of these locations has XML configs, then builtin strings are
+     * used as fallback. This only works for mode == "client". Otherwise an
+     * error is thrown.
+     *
+     * @param mode         "client" or "server"
      * @retval xml         is filled with Synthesis client config which may hav <datastore/>
+     * @retval rules       remote rules which the caller needs for <clientorserver/>
      * @retval configname  a string describing where the config came from
      */
-    virtual void getConfigTemplateXML(string &xml, string &configname);
+    virtual void getConfigTemplateXML(const string &mode,
+                                      string &xml,
+                                      string &rules,
+                                      string &configname);
+                                      
 
     /**
      * Return complete Synthesis XML configuration.
@@ -535,15 +562,6 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
     virtual void prepare() {}
 
     /**
-     * Callback for derived classes: called after setting up the client's
-     * and sources' configuration. Can be used to reconfigure sources before
-     * actually starting the synchronization.
-     *
-     * @param sources   a NULL terminated array of all active sources
-     */
-    virtual void prepare(const std::vector<SyncSource *> &sources) {}
-
-    /**
      * instantiate transport agent
      *
      * Called by engine when it needs to do HTTP POST requests.  The
@@ -558,9 +576,13 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
      * The default implementation instantiates one of the builtin
      * transport agents, depending on how it was compiled.
      *
+     * @param gmainloop    the GMainLoop to be used by transports, if not NULL;
+     *                     transports not supporting that should not be created;
+     *                     transports will increase the reference count for the loop
      * @return transport agent
      */
-    virtual boost::shared_ptr<TransportAgent> createTransportAgent();
+    virtual boost::shared_ptr<TransportAgent> createTransportAgent(void *gmainloop);
+    virtual boost::shared_ptr<TransportAgent> createTransportAgent() { return createTransportAgent(NULL); }
 
     /**
      * display a text message from the server
@@ -648,6 +670,11 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
     void initSources(SourceList &sourceList);
 
     /**
+     * called by SynthesDBPlugin in SyncEvolution_StartDataRead()
+     */
+    void startSourceAccess(SyncSource *source);
+
+    /**
      * utility function for status() and getChanges():
      * iterate over sources, check for changes and copy result
      */
@@ -688,6 +715,8 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
 public:
     static bool transport_cb (void *data);
     void setTransportCallback(int seconds);
+
+    string getUsedSyncURL();
 };
 
 SE_END_CXX

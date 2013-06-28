@@ -488,7 +488,7 @@ top_srcdir = @top_srcdir@
 # zero. When fixing something without interface change, increment
 # REVISION.
 ENGINE_CURRENT = 3
-ENGINE_REVISION = 0
+ENGINE_REVISION = 1
 ENGINE_AGE = 3
 CLEANFILES = 
 EXTRA_DIST = $(am__append_1)

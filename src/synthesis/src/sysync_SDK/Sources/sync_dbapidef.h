@@ -93,11 +93,9 @@ enum Version {
 /*VP_Init                  0x01000000   * V1.0.N.0 : Initial version */
 /*VP_1st                   0x01000002   * V1.0.N.2 : 1st delivered version */
 /*VP_Session_Login         0x01000003   * V1.0.N.3 : VAR_String for Session_Login: this version only */
+/*VP_EngineVersionParam    0x01000004   * V1.0.N.4 : <engineVersion> param for "Module_PluginParams" */
+/*VP_CB_Version2         = 0x01000005   * V1.0.N.5 : Callback version >= 2 supported */
 
-  /** V1.0.N.4 : <engineVersion> param for "Module_PluginParams" */
-  VP_EngineVersionParam  = 0x01000004,
-  /** V1.0.N.5 : Callback version >= 2 supported                 */
-  VP_CB_Version2         = 0x01000005,
   /** V1.0.N.6 : With new function "DeleteBlob"                  */
   VP_DeleteBlob          = 0x01000006,
   /** V1.0.N.7 : With new "scripting" function "AdaptItemData"   */
@@ -155,8 +153,11 @@ enum Version {
   VP_Tunnel              = 0x01060000,
   /** V1.6.1.X : Correct SetValue support                        */
   VP_SetValue            = 0x01060100,
-  /** V1.6.1.X : Current version, use 'Plugin_Version()'         */
-  VP_CurrentVersion      = 0x01060100,
+  /** V1.6.2.X : 64 bit Java BLOB signature                      */
+  VP_BLOB_JSignature     = 0x01060200,
+/*VP_091221                0x01060200   * V1.6.2.X : Released 21-Dec-09 */
+  /** V1.7.0.X : Current version, use 'Plugin_Version()'         */
+  VP_CurrentVersion      = 0x01070000,
 
   /** -------- : Bad/undefined version                           */
   VP_BadVersion          = 0xffffffff,
@@ -250,6 +251,7 @@ enum Version {
 #define CA_JNI               "JNI"          /* Indicates, if plugin is based on JNI */
 #define CA_CSHARP            "C#"           /* Indicates, if plugin is based on C#  */
 #define CA_GUID              "GUID"         /* GUID */
+#define CA_Plugin            "PLUGIN"       /* Built-In plugin name */
 #define CA_GlobContext       "GlobContext"  /* The global context, if available */
 #define CA_ADMIN_Info        "ADMIN_Info"   /* Get ADMIN info as <name><SP>"ADMIN" with 'CreateContext' */
                                             /*   (supported for V1.3.7 and higher) */
@@ -283,13 +285,14 @@ enum Version {
 
 #define Plugin_UI            "plugin_ui"
 
+
 /* Compatibility to older versions */
-#define Plugin_Param_OLD     "plugin_param_OLD"
 #define Plugin_SE_Auth_OLD   "plugin_sessionauth_OLD"
 #define Plugin_DS_Data_OLD1  "plugin_datastore_OLD1"
 #define Plugin_DS_Data_OLD2  "plugin_datastore_OLD2"
 #define Plugin_DS_Admin_OLD  "plugin_datastoreadmin_OLD"
-#define Plugin_DS_Blob_OLD   "plugin_datablob_OLD"
+#define Plugin_DS_Blob_OLD1  "plugin_datablob_OLD1"
+#define Plugin_DS_Blob_OLD2  "plugin_datablob_OLD2"
 
 
 
@@ -374,6 +377,8 @@ enum DebugFlags {
   DBG_PLUGIN_EXOT  = 0x0004,
   /** direct printf calls for test */ 
   DBG_PLUGIN_DIRECT= 0x0008,
+  /** GetValue/SetValue debugging */
+  DBG_GET_SET_VALUE= 0x0010,
   /** Default mask: all bits set */
   DBG_PLUGIN_ALL   = 0xffff,
 };

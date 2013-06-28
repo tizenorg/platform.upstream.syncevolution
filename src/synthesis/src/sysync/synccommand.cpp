@@ -331,6 +331,10 @@ bool TSmlCommand::handleStatus(TStatusCommand *aStatusCmdP)
     fSessionP->AbortSession(412,false,statuscode); // other party's fault: incomplete command
     return true; // done with command
   }
+  else if (statuscode==418) {
+    POBJDEBUGPRINTFX(fSessionP,DBG_PROTO,("Status: 418: already existed on peer --> accept as ok"));
+    return true; // done with command
+  }
   else if (statuscode<500) {
     // originator exception (we sent some bad stuff)
     POBJDEBUGPRINTFX(fSessionP,DBG_ERROR,("Status: %hd: originator exception",statuscode));
@@ -3704,7 +3708,11 @@ bool TStatusCommand::analyze(TPackageStates aPackageState)
     }
     #ifdef SYDEBUG
     // warn if error (don't treat slow sync status or conflict indication as errors)
-    if (fStatusCode>=300 && fStatusCode!=508 && fStatusCode!=419) {
+    // - 418 = item already exits: sent by Funambol server when both client and
+    //   and server have a new item which is considered identical by the server
+    //   (must be really identical, minor difference will lead to a merged item
+    //   which is sent back to the client without the 418). See Moblin Bugzilla #4599.
+    if (fStatusCode>=300 && fStatusCode!=508 && fStatusCode!=419 && fStatusCode!=418) {
       PDEBUGPRINTFX(DBG_ERROR,(
         "WARNING: RECEIVED NON-OK STATUS %hd for &html;<a name=\"SO_%ld_%ld\" href=\"#IO_%ld_%ld\">&html;command '%s'&html;</a>&html; (outgoing MsgID=%ld, CmdID=%ld)",
         fStatusCode,
