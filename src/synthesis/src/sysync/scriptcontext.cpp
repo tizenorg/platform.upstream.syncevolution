@@ -341,8 +341,8 @@ public:
           tctx = TCTX_UNKNOWN;
       }
       else {
-        // search for timezone by name
-        if (!TimeZoneNameToContext(str.c_str(), tctx, aFuncContextP->getSession()->getSessionZones())) {
+        // search for timezone by name (internal or olson)
+        if (!TimeZoneNameToContext(str.c_str(), tctx, aFuncContextP->getSession()->getSessionZones(), true)) {
           // last attempt is parsing it as a ISO8601 offset spec
           ISO8601StrToContext(str.c_str(), tctx);
         }

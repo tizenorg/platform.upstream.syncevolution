@@ -1,3 +1,273 @@
+SyncEvolution 1.3.99.2, xxxxxxxxxx
+==================================
+
+Another development snapshot. Includes all fixes that went into 1.3.2
+and several improvements to the PIM Manager. Documentation was updated
+and extended considerably. The pim-manager-api.txt now describes the
+abstract API while src/dbus/server/pim/README explains how
+SyncEvolution implements it.
+
+
+Details:
+
+* PIM Manager searches for a caller ID ('phone' search) in EDS
+  directly while folks still starts up. No unification is done of
+  these results. Intermediate results are replaced by the final ones
+  from folks once those are ready.
+
+* PIM Manager: allow configuration of session directories (part of FDO #55921)
+
+  Useful for moving the session directories to a temporary file system.
+  They are essentially just useful for debugging when used as part of
+  PIM Manager.
+
+  - "logdir" - a directory in which directories are created with
+               debug information about sync session
+  - "maxsessions" - number of sessions that are allowed to exist
+                    after a sync (>= 0): 0 is special and means unlimited,
+                    1 for just the latest, etc.;
+                    old sessions are pruned heuristically (for example,
+                    keep sessions where something changed instead of
+                    some where nothing changed), so there is no hard
+                    guarantee that the last n sessions are present.
+
+* PIM Manager: write less data to disk (part of FDO #55921)
+
+  Avoid writing config file changes to disk by enabling a new
+  "ephemeral" mode for syncing via the PIM Manager. In this mode,
+  config file changes are not flushed resp. discarded directly.
+  This prevents writing to .ini files in ~/.config.
+
+  The "synthesis" binfile client files are still written, but they get
+  redirected into the session directory, which can (and should) be set
+  to a temp file system and get deleted again quickly.
+
+  Data dumps are turned off now in the configs created by the PIM
+  Manager.
+
+* syncevo-dbus-server: use syslog instead of standard output by default
+
+* syncevo-dbus-server: command line options for controlling
+  output and startup
+
+  -d, --duration=seconds/'unlimited'    Shut down automatically
+                                        when idle for this duration (default 300 seconds)
+  -v, --verbosity=level                 Choose amount of output, 0 = no output,
+                                        1 = errors, 2 = info, 3 = debug; default is 1.
+  -o, --stdout                          Enable printing to stdout (result of operations)
+                                        and stderr (errors/info/debug).
+  -s, --no-syslog                       Disable printing to syslog.
+  -p, --start-pim                       Activate the PIM Manager (= unified address book)
+                                        immediately.
+
+* PIM Manager: store set of active address books persistently (FDO #56334)
+
+  Together with storing the sort order persistently, this allows
+  restarting the daemon and have it create the same unified address book
+  again.
+
+* PIM Manager: remove colon from valid peer UID character set (FDO #56436)
+
+  Using the UID as part of file names gets more problematic when
+  allowing colons. Remove that character from the API and enforce
+  the format in the source code.
+
+* PIM Manager API: introduce contact ID and use it for reading
+
+  This makes it easier for a client to fully polulate its view with
+  contact data. Previously it could happen that due to concurrent
+  changes in the server, a client was returned data for the same
+  contact multiple times. A client had to detect that and re-issue
+  read requests.
+
+* PIM Manager API: optional ViewAgent.Quiescent() (FDO #56428)
+
+  The callback is guaranteed to be invoked once when a search has
+  finished sending its initial results, and not sooner. This makes it
+  possible to check whether the current data contains some contact or
+  not.
+
+* PIM Manager: limit number of search results (FDO #56142)
+
+  A 'limit' search term with a number as parameter (formatted as string)
+  can be added to a 'phone' or 'any-contains' search term to truncate the
+  search results after a certain number of contacts. Example:
+    Search([['any-contains', 'Joe'], ['limit', '10']])
+    => return the first 10 Joes.
+
+  As with any other search, the resulting view will be updated if
+  contact data changes.
+
+  The limit must not be changed in a RefineSearch(). A 'limit' term may
+  (but doesn't have to) be given. If it is given, its value must match
+  the value set when creating the search. This limitation simplifies the
+  implementation and its testing. The limitation could be removed if
+  there is sufficient demand.
+
+* PIM Manager: fix refining a search
+
+  Due to not mapping the local index in the view to the parent's index,
+  refining only worked in views where parent and child had the same
+  index for the contacts in the search view.
+
+* PIM Manager: fix starting when done via search
+
+  When the unified address book (= FullView) was not running yet at the
+  time when a client wanted to search it, the unified address book was
+  not started and thus the search never returned results.
+
+* PIM Manager: fix writing contact, support photo and notes
+
+  folks and EDS do not support writing properties in parallel
+  (https://bugzilla.gnome.org/show_bug.cgi?id=652659). Must serialize
+  setting of modified properties.
+
+* PIM Manager: fix incorrect contact removal signals in filtered view
+
+  The filtered view did not check whether a parent's removed contact was
+  really part of the view before sending a removal signal for it.
+
+* D-Bus: missing out parameters in D-Bus introspection XML (FDO #57292)
+
+  The problem was in the C++ D-Bus binding. If the method that gets bound
+  to D-Bus returns a value, that value was ignored in the signature:
+    int foo() => no out parameter
+
+  It works when the method was declared as having a retval:
+    void foo (int &result) => integer out parameter
+
+  This problem existed for both the libdbus and the GIO D-Bus
+  bindings. In SyncEvolution it affected methods like GetVersions().
+
+* PIM Manager performance: pre-compute normalized telephone numbers
+
+  Looking up by phone number spends most of its cycles in normalizing of
+  the phone numbers in the unified address book. Instead of doing that
+  work over and over again during the search, do it once while loading.
+
+  Looking up a phone number only once does not gain from this change, it
+  even gets slower (more memory intensive, less cache locality). Only
+  searching multiple times becomes faster.
+
+  Ultimately it would be best to store the normalized strings together
+  with the telephone number inside EDS when the contact gets
+  created. Work on that is in progress.
+
+* PIM Manager: improve performance of FullView sorting
+
+  This fixes the hotspot during populating the FullView content: moving
+  contacts around required copying IndividualData and thus copying
+  complex C++ structs and strings. Storing pointers and moving those
+  avoids that, with no lack of convenience thanks to boost::ptr_vector.
+
+  Reordering also becomes faster, because the intermediate copy only
+  needs to be of the pointers instead of the full content.
+
+* PIM Manager example: add benchmarking
+
+  The new "checkpoints" split up the whole script run into pieces which
+  are timed separately, with duration printed to stdout. In addition,
+  tools like "perf" can be started for the duration of one phase.
+
+* EDS: fix creating databases
+
+  --create-database was broken in combination with the final code in EDS
+  3.6 because it passed NULL for the UID to e_source_new_with_uid(),
+  which is considered an error by the implementation of that
+  method. Must use e_source_new() if we don't have a UID.
+
+* fixed some memory leaks, extended tests to cover new features and bugs
+
+
+SyncEvolution 1.3.99.1, 25.10.2012
+==================================
+
+Development snapshot. The PIM Manager API implementation is fully
+implemented, see src/dbus/server/pim/README for an introduction.  The
+PBAP backend together with a new one-way caching sync mode provides an
+efficient way of keeping a local database in sync via Bluetooth with a
+phone which does not implement SyncML.
+
+Other changes:
+
+* workarounds for warnings from g++ 4.5
+
+* engine: : local cache sync mode
+
+  This patch  introduces support for true one-way syncing ("caching"):
+  the local datastore is meant to be an exact copy of the data on the
+  remote side. The assumption is that no modifications are ever made
+  locally outside of syncing. This is different from one-way sync modes,
+  which allows local changes and only temporarily disables sending them
+  to the remote side.
+
+  Another goal of the new mode is to avoid data writes as much as
+  possible.
+
+  This new mode only works on the server side of a sync, where the
+  engine has enough control over the data flow. Setting "sync" to:
+  - "local-cache-incremental" will do an incremental sync (if possible)
+    or a slow sync (otherwise). This is usually the right mode to use,
+    and thus has "local-cache" as alias.
+  - "local-cache-slow" will always do a slow sync. Useful for
+    debugging or after (accidentally) making changes on the local side.
+    An incremental sync will ignore such changes because they are not
+    meant to happen, aren't checked for to improve performance and
+    thus will leave client and server out-of-sync!
+
+  Both modes are recorded in the sync report of the local side. The
+  target side is the client and records the normal "two-way" or "slow"
+  sync modes.
+
+  With the current SyncEvolution contact field list, first, middle and
+  last name are used to find matches for contacts. For events, tasks
+  and memos, time, summary and description are used.
+
+* HTTP proxy: useProxy=0 overrides http_* env variables
+
+  Previously, if http_proxy was set, a proxy was used even if
+  explicitly disabled. This prevented disabling the use of a proxy
+  which only made sense in some cases, like accessing something
+  that runs locally. Explicitly telling SyncEvolution to ignore
+  http_proxy is necessary because it doesn't support no_proxy.
+
+* WebDAV: auto-discovery fix
+
+  With Google Contact + CardDAV the auto-discovery failed after
+  finding the default address book, without reporting that result.
+
+* command line: implement --create/remove-database
+
+  Creating a database is only possible with a chosen name. The UID is
+  chosen automatically by the storage. Only implemented in the EDS
+  backend.
+
+* file backend: sub-second mod time stamps
+
+  Change tracking in the file backend used to be based on the
+  modification time in seconds. When running many syncs quickly (as in
+  testing), that can lead to changes not being detected when they happen
+  within a second. Now the file backend also includes the sub-second part of the
+  modification time stamp, if available.
+
+  This change is relevant when upgrading SyncEvolution: most of the
+  items will be considered "updated" once during the first sync after
+  the upgrade (or a downgrade) because the revision strings get
+  calculated differently.
+
+* D-Bus server: avoid progress outside of 0-100% range
+
+  For example in the new TestLocalCache.testItemDelete100, the
+  percentage value in the ProgressChanged signal become larger
+  than 100 and then revert to 100 at the end of the sync.
+
+  Seems the underlying calculation is faulty or simply inaccurate.
+  This is not fixed. Instead the result is just clipped to the valid
+  range.
+
+* code cleanup + improvements in testing
+
+
 SyncEvolution 1.3.1 -> 1.3.2, 05.11.2012
 ========================================
 

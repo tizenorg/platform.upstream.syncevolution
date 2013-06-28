@@ -8,7 +8,7 @@ dnl Invoke autogen.sh to produce a configure script.
 #
 # Starting with the 1.1 release cycle, the rpm-style
 # .99 pseudo-version number is used to mark a pre-release.
-AC_INIT([syncevolution], [m4_esyscmd([build/gen-git-version.sh 1.3.2])])
+AC_INIT([syncevolution], [m4_esyscmd([build/gen-git-version.sh 1.3.99.2])])
 # STABLE_VERSION=1.0.1+
 AC_SUBST(STABLE_VERSION)
 
@@ -55,11 +55,17 @@ dnl Specify git revisions/branches without prefix, i.e., without 'origin'.
 dnl We'll sort that out below.
 define([SYNTHESISSRC_REVISION], [syncevolution-0.9])
 AC_CONFIG_HEADERS(config.h)
-LT_INIT([dlopen])
+AC_LIBTOOL_DLOPEN
+AC_PROG_LIBTOOL
 
 dnl check for programs.
 AC_PROG_CXX
 AC_PROG_MAKE_SET
+
+# Boost headers: boost/foreach.hpp is needed (1.33/Debian Etch
+# doesn't have it, 1.34/Ubuntu 8.10 Hardy does). 1.35 is available
+# as Debian Etch backport.
+AX_BOOST_BASE(1.34)
 
 # TODO: Fix code to pass with -pedantic -Wextra.
 # -Wno-unknown-pragmas needed because icalstrdup.h
@@ -515,8 +521,70 @@ if test $enable_dbus_service = "yes"; then
         MLITE_LIBS=
     fi
     AC_DEFINE(DBUS_SERVICE, 1, [define if dbus service is enabled])
+
+    AC_ARG_ENABLE(dbus-service-pim,
+                  AS_HELP_STRING([--enable-dbus-service-pim[=<locale>]],
+                                 [Enable implementation of org._01.pim D-Bus APIs (depends on libfolks),
+                                  using src/dbus/server/pim/locale-factory-<locale>.cpp to implement sorting
+                                  and searching. The default is <locale>=boost, which uses boost::locale.]),
+                  [ enable_dbus_pim="$enableval" ],
+                  [ enable_dbus_pim="no" ])
+    case "$enable_dbus_pim" in
+         no) ;;
+         *)
+                if test "$enable_dbus_pim" = "yes"; then
+                    enable_dbus_pim=boost
+                fi
+                if ! test -r "$srcdir/src/dbus/server/pim/locale-factory-$enable_dbus_pim.cpp"; then
+                    AC_MSG_ERROR([invalid value '$enable_dbus_pim' for --enable-dbus-service-pim, $srcdir/src/dbus/server/pim/locale-factory-$enable_dbus_pim.cpp does not exist or is not readable])
+                fi
+                PKG_CHECK_MODULES(FOLKS, [folks folks-eds])
+                AC_DEFINE(ENABLE_DBUS_PIM, 1, [org._01.pim D-Bus API enabled])
+                DBUS_PIM_PLUGIN=$enable_dbus_pim
+                AC_SUBST(DBUS_PIM_PLUGIN)
+
+                case "$enable_dbus_pim" in
+                    boost)
+                        AX_BOOST_LOCALE
+                        # AX_BOOST_LOCALE incorrectly puts -L/... into LDFLAGS.
+                        # That's broken because it then overrides the search path
+                        # for *all* libraries in a link, not just for boost. Fix
+                        # this by putting the LDFLAGS before the lib and leaving
+                        # DBUS_PIM_PLUGIN_LDFLAGS empty (for now - might have to
+                        # be revised if there ever are any boost flags which need
+                        # to go to the start of the link line).
+                        DBUS_PIM_PLUGIN_LIBS='$(BOOST_LDFLAGS) $(BOOST_LOCALE_LIB)'
+                        DBUS_PIM_PLUGIN_LDFLAGS=
+                        ;;
+                esac
+                AC_SUBST(DBUS_PIM_PLUGIN_CFLAGS)
+                AC_SUBST(DBUS_PIM_PLUGIN_LIBS)
+                AC_SUBST(DBUS_PIM_PLUGIN_LDFLAGS)
+
+                # http://code.google.com/p/libphonenumber/
+                AC_LANG(C++)
+                SAVED_CPPFLAGS=$CPPFLAGS
+                CPPFLAGS="$CPPFLAGS ${PHONENUMBERS_CFLAGS}"
+                AC_CHECK_HEADERS([phonenumbers/phonenumberutil.h])
+                SAVED_LIBS=$LIBS
+                if test ! "$PHONENUMBERS_LIBS"; then
+                      PHONENUMBERS_LIBS=-lphonenumber
+                fi
+                LIBS="$LIBS $PHONENUMBERS_LIBS"
+                AC_LINK_IFELSE(
+                      [AC_LANG_PROGRAM([#include <phonenumbers/phonenumberutil.h>],
+                                       [i18n::phonenumbers::PhoneNumberUtil::GetInstance()])],
+                      [true],
+                      [AC_ERROR([libphonebook not found, set PHONENUMBERS_CFLAGS and PHONENUMBERS_LIBS.])])
+                AC_SUBST(PHONENUMBERS_CFLAGS)
+                AC_SUBST(PHONENUMBERS_LIBS)
+                LIBS=$SAVED_LIBS
+                CPPFLAGS=$SAVED_CPPFLAGS
+                ;;
+    esac
 fi
 AM_CONDITIONAL([NOTIFY_COMPATIBILITY], [test "$enable_notify_compat" = "yes"])
+AM_CONDITIONAL([COND_DBUS_PIM], [test "$enable_dbus_pim" != "no"])
 
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
@@ -608,14 +676,13 @@ AC_SUBST(GUI_LIBS)
 AC_SUBST(GUI_PROGRAMS)
 AC_SUBST(GUI_DESKTOP_FILES)
 
-# Boost headers: boost/foreach.hpp is needed (1.33/Debian Etch
-# doesn't have it, 1.34/Ubuntu 8.10 Hardy does). 1.35 is available
-# as Debian Etch backport.
-AX_BOOST_BASE(1.34)
-
 # C++ regular expression support is required often enough to make it
 # mandatory.
-PKG_CHECK_MODULES(PCRECPP, libpcrecpp)
+PKG_CHECK_MODULES(PCRECPP, libpcrecpp,,
+AC_CHECK_LIB(pcrecpp,main,
+AC_SUBST(PCRECPP_LIBS,-lpcrecpp),
+AC_MSG_ERROR([pcrecpp not found])
+))
 
 # need rst2man for man pages
 AC_ARG_WITH(rst2man,
@@ -1023,6 +1090,7 @@ for backend in $BACKENDS; do
     eval echo $backend: \${enable_${backend}}
 done
 echo "DBus service: $enable_dbus_service"
+echo "org._01.pim support in DBus service: $enable_dbus_pim"
 echo "Notifications: $enable_notify"
 echo "GIO GDBus: $with_gio_gdbus"
 echo "GNOME keyring: $enable_gnome_keyring"

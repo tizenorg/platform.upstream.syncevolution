@@ -931,6 +931,21 @@ class SyncConfig {
     virtual ~SyncConfig() {}
 
     /**
+     * Discard all changes made to config files.
+     * Makes it impossible to do incremental syncs!
+     *
+     * Not 100% reliable, but works in practice:
+     * - Source nodes for change tracking are replaced
+     *   with volatile nodes (reliable).
+     * - Flushing nodes is skipped, which covers peer and global
+     *   nodes. They need to provide the real content and therefore
+     *   cannot be replaced. Could be circumvented by flushing them
+     *   directly.
+     */
+    void makeEphemeral();
+    bool isEphemeral() const { return m_ephemeral; }
+
+    /**
      * determines whether the need to migrate a config causes a
      * STATUS_MIGRATION_NEEDED error or does the migration
      * automatically; default is to migrate automatically in
@@ -1457,7 +1472,7 @@ class SyncConfig {
     virtual void setProxyUsername(const std::string &value, bool temporarily = false);
     virtual InitStateString getProxyPassword() const;
     virtual void setProxyPassword(const std::string &value, bool temporarily = false);
-    virtual InitStateClass< std::vector<std::string> > getSyncURL() const;
+    virtual InitState< std::vector<std::string> > getSyncURL() const;
     virtual void setSyncURL(const std::string &value, bool temporarily = false);
     virtual void setSyncURL(const std::vector<std::string> &value, bool temporarily = false);
     virtual InitStateString getClientAuthType() const;
@@ -1626,6 +1641,7 @@ private:
     std::string m_cachedPassword;
     std::string m_cachedProxyPassword;
     ConfigWriteMode m_configWriteMode;
+    Bool m_ephemeral;
 
     /** holds all config nodes relative to the root that we found */
     boost::shared_ptr<ConfigTree> m_tree;
@@ -1880,8 +1896,8 @@ class SyncSourceConfig {
      * they support that type. This call has to work before instantiating
      * a source and thus gets passed a node to read from.
      */
-    static InitStateClass<SourceType> getSourceType(const SyncSourceNodes &nodes);
-    virtual InitStateClass<SourceType> getSourceType() const;
+    static InitState<SourceType> getSourceType(const SyncSourceNodes &nodes);
+    virtual InitState<SourceType> getSourceType() const;
 
     /** set source backend and formats in one step */
     virtual void setSourceType(const SourceType &type, bool temporarily = false);

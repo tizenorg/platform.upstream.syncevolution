@@ -747,7 +747,7 @@ bool LocalTests::compareDatabases(const char *refFile, TestingSyncSource &copy, 
     simplifyFilename(copyFile);
     SOURCE_ASSERT_EQUAL(&copy, 0, config.m_dump(client, copy, copyFile));
 
-    bool equal;
+    bool equal = false;
     CT_ASSERT_NO_THROW(equal = config.m_compare(client, sourceFile, copyFile));
     CT_ASSERT(!raiseAssert || equal);
 
@@ -1758,6 +1758,24 @@ void LocalTests::testLinkedItemsParentChild() {
         CT_ASSERT_MESSAGE(exdate + " not found in:\n" + parentDataEngine, pos != parentDataEngine.npos);
     }
 
+    if (config.m_supportsReccurenceEXDates) {
+        TestingSyncSourcePtr source;
+        SOURCE_ASSERT_NO_FAILURE(source.get(), source.reset(createSourceA()));
+        CLIENT_TEST_LOG("retrieve parent as reported to the Synthesis engine, check for X-SYNCEVOLUTION-EXDATE-DETACHED");
+        std::string parentDataEngine;
+        CT_ASSERT_NO_THROW(source->readItem(parent, parentDataEngine));
+        size_t pos = childData.find("RECURRENCE-ID");
+        CT_ASSERT(pos != childData.npos);
+        size_t end = childData.find_first_of("\r\n", pos);
+        CT_ASSERT(end != childData.npos);
+        std::string exdate = childData.substr(pos, end - pos);
+        boost::replace_first(exdate, "RECURRENCE-ID", "X-SYNCEVOLUTION-EXDATE-DETACHED");
+        // not generated because not needed by Synthesis engine
+        boost::replace_first(exdate, ";VALUE=DATE", "");
+        pos = parentDataEngine.find(exdate);
+        CT_ASSERT_MESSAGE(exdate + " not found in:\n" + parentDataEngine, pos != parentDataEngine.npos);
+    }
+
     if (getenv("CLIENT_TEST_LINKED_ITEMS_NO_DELETE")) {
         return;
     }
@@ -2009,7 +2027,7 @@ void LocalTests::testLinkedItemsRemoveNormal() {
         SOURCE_ASSERT_EQUAL(copy.get(), 1, countItems(copy.get()));
         SOURCE_ASSERT_EQUAL(copy.get(), 0, countNewItems(copy.get()));
         // parent might have been updated
-        int updated;
+        int updated = false;
         CT_ASSERT_NO_THROW(updated = countUpdatedItems(copy.get()));
         SOURCE_ASSERT(copy.get(), 0 <= updated && updated <= 1);
         SOURCE_ASSERT_EQUAL(copy.get(), 1, countDeletedItems(copy.get()));

@@ -401,7 +401,7 @@ bool TPluginApiDS::storeField(
             if (paramScan(aParams,"TZNAME",s)) {
               // convert to time zone context
               timecontext_t tctx;
-              TimeZoneNameToContext(s.c_str(), tctx, tsfP->getGZones());
+              TimeZoneNameToContext(s.c_str(), tctx, tsfP->getGZones(), true);
               tsfP->moveToContext(tctx, true); // move to new context, bind floating (and float fixed, if TZNAME=FLOATING)
             }
           }
@@ -1069,7 +1069,7 @@ localstatus TPluginApiDS::apiReadSyncSet(bool aNeedAll)
   // we don't need to load the syncset if we are only refreshing from remote
   // but we also must load it if we can't zap without it on slow refresh, or when we can't retrieve items on non-slow refresh
   // (we won't retrieve anything in case of slow refresh, because after zapping there's nothing left by definition)
-  if (!fRefreshOnly || (fSlowSync && apiNeedSyncSetToZap()) || (!fSlowSync && implNeedSyncSetToRetrieve())) {
+  if (!fRefreshOnly || (fRefreshOnly && fCacheData) || (fSlowSync && apiNeedSyncSetToZap()) || (!fSlowSync && implNeedSyncSetToRetrieve())) {
     SYSYNC_TRY {
       // true for initial ReadNextItem*() call, false later on
       bool firstReadNextItem=true;
@@ -1202,6 +1202,8 @@ localstatus TPluginApiDS::apiReadSyncSet(bool aNeedAll)
     SYSYNC_CATCH (...)
       dberr=LOCERR_EXCEPTION;
     SYSYNC_ENDCATCH
+  } else {
+    PDEBUGPRINTFX(DBG_DATA+DBG_EXOTIC,("skipped reading sync set because of refresh-from-peer sync"));
   } // if we need the syncset at all
 endread:
   // then end read here
@@ -1402,8 +1404,12 @@ bool TPluginApiDS::dsFinalizeLocalID(string &aLocalID)
   #ifndef SDK_ONLY_SUPPORT
   // only handle here if we are in charge - otherwise let ancestor handle it
   if (!fDBApi_Data.Created()) return inherited::dsFinalizeLocalID(aLocalID);
+  #else
+  // still check for DBAPi to be ready at this point, because when peer messes up protocol, we
+  // can get here before the datastore has been initialized at all
+  if (!fDBApi_Data.Created()) return false; // no dataset loaded -> all localids are final (from last session)
   #endif
-
+  
   TDB_Api_Str finalizedID;
   localstatus sta = fDBApi_Data.FinalizeLocalID(aLocalID.c_str(),finalizedID);
   if (sta==LOCERR_OK && !finalizedID.empty()) {

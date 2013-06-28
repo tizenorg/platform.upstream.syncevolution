@@ -86,9 +86,14 @@ void LocalTransportAgent::start()
                               m_clientContext.c_str(),
                               context.c_str()));
     }
-    if (m_clientContext == m_server->getContextName()) {
-        SE_THROW(StringPrintf("invalid local sync inside context '%s', need second context with different databases", context.c_str()));
-    }
+    // TODO (?): check that there are no conflicts between the active
+    // sources. The old "contexts must be different" check achieved that
+    // via brute force (because by definition, databases from different
+    // contexts are meant to be independent), but it was too coarse
+    // and ruled out valid configurations.
+    // if (m_clientContext == m_server->getContextName()) {
+    //     SE_THROW(StringPrintf("invalid local sync inside context '%s', need second context with different databases", context.c_str()));
+    // }
 
     if (m_forkexec) {
         SE_THROW("local transport already started");
@@ -201,6 +206,8 @@ void LocalTransportAgent::onChildConnect(const GDBusCXX::DBusConnectionPtr &conn
     }
     m_child->m_startSync.start(m_clientContext,
                                StringPair(m_server->getConfigName(),
+                                          m_server->isEphemeral() ?
+                                          "ephemeral" :
                                           m_server->getRootPath()),
                                static_cast<std::string>(m_server->getLogDir()),
                                m_server->getDoLogging(),
@@ -695,9 +702,14 @@ class LocalTransportAgentChild : public TransportAgent, private LoggerBase
         // initialize sync context
         m_client.reset(new SyncContext(std::string("target-config") + clientContext,
                                        serverConfig.first,
+                                       serverConfig.second == "ephemeral" ?
+                                       serverConfig.second :
                                        serverConfig.second + "/." + clientContext,
                                        boost::shared_ptr<TransportAgent>(this, NoopAgentDestructor()),
                                        serverDoLogging));
+        if (serverConfig.second == "ephemeral") {
+            m_client->makeEphemeral();
+        }
         boost::shared_ptr<UserInterface> ui(new LocalTransportUI(m_parent));
         m_client->setUserInterface(ui);
 
@@ -748,7 +760,8 @@ class LocalTransportAgentChild : public TransportAgent, private LoggerBase
             const std::string &sourceName = entry.first;
             const std::string &targetName = entry.second.first;
             std::string sync = entry.second.second;
-            if (sync != "disabled") {
+            SyncMode mode = StringToSyncMode(sync);
+            if (mode != SYNC_NONE) {
                 SyncSourceNodes targetNodes = m_client->getSyncSourceNodes(targetName);
                 SyncSourceConfig targetSource(targetName, targetNodes);
                 string fullTargetName = clientContext + "/" + targetName;
@@ -772,16 +785,27 @@ class LocalTransportAgentChild : public TransportAgent, private LoggerBase
                                                       serverConfig.first.c_str()));
                 }
                 // invert data direction
-                if (sync == "refresh-from-local") {
-                    sync = "refresh-from-remote";
-                } else if (sync == "refresh-from-remote") {
-                    sync = "refresh-from-local";
-                } else if (sync == "one-way-from-local") {
-                    sync = "one-way-from-remote";
-                } else if (sync == "one-way-from-remote") {
-                    sync = "one-way-from-local";
+                if (mode == SYNC_REFRESH_FROM_LOCAL) {
+                    mode = SYNC_REFRESH_FROM_REMOTE;
+                } else if (mode == SYNC_REFRESH_FROM_REMOTE) {
+                    mode = SYNC_REFRESH_FROM_LOCAL;
+                } else if (mode == SYNC_ONE_WAY_FROM_LOCAL) {
+                    mode = SYNC_ONE_WAY_FROM_REMOTE;
+                } else if (mode == SYNC_ONE_WAY_FROM_REMOTE) {
+                    mode = SYNC_ONE_WAY_FROM_LOCAL;
+                } else if (mode == SYNC_LOCAL_CACHE_SLOW) {
+                    // Remote side is running in caching mode and
+                    // asking for refresh. Send all our data.
+                    mode = SYNC_SLOW;
+                } else if (mode == SYNC_LOCAL_CACHE_INCREMENTAL) {
+                    // Remote side is running in caching mode and
+                    // asking for an update. Use two-way mode although
+                    // nothing is going to come back (simpler that way
+                    // than using one-way, which has special code
+                    // paths in libsynthesis).
+                    mode = SYNC_TWO_WAY;
                 }
-                targetSource.setSync(sync, true);
+                targetSource.setSync(PrettyPrintSyncMode(mode, true), true);
                 targetSource.setURI(sourceName, true);
             }
         }
@@ -856,7 +880,7 @@ public:
         // for a password. However, that does not cover failures
         // like the parent not asking us to sync in the first place
         // and also does not work with libdbus (https://bugs.freedesktop.org/show_bug.cgi?id=49728).
-        m_forkexec->m_onQuit.connect(onParentQuit);
+        m_forkexec->m_onQuit.connect(&onParentQuit);
 
         m_forkexec->connect();
     }

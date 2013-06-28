@@ -83,7 +83,7 @@ cAppCharP const DbgOutDefaultPrefixes[numDbgOutFormats] = {
   "<?xml version=\"1.0\"?>\n"
     "<sysync_log version=\"1.0\">",
   "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\" \"http://www.w3.org/TR/html4/loose.dtd\">\n"
-  "<html><head><title>Synthesis SyncML Engine " SYSYNC_FULL_VERSION_STRING " Log</title>\n"
+  "<html><head><title>SySync SyncML Engine " SYSYNC_FULL_VERSION_STRING " Log</title>\n"
     "<meta http-equiv=\"content-type\" content=\"text/html;charset=UTF-8\">\n"
     "<style type=\"text/css\" media=\"screen\"><!--\n"
       ".block { color: #0000FF; font-weight: bold; }\n"
@@ -141,7 +141,7 @@ cAppCharP const DbgOutDefaultPrefixes[numDbgOutFormats] = {
       "}\n"
       ".doall { color: #754242; }\n"
     "--></style>\n"
-    "</head><body><h2>Start of log - Synthesis SyncML Engine " SYSYNC_FULL_VERSION_STRING "</h2>\n<ul>\n"
+    "</head><body><h2>Start of log - SySync SyncML Engine " SYSYNC_FULL_VERSION_STRING "</h2>\n<ul>\n"
 };
 
 cAppCharP const DbgOutDefaultSuffixes[numDbgOutFormats] = {

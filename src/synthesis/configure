@@ -1546,7 +1546,7 @@ Optional Features:
   --disable-libtool-lock  avoid locking (might break parallel builds)
   --enable-warnings=[min|max|fatal|no]
                           control compiler pickyness [min]
-  --debug-logs            For developers: add links to call location to HTML
+  --enable-debug-logs     For developers: add links to call location to HTML
                           log files. Depends on Doxygen (for HTML version of
                           source) and g++ (for __PRETTY_FUNCTION__).
   --enable-sqlite         enable the sqlite-based ODBC backend, depends on

@@ -174,6 +174,8 @@ protected:
     TStatusCommand &aStatusCommand ///< status, must be set on error or non-200-status
   );
 
+  /// delete existing item in datastore, returns 211 if not existing any more
+  virtual localstatus logicDeleteItemByID(TSyncItem &aSyncItem) = 0;
   /// @}
 
 

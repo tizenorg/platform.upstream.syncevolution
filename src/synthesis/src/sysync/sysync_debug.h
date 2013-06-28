@@ -104,29 +104,29 @@ TDebugLogger *getDbgLogger(void);
 
 // output to console macro
 #ifdef CONSOLEINFO
-# ifdef CONSOLEINFO_LIBC
-  // Short-circuit all of the intermediate layers and use libc directly;
-  // useful to avoid dependencies in libsmltk on libsynthesis.
-  // Because a lot of libs log to stderr, include a unique prefix.
-  // Assumes that all printf format strings are plain strings.
-  #define CONSOLEPUTS(m) CONSOLE_PRINTF_VARARGS("%s", (m))
-#define CONSOLE_PRINTF_VARARGS(_m, _args...) SySync_ConsolePrintf(stderr, "SYSYNC " _m "\n", ##_args)
-  #define CONSOLEPRINTF(m) CONSOLE_PRINTF_VARARGS m
+  #ifdef CONSOLEINFO_LIBC
+    // Short-circuit all of the intermediate layers and use libc directly;
+    // useful to avoid dependencies in libsmltk on libsynthesis.
+    // Because a lot of libs log to stderr, include a unique prefix.
+    // Assumes that all printf format strings are plain strings.
+    #define CONSOLEPUTS(m) CONSOLE_PRINTF_VARARGS("%s", (m))
+    #define CONSOLE_PRINTF_VARARGS(_m, _args...) SySync_ConsolePrintf(stderr, "SYSYNC " _m "\n", ##_args)
+    #define CONSOLEPRINTF(m) CONSOLE_PRINTF_VARARGS m
 
-  // default implementation invokes fprintf, can be set by app
-  // @param stream    stderr, useful for invoking fprintf directly
-  // @param format    guaranteed to start with "SYSYNC " (see above)
-#ifdef __cplusplus
- extern "C" {
-#endif
-   extern int (*SySync_ConsolePrintf)(FILE *stream, const char *format, ...);
-#ifdef __cplusplus
- }
-#endif
-# else // CONSOLEINFO_LIBC
-  #define CONSOLEPUTS(m) ConsolePuts(m)
-  #define CONSOLEPRINTF(m) ConsolePrintf m
-# endif // CONSOLEINFO_LIBC
+    // default implementation invokes fprintf, can be set by app
+    // @param stream    stderr, useful for invoking fprintf directly
+    // @param format    guaranteed to start with "SYSYNC " (see above)
+    #ifdef __cplusplus
+    extern "C" {
+    #endif
+      extern int (*SySync_ConsolePrintf)(FILE *stream, const char *format, ...);
+    #ifdef __cplusplus
+    }
+    #endif
+  #else // CONSOLEINFO_LIBC
+    #define CONSOLEPUTS(m) ConsolePuts(m)
+    #define CONSOLEPRINTF(m) ConsolePrintf m
+  #endif // CONSOLEINFO_LIBC
 #else
   #define CONSOLEPUTS(m)
   #define CONSOLEPRINTF(m)

@@ -122,6 +122,7 @@ DIST_COMMON = README $(am__configure_deps) $(am__dist_doc_DATA_DIST) \
 	$(top_srcdir)/src/backends/kcalextended/kcalextended.am \
 	$(top_srcdir)/src/backends/kde/kde.am \
 	$(top_srcdir)/src/backends/maemo/maemo.am \
+	$(top_srcdir)/src/backends/pbap/pbap.am \
 	$(top_srcdir)/src/backends/qtcontacts/qtcontacts.am \
 	$(top_srcdir)/src/backends/sqlite/sqlite.am \
 	$(top_srcdir)/src/backends/webdav/webdav.am \
@@ -146,7 +147,7 @@ DIST_COMMON = README $(am__configure_deps) $(am__dist_doc_DATA_DIST) \
 	$(top_srcdir)/src/testcases.am AUTHORS COPYING ChangeLog \
 	INSTALL NEWS compile config.guess config.sub depcomp \
 	install-sh ltmain.sh missing mkinstalldirs
-bin_PROGRAMS = $(am__EXEEXT_4) $(am__append_66) $(am__append_70) \
+bin_PROGRAMS = $(am__EXEEXT_4) $(am__append_74) $(am__append_78) \
 	$(am__EXEEXT_5)
 libexec_PROGRAMS = src/syncevo-local-sync$(EXEEXT) $(am__EXEEXT_6)
 noinst_PROGRAMS = $(am__EXEEXT_7) $(am__EXEEXT_8) $(am__EXEEXT_9) \
@@ -183,6 +184,7 @@ EXTRA_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2) $(am__EXEEXT_3) \
 @COND_CORE_TRUE@	src/backends/kcalextended/configure-sub.in \
 @COND_CORE_TRUE@	src/backends/kde/configure-sub.in \
 @COND_CORE_TRUE@	src/backends/maemo/configure-sub.in \
+@COND_CORE_TRUE@	src/backends/pbap/configure-sub.in \
 @COND_CORE_TRUE@	src/backends/qtcontacts/configure-sub.in \
 @COND_CORE_TRUE@	src/backends/sqlite/configure-sub.in \
 @COND_CORE_TRUE@	src/backends/sqlite/README \
@@ -240,6 +242,7 @@ EXTRA_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2) $(am__EXEEXT_3) \
 @COND_CORE_TRUE@	$(src_backends_kcalextended_lib) \
 @COND_CORE_TRUE@	$(src_backends_kde_lib) \
 @COND_CORE_TRUE@	$(src_backends_maemo_lib) \
+@COND_CORE_TRUE@	$(src_backends_pbap_lib) \
 @COND_CORE_TRUE@	$(src_backends_qtcontacts_lib) \
 @COND_CORE_TRUE@	$(src_backends_sqlite_lib) \
 @COND_CORE_TRUE@	$(src_backends_webdav_lib) \
@@ -253,6 +256,7 @@ EXTRA_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2) $(am__EXEEXT_3) \
 @COND_CORE_TRUE@@ENABLE_MODULES_FALSE@	$(src_backends_kcalextended_lib) \
 @COND_CORE_TRUE@@ENABLE_MODULES_FALSE@	$(src_backends_kde_lib) \
 @COND_CORE_TRUE@@ENABLE_MODULES_FALSE@	$(src_backends_maemo_lib) \
+@COND_CORE_TRUE@@ENABLE_MODULES_FALSE@	$(src_backends_pbap_lib) \
 @COND_CORE_TRUE@@ENABLE_MODULES_FALSE@	$(src_backends_qtcontacts_lib) \
 @COND_CORE_TRUE@@ENABLE_MODULES_FALSE@	$(src_backends_sqlite_lib) \
 @COND_CORE_TRUE@@ENABLE_MODULES_FALSE@	$(src_backends_webdav_lib) \
@@ -309,20 +313,49 @@ EXTRA_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2) $(am__EXEEXT_3) \
 @COND_DBUS_TRUE@	src/dbus/server/libsyncevodbusserver.la \
 @COND_DBUS_TRUE@	src/dbus/server/libsyncevodbushelper.la
 @COND_DBUS_TRUE@am__append_60 = src/dbus/server/bluetooth_products.ini
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@am__append_61 = \
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@  src/dbus/server/pim/view.cpp \
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@  src/dbus/server/pim/full-view.cpp \
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@  src/dbus/server/pim/filtered-view.cpp \
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@  src/dbus/server/pim/edsf-view.cpp \
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@  src/dbus/server/pim/merge-view.cpp \
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@  src/dbus/server/pim/individual-traits.cpp \
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@  src/dbus/server/pim/folks.cpp \
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@  src/dbus/server/pim/manager.cpp
+
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@am__append_62 = \
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@  src/dbus/server/pim/locale-factory.h \
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@  src/dbus/server/pim/persona-details.h
+
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@am__append_63 = \
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@  src/dbus/server/pim/locale-factory-@DBUS_PIM_PLUGIN@.cpp
+
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@am__append_64 = $(DBUS_PIM_PLUGIN_LDFLAGS)
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@am__append_65 = $(FOLKS_LIBS) $(DBUS_PIM_PLUGIN_LIBS) $(PHONENUMBERS_LIBS)
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@am__append_66 = $(FOLKS_CFLAGS) $(DBUS_PIM_PLUGIN_CFLAGS) $(PHONENUMBERS_CFLAGS)
+
+# Need to list all plugins here and not include the active one in the regular
+# source list above, because "make dist" would only include the configured one.
+@COND_DBUS_TRUE@am__append_67 = \
+@COND_DBUS_TRUE@  src/dbus/server/pim/locale-factory-boost.cpp
+
 
 # Deal with .service, .desktop and startup script files.
-@COND_DBUS_TRUE@am__append_61 = \
+@COND_DBUS_TRUE@am__append_68 = \
 @COND_DBUS_TRUE@  $(src_dbus_server_service_files) \
 @COND_DBUS_TRUE@  $(src_dbus_server_desktop) \
 @COND_DBUS_TRUE@  $(src_dbus_server_script)
 
-@COND_DBUS_TRUE@am__append_62 = $(src_dbus_server_script)
-@COND_DBUS_TRUE@am__append_63 = \
+@COND_DBUS_TRUE@am__append_69 = $(src_dbus_server_script)
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@am__append_70 = \
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@  src/dbus/server/pim/org._01.pim.contacts.service.in
+
+@COND_DBUS_TRUE@am__append_71 = \
 @COND_DBUS_TRUE@  $(src_dbus_server_service_files_in) \
 @COND_DBUS_TRUE@  $(src_dbus_server_script_in) \
 @COND_DBUS_TRUE@  $(src_dbus_server_desktop_in)
 
-@COND_GTK2_TRUE@@COND_GUI_TRUE@am__append_64 = src/gtk-ui/README \
+@COND_GTK2_TRUE@@COND_GUI_TRUE@am__append_72 = src/gtk-ui/README \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@	$(src_gtk_ui_applications_in_files)
 
 # sync-ui: default GUI, could be plain GTK or Moblin UX
@@ -330,17 +363,17 @@ EXTRA_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2) $(am__EXEEXT_3) \
 # sync-ui-moblin: Moblin UX
 #
 # The later two are built when --enable-gui=all was used.
-@COND_GTK2_TRUE@@COND_GUI_TRUE@am__append_65 = \
+@COND_GTK2_TRUE@@COND_GUI_TRUE@am__append_73 = \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@  src/gtk-ui/sync-ui \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@  src/gtk-ui/sync-ui-gtk \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@  src/gtk-ui/sync-ui-moblin
 
-@COND_GTK2_TRUE@@COND_GUI_TRUE@am__append_66 = @GUI_PROGRAMS@
-@COND_GTK2_TRUE@@COND_GUI_TRUE@am__append_67 = \
+@COND_GTK2_TRUE@@COND_GUI_TRUE@am__append_74 = @GUI_PROGRAMS@
+@COND_GTK2_TRUE@@COND_GUI_TRUE@am__append_75 = \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@  src/gtk-ui/sync-moblin.desktop \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@  $(src_gtk_ui_applications_generated)
 
-@COND_GTK2_FALSE@@COND_GUI_TRUE@am__append_68 = src/gtk3-ui/README \
+@COND_GTK2_FALSE@@COND_GUI_TRUE@am__append_76 = src/gtk3-ui/README \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@	$(src_gtk3_ui_applications_in_files)
 
 # sync-ui: default GUI, could be plain GTK or Moblin UX
@@ -348,20 +381,20 @@ EXTRA_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2) $(am__EXEEXT_3) \
 # sync-ui-moblin: Moblin UX
 #
 # The later two are built when --enable-gui=all was used.
-@COND_GTK2_FALSE@@COND_GUI_TRUE@am__append_69 = \
+@COND_GTK2_FALSE@@COND_GUI_TRUE@am__append_77 = \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@  src/gtk3-ui/sync-ui \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@  src/gtk3-ui/sync-ui-gtk \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@  src/gtk3-ui/sync-ui-moblin
 
-@COND_GTK2_FALSE@@COND_GUI_TRUE@am__append_70 = @GUI_PROGRAMS@
-@COND_GTK2_FALSE@@COND_GUI_TRUE@am__append_71 = \
+@COND_GTK2_FALSE@@COND_GUI_TRUE@am__append_78 = @GUI_PROGRAMS@
+@COND_GTK2_FALSE@@COND_GUI_TRUE@am__append_79 = \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@  src/gtk3-ui/sync-moblin.desktop \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@  $(src_gtk3_ui_applications_generated)
 
-@COND_DBUS_TRUE@am__append_72 = src/syncevo-http-server
+@COND_DBUS_TRUE@am__append_80 = src/syncevo-http-server
 # SYNCEVOLUTION_LDADD is defined in configure script.
-@ENABLE_MODULES_FALSE@am__append_73 = @SYNCSOURCES@
-@ENABLE_MODULES_FALSE@am__append_74 = @SYNCSOURCES@
+@ENABLE_MODULES_FALSE@am__append_81 = @SYNCSOURCES@
+@ENABLE_MODULES_FALSE@am__append_82 = @SYNCSOURCES@
 
 # The files which register backends have to be compiled into
 # "client-test" and "syncevolution" in order to pull in the
@@ -372,30 +405,31 @@ EXTRA_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2) $(am__EXEEXT_3) \
 # When using modules the registration is done inside the
 # module and the register file is unnecessary. However, they
 # still need to be included in "make dist".
-@ENABLE_MODULES_TRUE@am__append_75 = $(BACKEND_REGISTRIES)
-@ENABLE_MODULES_FALSE@am__append_76 = $(BACKEND_REGISTRIES)
-@COND_DBUS_TRUE@am__append_77 = $(gdbus_build_dir)/libgdbussyncevo.la
-@COND_DBUS_TRUE@am__append_78 = $(gdbus_build_dir)/libgdbussyncevo.la
+@ENABLE_MODULES_TRUE@am__append_83 = $(BACKEND_REGISTRIES)
+@ENABLE_MODULES_FALSE@am__append_84 = $(BACKEND_REGISTRIES)
+@COND_DBUS_TRUE@am__append_85 = $(gdbus_build_dir)/libgdbussyncevo.la
+@COND_DBUS_TRUE@am__append_86 = $(gdbus_build_dir)/libgdbussyncevo.la
 
 # Do the linking here, as with all SyncEvolution executables.
 # Sources are compiled in dbus/server.
 # DBus Server
 
 # syncevo-dbus-server's helper binary
-@COND_DBUS_TRUE@am__append_79 = src/syncevo-dbus-server \
+@COND_DBUS_TRUE@am__append_87 = src/syncevo-dbus-server \
 @COND_DBUS_TRUE@	src/syncevo-dbus-helper
+@COND_DBUS_TRUE@am__append_88 = src/dbus/server/libsyncevodbushelper.la src/dbus/server/libsyncevodbusserver.la
 
 # distribute test system?
 # yes: install client-test in bindir, test files in datadir
-@ENABLE_TESTING_TRUE@am__append_80 = test/run_src_client_test.sh
-@ENABLE_TESTING_TRUE@am__append_81 = src/client-test
+@ENABLE_TESTING_TRUE@am__append_89 = test/run_src_client_test.sh
+@ENABLE_TESTING_TRUE@am__append_90 = src/client-test
 # The "all" dependency causes a rebuild even if the actual input files
 # haven't changed. If client-test is part of the regular targets built
 # by "all", then it must not depend on all!
-@ENABLE_TESTING_FALSE@am__append_82 = src/client-test
-@ENABLE_TESTING_FALSE@am__append_83 = $(CLIENT_LIB_TEST_FILES)
-@ENABLE_TESTING_FALSE@am__append_84 = all
-@COND_CORE_TRUE@am__append_85 = test/abort-redirect.cpp \
+@ENABLE_TESTING_FALSE@am__append_91 = src/client-test
+@ENABLE_TESTING_FALSE@am__append_92 = $(CLIENT_LIB_TEST_FILES)
+@ENABLE_TESTING_FALSE@am__append_93 = all
+@COND_CORE_TRUE@am__append_94 = test/abort-redirect.cpp \
 @COND_CORE_TRUE@	test/ClientTest.h test/ClientTestAssert.h \
 @COND_CORE_TRUE@	test/ClientTest.cpp test/client-test-main.cpp \
 @COND_CORE_TRUE@	test/test.h test/test.cpp test/COPYING \
@@ -419,30 +453,31 @@ EXTRA_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2) $(am__EXEEXT_3) \
 @COND_CORE_TRUE@	$(wildcard test/testcases/*.patch)
 
 # generic D-Bus client/server tests
-@COND_CORE_TRUE@@COND_DBUS_TRUE@am__append_86 = test/dbus-client-server
-@COND_CORE_TRUE@@COND_DBUS_TRUE@@ENABLE_UNIT_TESTS_TRUE@am__append_87 = test/test.cpp
-@COND_CORE_TRUE@am__append_88 = po
-@COND_CORE_TRUE@am__append_89 = README NEWS COPYING $(TEST_README_FILES) test/syncevo-http-server-logging.conf
-@COND_CORE_TRUE@am__append_90 = $(disted_docs)
-@COND_CORE_TRUE@am__append_91 = $(disted_docs)
-@COND_CORE_TRUE@@COND_HTML_README_TRUE@am__append_92 = README.html
+@COND_CORE_TRUE@@COND_DBUS_TRUE@am__append_95 = test/dbus-client-server
+@COND_CORE_TRUE@@COND_DBUS_TRUE@@ENABLE_UNIT_TESTS_TRUE@am__append_96 = test/test.cpp
+@COND_CORE_TRUE@am__append_97 = po
+@COND_CORE_TRUE@am__append_98 = README NEWS COPYING $(TEST_README_FILES) test/syncevo-http-server-logging.conf
+@COND_CORE_TRUE@am__append_99 = $(disted_docs)
+@COND_CORE_TRUE@am__append_100 = $(disted_docs)
+@COND_CORE_TRUE@@COND_HTML_README_TRUE@am__append_101 = README.html
 # do not distribute in tarball.
-@COND_CORE_TRUE@@COND_HTML_README_TRUE@am__append_93 = README.html
-@COND_CORE_TRUE@@COND_MAN_PAGES_TRUE@am__append_94 = syncevolution.1
+@COND_CORE_TRUE@@COND_HTML_README_TRUE@am__append_102 = README.html
+@COND_CORE_TRUE@@COND_MAN_PAGES_TRUE@am__append_103 = syncevolution.1
 
 # check .so (relevant for modular builds) and main syncevolution binary
 # (relevant in that case and for static builds) for dependencies on
 # problematic libraries and symbols
 #
 # ical_strdup is an exception because it is in SyncEvolution.
-@ENABLE_EVOLUTION_COMPATIBILITY_TRUE@am__append_95 = toplevel_so_check
+@ENABLE_EVOLUTION_COMPATIBILITY_TRUE@am__append_104 = toplevel_so_check
 # libneon is intentionally not linked against, to choose between
 # GNUTLS and OpenSSL at runtime.
-@NEON_COMPATIBILITY_TRUE@am__append_96 = -e 'symbol ne_.*syncdav.so'
+@NEON_COMPATIBILITY_TRUE@am__append_105 = -e 'symbol ne_.*syncdav.so'
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4-repo/autotroll.m4 \
 	$(top_srcdir)/m4-repo/ax_boost_base.m4 \
+	$(top_srcdir)/m4-repo/ax_boost_locale.m4 \
 	$(top_srcdir)/m4-repo/dk-warn.m4 \
 	$(top_srcdir)/m4-repo/se_macros.m4 \
 	$(top_srcdir)/m4/intltool.m4 $(top_srcdir)/m4/libtool.m4 \
@@ -489,6 +524,7 @@ am__installdirs = "$(DESTDIR)$(libdir)" \
 	"$(DESTDIR)$(src_backends_kcalextended_backenddir)" \
 	"$(DESTDIR)$(src_backends_kde_backenddir)" \
 	"$(DESTDIR)$(src_backends_maemo_backenddir)" \
+	"$(DESTDIR)$(src_backends_pbap_backenddir)" \
 	"$(DESTDIR)$(src_backends_qtcontacts_backenddir)" \
 	"$(DESTDIR)$(src_backends_sqlite_backenddir)" \
 	"$(DESTDIR)$(src_backends_webdav_backenddir)" \
@@ -541,6 +577,7 @@ LTLIBRARIES = $(lib_LTLIBRARIES) $(noinst_LTLIBRARIES) \
 	$(src_backends_kcalextended_backend_LTLIBRARIES) \
 	$(src_backends_kde_backend_LTLIBRARIES) \
 	$(src_backends_maemo_backend_LTLIBRARIES) \
+	$(src_backends_pbap_backend_LTLIBRARIES) \
 	$(src_backends_qtcontacts_backend_LTLIBRARIES) \
 	$(src_backends_sqlite_backend_LTLIBRARIES) \
 	$(src_backends_webdav_backend_LTLIBRARIES) \
@@ -740,6 +777,22 @@ src_backends_maemo_syncmaemocal_la_LINK = $(LIBTOOL) $(AM_V_lt) \
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@am_src_backends_maemo_syncmaemocal_la_rpath =  \
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@	-rpath \
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@	$(src_backends_maemo_backenddir)
+am__src_backends_pbap_syncpbap_la_SOURCES_DIST =  \
+	src/backends/pbap/PbapSyncSource.h \
+	src/backends/pbap/PbapSyncSource.cpp
+@COND_CORE_TRUE@am__objects_10 = src/backends/pbap/src_backends_pbap_syncpbap_la-PbapSyncSource.lo
+@COND_CORE_TRUE@am_src_backends_pbap_syncpbap_la_OBJECTS =  \
+@COND_CORE_TRUE@	$(am__objects_10)
+src_backends_pbap_syncpbap_la_OBJECTS =  \
+	$(am_src_backends_pbap_syncpbap_la_OBJECTS)
+src_backends_pbap_syncpbap_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
+	$(src_backends_pbap_syncpbap_la_CXXFLAGS) $(CXXFLAGS) \
+	$(src_backends_pbap_syncpbap_la_LDFLAGS) $(LDFLAGS) -o $@
+@COND_CORE_TRUE@@ENABLE_MODULES_FALSE@am_src_backends_pbap_syncpbap_la_rpath =
+@COND_CORE_TRUE@@ENABLE_MODULES_TRUE@am_src_backends_pbap_syncpbap_la_rpath =  \
+@COND_CORE_TRUE@@ENABLE_MODULES_TRUE@	-rpath \
+@COND_CORE_TRUE@@ENABLE_MODULES_TRUE@	$(src_backends_pbap_backenddir)
 am__src_backends_qtcontacts_syncqtcontacts_la_SOURCES_DIST =  \
 	src/backends/qtcontacts/QtContactsSource.h \
 	src/backends/qtcontacts/QtContactsSource.cpp
@@ -761,10 +814,10 @@ am__src_backends_sqlite_syncsqlite_la_SOURCES_DIST =  \
 	src/backends/sqlite/SQLiteUtil.cpp \
 	src/backends/sqlite/SQLiteContactSource.h \
 	src/backends/sqlite/SQLiteContactSource.cpp
-@COND_CORE_TRUE@am__objects_10 = src/backends/sqlite/src_backends_sqlite_syncsqlite_la-SQLiteUtil.lo \
+@COND_CORE_TRUE@am__objects_11 = src/backends/sqlite/src_backends_sqlite_syncsqlite_la-SQLiteUtil.lo \
 @COND_CORE_TRUE@	src/backends/sqlite/src_backends_sqlite_syncsqlite_la-SQLiteContactSource.lo
 @COND_CORE_TRUE@am_src_backends_sqlite_syncsqlite_la_OBJECTS =  \
-@COND_CORE_TRUE@	$(am__objects_10)
+@COND_CORE_TRUE@	$(am__objects_11)
 src_backends_sqlite_syncsqlite_la_OBJECTS =  \
 	$(am_src_backends_sqlite_syncsqlite_la_OBJECTS)
 src_backends_sqlite_syncsqlite_la_LINK = $(LIBTOOL) $(AM_V_lt) \
@@ -786,13 +839,13 @@ am__src_backends_webdav_syncdav_la_SOURCES_DIST =  \
 	src/backends/webdav/WebDAVSource.h \
 	src/backends/webdav/WebDAVSource.cpp \
 	src/backends/webdav/NeonCXX.h src/backends/webdav/NeonCXX.cpp
-@COND_CORE_TRUE@am__objects_11 = src/backends/webdav/src_backends_webdav_syncdav_la-CalDAVSource.lo \
+@COND_CORE_TRUE@am__objects_12 = src/backends/webdav/src_backends_webdav_syncdav_la-CalDAVSource.lo \
 @COND_CORE_TRUE@	src/backends/webdav/src_backends_webdav_syncdav_la-CalDAVVxxSource.lo \
 @COND_CORE_TRUE@	src/backends/webdav/src_backends_webdav_syncdav_la-CardDAVSource.lo \
 @COND_CORE_TRUE@	src/backends/webdav/src_backends_webdav_syncdav_la-WebDAVSource.lo \
 @COND_CORE_TRUE@	src/backends/webdav/src_backends_webdav_syncdav_la-NeonCXX.lo
 @COND_CORE_TRUE@am_src_backends_webdav_syncdav_la_OBJECTS =  \
-@COND_CORE_TRUE@	$(am__objects_11)
+@COND_CORE_TRUE@	$(am__objects_12)
 src_backends_webdav_syncdav_la_OBJECTS =  \
 	$(am_src_backends_webdav_syncdav_la_OBJECTS)
 src_backends_webdav_syncdav_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
@@ -806,9 +859,9 @@ src_backends_webdav_syncdav_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 am__src_backends_xmlrpc_syncxmlrpc_la_SOURCES_DIST =  \
 	src/backends/xmlrpc/XMLRPCSyncSource.h \
 	src/backends/xmlrpc/XMLRPCSyncSource.cpp
-@COND_CORE_TRUE@am__objects_12 = src/backends/xmlrpc/src_backends_xmlrpc_syncxmlrpc_la-XMLRPCSyncSource.lo
+@COND_CORE_TRUE@am__objects_13 = src/backends/xmlrpc/src_backends_xmlrpc_syncxmlrpc_la-XMLRPCSyncSource.lo
 @COND_CORE_TRUE@am_src_backends_xmlrpc_syncxmlrpc_la_OBJECTS =  \
-@COND_CORE_TRUE@	$(am__objects_12)
+@COND_CORE_TRUE@	$(am__objects_13)
 src_backends_xmlrpc_syncxmlrpc_la_OBJECTS =  \
 	$(am_src_backends_xmlrpc_syncxmlrpc_la_OBJECTS)
 src_backends_xmlrpc_syncxmlrpc_la_LINK = $(LIBTOOL) $(AM_V_lt) \
@@ -827,15 +880,15 @@ am__src_dbus_glib_libsyncevo_dbus_la_SOURCES_DIST =  \
 	src/dbus/glib/syncevo-server.h src/dbus/glib/syncevo-session.h \
 	src/dbus/glib/syncevo-dbus-types.c \
 	src/dbus/glib/syncevo-server.c src/dbus/glib/syncevo-session.c
-am__objects_13 =
+am__objects_14 =
 @COND_GUI_TRUE@am_src_dbus_glib_libsyncevo_dbus_la_OBJECTS =  \
-@COND_GUI_TRUE@	$(am__objects_13) \
+@COND_GUI_TRUE@	$(am__objects_14) \
 @COND_GUI_TRUE@	src/dbus/glib/src_dbus_glib_libsyncevo_dbus_la-syncevo-dbus-types.lo \
 @COND_GUI_TRUE@	src/dbus/glib/src_dbus_glib_libsyncevo_dbus_la-syncevo-server.lo \
 @COND_GUI_TRUE@	src/dbus/glib/src_dbus_glib_libsyncevo_dbus_la-syncevo-session.lo
-@COND_GUI_TRUE@am__objects_14 = src/dbus/glib/src_dbus_glib_libsyncevo_dbus_la-syncevo-marshal.lo
+@COND_GUI_TRUE@am__objects_15 = src/dbus/glib/src_dbus_glib_libsyncevo_dbus_la-syncevo-marshal.lo
 @COND_GUI_TRUE@nodist_src_dbus_glib_libsyncevo_dbus_la_OBJECTS =  \
-@COND_GUI_TRUE@	$(am__objects_14)
+@COND_GUI_TRUE@	$(am__objects_15)
 src_dbus_glib_libsyncevo_dbus_la_OBJECTS =  \
 	$(am_src_dbus_glib_libsyncevo_dbus_la_OBJECTS) \
 	$(nodist_src_dbus_glib_libsyncevo_dbus_la_OBJECTS)
@@ -851,17 +904,17 @@ src_dbus_glib_libsyncevo_dbus_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 am__dist_src_dbus_qt_libsyncevolution_qt_dbus_la_SOURCES_DIST =  \
 	src/dbus/qt/dbustypes.h src/dbus/qt/dbustypes.cpp
 @ENABLE_QT_DBUS_TRUE@dist_src_dbus_qt_libsyncevolution_qt_dbus_la_OBJECTS =  \
-@ENABLE_QT_DBUS_TRUE@	$(am__objects_13) \
+@ENABLE_QT_DBUS_TRUE@	$(am__objects_14) \
 @ENABLE_QT_DBUS_TRUE@	src/dbus/qt/src_dbus_qt_libsyncevolution_qt_dbus_la-dbustypes.lo
-@ENABLE_QT_DBUS_TRUE@am__objects_15 = src/dbus/qt/src_dbus_qt_libsyncevolution_qt_dbus_la-syncevo-server-full.lo \
+@ENABLE_QT_DBUS_TRUE@am__objects_16 = src/dbus/qt/src_dbus_qt_libsyncevolution_qt_dbus_la-syncevo-server-full.lo \
 @ENABLE_QT_DBUS_TRUE@	src/dbus/qt/src_dbus_qt_libsyncevolution_qt_dbus_la-syncevo-session-full.lo \
 @ENABLE_QT_DBUS_TRUE@	src/dbus/qt/src_dbus_qt_libsyncevolution_qt_dbus_la-syncevo-connection-full.lo \
 @ENABLE_QT_DBUS_TRUE@	src/dbus/qt/src_dbus_qt_libsyncevolution_qt_dbus_la-syncevo-server-full.moc.lo \
 @ENABLE_QT_DBUS_TRUE@	src/dbus/qt/src_dbus_qt_libsyncevolution_qt_dbus_la-syncevo-session-full.moc.lo \
 @ENABLE_QT_DBUS_TRUE@	src/dbus/qt/src_dbus_qt_libsyncevolution_qt_dbus_la-syncevo-connection-full.moc.lo \
-@ENABLE_QT_DBUS_TRUE@	$(am__objects_13)
+@ENABLE_QT_DBUS_TRUE@	$(am__objects_14)
 @ENABLE_QT_DBUS_TRUE@nodist_src_dbus_qt_libsyncevolution_qt_dbus_la_OBJECTS =  \
-@ENABLE_QT_DBUS_TRUE@	$(am__objects_15)
+@ENABLE_QT_DBUS_TRUE@	$(am__objects_16)
 src_dbus_qt_libsyncevolution_qt_dbus_la_OBJECTS =  \
 	$(dist_src_dbus_qt_libsyncevolution_qt_dbus_la_OBJECTS) \
 	$(nodist_src_dbus_qt_libsyncevolution_qt_dbus_la_OBJECTS)
@@ -884,13 +937,13 @@ am__src_dbus_server_libsyncevodbushelper_la_SOURCES_DIST =  \
 	src/dbus/server/session-helper.cpp \
 	src/dbus/server/session-common.h \
 	src/dbus/server/sync-helper.cpp
-@COND_DBUS_TRUE@am__objects_16 = $(am__objects_13)
-@COND_DBUS_TRUE@am__objects_17 = src/dbus/server/src_dbus_server_libsyncevodbushelper_la-dbus-callbacks.lo \
+@COND_DBUS_TRUE@am__objects_17 = $(am__objects_14)
+@COND_DBUS_TRUE@am__objects_18 = src/dbus/server/src_dbus_server_libsyncevodbushelper_la-dbus-callbacks.lo \
 @COND_DBUS_TRUE@	src/dbus/server/src_dbus_server_libsyncevodbushelper_la-dbus-sync.lo \
 @COND_DBUS_TRUE@	src/dbus/server/src_dbus_server_libsyncevodbushelper_la-dbus-transport-agent.lo \
 @COND_DBUS_TRUE@	src/dbus/server/src_dbus_server_libsyncevodbushelper_la-session-helper.lo
 @COND_DBUS_TRUE@am_src_dbus_server_libsyncevodbushelper_la_OBJECTS =  \
-@COND_DBUS_TRUE@	$(am__objects_16) $(am__objects_17) \
+@COND_DBUS_TRUE@	$(am__objects_17) $(am__objects_18) \
 @COND_DBUS_TRUE@	src/dbus/server/src_dbus_server_libsyncevodbushelper_la-sync-helper.lo
 src_dbus_server_libsyncevodbushelper_la_OBJECTS =  \
 	$(am_src_dbus_server_libsyncevodbushelper_la_OBJECTS)
@@ -899,9 +952,13 @@ src_dbus_server_libsyncevodbushelper_la_LINK = $(LIBTOOL) $(AM_V_lt) \
 	$(CXXLD) $(src_dbus_server_libsyncevodbushelper_la_CXXFLAGS) \
 	$(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
 @COND_DBUS_TRUE@am_src_dbus_server_libsyncevodbushelper_la_rpath =
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@am__DEPENDENCIES_2 =  \
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@	$(am__DEPENDENCIES_1) \
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@	$(am__DEPENDENCIES_1) \
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@	$(am__DEPENDENCIES_1)
 @COND_DBUS_TRUE@src_dbus_server_libsyncevodbusserver_la_DEPENDENCIES =  \
 @COND_DBUS_TRUE@	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
-@COND_DBUS_TRUE@	$(am__DEPENDENCIES_1)
+@COND_DBUS_TRUE@	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_2)
 am__src_dbus_server_libsyncevodbusserver_la_SOURCES_DIST =  \
 	src/dbus/server/notification-backend-noop.h \
 	src/dbus/server/notification-backend-libnotify.h \
@@ -917,7 +974,13 @@ am__src_dbus_server_libsyncevodbusserver_la_SOURCES_DIST =  \
 	src/dbus/server/presence-status.h \
 	src/dbus/server/progress-data.h \
 	src/dbus/server/read-operations.h src/dbus/server/server.h \
-	src/dbus/server/session.h \
+	src/dbus/server/session.h src/dbus/server/pim/view.h \
+	src/dbus/server/pim/full-view.h \
+	src/dbus/server/pim/filtered-view.h \
+	src/dbus/server/pim/edsf-view.h \
+	src/dbus/server/pim/merge-view.h \
+	src/dbus/server/pim/individual-traits.h \
+	src/dbus/server/pim/folks.h src/dbus/server/pim/manager.h \
 	src/dbus/server/notification-backend-base.h \
 	src/dbus/server/notification-manager.h \
 	src/dbus/server/notification-manager-base.h \
@@ -926,7 +989,8 @@ am__src_dbus_server_libsyncevodbusserver_la_SOURCES_DIST =  \
 	src/dbus/server/session-common.h \
 	src/dbus/server/source-progress.h \
 	src/dbus/server/source-status.h src/dbus/server/timeout.h \
-	src/dbus/server/timer.h \
+	src/dbus/server/timer.h src/dbus/server/pim/locale-factory.h \
+	src/dbus/server/pim/persona-details.h \
 	src/dbus/server/notification-backend-noop.cpp \
 	src/dbus/server/notification-backend-libnotify.cpp \
 	src/dbus/server/notification-backend-mlite.cpp \
@@ -942,8 +1006,24 @@ am__src_dbus_server_libsyncevodbusserver_la_SOURCES_DIST =  \
 	src/dbus/server/presence-status.cpp \
 	src/dbus/server/progress-data.cpp \
 	src/dbus/server/read-operations.cpp src/dbus/server/server.cpp \
-	src/dbus/server/session.cpp src/dbus/server/main.cpp
-@COND_DBUS_TRUE@am__objects_18 = src/dbus/server/src_dbus_server_libsyncevodbusserver_la-notification-backend-noop.lo \
+	src/dbus/server/session.cpp src/dbus/server/pim/view.cpp \
+	src/dbus/server/pim/full-view.cpp \
+	src/dbus/server/pim/filtered-view.cpp \
+	src/dbus/server/pim/edsf-view.cpp \
+	src/dbus/server/pim/merge-view.cpp \
+	src/dbus/server/pim/individual-traits.cpp \
+	src/dbus/server/pim/folks.cpp src/dbus/server/pim/manager.cpp \
+	src/dbus/server/main.cpp
+@COND_DBUS_TRUE@am__objects_19 = $(am__objects_17) $(am__objects_14)
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@am__objects_20 = src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-view.lo \
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@	src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-full-view.lo \
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@	src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-filtered-view.lo \
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@	src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-edsf-view.lo \
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@	src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-merge-view.lo \
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@	src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-individual-traits.lo \
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@	src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-folks.lo \
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@	src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-manager.lo
+@COND_DBUS_TRUE@am__objects_21 = src/dbus/server/src_dbus_server_libsyncevodbusserver_la-notification-backend-noop.lo \
 @COND_DBUS_TRUE@	src/dbus/server/src_dbus_server_libsyncevodbusserver_la-notification-backend-libnotify.lo \
 @COND_DBUS_TRUE@	src/dbus/server/src_dbus_server_libsyncevodbusserver_la-notification-backend-mlite.lo \
 @COND_DBUS_TRUE@	src/dbus/server/src_dbus_server_libsyncevodbusserver_la-notification-manager-factory.lo \
@@ -961,16 +1041,22 @@ am__src_dbus_server_libsyncevodbusserver_la_SOURCES_DIST =  \
 @COND_DBUS_TRUE@	src/dbus/server/src_dbus_server_libsyncevodbusserver_la-progress-data.lo \
 @COND_DBUS_TRUE@	src/dbus/server/src_dbus_server_libsyncevodbusserver_la-read-operations.lo \
 @COND_DBUS_TRUE@	src/dbus/server/src_dbus_server_libsyncevodbusserver_la-server.lo \
-@COND_DBUS_TRUE@	src/dbus/server/src_dbus_server_libsyncevodbusserver_la-session.lo
+@COND_DBUS_TRUE@	src/dbus/server/src_dbus_server_libsyncevodbusserver_la-session.lo \
+@COND_DBUS_TRUE@	$(am__objects_20)
 @COND_DBUS_TRUE@am_src_dbus_server_libsyncevodbusserver_la_OBJECTS =  \
-@COND_DBUS_TRUE@	$(am__objects_16) $(am__objects_18) \
+@COND_DBUS_TRUE@	$(am__objects_19) $(am__objects_21) \
 @COND_DBUS_TRUE@	src/dbus/server/src_dbus_server_libsyncevodbusserver_la-main.lo
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@am__objects_22 = src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-locale-factory-@DBUS_PIM_PLUGIN@.lo
+@COND_DBUS_TRUE@nodist_src_dbus_server_libsyncevodbusserver_la_OBJECTS =  \
+@COND_DBUS_TRUE@	$(am__objects_22)
 src_dbus_server_libsyncevodbusserver_la_OBJECTS =  \
-	$(am_src_dbus_server_libsyncevodbusserver_la_OBJECTS)
+	$(am_src_dbus_server_libsyncevodbusserver_la_OBJECTS) \
+	$(nodist_src_dbus_server_libsyncevodbusserver_la_OBJECTS)
 src_dbus_server_libsyncevodbusserver_la_LINK = $(LIBTOOL) $(AM_V_lt) \
 	--tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link \
 	$(CXXLD) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) \
-	$(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
+	$(CXXFLAGS) $(src_dbus_server_libsyncevodbusserver_la_LDFLAGS) \
+	$(LDFLAGS) -o $@
 @COND_DBUS_TRUE@am_src_dbus_server_libsyncevodbusserver_la_rpath =
 src_gdbus_libgdbussyncevo_la_DEPENDENCIES =
 am__src_gdbus_libgdbussyncevo_la_SOURCES_DIST = src/gdbus/debug.h \
@@ -1025,16 +1111,18 @@ src_gnome_bluetooth_libgbtsyncevolution_la_LINK = $(LIBTOOL) \
 @ENABLE_GNOME_BLUETOOTH_PANEL_TRUE@am_src_gnome_bluetooth_libgbtsyncevolution_la_rpath =  \
 @ENABLE_GNOME_BLUETOOTH_PANEL_TRUE@	-rpath \
 @ENABLE_GNOME_BLUETOOTH_PANEL_TRUE@	$(src_gnome_bluetoothdir)
-@COND_CORE_TRUE@@ENABLE_UNIT_TESTS_TRUE@am__DEPENDENCIES_2 =  \
+@COND_CORE_TRUE@@ENABLE_UNIT_TESTS_TRUE@am__DEPENDENCIES_3 =  \
 @COND_CORE_TRUE@@ENABLE_UNIT_TESTS_TRUE@	$(am__DEPENDENCIES_1)
-@COND_CORE_TRUE@@ENABLE_OBEX_TRUE@am__DEPENDENCIES_3 =  \
+@COND_CORE_TRUE@@ENABLE_OBEX_TRUE@am__DEPENDENCIES_4 =  \
 @COND_CORE_TRUE@@ENABLE_OBEX_TRUE@	$(am__DEPENDENCIES_1)
-@COND_CORE_TRUE@@ENABLE_BLUETOOTH_TRUE@@ENABLE_OBEX_TRUE@am__DEPENDENCIES_4 = $(am__DEPENDENCIES_1)
-@COND_CORE_TRUE@am__DEPENDENCIES_5 =  \
+@COND_CORE_TRUE@@ENABLE_BLUETOOTH_TRUE@@ENABLE_OBEX_TRUE@am__DEPENDENCIES_5 = $(am__DEPENDENCIES_1)
+@COND_CORE_TRUE@am__DEPENDENCIES_6 =  \
 @COND_CORE_TRUE@	$(gdbus_build_dir)/libgdbussyncevo.la \
-@COND_CORE_TRUE@	$(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3) \
-@COND_CORE_TRUE@	$(am__DEPENDENCIES_4)
+@COND_CORE_TRUE@	$(am__DEPENDENCIES_3) $(am__DEPENDENCIES_4) \
+@COND_CORE_TRUE@	$(am__DEPENDENCIES_5)
 am__src_syncevo_libsyncevolution_la_SOURCES_DIST =  \
+	src/syncevo/GeeSupport.h src/syncevo/GValueSupport.h \
+	src/syncevo/EDSClient.h src/syncevo/EDSClient.cpp \
 	src/syncevo/ConfigTree.h src/syncevo/ConfigFilter.h \
 	src/syncevo/ConfigFilter.cpp src/syncevo/ConfigNode.h \
 	src/syncevo/ConfigNode.cpp src/syncevo/DBusTraits.h \
@@ -1056,6 +1144,7 @@ am__src_syncevo_libsyncevolution_la_SOURCES_DIST =  \
 	src/syncevo/LocalTransportAgent.h \
 	src/syncevo/LocalTransportAgent.cpp src/syncevo/util.cpp \
 	src/syncevo/util.h src/syncevo/BoostHelper.h \
+	src/syncevo/TmpFile.cpp src/syncevo/TmpFile.h \
 	src/syncevo/Timespec.h src/syncevo/lcs.h src/syncevo/lcs.cpp \
 	src/syncevo/ForkExec.cpp src/syncevo/ForkExec.h \
 	src/syncevo/Cmdline.cpp src/syncevo/Cmdline.h \
@@ -1085,9 +1174,10 @@ am__src_syncevo_libsyncevolution_la_SOURCES_DIST =  \
 	src/syncevo/TrackingSyncSource.cpp src/syncevo/icalstrdup.c \
 	src/syncevo/icalstrdup.h src/syncevo/ObexTransportAgent.h \
 	src/syncevo/ObexTransportAgent.cpp
-@COND_CORE_TRUE@@ENABLE_ICAL_TRUE@am__objects_19 = src/syncevo/src_syncevo_libsyncevolution_la-icalstrdup.lo
-@COND_CORE_TRUE@@ENABLE_OBEX_TRUE@am__objects_20 = src/syncevo/src_syncevo_libsyncevolution_la-ObexTransportAgent.lo
-@COND_CORE_TRUE@am__objects_21 = src/syncevo/src_syncevo_libsyncevolution_la-ConfigFilter.lo \
+@COND_CORE_TRUE@@ENABLE_ICAL_TRUE@am__objects_23 = src/syncevo/src_syncevo_libsyncevolution_la-icalstrdup.lo
+@COND_CORE_TRUE@@ENABLE_OBEX_TRUE@am__objects_24 = src/syncevo/src_syncevo_libsyncevolution_la-ObexTransportAgent.lo
+@COND_CORE_TRUE@am__objects_25 = src/syncevo/src_syncevo_libsyncevolution_la-EDSClient.lo \
+@COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-ConfigFilter.lo \
 @COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-ConfigNode.lo \
 @COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-eds_abi_wrapper.lo \
 @COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-GLibSupport.lo \
@@ -1102,6 +1192,7 @@ am__src_syncevo_libsyncevolution_la_SOURCES_DIST =  \
 @COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-SoupTransportAgent.lo \
 @COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-LocalTransportAgent.lo \
 @COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-util.lo \
+@COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-TmpFile.lo \
 @COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-lcs.lo \
 @COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-ForkExec.lo \
 @COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-Cmdline.lo \
@@ -1124,9 +1215,9 @@ am__src_syncevo_libsyncevolution_la_SOURCES_DIST =  \
 @COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-FileConfigTree.lo \
 @COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-MapSyncSource.lo \
 @COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-TrackingSyncSource.lo \
-@COND_CORE_TRUE@	$(am__objects_19) $(am__objects_20)
+@COND_CORE_TRUE@	$(am__objects_23) $(am__objects_24)
 @COND_CORE_TRUE@am_src_syncevo_libsyncevolution_la_OBJECTS =  \
-@COND_CORE_TRUE@	$(am__objects_21)
+@COND_CORE_TRUE@	$(am__objects_25)
 @COND_CORE_TRUE@nodist_src_syncevo_libsyncevolution_la_OBJECTS = src/syncevo/src_syncevo_libsyncevolution_la-SyncEvolutionXML.lo
 src_syncevo_libsyncevolution_la_OBJECTS =  \
 	$(am_src_syncevo_libsyncevolution_la_OBJECTS) \
@@ -1159,8 +1250,8 @@ PROGRAMS = $(bin_PROGRAMS) $(libexec_PROGRAMS) $(noinst_PROGRAMS)
 am_src_abort_redirect_OBJECTS =  \
 	test/src_abort_redirect-abort-redirect.$(OBJEXT)
 src_abort_redirect_OBJECTS = $(am_src_abort_redirect_OBJECTS)
-am__DEPENDENCIES_6 = $(am__DEPENDENCIES_1)
-am__DEPENDENCIES_7 = $(am__DEPENDENCIES_6) \
+am__DEPENDENCIES_7 = $(am__DEPENDENCIES_1)
+am__DEPENDENCIES_8 = $(am__DEPENDENCIES_7) \
 	src/syncevo/libsyncevolution.la $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1)
@@ -1181,11 +1272,12 @@ am__src_client_test_SOURCES_DIST = src/client-test-app.cpp \
 	src/backends/kcalextended/KCalExtendedSourceRegister.cpp \
 	src/backends/kde/KDEPlatformRegister.cpp \
 	src/backends/maemo/MaemoCalendarSourceRegister.cpp \
+	src/backends/pbap/PbapSyncSourceRegister.cpp \
 	src/backends/qtcontacts/QtContactsSourceRegister.cpp \
 	src/backends/sqlite/SQLiteContactSourceRegister.cpp \
 	src/backends/webdav/WebDAVSourceRegister.cpp \
 	src/backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
-@COND_CORE_TRUE@am__objects_22 = src/backends/activesync/src_client_test-ActiveSyncSourceRegister.$(OBJEXT) \
+@COND_CORE_TRUE@am__objects_26 = src/backends/activesync/src_client_test-ActiveSyncSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/addressbook/src_client_test-AddressBookSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/akonadi/src_client_test-AkonadiSyncSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/evolution/src_client_test-EvolutionCalendarSourceRegister.$(OBJEXT) \
@@ -1195,21 +1287,22 @@ am__src_client_test_SOURCES_DIST = src/client-test-app.cpp \
 @COND_CORE_TRUE@	src/backends/kcalextended/src_client_test-KCalExtendedSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/kde/src_client_test-KDEPlatformRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/maemo/src_client_test-MaemoCalendarSourceRegister.$(OBJEXT) \
+@COND_CORE_TRUE@	src/backends/pbap/src_client_test-PbapSyncSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/qtcontacts/src_client_test-QtContactsSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/sqlite/src_client_test-SQLiteContactSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/webdav/src_client_test-WebDAVSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/xmlrpc/src_client_test-XMLRPCSyncSourceRegister.$(OBJEXT)
-@ENABLE_MODULES_FALSE@am__objects_23 = $(am__objects_22)
-am__objects_24 = $(am__objects_23)
+@ENABLE_MODULES_FALSE@am__objects_27 = $(am__objects_26)
+am__objects_28 = $(am__objects_27)
 am_src_client_test_OBJECTS =  \
 	src/src_client_test-client-test-app.$(OBJEXT) \
 	test/src_client_test-ClientTest.$(OBJEXT) \
 	test/src_client_test-client-test-main.$(OBJEXT) \
-	$(am__objects_24)
-am__objects_25 = $(am__objects_13)
-@ENABLE_TESTING_FALSE@am__objects_26 = $(am__objects_25)
+	$(am__objects_28)
+am__objects_29 = $(am__objects_14)
+@ENABLE_TESTING_FALSE@am__objects_30 = $(am__objects_29)
 nodist_src_client_test_OBJECTS = test/src_client_test-test.$(OBJEXT) \
-	$(am__objects_26)
+	$(am__objects_30)
 src_client_test_OBJECTS = $(am_src_client_test_OBJECTS) \
 	$(nodist_src_client_test_OBJECTS)
 src_client_test_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
@@ -1276,21 +1369,21 @@ am__src_gtk_ui_sync_ui_gtk_SOURCES_DIST = src/gtk-ui/main.c \
 	src/gtk-ui/sync-config-widget.c \
 	src/gtk-ui/sync-config-widget.h src/gtk-ui/gtkinfobar.c \
 	src/gtk-ui/gtkinfobar.h
-@COND_GTK2_TRUE@@COND_GUI_TRUE@am__objects_27 = src/gtk-ui/src_gtk_ui_sync_ui_gtk-main.$(OBJEXT) \
+@COND_GTK2_TRUE@@COND_GUI_TRUE@am__objects_31 = src/gtk-ui/src_gtk_ui_sync_ui_gtk-main.$(OBJEXT) \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@	src/gtk-ui/src_gtk_ui_sync_ui_gtk-sync-ui.$(OBJEXT) \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@	src/gtk-ui/src_gtk_ui_sync_ui_gtk-sync-ui-config.$(OBJEXT) \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@	src/gtk-ui/src_gtk_ui_sync_ui_gtk-mux-frame.$(OBJEXT) \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@	src/gtk-ui/src_gtk_ui_sync_ui_gtk-sync-config-widget.$(OBJEXT) \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@	src/gtk-ui/src_gtk_ui_sync_ui_gtk-gtkinfobar.$(OBJEXT)
 @COND_GTK2_TRUE@@COND_GUI_TRUE@am_src_gtk_ui_sync_ui_gtk_OBJECTS =  \
-@COND_GTK2_TRUE@@COND_GUI_TRUE@	$(am__objects_27)
+@COND_GTK2_TRUE@@COND_GUI_TRUE@	$(am__objects_31)
 src_gtk_ui_sync_ui_gtk_OBJECTS = $(am_src_gtk_ui_sync_ui_gtk_OBJECTS)
-@COND_GTK2_TRUE@@COND_GUI_TRUE@am__DEPENDENCIES_8 =  \
+@COND_GTK2_TRUE@@COND_GUI_TRUE@am__DEPENDENCIES_9 =  \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@	$(am__DEPENDENCIES_1) \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@	$(am__DEPENDENCIES_1) \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@	$(top_builddir)/src/dbus/glib/libsyncevo-dbus.la
 @COND_GTK2_TRUE@@COND_GUI_TRUE@src_gtk_ui_sync_ui_gtk_DEPENDENCIES =  \
-@COND_GTK2_TRUE@@COND_GUI_TRUE@	$(am__DEPENDENCIES_8)
+@COND_GTK2_TRUE@@COND_GUI_TRUE@	$(am__DEPENDENCIES_9)
 src_gtk_ui_sync_ui_gtk_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
 	$(src_gtk_ui_sync_ui_gtk_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
@@ -1302,18 +1395,18 @@ am__src_gtk_ui_sync_ui_moblin_SOURCES_DIST = src/gtk-ui/main.c \
 	src/gtk-ui/sync-config-widget.c \
 	src/gtk-ui/sync-config-widget.h src/gtk-ui/gtkinfobar.c \
 	src/gtk-ui/gtkinfobar.h
-@COND_GTK2_TRUE@@COND_GUI_TRUE@am__objects_28 = src/gtk-ui/src_gtk_ui_sync_ui_moblin-main.$(OBJEXT) \
+@COND_GTK2_TRUE@@COND_GUI_TRUE@am__objects_32 = src/gtk-ui/src_gtk_ui_sync_ui_moblin-main.$(OBJEXT) \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@	src/gtk-ui/src_gtk_ui_sync_ui_moblin-sync-ui.$(OBJEXT) \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@	src/gtk-ui/src_gtk_ui_sync_ui_moblin-sync-ui-config.$(OBJEXT) \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@	src/gtk-ui/src_gtk_ui_sync_ui_moblin-mux-frame.$(OBJEXT) \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@	src/gtk-ui/src_gtk_ui_sync_ui_moblin-sync-config-widget.$(OBJEXT) \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@	src/gtk-ui/src_gtk_ui_sync_ui_moblin-gtkinfobar.$(OBJEXT)
 @COND_GTK2_TRUE@@COND_GUI_TRUE@am_src_gtk_ui_sync_ui_moblin_OBJECTS =  \
-@COND_GTK2_TRUE@@COND_GUI_TRUE@	$(am__objects_28)
+@COND_GTK2_TRUE@@COND_GUI_TRUE@	$(am__objects_32)
 src_gtk_ui_sync_ui_moblin_OBJECTS =  \
 	$(am_src_gtk_ui_sync_ui_moblin_OBJECTS)
 @COND_GTK2_TRUE@@COND_GUI_TRUE@src_gtk_ui_sync_ui_moblin_DEPENDENCIES =  \
-@COND_GTK2_TRUE@@COND_GUI_TRUE@	$(am__DEPENDENCIES_8)
+@COND_GTK2_TRUE@@COND_GUI_TRUE@	$(am__DEPENDENCIES_9)
 src_gtk_ui_sync_ui_moblin_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
 	$(src_gtk_ui_sync_ui_moblin_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
@@ -1344,21 +1437,21 @@ am__src_gtk3_ui_sync_ui_gtk_SOURCES_DIST = src/gtk3-ui/main.c \
 	src/gtk3-ui/mux-frame.c src/gtk3-ui/mux-frame.h \
 	src/gtk3-ui/sync-config-widget.c \
 	src/gtk3-ui/sync-config-widget.h
-@COND_GTK2_FALSE@@COND_GUI_TRUE@am__objects_29 = src/gtk3-ui/src_gtk3_ui_sync_ui_gtk-main.$(OBJEXT) \
+@COND_GTK2_FALSE@@COND_GUI_TRUE@am__objects_33 = src/gtk3-ui/src_gtk3_ui_sync_ui_gtk-main.$(OBJEXT) \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@	src/gtk3-ui/src_gtk3_ui_sync_ui_gtk-sync-ui.$(OBJEXT) \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@	src/gtk3-ui/src_gtk3_ui_sync_ui_gtk-sync-ui-config.$(OBJEXT) \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@	src/gtk3-ui/src_gtk3_ui_sync_ui_gtk-mux-frame.$(OBJEXT) \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@	src/gtk3-ui/src_gtk3_ui_sync_ui_gtk-sync-config-widget.$(OBJEXT)
 @COND_GTK2_FALSE@@COND_GUI_TRUE@am_src_gtk3_ui_sync_ui_gtk_OBJECTS =  \
-@COND_GTK2_FALSE@@COND_GUI_TRUE@	$(am__objects_29)
+@COND_GTK2_FALSE@@COND_GUI_TRUE@	$(am__objects_33)
 src_gtk3_ui_sync_ui_gtk_OBJECTS =  \
 	$(am_src_gtk3_ui_sync_ui_gtk_OBJECTS)
-@COND_GTK2_FALSE@@COND_GUI_TRUE@am__DEPENDENCIES_9 =  \
+@COND_GTK2_FALSE@@COND_GUI_TRUE@am__DEPENDENCIES_10 =  \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@	$(am__DEPENDENCIES_1) \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@	$(am__DEPENDENCIES_1) \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@	$(top_builddir)/src/dbus/glib/libsyncevo-dbus.la
 @COND_GTK2_FALSE@@COND_GUI_TRUE@src_gtk3_ui_sync_ui_gtk_DEPENDENCIES =  \
-@COND_GTK2_FALSE@@COND_GUI_TRUE@	$(am__DEPENDENCIES_9)
+@COND_GTK2_FALSE@@COND_GUI_TRUE@	$(am__DEPENDENCIES_10)
 src_gtk3_ui_sync_ui_gtk_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
 	$(src_gtk3_ui_sync_ui_gtk_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
@@ -1369,17 +1462,17 @@ am__src_gtk3_ui_sync_ui_moblin_SOURCES_DIST = src/gtk3-ui/main.c \
 	src/gtk3-ui/mux-frame.c src/gtk3-ui/mux-frame.h \
 	src/gtk3-ui/sync-config-widget.c \
 	src/gtk3-ui/sync-config-widget.h
-@COND_GTK2_FALSE@@COND_GUI_TRUE@am__objects_30 = src/gtk3-ui/src_gtk3_ui_sync_ui_moblin-main.$(OBJEXT) \
+@COND_GTK2_FALSE@@COND_GUI_TRUE@am__objects_34 = src/gtk3-ui/src_gtk3_ui_sync_ui_moblin-main.$(OBJEXT) \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@	src/gtk3-ui/src_gtk3_ui_sync_ui_moblin-sync-ui.$(OBJEXT) \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@	src/gtk3-ui/src_gtk3_ui_sync_ui_moblin-sync-ui-config.$(OBJEXT) \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@	src/gtk3-ui/src_gtk3_ui_sync_ui_moblin-mux-frame.$(OBJEXT) \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@	src/gtk3-ui/src_gtk3_ui_sync_ui_moblin-sync-config-widget.$(OBJEXT)
 @COND_GTK2_FALSE@@COND_GUI_TRUE@am_src_gtk3_ui_sync_ui_moblin_OBJECTS =  \
-@COND_GTK2_FALSE@@COND_GUI_TRUE@	$(am__objects_30)
+@COND_GTK2_FALSE@@COND_GUI_TRUE@	$(am__objects_34)
 src_gtk3_ui_sync_ui_moblin_OBJECTS =  \
 	$(am_src_gtk3_ui_sync_ui_moblin_OBJECTS)
 @COND_GTK2_FALSE@@COND_GUI_TRUE@src_gtk3_ui_sync_ui_moblin_DEPENDENCIES =  \
-@COND_GTK2_FALSE@@COND_GUI_TRUE@	$(am__DEPENDENCIES_9)
+@COND_GTK2_FALSE@@COND_GUI_TRUE@	$(am__DEPENDENCIES_10)
 src_gtk3_ui_sync_ui_moblin_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
 	$(src_gtk3_ui_sync_ui_moblin_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
@@ -1395,11 +1488,12 @@ am__src_syncevo_dbus_helper_SOURCES_DIST =  \
 	src/backends/kcalextended/KCalExtendedSourceRegister.cpp \
 	src/backends/kde/KDEPlatformRegister.cpp \
 	src/backends/maemo/MaemoCalendarSourceRegister.cpp \
+	src/backends/pbap/PbapSyncSourceRegister.cpp \
 	src/backends/qtcontacts/QtContactsSourceRegister.cpp \
 	src/backends/sqlite/SQLiteContactSourceRegister.cpp \
 	src/backends/webdav/WebDAVSourceRegister.cpp \
 	src/backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
-@COND_CORE_TRUE@am__objects_31 = src/backends/activesync/src_syncevo_dbus_helper-ActiveSyncSourceRegister.$(OBJEXT) \
+@COND_CORE_TRUE@am__objects_35 = src/backends/activesync/src_syncevo_dbus_helper-ActiveSyncSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/addressbook/src_syncevo_dbus_helper-AddressBookSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/akonadi/src_syncevo_dbus_helper-AkonadiSyncSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/evolution/src_syncevo_dbus_helper-EvolutionCalendarSourceRegister.$(OBJEXT) \
@@ -1409,14 +1503,15 @@ am__src_syncevo_dbus_helper_SOURCES_DIST =  \
 @COND_CORE_TRUE@	src/backends/kcalextended/src_syncevo_dbus_helper-KCalExtendedSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/kde/src_syncevo_dbus_helper-KDEPlatformRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/maemo/src_syncevo_dbus_helper-MaemoCalendarSourceRegister.$(OBJEXT) \
+@COND_CORE_TRUE@	src/backends/pbap/src_syncevo_dbus_helper-PbapSyncSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/qtcontacts/src_syncevo_dbus_helper-QtContactsSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/sqlite/src_syncevo_dbus_helper-SQLiteContactSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/webdav/src_syncevo_dbus_helper-WebDAVSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/xmlrpc/src_syncevo_dbus_helper-XMLRPCSyncSourceRegister.$(OBJEXT)
-@ENABLE_MODULES_FALSE@am__objects_32 = $(am__objects_31)
-am__objects_33 = $(am__objects_32)
+@ENABLE_MODULES_FALSE@am__objects_36 = $(am__objects_35)
+am__objects_37 = $(am__objects_36)
 @COND_DBUS_TRUE@am_src_syncevo_dbus_helper_OBJECTS =  \
-@COND_DBUS_TRUE@	$(am__objects_33)
+@COND_DBUS_TRUE@	$(am__objects_37)
 @COND_DBUS_TRUE@@ENABLE_UNIT_TESTS_TRUE@nodist_src_syncevo_dbus_helper_OBJECTS = test/src_syncevo_dbus_helper-test.$(OBJEXT)
 src_syncevo_dbus_helper_OBJECTS =  \
 	$(am_src_syncevo_dbus_helper_OBJECTS) \
@@ -1436,11 +1531,12 @@ am__src_syncevo_dbus_server_SOURCES_DIST =  \
 	src/backends/kcalextended/KCalExtendedSourceRegister.cpp \
 	src/backends/kde/KDEPlatformRegister.cpp \
 	src/backends/maemo/MaemoCalendarSourceRegister.cpp \
+	src/backends/pbap/PbapSyncSourceRegister.cpp \
 	src/backends/qtcontacts/QtContactsSourceRegister.cpp \
 	src/backends/sqlite/SQLiteContactSourceRegister.cpp \
 	src/backends/webdav/WebDAVSourceRegister.cpp \
 	src/backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
-@COND_CORE_TRUE@am__objects_34 = src/backends/activesync/src_syncevo_dbus_server-ActiveSyncSourceRegister.$(OBJEXT) \
+@COND_CORE_TRUE@am__objects_38 = src/backends/activesync/src_syncevo_dbus_server-ActiveSyncSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/addressbook/src_syncevo_dbus_server-AddressBookSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/akonadi/src_syncevo_dbus_server-AkonadiSyncSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/evolution/src_syncevo_dbus_server-EvolutionCalendarSourceRegister.$(OBJEXT) \
@@ -1450,14 +1546,15 @@ am__src_syncevo_dbus_server_SOURCES_DIST =  \
 @COND_CORE_TRUE@	src/backends/kcalextended/src_syncevo_dbus_server-KCalExtendedSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/kde/src_syncevo_dbus_server-KDEPlatformRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/maemo/src_syncevo_dbus_server-MaemoCalendarSourceRegister.$(OBJEXT) \
+@COND_CORE_TRUE@	src/backends/pbap/src_syncevo_dbus_server-PbapSyncSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/qtcontacts/src_syncevo_dbus_server-QtContactsSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/sqlite/src_syncevo_dbus_server-SQLiteContactSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/webdav/src_syncevo_dbus_server-WebDAVSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/xmlrpc/src_syncevo_dbus_server-XMLRPCSyncSourceRegister.$(OBJEXT)
-@ENABLE_MODULES_FALSE@am__objects_35 = $(am__objects_34)
-am__objects_36 = $(am__objects_35)
+@ENABLE_MODULES_FALSE@am__objects_39 = $(am__objects_38)
+am__objects_40 = $(am__objects_39)
 @COND_DBUS_TRUE@am_src_syncevo_dbus_server_OBJECTS =  \
-@COND_DBUS_TRUE@	$(am__objects_36)
+@COND_DBUS_TRUE@	$(am__objects_40)
 @COND_DBUS_TRUE@@ENABLE_UNIT_TESTS_TRUE@nodist_src_syncevo_dbus_server_OBJECTS = test/src_syncevo_dbus_server-test.$(OBJEXT)
 src_syncevo_dbus_server_OBJECTS =  \
 	$(am_src_syncevo_dbus_server_OBJECTS) \
@@ -1477,11 +1574,12 @@ am__src_syncevo_local_sync_SOURCES_DIST = src/syncevo-local-sync.cpp \
 	src/backends/kcalextended/KCalExtendedSourceRegister.cpp \
 	src/backends/kde/KDEPlatformRegister.cpp \
 	src/backends/maemo/MaemoCalendarSourceRegister.cpp \
+	src/backends/pbap/PbapSyncSourceRegister.cpp \
 	src/backends/qtcontacts/QtContactsSourceRegister.cpp \
 	src/backends/sqlite/SQLiteContactSourceRegister.cpp \
 	src/backends/webdav/WebDAVSourceRegister.cpp \
 	src/backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
-@COND_CORE_TRUE@am__objects_37 = src/backends/activesync/src_syncevo_local_sync-ActiveSyncSourceRegister.$(OBJEXT) \
+@COND_CORE_TRUE@am__objects_41 = src/backends/activesync/src_syncevo_local_sync-ActiveSyncSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/addressbook/src_syncevo_local_sync-AddressBookSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/akonadi/src_syncevo_local_sync-AkonadiSyncSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/evolution/src_syncevo_local_sync-EvolutionCalendarSourceRegister.$(OBJEXT) \
@@ -1491,15 +1589,16 @@ am__src_syncevo_local_sync_SOURCES_DIST = src/syncevo-local-sync.cpp \
 @COND_CORE_TRUE@	src/backends/kcalextended/src_syncevo_local_sync-KCalExtendedSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/kde/src_syncevo_local_sync-KDEPlatformRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/maemo/src_syncevo_local_sync-MaemoCalendarSourceRegister.$(OBJEXT) \
+@COND_CORE_TRUE@	src/backends/pbap/src_syncevo_local_sync-PbapSyncSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/qtcontacts/src_syncevo_local_sync-QtContactsSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/sqlite/src_syncevo_local_sync-SQLiteContactSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/webdav/src_syncevo_local_sync-WebDAVSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/xmlrpc/src_syncevo_local_sync-XMLRPCSyncSourceRegister.$(OBJEXT)
-@ENABLE_MODULES_FALSE@am__objects_38 = $(am__objects_37)
-am__objects_39 = $(am__objects_38)
+@ENABLE_MODULES_FALSE@am__objects_42 = $(am__objects_41)
+am__objects_43 = $(am__objects_42)
 am_src_syncevo_local_sync_OBJECTS =  \
 	src/src_syncevo_local_sync-syncevo-local-sync.$(OBJEXT) \
-	$(am__objects_39)
+	$(am__objects_43)
 @ENABLE_UNIT_TESTS_TRUE@nodist_src_syncevo_local_sync_OBJECTS = test/src_syncevo_local_sync-test.$(OBJEXT)
 src_syncevo_local_sync_OBJECTS = $(am_src_syncevo_local_sync_OBJECTS) \
 	$(nodist_src_syncevo_local_sync_OBJECTS)
@@ -1518,11 +1617,12 @@ am__src_syncevolution_SOURCES_DIST = src/syncevolution.cpp \
 	src/backends/kcalextended/KCalExtendedSourceRegister.cpp \
 	src/backends/kde/KDEPlatformRegister.cpp \
 	src/backends/maemo/MaemoCalendarSourceRegister.cpp \
+	src/backends/pbap/PbapSyncSourceRegister.cpp \
 	src/backends/qtcontacts/QtContactsSourceRegister.cpp \
 	src/backends/sqlite/SQLiteContactSourceRegister.cpp \
 	src/backends/webdav/WebDAVSourceRegister.cpp \
 	src/backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
-@COND_CORE_TRUE@am__objects_40 = src/backends/activesync/src_syncevolution-ActiveSyncSourceRegister.$(OBJEXT) \
+@COND_CORE_TRUE@am__objects_44 = src/backends/activesync/src_syncevolution-ActiveSyncSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/addressbook/src_syncevolution-AddressBookSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/akonadi/src_syncevolution-AkonadiSyncSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/evolution/src_syncevolution-EvolutionCalendarSourceRegister.$(OBJEXT) \
@@ -1532,15 +1632,16 @@ am__src_syncevolution_SOURCES_DIST = src/syncevolution.cpp \
 @COND_CORE_TRUE@	src/backends/kcalextended/src_syncevolution-KCalExtendedSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/kde/src_syncevolution-KDEPlatformRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/maemo/src_syncevolution-MaemoCalendarSourceRegister.$(OBJEXT) \
+@COND_CORE_TRUE@	src/backends/pbap/src_syncevolution-PbapSyncSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/qtcontacts/src_syncevolution-QtContactsSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/sqlite/src_syncevolution-SQLiteContactSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/webdav/src_syncevolution-WebDAVSourceRegister.$(OBJEXT) \
 @COND_CORE_TRUE@	src/backends/xmlrpc/src_syncevolution-XMLRPCSyncSourceRegister.$(OBJEXT)
-@ENABLE_MODULES_FALSE@am__objects_41 = $(am__objects_40)
-am__objects_42 = $(am__objects_41)
+@ENABLE_MODULES_FALSE@am__objects_45 = $(am__objects_44)
+am__objects_46 = $(am__objects_45)
 am_src_syncevolution_OBJECTS =  \
 	src/src_syncevolution-syncevolution.$(OBJEXT) \
-	$(am__objects_42)
+	$(am__objects_46)
 @ENABLE_UNIT_TESTS_TRUE@nodist_src_syncevolution_OBJECTS =  \
 @ENABLE_UNIT_TESTS_TRUE@	test/src_syncevolution-test.$(OBJEXT)
 src_syncevolution_OBJECTS = $(am_src_syncevolution_OBJECTS) \
@@ -1551,9 +1652,9 @@ src_syncevolution_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(src_syncevolution_LDFLAGS) $(LDFLAGS) -o $@
 am__test_dbus_client_server_SOURCES_DIST =  \
 	test/dbus-client-server.cpp test/test.cpp
-@COND_CORE_TRUE@@COND_DBUS_TRUE@@ENABLE_UNIT_TESTS_TRUE@am__objects_43 = test/test_dbus_client_server-test.$(OBJEXT)
+@COND_CORE_TRUE@@COND_DBUS_TRUE@@ENABLE_UNIT_TESTS_TRUE@am__objects_47 = test/test_dbus_client_server-test.$(OBJEXT)
 @COND_CORE_TRUE@@COND_DBUS_TRUE@am_test_dbus_client_server_OBJECTS = test/test_dbus_client_server-dbus-client-server.$(OBJEXT) \
-@COND_CORE_TRUE@@COND_DBUS_TRUE@	$(am__objects_43)
+@COND_CORE_TRUE@@COND_DBUS_TRUE@	$(am__objects_47)
 test_dbus_client_server_OBJECTS =  \
 	$(am_test_dbus_client_server_OBJECTS)
 test_dbus_client_server_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
@@ -1623,6 +1724,7 @@ SOURCES = $(src_backends_activesync_syncactivesync_la_SOURCES) \
 	$(src_backends_kcalextended_synckcalextended_la_SOURCES) \
 	$(src_backends_kde_platformkde_la_SOURCES) \
 	$(src_backends_maemo_syncmaemocal_la_SOURCES) \
+	$(src_backends_pbap_syncpbap_la_SOURCES) \
 	$(src_backends_qtcontacts_syncqtcontacts_la_SOURCES) \
 	$(src_backends_sqlite_syncsqlite_la_SOURCES) \
 	$(src_backends_webdav_syncdav_la_SOURCES) \
@@ -1633,6 +1735,7 @@ SOURCES = $(src_backends_activesync_syncactivesync_la_SOURCES) \
 	$(nodist_src_dbus_qt_libsyncevolution_qt_dbus_la_SOURCES) \
 	$(src_dbus_server_libsyncevodbushelper_la_SOURCES) \
 	$(src_dbus_server_libsyncevodbusserver_la_SOURCES) \
+	$(nodist_src_dbus_server_libsyncevodbusserver_la_SOURCES) \
 	$(src_gdbus_libgdbussyncevo_la_SOURCES) \
 	$(src_gdbusxx_libgdbussyncevo_la_SOURCES) \
 	$(src_gnome_bluetooth_libgbtsyncevolution_la_SOURCES) \
@@ -1668,6 +1771,7 @@ DIST_SOURCES =  \
 	$(am__src_backends_kcalextended_synckcalextended_la_SOURCES_DIST) \
 	$(am__src_backends_kde_platformkde_la_SOURCES_DIST) \
 	$(am__src_backends_maemo_syncmaemocal_la_SOURCES_DIST) \
+	$(am__src_backends_pbap_syncpbap_la_SOURCES_DIST) \
 	$(am__src_backends_qtcontacts_syncqtcontacts_la_SOURCES_DIST) \
 	$(am__src_backends_sqlite_syncsqlite_la_SOURCES_DIST) \
 	$(am__src_backends_webdav_syncdav_la_SOURCES_DIST) \
@@ -1722,6 +1826,7 @@ am__dist_noinst_DATA_DIST = src/gdbus/README \
 	src/backends/kcalextended/configure-sub.in \
 	src/backends/kde/configure-sub.in \
 	src/backends/maemo/configure-sub.in \
+	src/backends/pbap/configure-sub.in \
 	src/backends/qtcontacts/configure-sub.in \
 	src/backends/sqlite/configure-sub.in \
 	src/backends/sqlite/README \
@@ -1740,6 +1845,7 @@ am__dist_noinst_DATA_DIST = src/gdbus/README \
 	src/dbus/glib/syncevo-marshal.list src/dbus/glib/README \
 	src/dbus/qt/syncevolution-qt-dbus.pc.in \
 	src/dbus/server/org.syncevolution.service.in \
+	src/dbus/server/pim/org._01.pim.contacts.service.in \
 	src/dbus/server/syncevo-dbus-server-startup.sh.in \
 	src/dbus/server/syncevo-dbus-server.desktop.in \
 	src/gtk-ui/README src/gtk-ui/sync.desktop.in \
@@ -1757,6 +1863,7 @@ am__dist_noinst_DATA_DIST = src/gdbus/README \
 	src/backends/kcalextended/KCalExtendedSourceRegister.cpp \
 	src/backends/kde/KDEPlatformRegister.cpp \
 	src/backends/maemo/MaemoCalendarSourceRegister.cpp \
+	src/backends/pbap/PbapSyncSourceRegister.cpp \
 	src/backends/qtcontacts/QtContactsSourceRegister.cpp \
 	src/backends/sqlite/SQLiteContactSourceRegister.cpp \
 	src/backends/xmlrpc/XMLRPCSyncSourceRegister.cpp \
@@ -1940,10 +2047,12 @@ BACKENDS_DIRECTORY = @BACKENDS_DIRECTORY@
 BACKENDS_SEARCH_DIRECTORY = @BACKENDS_SEARCH_DIRECTORY@
 BACKEND_CPPFLAGS = @BACKEND_CPPFLAGS@
 BACKEND_DEFINES = @BACKEND_DEFINES@
+BAP_LIBS = @BAP_LIBS@
 BLUEZ_CFLAGS = @BLUEZ_CFLAGS@
 BLUEZ_LIBS = @BLUEZ_LIBS@
 BOOST_CPPFLAGS = @BOOST_CPPFLAGS@
 BOOST_LDFLAGS = @BOOST_LDFLAGS@
+BOOST_LOCALE_LIB = @BOOST_LOCALE_LIB@
 CATALOGS = @CATALOGS@
 CATOBJEXT = @CATOBJEXT@
 CC = @CC@
@@ -1966,6 +2075,10 @@ DBUS_CFLAGS = @DBUS_CFLAGS@
 DBUS_GLIB_CFLAGS = @DBUS_GLIB_CFLAGS@
 DBUS_GLIB_LIBS = @DBUS_GLIB_LIBS@
 DBUS_LIBS = @DBUS_LIBS@
+DBUS_PIM_PLUGIN = @DBUS_PIM_PLUGIN@
+DBUS_PIM_PLUGIN_CFLAGS = @DBUS_PIM_PLUGIN_CFLAGS@
+DBUS_PIM_PLUGIN_LDFLAGS = @DBUS_PIM_PLUGIN_LDFLAGS@
+DBUS_PIM_PLUGIN_LIBS = @DBUS_PIM_PLUGIN_LIBS@
 DBUS_SERVICES_DIR = @DBUS_SERVICES_DIR@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
@@ -1992,6 +2105,8 @@ EXEEXT = @EXEEXT@
 FGREP = @FGREP@
 FILE_CFLAGS = @FILE_CFLAGS@
 FILE_LIBS = @FILE_LIBS@
+FOLKS_CFLAGS = @FOLKS_CFLAGS@
+FOLKS_LIBS = @FOLKS_LIBS@
 GETTEXT_PACKAGE = @GETTEXT_PACKAGE@
 GIO_CFLAGS = @GIO_CFLAGS@
 GIO_LIBS = @GIO_LIBS@
@@ -2091,8 +2206,11 @@ PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
+PBAP_CFLAGS = @PBAP_CFLAGS@
 PCRECPP_CFLAGS = @PCRECPP_CFLAGS@
 PCRECPP_LIBS = @PCRECPP_LIBS@
+PHONENUMBERS_CFLAGS = @PHONENUMBERS_CFLAGS@
+PHONENUMBERS_LIBS = @PHONENUMBERS_LIBS@
 PKG_CONFIG = @PKG_CONFIG@
 POFILES = @POFILES@
 POSUB = @POSUB@
@@ -2125,7 +2243,7 @@ STABLE_VERSION = @STABLE_VERSION@
 STRIP = @STRIP@
 SYNCEVOLUTION_CFLAGS = @SYNCEVOLUTION_CFLAGS@
 SYNCEVOLUTION_CXXFLAGS = @SYNCEVOLUTION_CXXFLAGS@
-SYNCEVOLUTION_LDADD = @SYNCEVOLUTION_LDADD@ $(am__append_73)
+SYNCEVOLUTION_LDADD = @SYNCEVOLUTION_LDADD@ $(am__append_81)
 SYNCEVOLUTION_LIBS = @SYNCEVOLUTION_LIBS@
 SYNCEVOLUTION_LOCALEDIR = @SYNCEVOLUTION_LOCALEDIR@
 SYNCEVO_WFLAGS = @SYNCEVO_WFLAGS@
@@ -2211,8 +2329,8 @@ top_srcdir = @top_srcdir@
 
 # clean variables
 CLEANFILES = $(am__append_26) $(src_dbus_interfaces_built_sources) \
-	$(am__append_50) $(am__append_55) $(am__append_61) \
-	$(am__append_67) $(am__append_71) src/libstdc++.a \
+	$(am__append_50) $(am__append_55) $(am__append_68) \
+	$(am__append_75) $(am__append_79) src/libstdc++.a \
 	src/client-test $(CLIENT_LIB_TEST_FILES) \
 	src/syncevo-http-server src/syncevo-phone-config \
 	src/synclog2html src/ClientTest.cpp.html \
@@ -2230,7 +2348,7 @@ pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = $(am__append_24) $(am__append_47) $(am__append_58)
 
 # standard variables with standard prefixes
-dist_doc_DATA = $(am__append_91)
+dist_doc_DATA = $(am__append_100)
 dist_noinst_DATA = $(am__append_9) $(am__append_14) \
 	src/dbus/interfaces/spec-strip-docs.xsl \
 	src/dbus/interfaces/spec-to-docbook.xsl \
@@ -2238,13 +2356,13 @@ dist_noinst_DATA = $(am__append_9) $(am__append_14) \
 	src/dbus/interfaces/syncevo-server-full.xml \
 	src/dbus/interfaces/syncevo-session-full.xml \
 	src/dbus/interfaces/README $(am__append_46) $(am__append_57) \
-	$(am__append_63) $(am__append_64) $(am__append_68) \
+	$(am__append_71) $(am__append_72) $(am__append_76) \
 	src/shlibs.local src/synthesis-includes/Makefile.am \
-	src/synthesis-includes/Makefile.in $(am__append_75) \
-	$(am__append_85) HACKING LICENSE.txt LICENSE.LGPL-21 \
+	src/synthesis-includes/Makefile.in $(am__append_83) \
+	$(am__append_94) HACKING LICENSE.txt LICENSE.LGPL-21 \
 	README.rst description autogen.sh Doxyfile po/LINGUAS.README
 dist_pkgdata_DATA = $(am__append_60)
-doc_DATA = $(am__append_43) $(am__append_93)
+doc_DATA = $(am__append_43) $(am__append_102)
 
 # generate syntax-highlighted version of ClientTest.cpp for HTML
 # version of .log test results
@@ -2258,8 +2376,8 @@ noinst_LTLIBRARIES = $(am__append_5) $(am__append_11) $(am__append_34) \
 bin_SCRIPTS = $(am__append_38) src/synclog2html
 dist_noinst_SCRIPTS = build/gen-git-version.sh build/source2html.py \
 	$(am__append_30)
-libexec_SCRIPTS = $(am__append_62)
-nodist_bin_SCRIPTS = $(am__append_72) src/syncevo-phone-config
+libexec_SCRIPTS = $(am__append_69)
+nodist_bin_SCRIPTS = $(am__append_80) src/syncevo-phone-config
 
 # other
 
@@ -2279,7 +2397,7 @@ all_dist_hooks = src_dist_hook dot_dist_hook
 # -Wl,--as-needed. Depends on dpkg-shlibdeps, skipped if that is
 # not available.
 all_local_installchecks = $(am__append_31) $(am__append_39) \
-	$(am__append_95) toplevel_link_check
+	$(am__append_104) toplevel_link_check
 # These dependencies are intentionally a bit too broad:
 # they ensure that all files are in place to *run* client-test.
 
@@ -2329,10 +2447,16 @@ EXTRA_DIST = build/export-foreign-git.sh build/export-gdbus.sh \
 	build/gen-backends.sh build/gen-changelog.pl \
 	build/gen-linguas.sh build/import-foreign-git.sh \
 	build/import-gdbus.sh build/import-synthesis-xml.sh \
-	build/update-copyrights.sh src/gtk-ui/ui.xml \
-	src/gtk3-ui/ui.xml
-SUBDIRS = $(am__append_1) $(am__append_2) . $(am__append_88)
-TESTS = $(am__append_80)
+	build/update-copyrights.sh src/dbus/server/pim/README \
+	src/dbus/server/pim/examples/search.py \
+	src/dbus/server/pim/examples/sync.py \
+	src/dbus/server/pim/testpim.py \
+	src/dbus/server/pim/test-dbus/db-active/config/syncevolution/pim-manager.ini \
+	src/dbus/server/pim/test-dbus/simple-sort/config/syncevolution/pim-manager.ini \
+	src/dbus/server/pim/test-dbus/first-last-sort/config/syncevolution/pim-manager.ini \
+	$(am__append_67) src/gtk-ui/ui.xml src/gtk3-ui/ui.xml
+SUBDIRS = $(am__append_1) $(am__append_2) . $(am__append_97)
+TESTS = $(am__append_89)
 AUTOMAKE_OPTIONS = subdir-objects
 ACLOCAL_AMFLAGS = -I m4 -I m4-repo ${ACLOCAL_FLAGS}
 @COND_GIO_GDBUS_FALSE@gdbus_dir = $(top_srcdir)/src/gdbus
@@ -2341,9 +2465,9 @@ ACLOCAL_AMFLAGS = -I m4 -I m4-repo ${ACLOCAL_FLAGS}
 @COND_GIO_GDBUS_TRUE@gdbus_dir = $(top_srcdir)/src/gdbusxx
 @COND_GIO_GDBUS_FALSE@gdbus_build_dir = src/gdbus
 @COND_GIO_GDBUS_TRUE@gdbus_build_dir = src/gdbusxx
-disted_docs = $(am__append_89)
-distbin_docs = $(am__append_90) $(am__append_92)
-man_MANS = $(am__append_94)
+disted_docs = $(am__append_98)
+distbin_docs = $(am__append_99) $(am__append_101)
+man_MANS = $(am__append_103)
 src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 	$(am__append_13) $(am__append_32) $(am__append_42) \
 	-I$(top_srcdir)/src/dbus -I$(top_srcdir)/test -I$(top_srcdir) \
@@ -2440,7 +2564,11 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@	$(gdbus_build_dir)/libgdbussyncevo.la \
 @COND_CORE_TRUE@	$(am__append_16) $(am__append_20) \
 @COND_CORE_TRUE@	$(am__append_22)
-@COND_CORE_TRUE@src_syncevo_sources = src/syncevo/ConfigTree.h \
+@COND_CORE_TRUE@src_syncevo_sources = src/syncevo/GeeSupport.h \
+@COND_CORE_TRUE@	src/syncevo/GValueSupport.h \
+@COND_CORE_TRUE@	src/syncevo/EDSClient.h \
+@COND_CORE_TRUE@	src/syncevo/EDSClient.cpp \
+@COND_CORE_TRUE@	src/syncevo/ConfigTree.h \
 @COND_CORE_TRUE@	src/syncevo/ConfigFilter.h \
 @COND_CORE_TRUE@	src/syncevo/ConfigFilter.cpp \
 @COND_CORE_TRUE@	src/syncevo/ConfigNode.h \
@@ -2474,6 +2602,7 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@	src/syncevo/LocalTransportAgent.cpp \
 @COND_CORE_TRUE@	src/syncevo/util.cpp src/syncevo/util.h \
 @COND_CORE_TRUE@	src/syncevo/BoostHelper.h \
+@COND_CORE_TRUE@	src/syncevo/TmpFile.cpp src/syncevo/TmpFile.h \
 @COND_CORE_TRUE@	src/syncevo/Timespec.h src/syncevo/lcs.h \
 @COND_CORE_TRUE@	src/syncevo/lcs.cpp src/syncevo/ForkExec.cpp \
 @COND_CORE_TRUE@	src/syncevo/ForkExec.h src/syncevo/Cmdline.cpp \
@@ -2581,8 +2710,8 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 
 # command which embeds its input lines into a C-style string that runs across multiple lines
 @COND_CORE_TRUE@TO_C_STRING = sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\(.*\)/"\1\\n"/'
-@COND_CORE_TRUE@BACKENDS = src/backends/activesync src/backends/addressbook src/backends/akonadi src/backends/evolution src/backends/file src/backends/gnome src/backends/kcalextended src/backends/kde src/backends/maemo src/backends/qtcontacts src/backends/sqlite src/backends/webdav src/backends/xmlrpc
-@COND_CORE_TRUE@BACKEND_REGISTRIES = src/backends/activesync/ActiveSyncSourceRegister.cpp src/backends/addressbook/AddressBookSourceRegister.cpp src/backends/akonadi/AkonadiSyncSourceRegister.cpp src/backends/evolution/EvolutionCalendarSourceRegister.cpp src/backends/evolution/EvolutionContactSourceRegister.cpp src/backends/file/FileSyncSourceRegister.cpp src/backends/gnome/GNOMEPlatformRegister.cpp src/backends/kcalextended/KCalExtendedSourceRegister.cpp src/backends/kde/KDEPlatformRegister.cpp src/backends/maemo/MaemoCalendarSourceRegister.cpp src/backends/qtcontacts/QtContactsSourceRegister.cpp src/backends/sqlite/SQLiteContactSourceRegister.cpp src/backends/webdav/WebDAVSourceRegister.cpp src/backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
+@COND_CORE_TRUE@BACKENDS = src/backends/activesync src/backends/addressbook src/backends/akonadi src/backends/evolution src/backends/file src/backends/gnome src/backends/kcalextended src/backends/kde src/backends/maemo src/backends/pbap src/backends/qtcontacts src/backends/sqlite src/backends/webdav src/backends/xmlrpc
+@COND_CORE_TRUE@BACKEND_REGISTRIES = src/backends/activesync/ActiveSyncSourceRegister.cpp src/backends/addressbook/AddressBookSourceRegister.cpp src/backends/akonadi/AkonadiSyncSourceRegister.cpp src/backends/evolution/EvolutionCalendarSourceRegister.cpp src/backends/evolution/EvolutionContactSourceRegister.cpp src/backends/file/FileSyncSourceRegister.cpp src/backends/gnome/GNOMEPlatformRegister.cpp src/backends/kcalextended/KCalExtendedSourceRegister.cpp src/backends/kde/KDEPlatformRegister.cpp src/backends/maemo/MaemoCalendarSourceRegister.cpp src/backends/pbap/PbapSyncSourceRegister.cpp src/backends/qtcontacts/QtContactsSourceRegister.cpp src/backends/sqlite/SQLiteContactSourceRegister.cpp src/backends/webdav/WebDAVSourceRegister.cpp src/backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
 @COND_CORE_TRUE@src_backends_activesync_lib = src/backends/activesync/syncactivesync.la
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_activesync_backenddir = $(BACKENDS_DIRECTORY)
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_activesync_backend_LTLIBRARIES = $(src_backends_activesync_lib)
@@ -2728,6 +2857,19 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@src_backends_maemo_syncmaemocal_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(SYNCEVO_WFLAGS)
 @COND_CORE_TRUE@src_backends_maemo_syncmaemocal_la_CPPFLAGS = $(SYNCEVOLUTION_CFLAGS) -I$(top_srcdir)/test $(BACKEND_CPPFLAGS)
 @COND_CORE_TRUE@src_backends_maemo_syncmaemocal_la_DEPENDENCIES = $(SYNCEVOLUTION_LIBS)
+@COND_CORE_TRUE@src_backends_pbap_lib = src/backends/pbap/syncpbap.la
+@COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_pbap_backenddir = $(BACKENDS_DIRECTORY)
+@COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_pbap_backend_LTLIBRARIES = $(src_backends_pbap_lib)
+@COND_CORE_TRUE@src_backends_pbap_src = \
+@COND_CORE_TRUE@  src/backends/pbap/PbapSyncSource.h \
+@COND_CORE_TRUE@  src/backends/pbap/PbapSyncSource.cpp
+
+@COND_CORE_TRUE@src_backends_pbap_syncpbap_la_SOURCES = $(src_backends_pbap_src)
+@COND_CORE_TRUE@src_backends_pbap_syncpbap_la_LIBADD = $(PBAP_LIBS) $(PCRECPP_LIBS) $(SYNCEVOLUTION_LIBS) $(DBUS_LIBS) $(gdbus_build_dir)/libgdbussyncevo.la
+@COND_CORE_TRUE@src_backends_pbap_syncpbap_la_LDFLAGS = -module -avoid-version $(DBUS_LIBS)
+@COND_CORE_TRUE@src_backends_pbap_syncpbap_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(SYNCEVO_WFLAGS) $(DBUS_CFLAGS)
+@COND_CORE_TRUE@src_backends_pbap_syncpbap_la_CPPFLAGS = $(SYNCEVOLUTION_CFLAGS) -I$(gdbus_dir) -I$(top_srcdir)/test $(BACKEND_CPPFLAGS)
+@COND_CORE_TRUE@src_backends_pbap_syncpbap_la_DEPENDENCIES = $(SYNCEVOLUTION_LIBS) $(gdbus_build_dir)/libgdbussyncevo.la
 @COND_CORE_TRUE@src_backends_qtcontacts_lib = src/backends/qtcontacts/syncqtcontacts.la
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_qtcontacts_backenddir = $(BACKENDS_DIRECTORY)
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_qtcontacts_backend_LTLIBRARIES = $(src_backends_qtcontacts_lib)
@@ -2915,50 +3057,59 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 # In particular -W is not compatible with the SyncEvolution header files (we have
 # unused parameters in some inline functions).
 @ENABLE_QT_DBUS_TRUE@src_dbus_qt_libsyncevolution_qt_dbus_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(filter-out -O2 -g -W -Wall, $(QT_CXXFLAGS)) $(SYNCEVO_WFLAGS)
-@COND_DBUS_TRUE@src_dbus_server_server_cpp_files = \
-@COND_DBUS_TRUE@  src/dbus/server/notification-backend-noop.cpp \
-@COND_DBUS_TRUE@  src/dbus/server/notification-backend-libnotify.cpp \
-@COND_DBUS_TRUE@  src/dbus/server/notification-backend-mlite.cpp \
-@COND_DBUS_TRUE@  src/dbus/server/notification-manager-factory.cpp \
-@COND_DBUS_TRUE@  src/dbus/server/auto-sync-manager.cpp \
-@COND_DBUS_TRUE@  src/dbus/server/bluez-manager.cpp \
-@COND_DBUS_TRUE@  src/dbus/server/client.cpp \
-@COND_DBUS_TRUE@  src/dbus/server/connection.cpp \
-@COND_DBUS_TRUE@  src/dbus/server/connman-client.cpp \
-@COND_DBUS_TRUE@  src/dbus/server/dbus-callbacks.cpp \
-@COND_DBUS_TRUE@  src/dbus/server/dbus-user-interface.cpp \
-@COND_DBUS_TRUE@  src/dbus/server/exceptions.cpp \
-@COND_DBUS_TRUE@  src/dbus/server/info-req.cpp \
-@COND_DBUS_TRUE@  src/dbus/server/network-manager-client.cpp \
-@COND_DBUS_TRUE@  src/dbus/server/presence-status.cpp \
-@COND_DBUS_TRUE@  src/dbus/server/progress-data.cpp \
-@COND_DBUS_TRUE@  src/dbus/server/read-operations.cpp \
-@COND_DBUS_TRUE@  src/dbus/server/server.cpp \
-@COND_DBUS_TRUE@  src/dbus/server/session.cpp
-
-@COND_DBUS_TRUE@src_dbus_server_server_h_files = \
-@COND_DBUS_TRUE@  $(src_dbus_server_server_cpp_files:.cpp=.h) \
-@COND_DBUS_TRUE@  src/dbus/server/notification-backend-base.h \
-@COND_DBUS_TRUE@  src/dbus/server/notification-manager.h \
-@COND_DBUS_TRUE@  src/dbus/server/notification-manager-base.h \
-@COND_DBUS_TRUE@  src/dbus/server/auto-term.h \
-@COND_DBUS_TRUE@  src/dbus/server/cmdline-wrapper.h \
-@COND_DBUS_TRUE@  src/dbus/server/resource.h \
-@COND_DBUS_TRUE@  src/dbus/server/restart.h \
-@COND_DBUS_TRUE@  src/dbus/server/session-common.h \
-@COND_DBUS_TRUE@  src/dbus/server/source-progress.h \
-@COND_DBUS_TRUE@  src/dbus/server/source-status.h \
-@COND_DBUS_TRUE@  src/dbus/server/timeout.h \
-@COND_DBUS_TRUE@  src/dbus/server/timer.h
-
+@COND_DBUS_TRUE@src_dbus_server_server_cpp_files =  \
+@COND_DBUS_TRUE@	src/dbus/server/notification-backend-noop.cpp \
+@COND_DBUS_TRUE@	src/dbus/server/notification-backend-libnotify.cpp \
+@COND_DBUS_TRUE@	src/dbus/server/notification-backend-mlite.cpp \
+@COND_DBUS_TRUE@	src/dbus/server/notification-manager-factory.cpp \
+@COND_DBUS_TRUE@	src/dbus/server/auto-sync-manager.cpp \
+@COND_DBUS_TRUE@	src/dbus/server/bluez-manager.cpp \
+@COND_DBUS_TRUE@	src/dbus/server/client.cpp \
+@COND_DBUS_TRUE@	src/dbus/server/connection.cpp \
+@COND_DBUS_TRUE@	src/dbus/server/connman-client.cpp \
+@COND_DBUS_TRUE@	src/dbus/server/dbus-callbacks.cpp \
+@COND_DBUS_TRUE@	src/dbus/server/dbus-user-interface.cpp \
+@COND_DBUS_TRUE@	src/dbus/server/exceptions.cpp \
+@COND_DBUS_TRUE@	src/dbus/server/info-req.cpp \
+@COND_DBUS_TRUE@	src/dbus/server/network-manager-client.cpp \
+@COND_DBUS_TRUE@	src/dbus/server/presence-status.cpp \
+@COND_DBUS_TRUE@	src/dbus/server/progress-data.cpp \
+@COND_DBUS_TRUE@	src/dbus/server/read-operations.cpp \
+@COND_DBUS_TRUE@	src/dbus/server/server.cpp \
+@COND_DBUS_TRUE@	src/dbus/server/session.cpp $(am__append_61)
+@COND_DBUS_TRUE@src_dbus_server_server_h_files =  \
+@COND_DBUS_TRUE@	$(src_dbus_server_server_cpp_files:.cpp=.h) \
+@COND_DBUS_TRUE@	src/dbus/server/notification-backend-base.h \
+@COND_DBUS_TRUE@	src/dbus/server/notification-manager.h \
+@COND_DBUS_TRUE@	src/dbus/server/notification-manager-base.h \
+@COND_DBUS_TRUE@	src/dbus/server/auto-term.h \
+@COND_DBUS_TRUE@	src/dbus/server/cmdline-wrapper.h \
+@COND_DBUS_TRUE@	src/dbus/server/resource.h \
+@COND_DBUS_TRUE@	src/dbus/server/restart.h \
+@COND_DBUS_TRUE@	src/dbus/server/session-common.h \
+@COND_DBUS_TRUE@	src/dbus/server/source-progress.h \
+@COND_DBUS_TRUE@	src/dbus/server/source-status.h \
+@COND_DBUS_TRUE@	src/dbus/server/timeout.h \
+@COND_DBUS_TRUE@	src/dbus/server/timer.h $(am__append_62)
 @COND_DBUS_TRUE@src_dbus_server_libsyncevodbusserver_la_SOURCES = \
 @COND_DBUS_TRUE@  $(src_dbus_server_server_h_files) \
 @COND_DBUS_TRUE@  $(src_dbus_server_server_cpp_files) \
 @COND_DBUS_TRUE@  src/dbus/server/main.cpp
 
-@COND_DBUS_TRUE@src_dbus_server_libsyncevodbusserver_la_LIBADD = $(LIBNOTIFY_LIBS) $(MLITE_LIBS) $(DBUS_LIBS)
+@COND_DBUS_TRUE@nodist_src_dbus_server_libsyncevodbusserver_la_SOURCES =  \
+@COND_DBUS_TRUE@	$(am__append_63)
+@COND_DBUS_TRUE@src_dbus_server_libsyncevodbusserver_la_LDFLAGS =  \
+@COND_DBUS_TRUE@	$(am__append_64)
+@COND_DBUS_TRUE@src_dbus_server_libsyncevodbusserver_la_LIBADD =  \
+@COND_DBUS_TRUE@	$(LIBNOTIFY_LIBS) $(MLITE_LIBS) $(DBUS_LIBS) \
+@COND_DBUS_TRUE@	$(am__append_65)
 @COND_DBUS_TRUE@src_dbus_server_libsyncevodbusserver_la_CPPFLAGS = -DHAVE_CONFIG_H -DSYNCEVOLUTION_LOCALEDIR=\"${SYNCEVOLUTION_LOCALEDIR}\" -I$(top_srcdir)/src -I$(top_srcdir)/test -I$(top_srcdir) -I$(gdbus_dir) $(BACKEND_CPPFLAGS)
-@COND_DBUS_TRUE@src_dbus_server_libsyncevodbusserver_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS) $(SYNTHESIS_CFLAGS) $(GLIB_CFLAGS) $(DBUS_CFLAGS) $(LIBNOTIFY_CFLAGS) $(MLITE_CFLAGS) $(SYNCEVO_WFLAGS)
+@COND_DBUS_TRUE@src_dbus_server_libsyncevodbusserver_la_CXXFLAGS =  \
+@COND_DBUS_TRUE@	$(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS) \
+@COND_DBUS_TRUE@	$(SYNTHESIS_CFLAGS) $(GLIB_CFLAGS) \
+@COND_DBUS_TRUE@	$(DBUS_CFLAGS) $(LIBNOTIFY_CFLAGS) \
+@COND_DBUS_TRUE@	$(MLITE_CFLAGS) $(SYNCEVO_WFLAGS) \
+@COND_DBUS_TRUE@	$(am__append_66)
 @COND_DBUS_TRUE@src_dbus_server_dbus_helper_cpp_files = \
 @COND_DBUS_TRUE@  src/dbus/server/dbus-callbacks.cpp \
 @COND_DBUS_TRUE@  src/dbus/server/dbus-sync.cpp \
@@ -2984,7 +3135,9 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_DBUS_TRUE@src_dbus_server_desktop = $(src_dbus_server_desktop_in:.desktop.in=.desktop)
 @COND_DBUS_TRUE@src_dbus_server_autostartdir = $(sysconfdir)/xdg/autostart
 @COND_DBUS_TRUE@src_dbus_server_autostart_DATA = $(src_dbus_server_desktop)
-@COND_DBUS_TRUE@src_dbus_server_service_files_in = src/dbus/server/org.syncevolution.service.in
+@COND_DBUS_TRUE@src_dbus_server_service_files_in =  \
+@COND_DBUS_TRUE@	src/dbus/server/org.syncevolution.service.in \
+@COND_DBUS_TRUE@	$(am__append_70)
 @COND_DBUS_TRUE@src_dbus_server_service_files = $(src_dbus_server_service_files_in:.service.in=.service)
 @COND_DBUS_TRUE@src_dbus_server_servicedir = $(DBUS_SERVICES_DIR)
 @COND_DBUS_TRUE@src_dbus_server_service_DATA = $(src_dbus_server_service_files)
@@ -3108,8 +3261,8 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@src_gtk3_ui_sync_ui_moblin_LDADD = $(src_gtk3_ui_sync_ui_LDADD)
 @COND_GTK2_FALSE@@COND_GUI_TRUE@src_gtk3_ui_sync_ui_moblin_CFLAGS = $(src_gtk3_ui_sync_ui_CFLAGS)
 @COND_GTK2_FALSE@@COND_GUI_TRUE@src_gtk3_ui_sync_ui_moblin_CPPFLAGS = $(src_gtk3_ui_sync_ui_CPPFLAGS) -DUSE_MOBLIN_UX
-SYNCEVOLUTION_DEP = $(am__append_74)
-CORE_SOURCES = $(am__append_76)
+SYNCEVOLUTION_DEP = $(am__append_82)
+CORE_SOURCES = $(am__append_84)
 CORE_CXXFLAGS = $(SYNTHESIS_CFLAGS) $(CPPUNIT_CXXFLAGS)
 CORE_LDADD = $(SYNCEVOLUTION_LDADD) src/syncevo/libsyncevolution.la $(GLIB_LIBS) $(GTHREAD_LIBS) $(GOBJECT_LIBS) $(LIBS)
 CORE_DEP = $(SYNCEVOLUTION_DEP) src/syncevo/libsyncevolution.la $(SYNTHESIS_DEP)
@@ -3123,9 +3276,9 @@ src_syncevolution_SOURCES = \
 # SYNCEVOLUTION_LDADD will be replaced with libsyncebook.la/libsyncecal.la/libsyncsqlite.la
 # if linking statically against them, empty otherwise;
 # either way this does not lead to a dependency on those libs - done explicitly
-src_syncevolution_LDADD = $(CORE_LDADD) $(am__append_77)
+src_syncevolution_LDADD = $(CORE_LDADD) $(am__append_85)
 src_syncevolution_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) \
-	$(am__append_78)
+	$(am__append_86)
 src_syncevolution_LDFLAGS = $(PCRECPP_LIBS) $(CORE_LD_FLAGS) $(DBUS_LIBS)
 src_syncevolution_CXXFLAGS = $(PCRECPP_CFLAGS) $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS) $(DBUS_CFLAGS) $(SYNCEVO_WFLAGS)
 src_syncevolution_CPPFLAGS = $(src_cppflags) -I$(gdbus_dir)
@@ -3170,7 +3323,7 @@ src_client_test_SOURCES = \
   test/client-test-main.cpp \
   $(CORE_SOURCES)
 
-nodist_src_client_test_SOURCES = test/test.cpp $(am__append_83)
+nodist_src_client_test_SOURCES = test/test.cpp $(am__append_92)
 
 # list of test file base files
 #
@@ -3197,17 +3350,28 @@ TEST_FILES_PATCHES = $(wildcard $(top_srcdir)/test/testcases/*.patch)
 TEST_FILES_GENERATED = $(subst .patch,,$(subst $(top_srcdir)/test/,src/,$(TEST_FILES_PATCHES)))
 # all patched files, regardless whether the patch already exists
 TEST_FILES_PATCHED = $(wildcard src/testcases/*.tem)
+
+# client-test must link against all static utility libs which might contain
+# object files with SYNCEVOLUTION_TEST_SUITE_REGISTRATION() macros.
+# To pull in those object files, LDFLAGS must contain undef statements
+# for the C symbols exported by the macro.
+src_client_test_libs = src/syncevo/libsyncevolution.la \
+	$(am__append_88)
+
+# src/syncevo/libsyncevolution.la -> src/syncevo/.libs/libsyncevolution.a -> -Wl,-u...
+src_client_test_undef = $(shell nm $(patsubst %.la,%.a,$(subst /lib,/.libs/lib,$(src_client_test_libs))) | grep funambolAutoRegisterRegistry | sed -e 's/.* /-Wl,-u/' )
 src_client_test_CPPFLAGS = -DHAVE_CONFIG_H -DENABLE_INTEGRATION_TESTS -DENABLE_UNIT_TESTS $(src_cppflags) $(QT_CPPFLAGS)
 src_client_test_CXXFLAGS = @CPPUNIT_CXXFLAGS@ $(PCRECPP_CFLAGS) $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS) $(filter-out -O2 -g -W -Wall, $(QT_CXXFLAGS)) $(SYNCEVO_WFLAGS)
-src_client_test_LDFLAGS = @CPPUNIT_LDFLAGS@ `nm src/syncevo/.libs/libsyncevolution.a | grep funambolAutoRegisterRegistry | sed -e 's/.* /-Wl,-u/'` $(PCRECPP_LIBS) $(CORE_LD_FLAGS) $(QT_LDFLAGS)
-src_client_test_LDADD = $(CORE_LDADD) $(SYNTHESIS_ENGINE) $(QT_LIBS)
+src_client_test_LDFLAGS = @CPPUNIT_LDFLAGS@  $(src_client_test_undef) $(CORE_LD_FLAGS) $(QT_LDFLAGS)
+src_client_test_LDADD = $(src_client_test_libs) $(CORE_LDADD) $(PCRECPP_LIBS) $(SYNTHESIS_ENGINE) $(QT_LIBS)
 
 # The binary does not really depend on the test cases, only running it does.
 # Listing the dependencies here is done to ensure that one doesn't accidentally
 # runs the binary with out-dated auxiliary files.
-src_client_test_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) \
-	$(CLIENT_LIB_TEST_FILES) testcase2patch src/synccompare \
-	src/synclog2html src/templates $(am__append_84)
+src_client_test_DEPENDENCIES = $(EXTRA_LTLIBRARIES) \
+	$(src_client_test_libs) $(CORE_DEP) $(CLIENT_LIB_TEST_FILES) \
+	testcase2patch src/synccompare src/synclog2html src/templates \
+	$(am__append_93)
 @ENABLE_TESTING_TRUE@src_testcasesdir = $(docdir)/testcases
 @ENABLE_TESTING_TRUE@dist_src_testcases_DATA = \
 @ENABLE_TESTING_TRUE@  src/testcases/local.png \
@@ -3241,7 +3405,7 @@ src_abort_redirect_LDADD = $(CORE_LDADD)
 src_abort_redirect_DEPENDENCIES = all
 @COND_CORE_TRUE@@COND_DBUS_TRUE@test_dbus_client_server_SOURCES =  \
 @COND_CORE_TRUE@@COND_DBUS_TRUE@	test/dbus-client-server.cpp \
-@COND_CORE_TRUE@@COND_DBUS_TRUE@	$(am__append_87)
+@COND_CORE_TRUE@@COND_DBUS_TRUE@	$(am__append_96)
 @COND_CORE_TRUE@@COND_DBUS_TRUE@test_dbus_client_server_CPPFLAGS = -I$(gdbus_dir) -I$(top_srcdir)/src
 @COND_CORE_TRUE@@COND_DBUS_TRUE@test_dbus_client_server_CXXFLAGS = $(CPPUNIT_CXXFLAGS) $(SYNCEVOLUTION_CXXFLAGS) $(BACKEND_CPPFLAGS) $(DBUS_CFLAGS) $(GLIB_CFLAGS) $(GOBJECT_CFLAGS)
 @COND_CORE_TRUE@@COND_DBUS_TRUE@test_dbus_client_server_LDFLAGS = $(CPPUNIT_LDFLAGS)
@@ -3321,7 +3485,7 @@ SYNCEVOLUTION_evolution_DEB_REQUIRES = \
 # Some exceptions for the link check above (= symbol may be used without linking).
 # SySync_ConsolePrintf is expected by libsmltk and has to be provided by caller.
 LINK_CHECK_ALLOWED = -e xxxxxxxx -e \
-	'SySync_ConsolePrintf.*libsmltk.so' $(am__append_96)
+	'SySync_ConsolePrintf.*libsmltk.so' $(am__append_105)
 @COND_CROSS_COMPILING_FALSE@RUN_SYNCEVOLUTION_CHECK = die if $$?; return $$buffer;
 
 # Be strict about running 'syncevolution' only when not doing
@@ -3337,7 +3501,7 @@ all: $(BUILT_SOURCES) config.h
 .SUFFIXES: .c .cpp .lo .o .obj
 am--refresh:
 	@:
-$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am $(top_srcdir)/setup-variables.am $(top_srcdir)/autotroll.am $(top_srcdir)/build/build.am $(srcdir)/src/src.am $(top_srcdir)/src/gnome-bluetooth/gnome-bluetooth.am $(top_srcdir)/src/gdbusxx/gdbusxx.am $(top_srcdir)/src/gdbus/gdbus.am $(top_srcdir)/src/syncevo/syncevo.am $(top_srcdir)/src/syncevo/configs/configs.am $(top_srcdir)/src/syncevo/configs/configs_xml.am $(top_srcdir)/src/backends/backends.am $(top_srcdir)/src/backends/activesync/activesync.am $(top_srcdir)/src/backends/addressbook/addressbook.am $(top_srcdir)/src/backends/akonadi/akonadi.am $(top_srcdir)/src/backends/evolution/evolution.am $(top_srcdir)/src/backends/file/file.am $(top_srcdir)/src/backends/gnome/gnome.am $(top_srcdir)/src/backends/kcalextended/kcalextended.am $(top_srcdir)/src/backends/kde/kde.am $(top_srcdir)/src/backends/maemo/maemo.am $(top_srcdir)/src/backends/qtcontacts/qtcontacts.am $(top_srcdir)/src/backends/sqlite/sqlite.am $(top_srcdir)/src/backends/webdav/webdav.am $(top_srcdir)/src/backends/xmlrpc/xmlrpc.am $(top_srcdir)/src/templates/templates.am $(top_srcdir)/src/dbus/dbus.am $(top_srcdir)/src/dbus/interfaces/interfaces.am $(top_srcdir)/src/dbus/glib/glib.am $(top_srcdir)/src/dbus/qt/qt.am $(top_srcdir)/src/dbus/server/server.am $(top_srcdir)/src/gtk-ui/gtk-ui.am $(top_srcdir)/src/gtk3-ui/gtk-ui.am $(top_srcdir)/src/testcases.am $(srcdir)/test/test.am $(am__configure_deps)
+$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am $(top_srcdir)/setup-variables.am $(top_srcdir)/autotroll.am $(top_srcdir)/build/build.am $(srcdir)/src/src.am $(top_srcdir)/src/gnome-bluetooth/gnome-bluetooth.am $(top_srcdir)/src/gdbusxx/gdbusxx.am $(top_srcdir)/src/gdbus/gdbus.am $(top_srcdir)/src/syncevo/syncevo.am $(top_srcdir)/src/syncevo/configs/configs.am $(top_srcdir)/src/syncevo/configs/configs_xml.am $(top_srcdir)/src/backends/backends.am $(top_srcdir)/src/backends/activesync/activesync.am $(top_srcdir)/src/backends/addressbook/addressbook.am $(top_srcdir)/src/backends/akonadi/akonadi.am $(top_srcdir)/src/backends/evolution/evolution.am $(top_srcdir)/src/backends/file/file.am $(top_srcdir)/src/backends/gnome/gnome.am $(top_srcdir)/src/backends/kcalextended/kcalextended.am $(top_srcdir)/src/backends/kde/kde.am $(top_srcdir)/src/backends/maemo/maemo.am $(top_srcdir)/src/backends/pbap/pbap.am $(top_srcdir)/src/backends/qtcontacts/qtcontacts.am $(top_srcdir)/src/backends/sqlite/sqlite.am $(top_srcdir)/src/backends/webdav/webdav.am $(top_srcdir)/src/backends/xmlrpc/xmlrpc.am $(top_srcdir)/src/templates/templates.am $(top_srcdir)/src/dbus/dbus.am $(top_srcdir)/src/dbus/interfaces/interfaces.am $(top_srcdir)/src/dbus/glib/glib.am $(top_srcdir)/src/dbus/qt/qt.am $(top_srcdir)/src/dbus/server/server.am $(top_srcdir)/src/gtk-ui/gtk-ui.am $(top_srcdir)/src/gtk3-ui/gtk-ui.am $(top_srcdir)/src/testcases.am $(srcdir)/test/test.am $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -3711,6 +3875,37 @@ clean-src_backends_maemo_backendLTLIBRARIES:
 	  echo "rm -f \"$${dir}/so_locations\""; \
 	  rm -f "$${dir}/so_locations"; \
 	done
+install-src_backends_pbap_backendLTLIBRARIES: $(src_backends_pbap_backend_LTLIBRARIES)
+	@$(NORMAL_INSTALL)
+	test -z "$(src_backends_pbap_backenddir)" || $(MKDIR_P) "$(DESTDIR)$(src_backends_pbap_backenddir)"
+	@list='$(src_backends_pbap_backend_LTLIBRARIES)'; test -n "$(src_backends_pbap_backenddir)" || list=; \
+	list2=; for p in $$list; do \
+	  if test -f $$p; then \
+	    list2="$$list2 $$p"; \
+	  else :; fi; \
+	done; \
+	test -z "$$list2" || { \
+	  echo " $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL) $(INSTALL_STRIP_FLAG) $$list2 '$(DESTDIR)$(src_backends_pbap_backenddir)'"; \
+	  $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL) $(INSTALL_STRIP_FLAG) $$list2 "$(DESTDIR)$(src_backends_pbap_backenddir)"; \
+	}
+
+uninstall-src_backends_pbap_backendLTLIBRARIES:
+	@$(NORMAL_UNINSTALL)
+	@list='$(src_backends_pbap_backend_LTLIBRARIES)'; test -n "$(src_backends_pbap_backenddir)" || list=; \
+	for p in $$list; do \
+	  $(am__strip_dir) \
+	  echo " $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=uninstall rm -f '$(DESTDIR)$(src_backends_pbap_backenddir)/$$f'"; \
+	  $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=uninstall rm -f "$(DESTDIR)$(src_backends_pbap_backenddir)/$$f"; \
+	done
+
+clean-src_backends_pbap_backendLTLIBRARIES:
+	-test -z "$(src_backends_pbap_backend_LTLIBRARIES)" || rm -f $(src_backends_pbap_backend_LTLIBRARIES)
+	@list='$(src_backends_pbap_backend_LTLIBRARIES)'; for p in $$list; do \
+	  dir="`echo $$p | sed -e 's|/[^/]*$$||'`"; \
+	  test "$$dir" != "$$p" || dir=.; \
+	  echo "rm -f \"$${dir}/so_locations\""; \
+	  rm -f "$${dir}/so_locations"; \
+	done
 install-src_backends_qtcontacts_backendLTLIBRARIES: $(src_backends_qtcontacts_backend_LTLIBRARIES)
 	@$(NORMAL_INSTALL)
 	test -z "$(src_backends_qtcontacts_backenddir)" || $(MKDIR_P) "$(DESTDIR)$(src_backends_qtcontacts_backenddir)"
@@ -3994,6 +4189,17 @@ src/backends/maemo/src_backends_maemo_syncmaemocal_la-MaemoCalendarSource.lo:  \
 	src/backends/maemo/$(DEPDIR)/$(am__dirstamp)
 src/backends/maemo/syncmaemocal.la: $(src_backends_maemo_syncmaemocal_la_OBJECTS) $(src_backends_maemo_syncmaemocal_la_DEPENDENCIES) src/backends/maemo/$(am__dirstamp)
 	$(AM_V_CXXLD)$(src_backends_maemo_syncmaemocal_la_LINK) $(am_src_backends_maemo_syncmaemocal_la_rpath) $(src_backends_maemo_syncmaemocal_la_OBJECTS) $(src_backends_maemo_syncmaemocal_la_LIBADD) $(LIBS)
+src/backends/pbap/$(am__dirstamp):
+	@$(MKDIR_P) src/backends/pbap
+	@: > src/backends/pbap/$(am__dirstamp)
+src/backends/pbap/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) src/backends/pbap/$(DEPDIR)
+	@: > src/backends/pbap/$(DEPDIR)/$(am__dirstamp)
+src/backends/pbap/src_backends_pbap_syncpbap_la-PbapSyncSource.lo:  \
+	src/backends/pbap/$(am__dirstamp) \
+	src/backends/pbap/$(DEPDIR)/$(am__dirstamp)
+src/backends/pbap/syncpbap.la: $(src_backends_pbap_syncpbap_la_OBJECTS) $(src_backends_pbap_syncpbap_la_DEPENDENCIES) src/backends/pbap/$(am__dirstamp)
+	$(AM_V_CXXLD)$(src_backends_pbap_syncpbap_la_LINK) $(am_src_backends_pbap_syncpbap_la_rpath) $(src_backends_pbap_syncpbap_la_OBJECTS) $(src_backends_pbap_syncpbap_la_LIBADD) $(LIBS)
 src/backends/qtcontacts/$(am__dirstamp):
 	@$(MKDIR_P) src/backends/qtcontacts
 	@: > src/backends/qtcontacts/$(am__dirstamp)
@@ -4182,9 +4388,42 @@ src/dbus/server/src_dbus_server_libsyncevodbusserver_la-server.lo:  \
 src/dbus/server/src_dbus_server_libsyncevodbusserver_la-session.lo:  \
 	src/dbus/server/$(am__dirstamp) \
 	src/dbus/server/$(DEPDIR)/$(am__dirstamp)
+src/dbus/server/pim/$(am__dirstamp):
+	@$(MKDIR_P) src/dbus/server/pim
+	@: > src/dbus/server/pim/$(am__dirstamp)
+src/dbus/server/pim/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) src/dbus/server/pim/$(DEPDIR)
+	@: > src/dbus/server/pim/$(DEPDIR)/$(am__dirstamp)
+src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-view.lo:  \
+	src/dbus/server/pim/$(am__dirstamp) \
+	src/dbus/server/pim/$(DEPDIR)/$(am__dirstamp)
+src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-full-view.lo:  \
+	src/dbus/server/pim/$(am__dirstamp) \
+	src/dbus/server/pim/$(DEPDIR)/$(am__dirstamp)
+src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-filtered-view.lo:  \
+	src/dbus/server/pim/$(am__dirstamp) \
+	src/dbus/server/pim/$(DEPDIR)/$(am__dirstamp)
+src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-edsf-view.lo:  \
+	src/dbus/server/pim/$(am__dirstamp) \
+	src/dbus/server/pim/$(DEPDIR)/$(am__dirstamp)
+src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-merge-view.lo:  \
+	src/dbus/server/pim/$(am__dirstamp) \
+	src/dbus/server/pim/$(DEPDIR)/$(am__dirstamp)
+src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-individual-traits.lo:  \
+	src/dbus/server/pim/$(am__dirstamp) \
+	src/dbus/server/pim/$(DEPDIR)/$(am__dirstamp)
+src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-folks.lo:  \
+	src/dbus/server/pim/$(am__dirstamp) \
+	src/dbus/server/pim/$(DEPDIR)/$(am__dirstamp)
+src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-manager.lo:  \
+	src/dbus/server/pim/$(am__dirstamp) \
+	src/dbus/server/pim/$(DEPDIR)/$(am__dirstamp)
 src/dbus/server/src_dbus_server_libsyncevodbusserver_la-main.lo:  \
 	src/dbus/server/$(am__dirstamp) \
 	src/dbus/server/$(DEPDIR)/$(am__dirstamp)
+src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-locale-factory-@DBUS_PIM_PLUGIN@.lo:  \
+	src/dbus/server/pim/$(am__dirstamp) \
+	src/dbus/server/pim/$(DEPDIR)/$(am__dirstamp)
 src/dbus/server/libsyncevodbusserver.la: $(src_dbus_server_libsyncevodbusserver_la_OBJECTS) $(src_dbus_server_libsyncevodbusserver_la_DEPENDENCIES) src/dbus/server/$(am__dirstamp)
 	$(AM_V_CXXLD)$(src_dbus_server_libsyncevodbusserver_la_LINK) $(am_src_dbus_server_libsyncevodbusserver_la_rpath) $(src_dbus_server_libsyncevodbusserver_la_OBJECTS) $(src_dbus_server_libsyncevodbusserver_la_LIBADD) $(LIBS)
 src/gdbus/$(am__dirstamp):
@@ -4233,6 +4472,9 @@ src/syncevo/$(am__dirstamp):
 src/syncevo/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) src/syncevo/$(DEPDIR)
 	@: > src/syncevo/$(DEPDIR)/$(am__dirstamp)
+src/syncevo/src_syncevo_libsyncevolution_la-EDSClient.lo:  \
+	src/syncevo/$(am__dirstamp) \
+	src/syncevo/$(DEPDIR)/$(am__dirstamp)
 src/syncevo/src_syncevo_libsyncevolution_la-ConfigFilter.lo:  \
 	src/syncevo/$(am__dirstamp) \
 	src/syncevo/$(DEPDIR)/$(am__dirstamp)
@@ -4276,6 +4518,9 @@ src/syncevo/src_syncevo_libsyncevolution_la-LocalTransportAgent.lo:  \
 	src/syncevo/$(am__dirstamp) \
 	src/syncevo/$(DEPDIR)/$(am__dirstamp)
 src/syncevo/src_syncevo_libsyncevolution_la-util.lo:  \
+	src/syncevo/$(am__dirstamp) \
+	src/syncevo/$(DEPDIR)/$(am__dirstamp)
+src/syncevo/src_syncevo_libsyncevolution_la-TmpFile.lo:  \
 	src/syncevo/$(am__dirstamp) \
 	src/syncevo/$(DEPDIR)/$(am__dirstamp)
 src/syncevo/src_syncevo_libsyncevolution_la-lcs.lo:  \
@@ -4503,6 +4748,9 @@ src/backends/kde/src_client_test-KDEPlatformRegister.$(OBJEXT):  \
 src/backends/maemo/src_client_test-MaemoCalendarSourceRegister.$(OBJEXT):  \
 	src/backends/maemo/$(am__dirstamp) \
 	src/backends/maemo/$(DEPDIR)/$(am__dirstamp)
+src/backends/pbap/src_client_test-PbapSyncSourceRegister.$(OBJEXT):  \
+	src/backends/pbap/$(am__dirstamp) \
+	src/backends/pbap/$(DEPDIR)/$(am__dirstamp)
 src/backends/qtcontacts/src_client_test-QtContactsSourceRegister.$(OBJEXT):  \
 	src/backends/qtcontacts/$(am__dirstamp) \
 	src/backends/qtcontacts/$(DEPDIR)/$(am__dirstamp)
@@ -4709,6 +4957,9 @@ src/backends/kde/src_syncevo_dbus_helper-KDEPlatformRegister.$(OBJEXT):  \
 src/backends/maemo/src_syncevo_dbus_helper-MaemoCalendarSourceRegister.$(OBJEXT):  \
 	src/backends/maemo/$(am__dirstamp) \
 	src/backends/maemo/$(DEPDIR)/$(am__dirstamp)
+src/backends/pbap/src_syncevo_dbus_helper-PbapSyncSourceRegister.$(OBJEXT):  \
+	src/backends/pbap/$(am__dirstamp) \
+	src/backends/pbap/$(DEPDIR)/$(am__dirstamp)
 src/backends/qtcontacts/src_syncevo_dbus_helper-QtContactsSourceRegister.$(OBJEXT):  \
 	src/backends/qtcontacts/$(am__dirstamp) \
 	src/backends/qtcontacts/$(DEPDIR)/$(am__dirstamp)
@@ -4756,6 +5007,9 @@ src/backends/kde/src_syncevo_dbus_server-KDEPlatformRegister.$(OBJEXT):  \
 src/backends/maemo/src_syncevo_dbus_server-MaemoCalendarSourceRegister.$(OBJEXT):  \
 	src/backends/maemo/$(am__dirstamp) \
 	src/backends/maemo/$(DEPDIR)/$(am__dirstamp)
+src/backends/pbap/src_syncevo_dbus_server-PbapSyncSourceRegister.$(OBJEXT):  \
+	src/backends/pbap/$(am__dirstamp) \
+	src/backends/pbap/$(DEPDIR)/$(am__dirstamp)
 src/backends/qtcontacts/src_syncevo_dbus_server-QtContactsSourceRegister.$(OBJEXT):  \
 	src/backends/qtcontacts/$(am__dirstamp) \
 	src/backends/qtcontacts/$(DEPDIR)/$(am__dirstamp)
@@ -4805,6 +5059,9 @@ src/backends/kde/src_syncevo_local_sync-KDEPlatformRegister.$(OBJEXT):  \
 src/backends/maemo/src_syncevo_local_sync-MaemoCalendarSourceRegister.$(OBJEXT):  \
 	src/backends/maemo/$(am__dirstamp) \
 	src/backends/maemo/$(DEPDIR)/$(am__dirstamp)
+src/backends/pbap/src_syncevo_local_sync-PbapSyncSourceRegister.$(OBJEXT):  \
+	src/backends/pbap/$(am__dirstamp) \
+	src/backends/pbap/$(DEPDIR)/$(am__dirstamp)
 src/backends/qtcontacts/src_syncevo_local_sync-QtContactsSourceRegister.$(OBJEXT):  \
 	src/backends/qtcontacts/$(am__dirstamp) \
 	src/backends/qtcontacts/$(DEPDIR)/$(am__dirstamp)
@@ -4854,6 +5111,9 @@ src/backends/kde/src_syncevolution-KDEPlatformRegister.$(OBJEXT):  \
 src/backends/maemo/src_syncevolution-MaemoCalendarSourceRegister.$(OBJEXT):  \
 	src/backends/maemo/$(am__dirstamp) \
 	src/backends/maemo/$(DEPDIR)/$(am__dirstamp)
+src/backends/pbap/src_syncevolution-PbapSyncSourceRegister.$(OBJEXT):  \
+	src/backends/pbap/$(am__dirstamp) \
+	src/backends/pbap/$(DEPDIR)/$(am__dirstamp)
 src/backends/qtcontacts/src_syncevolution-QtContactsSourceRegister.$(OBJEXT):  \
 	src/backends/qtcontacts/$(am__dirstamp) \
 	src/backends/qtcontacts/$(DEPDIR)/$(am__dirstamp)
@@ -5103,6 +5363,13 @@ mostlyclean-compile:
 	-rm -f src/backends/maemo/src_syncevo_dbus_server-MaemoCalendarSourceRegister.$(OBJEXT)
 	-rm -f src/backends/maemo/src_syncevo_local_sync-MaemoCalendarSourceRegister.$(OBJEXT)
 	-rm -f src/backends/maemo/src_syncevolution-MaemoCalendarSourceRegister.$(OBJEXT)
+	-rm -f src/backends/pbap/src_backends_pbap_syncpbap_la-PbapSyncSource.$(OBJEXT)
+	-rm -f src/backends/pbap/src_backends_pbap_syncpbap_la-PbapSyncSource.lo
+	-rm -f src/backends/pbap/src_client_test-PbapSyncSourceRegister.$(OBJEXT)
+	-rm -f src/backends/pbap/src_syncevo_dbus_helper-PbapSyncSourceRegister.$(OBJEXT)
+	-rm -f src/backends/pbap/src_syncevo_dbus_server-PbapSyncSourceRegister.$(OBJEXT)
+	-rm -f src/backends/pbap/src_syncevo_local_sync-PbapSyncSourceRegister.$(OBJEXT)
+	-rm -f src/backends/pbap/src_syncevolution-PbapSyncSourceRegister.$(OBJEXT)
 	-rm -f src/backends/qtcontacts/src_backends_qtcontacts_syncqtcontacts_la-QtContactsSource.$(OBJEXT)
 	-rm -f src/backends/qtcontacts/src_backends_qtcontacts_syncqtcontacts_la-QtContactsSource.lo
 	-rm -f src/backends/qtcontacts/src_client_test-QtContactsSourceRegister.$(OBJEXT)
@@ -5164,6 +5431,24 @@ mostlyclean-compile:
 	-rm -f src/dbus/qt/src_dbus_qt_libsyncevolution_qt_dbus_la-syncevo-session-full.lo
 	-rm -f src/dbus/qt/src_dbus_qt_libsyncevolution_qt_dbus_la-syncevo-session-full.moc.$(OBJEXT)
 	-rm -f src/dbus/qt/src_dbus_qt_libsyncevolution_qt_dbus_la-syncevo-session-full.moc.lo
+	-rm -f src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-edsf-view.$(OBJEXT)
+	-rm -f src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-edsf-view.lo
+	-rm -f src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-filtered-view.$(OBJEXT)
+	-rm -f src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-filtered-view.lo
+	-rm -f src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-folks.$(OBJEXT)
+	-rm -f src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-folks.lo
+	-rm -f src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-full-view.$(OBJEXT)
+	-rm -f src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-full-view.lo
+	-rm -f src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-individual-traits.$(OBJEXT)
+	-rm -f src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-individual-traits.lo
+	-rm -f src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-locale-factory-@DBUS_PIM_PLUGIN@.$(OBJEXT)
+	-rm -f src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-locale-factory-@DBUS_PIM_PLUGIN@.lo
+	-rm -f src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-manager.$(OBJEXT)
+	-rm -f src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-manager.lo
+	-rm -f src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-merge-view.$(OBJEXT)
+	-rm -f src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-merge-view.lo
+	-rm -f src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-view.$(OBJEXT)
+	-rm -f src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-view.lo
 	-rm -f src/dbus/server/src_dbus_server_libsyncevodbushelper_la-dbus-callbacks.$(OBJEXT)
 	-rm -f src/dbus/server/src_dbus_server_libsyncevodbushelper_la-dbus-callbacks.lo
 	-rm -f src/dbus/server/src_dbus_server_libsyncevodbushelper_la-dbus-sync.$(OBJEXT)
@@ -5276,6 +5561,8 @@ mostlyclean-compile:
 	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-ConfigNode.lo
 	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-CurlTransportAgent.$(OBJEXT)
 	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-CurlTransportAgent.lo
+	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-EDSClient.$(OBJEXT)
+	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-EDSClient.lo
 	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-FileConfigTree.$(OBJEXT)
 	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-FileConfigTree.lo
 	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-FileDataBlob.$(OBJEXT)
@@ -5332,6 +5619,8 @@ mostlyclean-compile:
 	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-SynthesisDBPlugin.lo
 	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-SynthesisEngine.$(OBJEXT)
 	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-SynthesisEngine.lo
+	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-TmpFile.$(OBJEXT)
+	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-TmpFile.lo
 	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-TrackingSyncSource.$(OBJEXT)
 	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-TrackingSyncSource.lo
 	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-TransportAgent.$(OBJEXT)
@@ -5431,6 +5720,12 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/backends/maemo/$(DEPDIR)/src_syncevo_dbus_server-MaemoCalendarSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/backends/maemo/$(DEPDIR)/src_syncevo_local_sync-MaemoCalendarSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/backends/maemo/$(DEPDIR)/src_syncevolution-MaemoCalendarSourceRegister.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/backends/pbap/$(DEPDIR)/src_backends_pbap_syncpbap_la-PbapSyncSource.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/backends/pbap/$(DEPDIR)/src_client_test-PbapSyncSourceRegister.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/backends/pbap/$(DEPDIR)/src_syncevo_dbus_helper-PbapSyncSourceRegister.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/backends/pbap/$(DEPDIR)/src_syncevo_dbus_server-PbapSyncSourceRegister.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/backends/pbap/$(DEPDIR)/src_syncevo_local_sync-PbapSyncSourceRegister.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/backends/pbap/$(DEPDIR)/src_syncevolution-PbapSyncSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/backends/qtcontacts/$(DEPDIR)/src_backends_qtcontacts_syncqtcontacts_la-QtContactsSource.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/backends/qtcontacts/$(DEPDIR)/src_client_test-QtContactsSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/backends/qtcontacts/$(DEPDIR)/src_syncevo_dbus_helper-QtContactsSourceRegister.Po@am__quote@
@@ -5497,6 +5792,15 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/dbus/server/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-read-operations.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/dbus/server/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-server.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/dbus/server/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-session.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-edsf-view.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-filtered-view.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-folks.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-full-view.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-individual-traits.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-locale-factory-@DBUS_PIM_PLUGIN@.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-manager.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-merge-view.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-view.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/gdbus/$(DEPDIR)/src_gdbus_libgdbussyncevo_la-debug.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/gdbus/$(DEPDIR)/src_gdbus_libgdbussyncevo_la-gdbus-cxx-bridge.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/gdbus/$(DEPDIR)/src_gdbus_libgdbussyncevo_la-mainloop.Plo@am__quote@
@@ -5544,6 +5848,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-ConfigFilter.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-ConfigNode.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-CurlTransportAgent.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-EDSClient.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-FileConfigTree.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-FileDataBlob.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-FilterConfigNode.Plo@am__quote@
@@ -5572,6 +5877,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-SyncSource.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-SynthesisDBPlugin.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-SynthesisEngine.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-TmpFile.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-TrackingSyncSource.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-TransportAgent.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-UserInterface.Plo@am__quote@
@@ -6420,6 +6726,14 @@ src/backends/maemo/src_backends_maemo_syncmaemocal_la-MaemoCalendarSource.lo: sr
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_backends_maemo_syncmaemocal_la_CPPFLAGS) $(CPPFLAGS) $(src_backends_maemo_syncmaemocal_la_CXXFLAGS) $(CXXFLAGS) -c -o src/backends/maemo/src_backends_maemo_syncmaemocal_la-MaemoCalendarSource.lo `test -f 'src/backends/maemo/MaemoCalendarSource.cpp' || echo '$(srcdir)/'`src/backends/maemo/MaemoCalendarSource.cpp
 
+src/backends/pbap/src_backends_pbap_syncpbap_la-PbapSyncSource.lo: src/backends/pbap/PbapSyncSource.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_backends_pbap_syncpbap_la_CPPFLAGS) $(CPPFLAGS) $(src_backends_pbap_syncpbap_la_CXXFLAGS) $(CXXFLAGS) -MT src/backends/pbap/src_backends_pbap_syncpbap_la-PbapSyncSource.lo -MD -MP -MF src/backends/pbap/$(DEPDIR)/src_backends_pbap_syncpbap_la-PbapSyncSource.Tpo -c -o src/backends/pbap/src_backends_pbap_syncpbap_la-PbapSyncSource.lo `test -f 'src/backends/pbap/PbapSyncSource.cpp' || echo '$(srcdir)/'`src/backends/pbap/PbapSyncSource.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/backends/pbap/$(DEPDIR)/src_backends_pbap_syncpbap_la-PbapSyncSource.Tpo src/backends/pbap/$(DEPDIR)/src_backends_pbap_syncpbap_la-PbapSyncSource.Plo
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/backends/pbap/PbapSyncSource.cpp' object='src/backends/pbap/src_backends_pbap_syncpbap_la-PbapSyncSource.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_backends_pbap_syncpbap_la_CPPFLAGS) $(CPPFLAGS) $(src_backends_pbap_syncpbap_la_CXXFLAGS) $(CXXFLAGS) -c -o src/backends/pbap/src_backends_pbap_syncpbap_la-PbapSyncSource.lo `test -f 'src/backends/pbap/PbapSyncSource.cpp' || echo '$(srcdir)/'`src/backends/pbap/PbapSyncSource.cpp
+
 src/backends/qtcontacts/src_backends_qtcontacts_syncqtcontacts_la-QtContactsSource.lo: src/backends/qtcontacts/QtContactsSource.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_backends_qtcontacts_syncqtcontacts_la_CPPFLAGS) $(CPPFLAGS) $(src_backends_qtcontacts_syncqtcontacts_la_CXXFLAGS) $(CXXFLAGS) -MT src/backends/qtcontacts/src_backends_qtcontacts_syncqtcontacts_la-QtContactsSource.lo -MD -MP -MF src/backends/qtcontacts/$(DEPDIR)/src_backends_qtcontacts_syncqtcontacts_la-QtContactsSource.Tpo -c -o src/backends/qtcontacts/src_backends_qtcontacts_syncqtcontacts_la-QtContactsSource.lo `test -f 'src/backends/qtcontacts/QtContactsSource.cpp' || echo '$(srcdir)/'`src/backends/qtcontacts/QtContactsSource.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/backends/qtcontacts/$(DEPDIR)/src_backends_qtcontacts_syncqtcontacts_la-QtContactsSource.Tpo src/backends/qtcontacts/$(DEPDIR)/src_backends_qtcontacts_syncqtcontacts_la-QtContactsSource.Plo
@@ -6740,6 +7054,70 @@ src/dbus/server/src_dbus_server_libsyncevodbusserver_la-session.lo: src/dbus/ser
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_server_libsyncevodbusserver_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) $(CXXFLAGS) -c -o src/dbus/server/src_dbus_server_libsyncevodbusserver_la-session.lo `test -f 'src/dbus/server/session.cpp' || echo '$(srcdir)/'`src/dbus/server/session.cpp
 
+src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-view.lo: src/dbus/server/pim/view.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_server_libsyncevodbusserver_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) $(CXXFLAGS) -MT src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-view.lo -MD -MP -MF src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-view.Tpo -c -o src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-view.lo `test -f 'src/dbus/server/pim/view.cpp' || echo '$(srcdir)/'`src/dbus/server/pim/view.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-view.Tpo src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-view.Plo
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/dbus/server/pim/view.cpp' object='src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-view.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_server_libsyncevodbusserver_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) $(CXXFLAGS) -c -o src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-view.lo `test -f 'src/dbus/server/pim/view.cpp' || echo '$(srcdir)/'`src/dbus/server/pim/view.cpp
+
+src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-full-view.lo: src/dbus/server/pim/full-view.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_server_libsyncevodbusserver_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) $(CXXFLAGS) -MT src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-full-view.lo -MD -MP -MF src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-full-view.Tpo -c -o src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-full-view.lo `test -f 'src/dbus/server/pim/full-view.cpp' || echo '$(srcdir)/'`src/dbus/server/pim/full-view.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-full-view.Tpo src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-full-view.Plo
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/dbus/server/pim/full-view.cpp' object='src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-full-view.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_server_libsyncevodbusserver_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) $(CXXFLAGS) -c -o src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-full-view.lo `test -f 'src/dbus/server/pim/full-view.cpp' || echo '$(srcdir)/'`src/dbus/server/pim/full-view.cpp
+
+src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-filtered-view.lo: src/dbus/server/pim/filtered-view.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_server_libsyncevodbusserver_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) $(CXXFLAGS) -MT src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-filtered-view.lo -MD -MP -MF src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-filtered-view.Tpo -c -o src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-filtered-view.lo `test -f 'src/dbus/server/pim/filtered-view.cpp' || echo '$(srcdir)/'`src/dbus/server/pim/filtered-view.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-filtered-view.Tpo src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-filtered-view.Plo
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/dbus/server/pim/filtered-view.cpp' object='src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-filtered-view.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_server_libsyncevodbusserver_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) $(CXXFLAGS) -c -o src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-filtered-view.lo `test -f 'src/dbus/server/pim/filtered-view.cpp' || echo '$(srcdir)/'`src/dbus/server/pim/filtered-view.cpp
+
+src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-edsf-view.lo: src/dbus/server/pim/edsf-view.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_server_libsyncevodbusserver_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) $(CXXFLAGS) -MT src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-edsf-view.lo -MD -MP -MF src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-edsf-view.Tpo -c -o src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-edsf-view.lo `test -f 'src/dbus/server/pim/edsf-view.cpp' || echo '$(srcdir)/'`src/dbus/server/pim/edsf-view.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-edsf-view.Tpo src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-edsf-view.Plo
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/dbus/server/pim/edsf-view.cpp' object='src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-edsf-view.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_server_libsyncevodbusserver_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) $(CXXFLAGS) -c -o src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-edsf-view.lo `test -f 'src/dbus/server/pim/edsf-view.cpp' || echo '$(srcdir)/'`src/dbus/server/pim/edsf-view.cpp
+
+src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-merge-view.lo: src/dbus/server/pim/merge-view.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_server_libsyncevodbusserver_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) $(CXXFLAGS) -MT src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-merge-view.lo -MD -MP -MF src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-merge-view.Tpo -c -o src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-merge-view.lo `test -f 'src/dbus/server/pim/merge-view.cpp' || echo '$(srcdir)/'`src/dbus/server/pim/merge-view.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-merge-view.Tpo src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-merge-view.Plo
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/dbus/server/pim/merge-view.cpp' object='src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-merge-view.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_server_libsyncevodbusserver_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) $(CXXFLAGS) -c -o src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-merge-view.lo `test -f 'src/dbus/server/pim/merge-view.cpp' || echo '$(srcdir)/'`src/dbus/server/pim/merge-view.cpp
+
+src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-individual-traits.lo: src/dbus/server/pim/individual-traits.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_server_libsyncevodbusserver_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) $(CXXFLAGS) -MT src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-individual-traits.lo -MD -MP -MF src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-individual-traits.Tpo -c -o src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-individual-traits.lo `test -f 'src/dbus/server/pim/individual-traits.cpp' || echo '$(srcdir)/'`src/dbus/server/pim/individual-traits.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-individual-traits.Tpo src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-individual-traits.Plo
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/dbus/server/pim/individual-traits.cpp' object='src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-individual-traits.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_server_libsyncevodbusserver_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) $(CXXFLAGS) -c -o src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-individual-traits.lo `test -f 'src/dbus/server/pim/individual-traits.cpp' || echo '$(srcdir)/'`src/dbus/server/pim/individual-traits.cpp
+
+src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-folks.lo: src/dbus/server/pim/folks.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_server_libsyncevodbusserver_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) $(CXXFLAGS) -MT src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-folks.lo -MD -MP -MF src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-folks.Tpo -c -o src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-folks.lo `test -f 'src/dbus/server/pim/folks.cpp' || echo '$(srcdir)/'`src/dbus/server/pim/folks.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-folks.Tpo src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-folks.Plo
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/dbus/server/pim/folks.cpp' object='src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-folks.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_server_libsyncevodbusserver_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) $(CXXFLAGS) -c -o src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-folks.lo `test -f 'src/dbus/server/pim/folks.cpp' || echo '$(srcdir)/'`src/dbus/server/pim/folks.cpp
+
+src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-manager.lo: src/dbus/server/pim/manager.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_server_libsyncevodbusserver_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) $(CXXFLAGS) -MT src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-manager.lo -MD -MP -MF src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-manager.Tpo -c -o src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-manager.lo `test -f 'src/dbus/server/pim/manager.cpp' || echo '$(srcdir)/'`src/dbus/server/pim/manager.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-manager.Tpo src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-manager.Plo
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/dbus/server/pim/manager.cpp' object='src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-manager.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_server_libsyncevodbusserver_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) $(CXXFLAGS) -c -o src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-manager.lo `test -f 'src/dbus/server/pim/manager.cpp' || echo '$(srcdir)/'`src/dbus/server/pim/manager.cpp
+
 src/dbus/server/src_dbus_server_libsyncevodbusserver_la-main.lo: src/dbus/server/main.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_server_libsyncevodbusserver_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) $(CXXFLAGS) -MT src/dbus/server/src_dbus_server_libsyncevodbusserver_la-main.lo -MD -MP -MF src/dbus/server/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-main.Tpo -c -o src/dbus/server/src_dbus_server_libsyncevodbusserver_la-main.lo `test -f 'src/dbus/server/main.cpp' || echo '$(srcdir)/'`src/dbus/server/main.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/dbus/server/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-main.Tpo src/dbus/server/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-main.Plo
@@ -6747,6 +7125,14 @@ src/dbus/server/src_dbus_server_libsyncevodbusserver_la-main.lo: src/dbus/server
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/dbus/server/main.cpp' object='src/dbus/server/src_dbus_server_libsyncevodbusserver_la-main.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_server_libsyncevodbusserver_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) $(CXXFLAGS) -c -o src/dbus/server/src_dbus_server_libsyncevodbusserver_la-main.lo `test -f 'src/dbus/server/main.cpp' || echo '$(srcdir)/'`src/dbus/server/main.cpp
+
+src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-locale-factory-@DBUS_PIM_PLUGIN@.lo: src/dbus/server/pim/locale-factory-@DBUS_PIM_PLUGIN@.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_server_libsyncevodbusserver_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) $(CXXFLAGS) -MT src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-locale-factory-@DBUS_PIM_PLUGIN@.lo -MD -MP -MF src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-locale-factory-@DBUS_PIM_PLUGIN@.Tpo -c -o src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-locale-factory-@DBUS_PIM_PLUGIN@.lo `test -f 'src/dbus/server/pim/locale-factory-@DBUS_PIM_PLUGIN@.cpp' || echo '$(srcdir)/'`src/dbus/server/pim/locale-factory-@DBUS_PIM_PLUGIN@.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-locale-factory-@DBUS_PIM_PLUGIN@.Tpo src/dbus/server/pim/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-locale-factory-@DBUS_PIM_PLUGIN@.Plo
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/dbus/server/pim/locale-factory-@DBUS_PIM_PLUGIN@.cpp' object='src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-locale-factory-@DBUS_PIM_PLUGIN@.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_server_libsyncevodbusserver_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) $(CXXFLAGS) -c -o src/dbus/server/pim/src_dbus_server_libsyncevodbusserver_la-locale-factory-@DBUS_PIM_PLUGIN@.lo `test -f 'src/dbus/server/pim/locale-factory-@DBUS_PIM_PLUGIN@.cpp' || echo '$(srcdir)/'`src/dbus/server/pim/locale-factory-@DBUS_PIM_PLUGIN@.cpp
 
 src/gdbus/src_gdbus_libgdbussyncevo_la-gdbus-cxx-bridge.lo: src/gdbus/gdbus-cxx-bridge.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_gdbus_libgdbussyncevo_la_CPPFLAGS) $(CPPFLAGS) $(src_gdbus_libgdbussyncevo_la_CXXFLAGS) $(CXXFLAGS) -MT src/gdbus/src_gdbus_libgdbussyncevo_la-gdbus-cxx-bridge.lo -MD -MP -MF src/gdbus/$(DEPDIR)/src_gdbus_libgdbussyncevo_la-gdbus-cxx-bridge.Tpo -c -o src/gdbus/src_gdbus_libgdbussyncevo_la-gdbus-cxx-bridge.lo `test -f 'src/gdbus/gdbus-cxx-bridge.cpp' || echo '$(srcdir)/'`src/gdbus/gdbus-cxx-bridge.cpp
@@ -6763,6 +7149,14 @@ src/gdbusxx/src_gdbusxx_libgdbussyncevo_la-gdbus-cxx-bridge.lo: src/gdbusxx/gdbu
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/gdbusxx/gdbus-cxx-bridge.cpp' object='src/gdbusxx/src_gdbusxx_libgdbussyncevo_la-gdbus-cxx-bridge.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_gdbusxx_libgdbussyncevo_la_CPPFLAGS) $(CPPFLAGS) $(src_gdbusxx_libgdbussyncevo_la_CXXFLAGS) $(CXXFLAGS) -c -o src/gdbusxx/src_gdbusxx_libgdbussyncevo_la-gdbus-cxx-bridge.lo `test -f 'src/gdbusxx/gdbus-cxx-bridge.cpp' || echo '$(srcdir)/'`src/gdbusxx/gdbus-cxx-bridge.cpp
+
+src/syncevo/src_syncevo_libsyncevolution_la-EDSClient.lo: src/syncevo/EDSClient.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -MT src/syncevo/src_syncevo_libsyncevolution_la-EDSClient.lo -MD -MP -MF src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-EDSClient.Tpo -c -o src/syncevo/src_syncevo_libsyncevolution_la-EDSClient.lo `test -f 'src/syncevo/EDSClient.cpp' || echo '$(srcdir)/'`src/syncevo/EDSClient.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-EDSClient.Tpo src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-EDSClient.Plo
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/syncevo/EDSClient.cpp' object='src/syncevo/src_syncevo_libsyncevolution_la-EDSClient.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -c -o src/syncevo/src_syncevo_libsyncevolution_la-EDSClient.lo `test -f 'src/syncevo/EDSClient.cpp' || echo '$(srcdir)/'`src/syncevo/EDSClient.cpp
 
 src/syncevo/src_syncevo_libsyncevolution_la-ConfigFilter.lo: src/syncevo/ConfigFilter.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -MT src/syncevo/src_syncevo_libsyncevolution_la-ConfigFilter.lo -MD -MP -MF src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-ConfigFilter.Tpo -c -o src/syncevo/src_syncevo_libsyncevolution_la-ConfigFilter.lo `test -f 'src/syncevo/ConfigFilter.cpp' || echo '$(srcdir)/'`src/syncevo/ConfigFilter.cpp
@@ -6883,6 +7277,14 @@ src/syncevo/src_syncevo_libsyncevolution_la-util.lo: src/syncevo/util.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/syncevo/util.cpp' object='src/syncevo/src_syncevo_libsyncevolution_la-util.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -c -o src/syncevo/src_syncevo_libsyncevolution_la-util.lo `test -f 'src/syncevo/util.cpp' || echo '$(srcdir)/'`src/syncevo/util.cpp
+
+src/syncevo/src_syncevo_libsyncevolution_la-TmpFile.lo: src/syncevo/TmpFile.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -MT src/syncevo/src_syncevo_libsyncevolution_la-TmpFile.lo -MD -MP -MF src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-TmpFile.Tpo -c -o src/syncevo/src_syncevo_libsyncevolution_la-TmpFile.lo `test -f 'src/syncevo/TmpFile.cpp' || echo '$(srcdir)/'`src/syncevo/TmpFile.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-TmpFile.Tpo src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-TmpFile.Plo
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/syncevo/TmpFile.cpp' object='src/syncevo/src_syncevo_libsyncevolution_la-TmpFile.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -c -o src/syncevo/src_syncevo_libsyncevolution_la-TmpFile.lo `test -f 'src/syncevo/TmpFile.cpp' || echo '$(srcdir)/'`src/syncevo/TmpFile.cpp
 
 src/syncevo/src_syncevo_libsyncevolution_la-lcs.lo: src/syncevo/lcs.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -MT src/syncevo/src_syncevo_libsyncevolution_la-lcs.lo -MD -MP -MF src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-lcs.Tpo -c -o src/syncevo/src_syncevo_libsyncevolution_la-lcs.lo `test -f 'src/syncevo/lcs.cpp' || echo '$(srcdir)/'`src/syncevo/lcs.cpp
@@ -7292,6 +7694,22 @@ src/backends/maemo/src_client_test-MaemoCalendarSourceRegister.obj: src/backends
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_client_test_CPPFLAGS) $(CPPFLAGS) $(src_client_test_CXXFLAGS) $(CXXFLAGS) -c -o src/backends/maemo/src_client_test-MaemoCalendarSourceRegister.obj `if test -f 'src/backends/maemo/MaemoCalendarSourceRegister.cpp'; then $(CYGPATH_W) 'src/backends/maemo/MaemoCalendarSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/src/backends/maemo/MaemoCalendarSourceRegister.cpp'; fi`
 
+src/backends/pbap/src_client_test-PbapSyncSourceRegister.o: src/backends/pbap/PbapSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_client_test_CPPFLAGS) $(CPPFLAGS) $(src_client_test_CXXFLAGS) $(CXXFLAGS) -MT src/backends/pbap/src_client_test-PbapSyncSourceRegister.o -MD -MP -MF src/backends/pbap/$(DEPDIR)/src_client_test-PbapSyncSourceRegister.Tpo -c -o src/backends/pbap/src_client_test-PbapSyncSourceRegister.o `test -f 'src/backends/pbap/PbapSyncSourceRegister.cpp' || echo '$(srcdir)/'`src/backends/pbap/PbapSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/backends/pbap/$(DEPDIR)/src_client_test-PbapSyncSourceRegister.Tpo src/backends/pbap/$(DEPDIR)/src_client_test-PbapSyncSourceRegister.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/backends/pbap/PbapSyncSourceRegister.cpp' object='src/backends/pbap/src_client_test-PbapSyncSourceRegister.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_client_test_CPPFLAGS) $(CPPFLAGS) $(src_client_test_CXXFLAGS) $(CXXFLAGS) -c -o src/backends/pbap/src_client_test-PbapSyncSourceRegister.o `test -f 'src/backends/pbap/PbapSyncSourceRegister.cpp' || echo '$(srcdir)/'`src/backends/pbap/PbapSyncSourceRegister.cpp
+
+src/backends/pbap/src_client_test-PbapSyncSourceRegister.obj: src/backends/pbap/PbapSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_client_test_CPPFLAGS) $(CPPFLAGS) $(src_client_test_CXXFLAGS) $(CXXFLAGS) -MT src/backends/pbap/src_client_test-PbapSyncSourceRegister.obj -MD -MP -MF src/backends/pbap/$(DEPDIR)/src_client_test-PbapSyncSourceRegister.Tpo -c -o src/backends/pbap/src_client_test-PbapSyncSourceRegister.obj `if test -f 'src/backends/pbap/PbapSyncSourceRegister.cpp'; then $(CYGPATH_W) 'src/backends/pbap/PbapSyncSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/src/backends/pbap/PbapSyncSourceRegister.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/backends/pbap/$(DEPDIR)/src_client_test-PbapSyncSourceRegister.Tpo src/backends/pbap/$(DEPDIR)/src_client_test-PbapSyncSourceRegister.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/backends/pbap/PbapSyncSourceRegister.cpp' object='src/backends/pbap/src_client_test-PbapSyncSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_client_test_CPPFLAGS) $(CPPFLAGS) $(src_client_test_CXXFLAGS) $(CXXFLAGS) -c -o src/backends/pbap/src_client_test-PbapSyncSourceRegister.obj `if test -f 'src/backends/pbap/PbapSyncSourceRegister.cpp'; then $(CYGPATH_W) 'src/backends/pbap/PbapSyncSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/src/backends/pbap/PbapSyncSourceRegister.cpp'; fi`
+
 src/backends/qtcontacts/src_client_test-QtContactsSourceRegister.o: src/backends/qtcontacts/QtContactsSourceRegister.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_client_test_CPPFLAGS) $(CPPFLAGS) $(src_client_test_CXXFLAGS) $(CXXFLAGS) -MT src/backends/qtcontacts/src_client_test-QtContactsSourceRegister.o -MD -MP -MF src/backends/qtcontacts/$(DEPDIR)/src_client_test-QtContactsSourceRegister.Tpo -c -o src/backends/qtcontacts/src_client_test-QtContactsSourceRegister.o `test -f 'src/backends/qtcontacts/QtContactsSourceRegister.cpp' || echo '$(srcdir)/'`src/backends/qtcontacts/QtContactsSourceRegister.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/backends/qtcontacts/$(DEPDIR)/src_client_test-QtContactsSourceRegister.Tpo src/backends/qtcontacts/$(DEPDIR)/src_client_test-QtContactsSourceRegister.Po
@@ -7564,6 +7982,22 @@ src/backends/maemo/src_syncevo_dbus_helper-MaemoCalendarSourceRegister.obj: src/
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_dbus_helper_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_dbus_helper_CXXFLAGS) $(CXXFLAGS) -c -o src/backends/maemo/src_syncevo_dbus_helper-MaemoCalendarSourceRegister.obj `if test -f 'src/backends/maemo/MaemoCalendarSourceRegister.cpp'; then $(CYGPATH_W) 'src/backends/maemo/MaemoCalendarSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/src/backends/maemo/MaemoCalendarSourceRegister.cpp'; fi`
 
+src/backends/pbap/src_syncevo_dbus_helper-PbapSyncSourceRegister.o: src/backends/pbap/PbapSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_dbus_helper_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_dbus_helper_CXXFLAGS) $(CXXFLAGS) -MT src/backends/pbap/src_syncevo_dbus_helper-PbapSyncSourceRegister.o -MD -MP -MF src/backends/pbap/$(DEPDIR)/src_syncevo_dbus_helper-PbapSyncSourceRegister.Tpo -c -o src/backends/pbap/src_syncevo_dbus_helper-PbapSyncSourceRegister.o `test -f 'src/backends/pbap/PbapSyncSourceRegister.cpp' || echo '$(srcdir)/'`src/backends/pbap/PbapSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/backends/pbap/$(DEPDIR)/src_syncevo_dbus_helper-PbapSyncSourceRegister.Tpo src/backends/pbap/$(DEPDIR)/src_syncevo_dbus_helper-PbapSyncSourceRegister.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/backends/pbap/PbapSyncSourceRegister.cpp' object='src/backends/pbap/src_syncevo_dbus_helper-PbapSyncSourceRegister.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_dbus_helper_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_dbus_helper_CXXFLAGS) $(CXXFLAGS) -c -o src/backends/pbap/src_syncevo_dbus_helper-PbapSyncSourceRegister.o `test -f 'src/backends/pbap/PbapSyncSourceRegister.cpp' || echo '$(srcdir)/'`src/backends/pbap/PbapSyncSourceRegister.cpp
+
+src/backends/pbap/src_syncevo_dbus_helper-PbapSyncSourceRegister.obj: src/backends/pbap/PbapSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_dbus_helper_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_dbus_helper_CXXFLAGS) $(CXXFLAGS) -MT src/backends/pbap/src_syncevo_dbus_helper-PbapSyncSourceRegister.obj -MD -MP -MF src/backends/pbap/$(DEPDIR)/src_syncevo_dbus_helper-PbapSyncSourceRegister.Tpo -c -o src/backends/pbap/src_syncevo_dbus_helper-PbapSyncSourceRegister.obj `if test -f 'src/backends/pbap/PbapSyncSourceRegister.cpp'; then $(CYGPATH_W) 'src/backends/pbap/PbapSyncSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/src/backends/pbap/PbapSyncSourceRegister.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/backends/pbap/$(DEPDIR)/src_syncevo_dbus_helper-PbapSyncSourceRegister.Tpo src/backends/pbap/$(DEPDIR)/src_syncevo_dbus_helper-PbapSyncSourceRegister.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/backends/pbap/PbapSyncSourceRegister.cpp' object='src/backends/pbap/src_syncevo_dbus_helper-PbapSyncSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_dbus_helper_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_dbus_helper_CXXFLAGS) $(CXXFLAGS) -c -o src/backends/pbap/src_syncevo_dbus_helper-PbapSyncSourceRegister.obj `if test -f 'src/backends/pbap/PbapSyncSourceRegister.cpp'; then $(CYGPATH_W) 'src/backends/pbap/PbapSyncSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/src/backends/pbap/PbapSyncSourceRegister.cpp'; fi`
+
 src/backends/qtcontacts/src_syncevo_dbus_helper-QtContactsSourceRegister.o: src/backends/qtcontacts/QtContactsSourceRegister.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_dbus_helper_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_dbus_helper_CXXFLAGS) $(CXXFLAGS) -MT src/backends/qtcontacts/src_syncevo_dbus_helper-QtContactsSourceRegister.o -MD -MP -MF src/backends/qtcontacts/$(DEPDIR)/src_syncevo_dbus_helper-QtContactsSourceRegister.Tpo -c -o src/backends/qtcontacts/src_syncevo_dbus_helper-QtContactsSourceRegister.o `test -f 'src/backends/qtcontacts/QtContactsSourceRegister.cpp' || echo '$(srcdir)/'`src/backends/qtcontacts/QtContactsSourceRegister.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/backends/qtcontacts/$(DEPDIR)/src_syncevo_dbus_helper-QtContactsSourceRegister.Tpo src/backends/qtcontacts/$(DEPDIR)/src_syncevo_dbus_helper-QtContactsSourceRegister.Po
@@ -7803,6 +8237,22 @@ src/backends/maemo/src_syncevo_dbus_server-MaemoCalendarSourceRegister.obj: src/
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/backends/maemo/MaemoCalendarSourceRegister.cpp' object='src/backends/maemo/src_syncevo_dbus_server-MaemoCalendarSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o src/backends/maemo/src_syncevo_dbus_server-MaemoCalendarSourceRegister.obj `if test -f 'src/backends/maemo/MaemoCalendarSourceRegister.cpp'; then $(CYGPATH_W) 'src/backends/maemo/MaemoCalendarSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/src/backends/maemo/MaemoCalendarSourceRegister.cpp'; fi`
+
+src/backends/pbap/src_syncevo_dbus_server-PbapSyncSourceRegister.o: src/backends/pbap/PbapSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT src/backends/pbap/src_syncevo_dbus_server-PbapSyncSourceRegister.o -MD -MP -MF src/backends/pbap/$(DEPDIR)/src_syncevo_dbus_server-PbapSyncSourceRegister.Tpo -c -o src/backends/pbap/src_syncevo_dbus_server-PbapSyncSourceRegister.o `test -f 'src/backends/pbap/PbapSyncSourceRegister.cpp' || echo '$(srcdir)/'`src/backends/pbap/PbapSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/backends/pbap/$(DEPDIR)/src_syncevo_dbus_server-PbapSyncSourceRegister.Tpo src/backends/pbap/$(DEPDIR)/src_syncevo_dbus_server-PbapSyncSourceRegister.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/backends/pbap/PbapSyncSourceRegister.cpp' object='src/backends/pbap/src_syncevo_dbus_server-PbapSyncSourceRegister.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o src/backends/pbap/src_syncevo_dbus_server-PbapSyncSourceRegister.o `test -f 'src/backends/pbap/PbapSyncSourceRegister.cpp' || echo '$(srcdir)/'`src/backends/pbap/PbapSyncSourceRegister.cpp
+
+src/backends/pbap/src_syncevo_dbus_server-PbapSyncSourceRegister.obj: src/backends/pbap/PbapSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT src/backends/pbap/src_syncevo_dbus_server-PbapSyncSourceRegister.obj -MD -MP -MF src/backends/pbap/$(DEPDIR)/src_syncevo_dbus_server-PbapSyncSourceRegister.Tpo -c -o src/backends/pbap/src_syncevo_dbus_server-PbapSyncSourceRegister.obj `if test -f 'src/backends/pbap/PbapSyncSourceRegister.cpp'; then $(CYGPATH_W) 'src/backends/pbap/PbapSyncSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/src/backends/pbap/PbapSyncSourceRegister.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/backends/pbap/$(DEPDIR)/src_syncevo_dbus_server-PbapSyncSourceRegister.Tpo src/backends/pbap/$(DEPDIR)/src_syncevo_dbus_server-PbapSyncSourceRegister.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/backends/pbap/PbapSyncSourceRegister.cpp' object='src/backends/pbap/src_syncevo_dbus_server-PbapSyncSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o src/backends/pbap/src_syncevo_dbus_server-PbapSyncSourceRegister.obj `if test -f 'src/backends/pbap/PbapSyncSourceRegister.cpp'; then $(CYGPATH_W) 'src/backends/pbap/PbapSyncSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/src/backends/pbap/PbapSyncSourceRegister.cpp'; fi`
 
 src/backends/qtcontacts/src_syncevo_dbus_server-QtContactsSourceRegister.o: src/backends/qtcontacts/QtContactsSourceRegister.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT src/backends/qtcontacts/src_syncevo_dbus_server-QtContactsSourceRegister.o -MD -MP -MF src/backends/qtcontacts/$(DEPDIR)/src_syncevo_dbus_server-QtContactsSourceRegister.Tpo -c -o src/backends/qtcontacts/src_syncevo_dbus_server-QtContactsSourceRegister.o `test -f 'src/backends/qtcontacts/QtContactsSourceRegister.cpp' || echo '$(srcdir)/'`src/backends/qtcontacts/QtContactsSourceRegister.cpp
@@ -8060,6 +8510,22 @@ src/backends/maemo/src_syncevo_local_sync-MaemoCalendarSourceRegister.obj: src/b
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_local_sync_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_local_sync_CXXFLAGS) $(CXXFLAGS) -c -o src/backends/maemo/src_syncevo_local_sync-MaemoCalendarSourceRegister.obj `if test -f 'src/backends/maemo/MaemoCalendarSourceRegister.cpp'; then $(CYGPATH_W) 'src/backends/maemo/MaemoCalendarSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/src/backends/maemo/MaemoCalendarSourceRegister.cpp'; fi`
 
+src/backends/pbap/src_syncevo_local_sync-PbapSyncSourceRegister.o: src/backends/pbap/PbapSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_local_sync_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_local_sync_CXXFLAGS) $(CXXFLAGS) -MT src/backends/pbap/src_syncevo_local_sync-PbapSyncSourceRegister.o -MD -MP -MF src/backends/pbap/$(DEPDIR)/src_syncevo_local_sync-PbapSyncSourceRegister.Tpo -c -o src/backends/pbap/src_syncevo_local_sync-PbapSyncSourceRegister.o `test -f 'src/backends/pbap/PbapSyncSourceRegister.cpp' || echo '$(srcdir)/'`src/backends/pbap/PbapSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/backends/pbap/$(DEPDIR)/src_syncevo_local_sync-PbapSyncSourceRegister.Tpo src/backends/pbap/$(DEPDIR)/src_syncevo_local_sync-PbapSyncSourceRegister.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/backends/pbap/PbapSyncSourceRegister.cpp' object='src/backends/pbap/src_syncevo_local_sync-PbapSyncSourceRegister.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_local_sync_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_local_sync_CXXFLAGS) $(CXXFLAGS) -c -o src/backends/pbap/src_syncevo_local_sync-PbapSyncSourceRegister.o `test -f 'src/backends/pbap/PbapSyncSourceRegister.cpp' || echo '$(srcdir)/'`src/backends/pbap/PbapSyncSourceRegister.cpp
+
+src/backends/pbap/src_syncevo_local_sync-PbapSyncSourceRegister.obj: src/backends/pbap/PbapSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_local_sync_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_local_sync_CXXFLAGS) $(CXXFLAGS) -MT src/backends/pbap/src_syncevo_local_sync-PbapSyncSourceRegister.obj -MD -MP -MF src/backends/pbap/$(DEPDIR)/src_syncevo_local_sync-PbapSyncSourceRegister.Tpo -c -o src/backends/pbap/src_syncevo_local_sync-PbapSyncSourceRegister.obj `if test -f 'src/backends/pbap/PbapSyncSourceRegister.cpp'; then $(CYGPATH_W) 'src/backends/pbap/PbapSyncSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/src/backends/pbap/PbapSyncSourceRegister.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/backends/pbap/$(DEPDIR)/src_syncevo_local_sync-PbapSyncSourceRegister.Tpo src/backends/pbap/$(DEPDIR)/src_syncevo_local_sync-PbapSyncSourceRegister.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/backends/pbap/PbapSyncSourceRegister.cpp' object='src/backends/pbap/src_syncevo_local_sync-PbapSyncSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_local_sync_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_local_sync_CXXFLAGS) $(CXXFLAGS) -c -o src/backends/pbap/src_syncevo_local_sync-PbapSyncSourceRegister.obj `if test -f 'src/backends/pbap/PbapSyncSourceRegister.cpp'; then $(CYGPATH_W) 'src/backends/pbap/PbapSyncSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/src/backends/pbap/PbapSyncSourceRegister.cpp'; fi`
+
 src/backends/qtcontacts/src_syncevo_local_sync-QtContactsSourceRegister.o: src/backends/qtcontacts/QtContactsSourceRegister.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_local_sync_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_local_sync_CXXFLAGS) $(CXXFLAGS) -MT src/backends/qtcontacts/src_syncevo_local_sync-QtContactsSourceRegister.o -MD -MP -MF src/backends/qtcontacts/$(DEPDIR)/src_syncevo_local_sync-QtContactsSourceRegister.Tpo -c -o src/backends/qtcontacts/src_syncevo_local_sync-QtContactsSourceRegister.o `test -f 'src/backends/qtcontacts/QtContactsSourceRegister.cpp' || echo '$(srcdir)/'`src/backends/qtcontacts/QtContactsSourceRegister.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/backends/qtcontacts/$(DEPDIR)/src_syncevo_local_sync-QtContactsSourceRegister.Tpo src/backends/qtcontacts/$(DEPDIR)/src_syncevo_local_sync-QtContactsSourceRegister.Po
@@ -8316,6 +8782,22 @@ src/backends/maemo/src_syncevolution-MaemoCalendarSourceRegister.obj: src/backen
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevolution_CPPFLAGS) $(CPPFLAGS) $(src_syncevolution_CXXFLAGS) $(CXXFLAGS) -c -o src/backends/maemo/src_syncevolution-MaemoCalendarSourceRegister.obj `if test -f 'src/backends/maemo/MaemoCalendarSourceRegister.cpp'; then $(CYGPATH_W) 'src/backends/maemo/MaemoCalendarSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/src/backends/maemo/MaemoCalendarSourceRegister.cpp'; fi`
 
+src/backends/pbap/src_syncevolution-PbapSyncSourceRegister.o: src/backends/pbap/PbapSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevolution_CPPFLAGS) $(CPPFLAGS) $(src_syncevolution_CXXFLAGS) $(CXXFLAGS) -MT src/backends/pbap/src_syncevolution-PbapSyncSourceRegister.o -MD -MP -MF src/backends/pbap/$(DEPDIR)/src_syncevolution-PbapSyncSourceRegister.Tpo -c -o src/backends/pbap/src_syncevolution-PbapSyncSourceRegister.o `test -f 'src/backends/pbap/PbapSyncSourceRegister.cpp' || echo '$(srcdir)/'`src/backends/pbap/PbapSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/backends/pbap/$(DEPDIR)/src_syncevolution-PbapSyncSourceRegister.Tpo src/backends/pbap/$(DEPDIR)/src_syncevolution-PbapSyncSourceRegister.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/backends/pbap/PbapSyncSourceRegister.cpp' object='src/backends/pbap/src_syncevolution-PbapSyncSourceRegister.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevolution_CPPFLAGS) $(CPPFLAGS) $(src_syncevolution_CXXFLAGS) $(CXXFLAGS) -c -o src/backends/pbap/src_syncevolution-PbapSyncSourceRegister.o `test -f 'src/backends/pbap/PbapSyncSourceRegister.cpp' || echo '$(srcdir)/'`src/backends/pbap/PbapSyncSourceRegister.cpp
+
+src/backends/pbap/src_syncevolution-PbapSyncSourceRegister.obj: src/backends/pbap/PbapSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevolution_CPPFLAGS) $(CPPFLAGS) $(src_syncevolution_CXXFLAGS) $(CXXFLAGS) -MT src/backends/pbap/src_syncevolution-PbapSyncSourceRegister.obj -MD -MP -MF src/backends/pbap/$(DEPDIR)/src_syncevolution-PbapSyncSourceRegister.Tpo -c -o src/backends/pbap/src_syncevolution-PbapSyncSourceRegister.obj `if test -f 'src/backends/pbap/PbapSyncSourceRegister.cpp'; then $(CYGPATH_W) 'src/backends/pbap/PbapSyncSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/src/backends/pbap/PbapSyncSourceRegister.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/backends/pbap/$(DEPDIR)/src_syncevolution-PbapSyncSourceRegister.Tpo src/backends/pbap/$(DEPDIR)/src_syncevolution-PbapSyncSourceRegister.Po
+@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/backends/pbap/PbapSyncSourceRegister.cpp' object='src/backends/pbap/src_syncevolution-PbapSyncSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevolution_CPPFLAGS) $(CPPFLAGS) $(src_syncevolution_CXXFLAGS) $(CXXFLAGS) -c -o src/backends/pbap/src_syncevolution-PbapSyncSourceRegister.obj `if test -f 'src/backends/pbap/PbapSyncSourceRegister.cpp'; then $(CYGPATH_W) 'src/backends/pbap/PbapSyncSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/src/backends/pbap/PbapSyncSourceRegister.cpp'; fi`
+
 src/backends/qtcontacts/src_syncevolution-QtContactsSourceRegister.o: src/backends/qtcontacts/QtContactsSourceRegister.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevolution_CPPFLAGS) $(CPPFLAGS) $(src_syncevolution_CXXFLAGS) $(CXXFLAGS) -MT src/backends/qtcontacts/src_syncevolution-QtContactsSourceRegister.o -MD -MP -MF src/backends/qtcontacts/$(DEPDIR)/src_syncevolution-QtContactsSourceRegister.Tpo -c -o src/backends/qtcontacts/src_syncevolution-QtContactsSourceRegister.o `test -f 'src/backends/qtcontacts/QtContactsSourceRegister.cpp' || echo '$(srcdir)/'`src/backends/qtcontacts/QtContactsSourceRegister.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/backends/qtcontacts/$(DEPDIR)/src_syncevolution-QtContactsSourceRegister.Tpo src/backends/qtcontacts/$(DEPDIR)/src_syncevolution-QtContactsSourceRegister.Po
@@ -8443,6 +8925,7 @@ clean-libtool:
 	-rm -rf src/backends/kcalextended/.libs src/backends/kcalextended/_libs
 	-rm -rf src/backends/kde/.libs src/backends/kde/_libs
 	-rm -rf src/backends/maemo/.libs src/backends/maemo/_libs
+	-rm -rf src/backends/pbap/.libs src/backends/pbap/_libs
 	-rm -rf src/backends/qtcontacts/.libs src/backends/qtcontacts/_libs
 	-rm -rf src/backends/sqlite/.libs src/backends/sqlite/_libs
 	-rm -rf src/backends/webdav/.libs src/backends/webdav/_libs
@@ -8450,6 +8933,7 @@ clean-libtool:
 	-rm -rf src/dbus/glib/.libs src/dbus/glib/_libs
 	-rm -rf src/dbus/qt/.libs src/dbus/qt/_libs
 	-rm -rf src/dbus/server/.libs src/dbus/server/_libs
+	-rm -rf src/dbus/server/pim/.libs src/dbus/server/pim/_libs
 	-rm -rf src/gdbus/.libs src/gdbus/_libs
 	-rm -rf src/gdbusxx/.libs src/gdbusxx/_libs
 	-rm -rf src/gnome-bluetooth/.libs src/gnome-bluetooth/_libs
@@ -9647,7 +10131,7 @@ install-binPROGRAMS: install-libLTLIBRARIES
 
 installdirs: installdirs-recursive
 installdirs-am:
-	for dir in "$(DESTDIR)$(libdir)" "$(DESTDIR)$(src_backends_activesync_backenddir)" "$(DESTDIR)$(src_backends_addressbook_backenddir)" "$(DESTDIR)$(src_backends_akonadi_backenddir)" "$(DESTDIR)$(src_backends_evolution_backenddir)" "$(DESTDIR)$(src_backends_file_backenddir)" "$(DESTDIR)$(src_backends_gnome_backenddir)" "$(DESTDIR)$(src_backends_kcalextended_backenddir)" "$(DESTDIR)$(src_backends_kde_backenddir)" "$(DESTDIR)$(src_backends_maemo_backenddir)" "$(DESTDIR)$(src_backends_qtcontacts_backenddir)" "$(DESTDIR)$(src_backends_sqlite_backenddir)" "$(DESTDIR)$(src_backends_webdav_backenddir)" "$(DESTDIR)$(src_backends_xmlrpc_backenddir)" "$(DESTDIR)$(src_gnome_bluetoothdir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(libexecdir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(src_syncevo_configs_xmldir)" "$(DESTDIR)$(libexecdir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(man1dir)" "$(DESTDIR)$(docdir)" "$(DESTDIR)$(pkgdatadir)" "$(DESTDIR)$(src_gtk3_ui_icondir)" "$(DESTDIR)$(src_gtk3_ui_themercdir)" "$(DESTDIR)$(src_gtk_ui_icondir)" "$(DESTDIR)$(src_gtk_ui_themercdir)" "$(DESTDIR)$(src_syncevo_configsdir)" "$(DESTDIR)$(src_syncevo_configs_datatypesdir)" "$(DESTDIR)$(src_syncevo_configs_datatypes_serverdir)" "$(DESTDIR)$(src_syncevo_configs_debugdir)" "$(DESTDIR)$(src_syncevo_configs_remoterulesdir)" "$(DESTDIR)$(src_syncevo_configs_remoterules_clientdir)" "$(DESTDIR)$(src_syncevo_configs_remoterules_serverdir)" "$(DESTDIR)$(src_syncevo_configs_scriptingdir)" "$(DESTDIR)$(src_syncevo_configs_scripting_clientdir)" "$(DESTDIR)$(src_syncevo_configs_scripting_serverdir)" "$(DESTDIR)$(src_templatesdir)" "$(DESTDIR)$(src_templates_clientsdir)" "$(DESTDIR)$(src_templates_clients_phonedir)" "$(DESTDIR)$(src_templates_contextsdir)" "$(DESTDIR)$(src_templates_serversdir)" "$(DESTDIR)$(src_testcasesdir)" "$(DESTDIR)$(src_testcases_lcsdir)" "$(DESTDIR)$(src_testcases_templates_clientsdir)" "$(DESTDIR)$(src_testcases_templates_clients_phone_nokia_s40dir)" "$(DESTDIR)$(docdir)" "$(DESTDIR)$(pkgconfigdir)" "$(DESTDIR)$(src_dbus_server_autostartdir)" "$(DESTDIR)$(src_dbus_server_servicedir)" "$(DESTDIR)$(src_gtk3_ui_applicationsdir)" "$(DESTDIR)$(src_gtk3_ui_gladedir)" "$(DESTDIR)$(src_gtk_ui_applicationsdir)" "$(DESTDIR)$(src_gtk_ui_gladedir)" "$(DESTDIR)$(src_dbus_qt_libsyncevolution_qt_dbus_includedir)" "$(DESTDIR)$(src_dbus_glib_libsyncevo_dbus_includedir)" "$(DESTDIR)$(src_syncevo_libsyncevolution_includedir)"; do \
+	for dir in "$(DESTDIR)$(libdir)" "$(DESTDIR)$(src_backends_activesync_backenddir)" "$(DESTDIR)$(src_backends_addressbook_backenddir)" "$(DESTDIR)$(src_backends_akonadi_backenddir)" "$(DESTDIR)$(src_backends_evolution_backenddir)" "$(DESTDIR)$(src_backends_file_backenddir)" "$(DESTDIR)$(src_backends_gnome_backenddir)" "$(DESTDIR)$(src_backends_kcalextended_backenddir)" "$(DESTDIR)$(src_backends_kde_backenddir)" "$(DESTDIR)$(src_backends_maemo_backenddir)" "$(DESTDIR)$(src_backends_pbap_backenddir)" "$(DESTDIR)$(src_backends_qtcontacts_backenddir)" "$(DESTDIR)$(src_backends_sqlite_backenddir)" "$(DESTDIR)$(src_backends_webdav_backenddir)" "$(DESTDIR)$(src_backends_xmlrpc_backenddir)" "$(DESTDIR)$(src_gnome_bluetoothdir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(libexecdir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(src_syncevo_configs_xmldir)" "$(DESTDIR)$(libexecdir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(man1dir)" "$(DESTDIR)$(docdir)" "$(DESTDIR)$(pkgdatadir)" "$(DESTDIR)$(src_gtk3_ui_icondir)" "$(DESTDIR)$(src_gtk3_ui_themercdir)" "$(DESTDIR)$(src_gtk_ui_icondir)" "$(DESTDIR)$(src_gtk_ui_themercdir)" "$(DESTDIR)$(src_syncevo_configsdir)" "$(DESTDIR)$(src_syncevo_configs_datatypesdir)" "$(DESTDIR)$(src_syncevo_configs_datatypes_serverdir)" "$(DESTDIR)$(src_syncevo_configs_debugdir)" "$(DESTDIR)$(src_syncevo_configs_remoterulesdir)" "$(DESTDIR)$(src_syncevo_configs_remoterules_clientdir)" "$(DESTDIR)$(src_syncevo_configs_remoterules_serverdir)" "$(DESTDIR)$(src_syncevo_configs_scriptingdir)" "$(DESTDIR)$(src_syncevo_configs_scripting_clientdir)" "$(DESTDIR)$(src_syncevo_configs_scripting_serverdir)" "$(DESTDIR)$(src_templatesdir)" "$(DESTDIR)$(src_templates_clientsdir)" "$(DESTDIR)$(src_templates_clients_phonedir)" "$(DESTDIR)$(src_templates_contextsdir)" "$(DESTDIR)$(src_templates_serversdir)" "$(DESTDIR)$(src_testcasesdir)" "$(DESTDIR)$(src_testcases_lcsdir)" "$(DESTDIR)$(src_testcases_templates_clientsdir)" "$(DESTDIR)$(src_testcases_templates_clients_phone_nokia_s40dir)" "$(DESTDIR)$(docdir)" "$(DESTDIR)$(pkgconfigdir)" "$(DESTDIR)$(src_dbus_server_autostartdir)" "$(DESTDIR)$(src_dbus_server_servicedir)" "$(DESTDIR)$(src_gtk3_ui_applicationsdir)" "$(DESTDIR)$(src_gtk3_ui_gladedir)" "$(DESTDIR)$(src_gtk_ui_applicationsdir)" "$(DESTDIR)$(src_gtk_ui_gladedir)" "$(DESTDIR)$(src_dbus_qt_libsyncevolution_qt_dbus_includedir)" "$(DESTDIR)$(src_dbus_glib_libsyncevo_dbus_includedir)" "$(DESTDIR)$(src_syncevo_libsyncevolution_includedir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: $(BUILT_SOURCES)
@@ -9691,6 +10175,8 @@ distclean-generic:
 	-rm -f src/backends/kde/$(am__dirstamp)
 	-rm -f src/backends/maemo/$(DEPDIR)/$(am__dirstamp)
 	-rm -f src/backends/maemo/$(am__dirstamp)
+	-rm -f src/backends/pbap/$(DEPDIR)/$(am__dirstamp)
+	-rm -f src/backends/pbap/$(am__dirstamp)
 	-rm -f src/backends/qtcontacts/$(DEPDIR)/$(am__dirstamp)
 	-rm -f src/backends/qtcontacts/$(am__dirstamp)
 	-rm -f src/backends/sqlite/$(DEPDIR)/$(am__dirstamp)
@@ -9705,6 +10191,8 @@ distclean-generic:
 	-rm -f src/dbus/qt/$(am__dirstamp)
 	-rm -f src/dbus/server/$(DEPDIR)/$(am__dirstamp)
 	-rm -f src/dbus/server/$(am__dirstamp)
+	-rm -f src/dbus/server/pim/$(DEPDIR)/$(am__dirstamp)
+	-rm -f src/dbus/server/pim/$(am__dirstamp)
 	-rm -f src/gdbus/$(DEPDIR)/$(am__dirstamp)
 	-rm -f src/gdbus/$(am__dirstamp)
 	-rm -f src/gdbus/test/$(DEPDIR)/$(am__dirstamp)
@@ -9744,6 +10232,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-libLTLIBRARIES \
 	clean-src_backends_kcalextended_backendLTLIBRARIES \
 	clean-src_backends_kde_backendLTLIBRARIES \
 	clean-src_backends_maemo_backendLTLIBRARIES \
+	clean-src_backends_pbap_backendLTLIBRARIES \
 	clean-src_backends_qtcontacts_backendLTLIBRARIES \
 	clean-src_backends_sqlite_backendLTLIBRARIES \
 	clean-src_backends_webdav_backendLTLIBRARIES \
@@ -9752,7 +10241,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-libLTLIBRARIES \
 
 distclean: distclean-recursive
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf src/$(DEPDIR) src/backends/activesync/$(DEPDIR) src/backends/addressbook/$(DEPDIR) src/backends/akonadi/$(DEPDIR) src/backends/evolution/$(DEPDIR) src/backends/file/$(DEPDIR) src/backends/gnome/$(DEPDIR) src/backends/kcalextended/$(DEPDIR) src/backends/kde/$(DEPDIR) src/backends/maemo/$(DEPDIR) src/backends/qtcontacts/$(DEPDIR) src/backends/sqlite/$(DEPDIR) src/backends/webdav/$(DEPDIR) src/backends/xmlrpc/$(DEPDIR) src/dbus/glib/$(DEPDIR) src/dbus/qt/$(DEPDIR) src/dbus/server/$(DEPDIR) src/gdbus/$(DEPDIR) src/gdbus/test/$(DEPDIR) src/gdbusxx/$(DEPDIR) src/gdbusxx/test/$(DEPDIR) src/gnome-bluetooth/$(DEPDIR) src/gtk-ui/$(DEPDIR) src/gtk3-ui/$(DEPDIR) src/syncevo/$(DEPDIR) test/$(DEPDIR)
+	-rm -rf src/$(DEPDIR) src/backends/activesync/$(DEPDIR) src/backends/addressbook/$(DEPDIR) src/backends/akonadi/$(DEPDIR) src/backends/evolution/$(DEPDIR) src/backends/file/$(DEPDIR) src/backends/gnome/$(DEPDIR) src/backends/kcalextended/$(DEPDIR) src/backends/kde/$(DEPDIR) src/backends/maemo/$(DEPDIR) src/backends/pbap/$(DEPDIR) src/backends/qtcontacts/$(DEPDIR) src/backends/sqlite/$(DEPDIR) src/backends/webdav/$(DEPDIR) src/backends/xmlrpc/$(DEPDIR) src/dbus/glib/$(DEPDIR) src/dbus/qt/$(DEPDIR) src/dbus/server/$(DEPDIR) src/dbus/server/pim/$(DEPDIR) src/gdbus/$(DEPDIR) src/gdbus/test/$(DEPDIR) src/gdbusxx/$(DEPDIR) src/gdbusxx/test/$(DEPDIR) src/gnome-bluetooth/$(DEPDIR) src/gtk-ui/$(DEPDIR) src/gtk3-ui/$(DEPDIR) src/syncevo/$(DEPDIR) test/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-libtool distclean-local distclean-tags
@@ -9806,6 +10295,7 @@ install-data-am: install-dist_docDATA install-dist_pkgdataDATA \
 	install-src_backends_kcalextended_backendLTLIBRARIES \
 	install-src_backends_kde_backendLTLIBRARIES \
 	install-src_backends_maemo_backendLTLIBRARIES \
+	install-src_backends_pbap_backendLTLIBRARIES \
 	install-src_backends_qtcontacts_backendLTLIBRARIES \
 	install-src_backends_sqlite_backendLTLIBRARIES \
 	install-src_backends_webdav_backendLTLIBRARIES \
@@ -9851,7 +10341,7 @@ installcheck-am: installcheck-local
 maintainer-clean: maintainer-clean-recursive
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf src/$(DEPDIR) src/backends/activesync/$(DEPDIR) src/backends/addressbook/$(DEPDIR) src/backends/akonadi/$(DEPDIR) src/backends/evolution/$(DEPDIR) src/backends/file/$(DEPDIR) src/backends/gnome/$(DEPDIR) src/backends/kcalextended/$(DEPDIR) src/backends/kde/$(DEPDIR) src/backends/maemo/$(DEPDIR) src/backends/qtcontacts/$(DEPDIR) src/backends/sqlite/$(DEPDIR) src/backends/webdav/$(DEPDIR) src/backends/xmlrpc/$(DEPDIR) src/dbus/glib/$(DEPDIR) src/dbus/qt/$(DEPDIR) src/dbus/server/$(DEPDIR) src/gdbus/$(DEPDIR) src/gdbus/test/$(DEPDIR) src/gdbusxx/$(DEPDIR) src/gdbusxx/test/$(DEPDIR) src/gnome-bluetooth/$(DEPDIR) src/gtk-ui/$(DEPDIR) src/gtk3-ui/$(DEPDIR) src/syncevo/$(DEPDIR) test/$(DEPDIR)
+	-rm -rf src/$(DEPDIR) src/backends/activesync/$(DEPDIR) src/backends/addressbook/$(DEPDIR) src/backends/akonadi/$(DEPDIR) src/backends/evolution/$(DEPDIR) src/backends/file/$(DEPDIR) src/backends/gnome/$(DEPDIR) src/backends/kcalextended/$(DEPDIR) src/backends/kde/$(DEPDIR) src/backends/maemo/$(DEPDIR) src/backends/pbap/$(DEPDIR) src/backends/qtcontacts/$(DEPDIR) src/backends/sqlite/$(DEPDIR) src/backends/webdav/$(DEPDIR) src/backends/xmlrpc/$(DEPDIR) src/dbus/glib/$(DEPDIR) src/dbus/qt/$(DEPDIR) src/dbus/server/$(DEPDIR) src/dbus/server/pim/$(DEPDIR) src/gdbus/$(DEPDIR) src/gdbus/test/$(DEPDIR) src/gdbusxx/$(DEPDIR) src/gdbusxx/test/$(DEPDIR) src/gnome-bluetooth/$(DEPDIR) src/gtk-ui/$(DEPDIR) src/gtk3-ui/$(DEPDIR) src/syncevo/$(DEPDIR) test/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -9908,6 +10398,7 @@ uninstall-am: uninstall-binPROGRAMS uninstall-binSCRIPTS \
 	uninstall-src_backends_kcalextended_backendLTLIBRARIES \
 	uninstall-src_backends_kde_backendLTLIBRARIES \
 	uninstall-src_backends_maemo_backendLTLIBRARIES \
+	uninstall-src_backends_pbap_backendLTLIBRARIES \
 	uninstall-src_backends_qtcontacts_backendLTLIBRARIES \
 	uninstall-src_backends_sqlite_backendLTLIBRARIES \
 	uninstall-src_backends_webdav_backendLTLIBRARIES \
@@ -9942,6 +10433,7 @@ uninstall-man: uninstall-man1
 	clean-src_backends_kcalextended_backendLTLIBRARIES \
 	clean-src_backends_kde_backendLTLIBRARIES \
 	clean-src_backends_maemo_backendLTLIBRARIES \
+	clean-src_backends_pbap_backendLTLIBRARIES \
 	clean-src_backends_qtcontacts_backendLTLIBRARIES \
 	clean-src_backends_sqlite_backendLTLIBRARIES \
 	clean-src_backends_webdav_backendLTLIBRARIES \
@@ -9996,6 +10488,7 @@ uninstall-man: uninstall-man1
 	install-src_backends_kcalextended_backendLTLIBRARIES \
 	install-src_backends_kde_backendLTLIBRARIES \
 	install-src_backends_maemo_backendLTLIBRARIES \
+	install-src_backends_pbap_backendLTLIBRARIES \
 	install-src_backends_qtcontacts_backendLTLIBRARIES \
 	install-src_backends_sqlite_backendLTLIBRARIES \
 	install-src_backends_webdav_backendLTLIBRARIES \
@@ -10054,6 +10547,7 @@ uninstall-man: uninstall-man1
 	uninstall-src_backends_kcalextended_backendLTLIBRARIES \
 	uninstall-src_backends_kde_backendLTLIBRARIES \
 	uninstall-src_backends_maemo_backendLTLIBRARIES \
+	uninstall-src_backends_pbap_backendLTLIBRARIES \
 	uninstall-src_backends_qtcontacts_backendLTLIBRARIES \
 	uninstall-src_backends_sqlite_backendLTLIBRARIES \
 	uninstall-src_backends_webdav_backendLTLIBRARIES \
@@ -10189,6 +10683,14 @@ uninstall-man: uninstall-man1
 #	perl -e '$$_ = join("", <>); s/^(ADR|TEL|EMAIL|PHOTO).*?(?=^\S)//msg; s/;X-EVOLUTION-UI-SLOT=\d+//g; print;' $< >$@
 #all: ../../testcases/sqlite_vcard21.vcf
 
+# If you need special test cases for your sync source, then
+# install them here. Here's how the sqlite backend does that:
+#
+#../../testcases/sqlite_vcard21.vcf: $(FUNAMBOL_SUBDIR)/test/test/testcases/vcard21.vcf
+#	mkdir -p ${@D}
+#	perl -e '$$_ = join("", <>); s/^(ADR|TEL|EMAIL|PHOTO).*?(?=^\S)//msg; s/;X-EVOLUTION-UI-SLOT=\d+//g; print;' $< >$@
+#all: ../../testcases/sqlite_vcard21.vcf
+
 # SQLiteContactSource does not support all fields from Funambol vCard 2.1
 # test cases: filter them out before testing
 #../../testcases/sqlite_vcard21.vcf: $(FUNAMBOL_SUBDIR)/test/test/testcases/vcard21.vcf
@@ -10198,7 +10700,7 @@ uninstall-man: uninstall-man1
 
 @COND_CORE_TRUE@src/backends/webdav/syncevo-webdav-lookup: $(srcdir)/src/backends/webdav/syncevo-webdav-lookup.sh
 @COND_CORE_TRUE@	$(AM_V_GEN)rm -f $@ ; \
-@COND_CORE_TRUE@	ln -s $< $@
+@COND_CORE_TRUE@	cd src/backends/webdav && ln -s $(notdir $<) $(notdir $@)
 
 @COND_CORE_TRUE@webdav_so_check:
 @COND_CORE_TRUE@	for i in $(WEBDAV_SO_CHECK_FILES); do \
@@ -10282,7 +10784,7 @@ src/dbus/interfaces/%.xml: src/dbus/interfaces/%-full.xml
 @COND_DBUS_TRUE@	@sed -e "s|\@libexecdir\@|$(libexecdir)|" $< >$@
 @COND_DBUS_TRUE@$(src_dbus_server_desktop): $(src_dbus_server_desktop_in)
 @COND_DBUS_TRUE@	@sed -e "s|\@libexecdir\@|$(libexecdir)|" $< >$@
-@COND_DBUS_TRUE@$(src_dbus_server_service_files): $(src_dbus_server_service_files_in)
+@COND_DBUS_TRUE@src/dbus/server/%.service: src/dbus/server/%.service.in
 @COND_DBUS_TRUE@	@sed -e "s|\@libexecdir\@|$(libexecdir)|" $< >$@
 
 # if this will pose a problem then see the link below, probably the solution

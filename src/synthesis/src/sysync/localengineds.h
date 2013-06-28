@@ -335,6 +335,9 @@ protected:
   bool fForceSlowSync;          ///< set if external reason wants to force a slow sync even if it is not needed
   bool fSlowSync;               ///< set if slow sync or refresh
   bool fRefreshOnly;            ///< set if local data is refreshed from remote only, that is, no local changes will be sent to remote (can be set independently of apparent fSyncMode)
+  bool fCacheData;              ///< only relevant if fRefreshOnly is also set: instead of throwing away
+                                /// all data at the start of the sync, apply remote changes and remove
+                                /// all local data that the peer doesn't have
   bool fReadOnly;               ///< if set, datastore will not write any user data (but fake successful status to remote)
   bool fReportUpdates;          ///< if NOT set, datastore will not report updates to client (e.g. for email)
   bool fServerAlerted;          ///< set if sync was server alerted
@@ -581,6 +584,7 @@ public:
   bool isSlowSync(void) { return fSlowSync; }; ///< true if slow sync
   bool isResuming(void) { return fResuming; }; ///< true if resuming a previous session
   bool isRefreshOnly(void) { return fRefreshOnly; }; ///< true if only refreshing with data from remote (no send to remote)
+  bool isCacheData(void) { return fCacheData; };
   bool isReadOnly(void) { return fReadOnly; }; ///< true if only reading from local datastore (and ignoring any updates from remote)
   /// get remote datastore related to this datastore
   TRemoteDataStore *getRemoteDatastore(void) { return fRemoteDatastoreP; };
@@ -653,6 +657,7 @@ public:
   void engForceSlowSync(void) { fForceSlowSync=true; };
   /// set refresh only mode (do not send to remote)
   void engSetRefreshOnly(bool b) { fRefreshOnly=b; };
+  void engSetCacheData(bool b) { fCacheData=b; };
   /// set read only mode (do not receive from remote)
   void engSetReadOnly(bool b) { fReadOnly=b; };
   /// can be called to avoid further ADD commands to be sent to remote (device full case, e.g.)

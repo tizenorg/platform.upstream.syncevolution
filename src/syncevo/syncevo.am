@@ -17,6 +17,11 @@ endif
 lib_LTLIBRARIES += src/syncevo/libsyncevolution.la
 
 src_syncevo_sources = \
+  src/syncevo/GeeSupport.h \
+  src/syncevo/GValueSupport.h \
+  src/syncevo/EDSClient.h \
+  src/syncevo/EDSClient.cpp \
+  \
   src/syncevo/ConfigTree.h \
   src/syncevo/ConfigFilter.h \
   src/syncevo/ConfigFilter.cpp \
@@ -61,6 +66,9 @@ src_syncevo_sources = \
   src/syncevo/util.cpp \
   src/syncevo/util.h \
   src/syncevo/BoostHelper.h \
+  \
+  src/syncevo/TmpFile.cpp \
+  src/syncevo/TmpFile.h \
   \
   src/syncevo/Timespec.h \
   \

@@ -61,6 +61,7 @@ typedef enum {
   ses_processing,   ///< ready to perform next STEPCMD_STEP to process SyncML messages
   ses_generating,   ///< ready to perform next STEPCMD_STEP to generate SyncML messages
   ses_dataready,    ///< data is ready to be sent, waiting for STEPCMD_SENTDATA
+  ses_almostdone,   ///< session done, but termination delayed until next step
   ses_done,         ///< session done
   numServerEngineStates
 } TServerEngineState;

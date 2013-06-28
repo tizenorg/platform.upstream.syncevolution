@@ -33,11 +33,7 @@ void EvolutionSyncSource::getDatabasesFromRegistry(SyncSource::Databases &result
                                                    const char *extension,
                                                    ESource *(*refDef)(ESourceRegistry *))
 {
-    GErrorCXX gerror;
-    ESourceRegistryCXX registry = getSourceRegistry();
-    if (!registry) {
-        throwError("unable to access databases registry", gerror);
-    }
+    ESourceRegistryCXX registry = EDSRegistryLoader::getESourceRegistry();
     ESourceListCXX sources(e_source_registry_list_sources(registry, extension));
     ESourceCXX def(refDef ? refDef(registry) : NULL,
                    false);
@@ -46,23 +42,6 @@ void EvolutionSyncSource::getDatabasesFromRegistry(SyncSource::Databases &result
                                   e_source_get_uid(source),
                                   e_source_equal(def, source)));
     }
-}
-
-ESourceRegistryCXX EvolutionSyncSource::getSourceRegistry()
-{
-    // Keep the instance forever. This is a bit more efficient. But
-    // primarily it avoids a file and memory descriptor leak in EDS
-    // 3.5.x when the registry is created and freed over and over
-    // again.
-    static ESourceRegistryCXX registry;
-    if (!registry) {
-        GErrorCXX gerror;
-        registry = ESourceRegistryCXX::steal(e_source_registry_new_sync(NULL, gerror));
-        if (!registry) {
-            throwError("unable to access databases registry", gerror);
-        }
-    }
-    return registry;
 }
 
 static void handleErrorCB(EClient */*client*/, const gchar *error_msg, gpointer user_data)
@@ -77,10 +56,7 @@ EClientCXX EvolutionSyncSource::openESource(const char *extension,
 {
     EClientCXX client;
     GErrorCXX gerror;
-    ESourceRegistryCXX registry = getSourceRegistry();
-    if (!registry) {
-        throwError("unable to access databases registry", gerror);
-    }
+    ESourceRegistryCXX registry = EDSRegistryLoader::getESourceRegistry();
     ESourceListCXX sources(e_source_registry_list_sources(registry, extension));
     string id = getDatabaseID();
     ESource *source = findSource(sources, id);
@@ -129,8 +105,70 @@ EClientCXX EvolutionSyncSource::openESource(const char *extension,
         }
     }
 
+    // record result for SyncSource::getDatabase()
+    source = e_client_get_source(client);
+    if (source) {
+        Database database(e_source_get_display_name(source),
+                          e_source_get_uid(source));
+        setDatabase(database);
+    }
+
     return client;
 }
+
+SyncSource::Database EvolutionSyncSource::createDatabase(const Database &database)
+{
+    GErrorCXX gerror;
+    ESourceCXX source(database.m_uri.empty() ?
+                      e_source_new(NULL, NULL, gerror) :
+                      e_source_new_with_uid(database.m_uri.c_str(),
+                                            NULL, gerror),
+                      false);
+    if (!source) {
+        gerror.throwError("e_source_new()");
+    }
+    e_source_set_enabled(source, true);
+    e_source_set_display_name(source, database.m_name.c_str());
+    e_source_set_parent(source, "local-stub");
+
+
+    // create extension of the right type and set "local" as backend
+    ESourceBackend *backend = static_cast<ESourceBackend *>(e_source_get_extension(source, sourceExtension()));
+    e_source_backend_set_backend_name(backend, "local");
+
+    ESourceRegistryCXX registry = EDSRegistryLoader::getESourceRegistry();
+    ESourceListCXX sources;
+    sources.push_back(source.ref()); // ESourceListCXX unrefs sources it points to
+    if (!e_source_registry_create_sources_sync(registry,
+                                               sources,
+                                               NULL,
+                                               gerror)) {
+        gerror.throwError(StringPrintf("creating EDS database of type %s with name '%s'%s%s",
+                                       sourceExtension(),
+                                       database.m_name.c_str(),
+                                       database.m_uri.empty() ? "" : " and URI ",
+                                       database.m_uri.c_str()));
+    }
+    const gchar *name = e_source_get_display_name(source);
+    const gchar *uid = e_source_get_uid(source);
+    return Database(name, uid);
+}
+
+void EvolutionSyncSource::deleteDatabase(const std::string &uri)
+{
+    ESourceRegistryCXX registry = EDSRegistryLoader::getESourceRegistry();
+    ESourceCXX source(e_source_registry_ref_source(registry, uri.c_str()), false);
+    if (!source) {
+        throwError(StringPrintf("EDS database with URI '%s' cannot be deleted, does not exist",
+                                uri.c_str()));
+    }
+    GErrorCXX gerror;
+    if (!e_source_remove_sync(source, NULL, gerror)) {
+        throwError(StringPrintf("deleting EDS database with URI '%s'", uri.c_str()),
+                   gerror);
+    }
+}
+
 
 #endif // USE_EDS_CLIENT
 

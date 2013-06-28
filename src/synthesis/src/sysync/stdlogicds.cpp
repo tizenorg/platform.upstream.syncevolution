@@ -302,7 +302,7 @@ localstatus TStdLogicDS::performStartSync(void)
   fNumRefOnlyItems=0;
   if (sta==LOCERR_OK) {
     // now get data from DB
-    if (!isRefreshOnly() || (isSlowSync() && isResuming())) {
+    if (!isRefreshOnly() || (isRefreshOnly() && isCacheData()) || (isSlowSync() && isResuming())) {
       // not only updating from client, so read all items now
       // Note: for a resumed slow updating from client only, we need the
       //   currently present syncset as well as we need it to detect
@@ -880,15 +880,16 @@ bool TStdLogicDS::logicGenerateSyncCommandsAsServer(
     syncopcmdP=NULL;
     // possibly, we have a NULL command here (e.g. in case it could not be generated due to MaxObjSize restrictions)
     if (cmdP) {
-      if (!fSessionP->issuePtr(cmdP,aNextMessageCommands,aInterruptedCommandP)) {
-        alldone=false; // issue failed (no room in message), not finished so far
-        break;
-      }
-      // count item sent
+      // We pass the command to the issue mechanism - last chance to count is here.
+      // Note: the command might be queued and actually sent in a subsequent message.
       fItemsSent++; // overall counter for statistics
       itemcount++; // per message counter
-      // send event (but no check for abort)
-      DB_PROGRESS_EVENT(this,pev_itemsent,fItemsSent,getNumberOfChanges(),0);
+      DB_PROGRESS_EVENT(this,pev_itemsent,fItemsSent,getNumberOfChanges(),0); // send event (but no check for abort)
+      // now issue
+      if (!fSessionP->issuePtr(cmdP,aNextMessageCommands,aInterruptedCommandP)) {
+        alldone=false; // issue failed (no room in message), not finished so far
+        break; // stop trying to issue more commands
+      }
     }
   }; // while not aborted and not message full
   // we are not done until all aNextMessageCommands are also out
@@ -1039,19 +1040,23 @@ bool TStdLogicDS::logicGenerateSyncCommandsAsClient(
     syncopcmdP=NULL;
     // possibly, we have a NULL command here (e.g. in case it could not be generated due to MaxObjSize restrictions)
     if (cmdP) {
-      if (!fSessionP->issuePtr(cmdP,aNextMessageCommands,aInterruptedCommandP)) {
-        alldone=false; // issue failed (no room in message), not finished so far
-        break;
-      }
-      // count item sent
+      // We pass the command to the issue mechanism - last chance to count is here.
+      // Note: the command might be queued and actually sent in a subsequent message.
       fItemsSent++;
-      // send event and check for abort
       #ifdef PROGRESS_EVENTS
+      // send progress event and check for abort
       if (!DB_PROGRESS_EVENT(this,pev_itemsent,fItemsSent,getNumberOfChanges(),0)) {
         implEndDataRead(); // terminate reading
         fSessionP->AbortSession(500,true,LOCERR_USERABORT);
         return false; // error
       }
+      #endif
+      // issue now
+      if (!fSessionP->issuePtr(cmdP,aNextMessageCommands,aInterruptedCommandP)) {
+        alldone=false; // issue failed (no room in message), not finished so far
+        break;
+      }
+      #ifdef PROGRESS_EVENTS
       // check for "soft" suspension
       if (!SESSION_PROGRESS_EVENT(fSessionP,pev_suspendcheck,NULL,0,0,0)) {
         fSessionP->SuspendSession(LOCERR_USERSUSPEND);
@@ -1532,6 +1537,33 @@ localstatus TStdLogicDS::dsBeforeStateChange(TLocalEngineDSState aOldState,TLoca
       sta = startDataWrite();
     }
   } // client
+  if (aNewState==dssta_serverseenclientmods) {
+    // Can only happen in server. Implement removal of unmatched items
+    // when in caching mode.
+    if (fCacheData && fSlowSync) {
+      TSyncItemPContainer::iterator pos=fItems.begin();
+      while (pos!=fItems.end()) {
+        TSyncItem *syncitemP = (*pos);
+        if (syncitemP->getSyncOp() == sop_wants_add) {
+          PDEBUGPRINTFX(DBG_DATA,("caching mode: remove unmatched item %s",
+                                  syncitemP->getLocalID()));
+          syncitemP->setSyncOp(sop_delete);
+          localstatus status = logicDeleteItemByID(*syncitemP);
+          if (status != LOCERR_OK) {
+            return status;
+          } else {
+            TSyncItemPContainer::iterator next = pos;
+            ++next;
+            fItems.erase(pos);
+            pos = next;
+            fLocalItemsDeleted++;
+          }
+        } else {
+          ++pos;
+        }
+      }
+    }
+  }
   if (aNewState==dssta_completed && !isAborted()) {
     // finish writing data now anyway
     endDataWrite();

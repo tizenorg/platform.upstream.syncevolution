@@ -889,11 +889,13 @@ bool TimeZoneContextToName( timecontext_t aContext, string &aName, GZones* g,
   tz_entry t;
   aName= "UNKNOWN";
 
+  #ifdef ANDROID
   // setting it via param does not work currently for some reasons, switch it on permanently for Android
-//#ifdef ANDROID --
+  // BUT NOT GENERALLY - IT CHANGES SEMANTICS OF THE WHOLE TIME ZONE NAMING SYSTEM!
+  #warning "%%% overriding passed aPrefIdent argument with constant, forcing olson name output"
     aPrefIdent= "o";
   //__android_log_print( ANDROID_LOG_DEBUG, "ContextToName", "pref='%s' / aContext=%d\n", aPrefIdent, aContext );
-//#endif --
+  #endif
 
   // if aPrefIndent contains "o", this means we'd like to see olson name, if possible
   // %%% for now, we can return olson for the built-ins only

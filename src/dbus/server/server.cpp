@@ -33,6 +33,9 @@
 #include "restart.h"
 #include "client.h"
 #include "auto-sync-manager.h"
+#include "connman-client.h"
+#include "network-manager-client.h"
+#include "presence-status.h"
 
 #include <boost/pointer_cast.hpp>
 
@@ -203,11 +206,42 @@ void Server::startSessionWithFlags(const Caller_t &caller,
     object = session->getPath();
 }
 
+
+boost::shared_ptr<Session> Server::startInternalSession(const std::string &server,
+                                                        SessionFlags flags,
+                                                        const boost::function<void (const boost::weak_ptr<Session> &session)> &callback)
+{
+    if (m_shutdownRequested) {
+        // don't allow new sessions, we cannot activate them
+        SE_THROW("server shutting down");
+    }
+
+    std::vector<std::string> dbusFlags;
+    if (flags & SESSION_FLAG_NO_SYNC) {
+        dbusFlags.push_back("no-sync");
+    }
+    if (flags & SESSION_FLAG_ALL_CONFIGS) {
+        dbusFlags.push_back("all-configs");
+    }
+
+    std::string new_session = getNextSession();
+    boost::shared_ptr<Session> session = Session::createSession(*this,
+                                                                "is this a client or server session?",
+                                                                server,
+                                                                new_session,
+                                                                dbusFlags);
+    session->m_sessionActiveSignal.connect(boost::bind(callback, boost::weak_ptr<Session>(session)));
+    session->activate();
+    enqueue(session);
+    return session;
+}
+
+
 void Server::checkPresence(const std::string &server,
                            std::string &status,
                            std::vector<std::string> &transports)
 {
-    return m_presence.checkPresence(server, status, transports);
+    return getPresenceStatus().checkPresence(server, status, transports);
 }
 
 void Server::getSessions(std::vector<DBusObject_t> &sessions)
@@ -246,9 +280,6 @@ Server::Server(GMainLoop *loop,
     configChanged(*this, "ConfigChanged"),
     infoRequest(*this, "InfoRequest"),
     logOutput(*this, "LogOutput"),
-    m_presence(*this),
-    m_connman(*this),
-    m_networkManager(*this),
     m_autoTerm(m_loop, m_shutdownRequested, duration),
     m_parentLogger(LoggerBase::instance())
 {
@@ -280,25 +311,39 @@ Server::Server(GMainLoop *loop,
     add(infoRequest);
     add(logOutput);
 
+    // log entering and leaving idle state
+    m_idleSignal.connect(boost::bind(logIdle, _1));
+
+    // connect ConfigChanged signal to source for that information
+    m_configChangedSignal.connect(boost::bind(boost::ref(configChanged)));
+}
+
+void Server::activate()
+{
+    // Activate our D-Bus object *before* interacting with D-Bus
+    // any further. Otherwise GIO D-Bus will start processing
+    // messages for us while we start up and reject them because
+    // out object isn't visible to it yet.
+    GDBusCXX::DBusObjectHelper::activate();
+
     LoggerBase::pushLogger(this);
     setLevel(LoggerBase::DEBUG);
+
+    m_presence.reset(new PresenceStatus(*this));
 
     // Assume that Bluetooth is available. Neither ConnMan nor Network
     // manager can tell us about that. The "Bluetooth" ConnMan technology
     // is about IP connection via Bluetooth - not what we need.
     getPresenceStatus().updatePresenceStatus(true, PresenceStatus::BT_TRANSPORT);
 
-    if (!m_connman.isAvailable() &&
-        !m_networkManager.isAvailable()) {
+    m_connman.reset(new ConnmanClient(*this));
+    m_networkManager.reset(new NetworkManagerClient(*this));
+
+    if ((!m_connman || !m_connman->isAvailable()) &&
+        (!m_networkManager || !m_networkManager->isAvailable())) {
         // assume that we are online if no network manager was found at all
         getPresenceStatus().updatePresenceStatus(true, PresenceStatus::HTTP_TRANSPORT);
     }
-
-    // log entering and leaving idle state
-    m_idleSignal.connect(boost::bind(logIdle, _1));
-
-    // connect ConfigChanged signal to source for that information
-    m_configChangedSignal.connect(boost::bind(boost::ref(configChanged)));
 
     // create auto sync manager, now that server is ready
     m_autoSync = AutoSyncManager::createAutoSyncManager(*this);
@@ -314,6 +359,9 @@ Server::~Server()
     m_infoReqMap.clear();
     m_timeouts.clear();
     m_delayDeletion.clear();
+    m_connman.reset();
+    m_networkManager.reset();
+    m_presence.reset();
     LoggerBase::popLogger();
 }
 
@@ -758,6 +806,14 @@ void Server::removeInfoReq(const std::string &id)
 {
     // remove InfoRequest from hash map
     m_infoReqMap.erase(id);
+}
+
+PresenceStatus &Server::getPresenceStatus()
+{
+    if (!m_presence) {
+        SE_THROW("internal error: Server::getPresenceStatus() called while server has no instance");
+    }
+    return *m_presence;
 }
 
 void Server::getDeviceList(SyncConfig::DeviceList &devices)

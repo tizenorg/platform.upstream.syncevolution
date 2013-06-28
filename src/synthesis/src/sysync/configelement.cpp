@@ -804,8 +804,8 @@ bool TConfigElement::endElement(const char *aElementName, bool aIsDelegated)
         TzConvertTimestamp(*(fResultPtr.fTimestampP),tctx,TCTX_UTC,getSyncAppBase()->getAppZones());
         break;
       case pamo_timezone:
-        // time zone by name
-        if (!TimeZoneNameToContext(fTempString.c_str(), *(fResultPtr.fTimeContextP), getSyncAppBase()->getAppZones()))
+        // time zone by name (internal or olson)
+        if (!TimeZoneNameToContext(fTempString.c_str(), *(fResultPtr.fTimeContextP), getSyncAppBase()->getAppZones(), true))
           ReportError(false,"invalid/unknown timezone name");
         break;
       case pamo_vtimezone:

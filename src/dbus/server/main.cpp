@@ -33,6 +33,7 @@
 #include <syncevo/SuspendFlags.h>
 #include <syncevo/LogRedirect.h>
 #include <syncevo/LogSyslog.h>
+#include <syncevo/GLibSupport.h>
 
 using namespace SyncEvo;
 using namespace GDBusCXX;
@@ -79,26 +80,60 @@ int main(int argc, char **argv, char **envp)
     bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
     textdomain(GETTEXT_PACKAGE);
 
-    int duration = 600;
-    int opt = 1;
-    while(opt < argc) {
-        if(argv[opt][0] != '-') {
-            break;
-        }
-        if (boost::iequals(argv[opt], "--duration") ||
-            boost::iequals(argv[opt], "-d")) {
-            opt++;
-            if(!parseDuration(duration, opt== argc ? NULL : argv[opt])) {
-                std::cout << argv[opt-1] << ": unknown parameter value or not set" << std::endl;
-                return false;
-            }
-        } else {
-            std::cout << argv[opt] << ": unknown parameter" << std::endl;
-            return false;
-        }
-        opt++;
-    }
     try {
+        gchar *durationString = NULL;
+        int duration = 600;
+        int logLevel = 1;
+        gboolean stdoutEnabled = false;
+        gboolean syslogEnabled = true;
+#ifdef ENABLE_DBUS_PIM
+        gboolean startPIM = false;
+#endif
+        static GOptionEntry entries[] = {
+            { "duration", 'd', 0, G_OPTION_ARG_STRING, &durationString, "Shut down automatically when idle for this duration", "seconds/'unlimited'" },
+            { "verbosity", 'v', 0, G_OPTION_ARG_INT, &logLevel,
+              "Choose amount of output, 0 = no output, 1 = errors, 2 = info, 3 = debug; default is 1.",
+              "level" },
+            { "stdout", 'o', 0, G_OPTION_ARG_NONE, &stdoutEnabled,
+              "Enable printing to stdout (result of operations) and stderr (errors/info/debug).",
+              NULL },
+            { "no-syslog", 's', G_OPTION_FLAG_REVERSE, G_OPTION_ARG_NONE, &syslogEnabled, "Disable printing to syslog.", NULL },
+#ifdef ENABLE_DBUS_PIM
+            { "start-pim", 'p', 0, G_OPTION_ARG_NONE, &startPIM,
+              "Activate the PIM Manager (= unified address book) immediately.",
+              NULL },
+#endif
+            { NULL }
+        };
+        GErrorCXX gerror;
+        static GOptionContext *context = g_option_context_new("- SyncEvolution D-Bus Server");
+        g_option_context_add_main_entries(context, entries, GETTEXT_PACKAGE);
+        bool success = g_option_context_parse(context, &argc, &argv, gerror);
+        PlainGStr durationOwner(durationString);
+        if (!success) {
+            gerror.throwError("parsing command line options");
+        }
+        if (durationString && !parseDuration(duration, durationString)) {
+            SE_THROW(StringPrintf("invalid parameter value '%s' for --duration/-d: must be positive number of seconds or 'unlimited'", durationString));
+        }
+        Logger::Level level;
+        switch (logLevel) {
+        case 0:
+            level = Logger::NONE;
+            break;
+        case 1:
+            level = Logger::ERROR;
+            break;
+        case 2:
+            level = Logger::INFO;
+            break;
+        case 3:
+            level = Logger::DEBUG;
+            break;
+        default:
+            SE_THROW(StringPrintf("invalid parameter value %d for --debug: must be one of 0, 1, 2 or 3", logLevel));
+        }
+
         // Temporarily set G_DBUS_DEBUG. Hopefully GIO will read and
         // remember it, because we don't want to keep it set
         // permanently, lest it gets passed on to other processes.
@@ -114,21 +149,14 @@ int main(int argc, char **argv, char **envp)
         setvbuf(stderr, NULL, _IONBF, 0);
         setvbuf(stdout, NULL, _IONBF, 0);
 
-        const char *debugVar(getenv(debugEnv));
-        const bool debugEnabled(debugVar && *debugVar);
-
-        // TODO: redirect output *and* log it via syslog?!
-        boost::shared_ptr<LoggerBase> logger;
-        if (!gdbus) {
-            logger.reset((true ||  debugEnabled) ?
-                         static_cast<LoggerBase *>(new LogRedirect(true)) :
-                         static_cast<LoggerBase *>(new LoggerSyslog(execName)));
+        // Redirect output and optionally log to syslog.
+        LogRedirect redirect(true);
+        redirect.setLevel(stdoutEnabled ? level : Logger::NONE);
+        std::auto_ptr<LoggerBase> syslogger;
+        if (syslogEnabled && level > Logger::NONE) {
+            syslogger.reset(new LoggerSyslog(execName));
+            syslogger->setLevel(level);
         }
-
-        // make daemon less chatty - long term this should be a command line option
-        LoggerBase::instance().setLevel(debugEnabled ?
-                                        LoggerBase::DEBUG :
-                                        LoggerBase::INFO);
 
         // syncevo-dbus-server should hardly ever produce output that
         // is relevant for end users, so include the somewhat cryptic
@@ -152,8 +180,12 @@ int main(int argc, char **argv, char **envp)
         // make this object the main owner of the connection
         boost::scoped_ptr<DBusObject> obj(new DBusObject(conn, "foo", "bar", true));
 
-        boost::scoped_ptr<SyncEvo::Server> server(new SyncEvo::Server(loop, shutdownRequested, restart, conn, duration));
+        boost::shared_ptr<SyncEvo::Server> server(new SyncEvo::Server(loop, shutdownRequested, restart, conn, duration));
         server->activate();
+
+#ifdef ENABLE_DBUS_PIM
+        boost::shared_ptr<GDBusCXX::DBusObjectHelper> manager(SyncEvo::CreateContactManager(server, startPIM));
+#endif
 
         if (gdbus) {
             unsetenv("G_DBUS_DEBUG");
@@ -162,6 +194,9 @@ int main(int argc, char **argv, char **envp)
         dbus_bus_connection_undelay(conn);
         server->run();
         SE_LOG_DEBUG(NULL, NULL, "cleaning up");
+#ifdef ENABLE_DBUS_PIM
+        manager.reset();
+#endif
         server.reset();
         obj.reset();
         guard.reset();

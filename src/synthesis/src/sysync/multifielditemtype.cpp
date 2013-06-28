@@ -189,12 +189,15 @@ public:
   }; // func_IgnoreUpdate
 
 
-  // void MERGEFIELDS()
+  // void MERGEFIELDS(mode = 0)
+  // Optional mode parameter determines the result of the merge.
+  // 0 = according to config, 1 = loosing item is overwritten, 2 = winning item is overwritten
   static void func_MergeFields(TItemField *&aTermP, TScriptContext *aFuncContextP)
   {
     TMultiFieldItemType *mfitP = static_cast<TMultiFieldItemType *>(aFuncContextP->getCallerContext());
     if (mfitP->fFirstItemP)
-      mfitP->fFirstItemP->standardMergeWith(*(mfitP->fSecondItemP),mfitP->fChangedFirst,mfitP->fChangedSecond);
+      mfitP->fFirstItemP->standardMergeWith(*(mfitP->fSecondItemP),mfitP->fChangedFirst,mfitP->fChangedSecond,
+                                            aFuncContextP->getLocalVar(0)->getAsInteger());
   }; // func_MergeFields
 
 

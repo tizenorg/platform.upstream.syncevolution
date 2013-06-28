@@ -24,6 +24,9 @@
 /* DAV available */
 #undef ENABLE_DAV
 
+/* org._01.pim D-Bus API enabled */
+#undef ENABLE_DBUS_PIM
+
 /* overrides the default D-Bus timeout so that synchronous calls never time
    out */
 #undef ENABLE_DBUS_TIMEOUT_HACK
@@ -66,6 +69,9 @@
 
 /* define if openobex library is available */
 #undef ENABLE_OBEX
+
+/* pbap available */
+#undef ENABLE_PBAP
 
 /* QtContacts available */
 #undef ENABLE_QTCONTACTS
@@ -130,6 +136,9 @@
 /* define if the Boost library is available */
 #undef HAVE_BOOST
 
+/* define if the Boost::Locale library is available */
+#undef HAVE_BOOST_LOCALE
+
 /* Define to 1 if you have the `dcgettext' function. */
 #undef HAVE_DCGETTEXT
 
@@ -141,6 +150,9 @@
 
 /* Define to 1 if you have the <execinfo.h> header file. */
 #undef HAVE_EXECINFO_H
+
+/* use e_book_client_new_direct */
+#undef HAVE_E_BOOK_CLIENT_NEW_DIRECT
 
 /* have e_contact_inline_local_photos() */
 #undef HAVE_E_CONTACT_INLINE_LOCAL_PHOTOS
@@ -160,6 +172,9 @@
 /* Define if your <locale.h> file defines LC_MESSAGES. */
 #undef HAVE_LC_MESSAGES
 
+/* Define to 1 if you have the <libedataserver/eds-version.h> header file. */
+#undef HAVE_LIBEDATASERVER_EDS_VERSION_H
+
 /* have recent enough libical with _r variants */
 #undef HAVE_LIBICAL_R
 
@@ -177,6 +192,10 @@
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
+
+/* Define to 1 if you have the <phonenumbers/phonenumberutil.h> header file.
+   */
+#undef HAVE_PHONENUMBERS_PHONENUMBERUTIL_H
 
 /* Define to 1 if you have the <signal.h> header file. */
 #undef HAVE_SIGNAL_H

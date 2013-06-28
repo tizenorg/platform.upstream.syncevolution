@@ -74,7 +74,7 @@ Ret_t buildMetInfAnchorCmd(XltDecoderPtr_t pDecoder, VoidPtr_t *ppElem) {
     pScanner = pDecoder->scanner;
 
     if (*ppElem != NULL)
-        return SML_ERR_XLT_INVAL_SYNCML_DOC;
+        return SML_DECODEERROR(SML_ERR_XLT_INVAL_SYNCML_DOC,pScanner,"buildMetInfAnchorCmd");
 
     if ((pAnchor = (SmlMetInfAnchorPtr_t)smlLibMalloc(sizeof(SmlMetInfAnchor_t))) == NULL)
         return SML_ERR_NOT_ENOUGH_SPACE;
@@ -101,7 +101,7 @@ Ret_t buildMetInfAnchorCmd(XltDecoderPtr_t pDecoder, VoidPtr_t *ppElem) {
                 rc = buildPCData(pDecoder, (VoidPtr_t)&pAnchor->next);
                 break;
             default:
-                rc = SML_ERR_XLT_INVAL_SYNCML_DOC;
+                rc = SML_DECODEERROR(SML_ERR_XLT_INVAL_SYNCML_DOC,pScanner,"buildMetInfAnchorCmd_2");
         }
         if (rc != SML_ERR_OK) {
             smlFreeMetinfAnchor(pAnchor);
@@ -119,6 +119,37 @@ Ret_t buildMetInfAnchorCmd(XltDecoderPtr_t pDecoder, VoidPtr_t *ppElem) {
     return SML_ERR_OK;
 }
 
+Ret_t buildMetinfNextCmd(XltDecoderPtr_t pDecoder, VoidPtr_t *ppElem) {
+    XltDecScannerPtr_t pScanner;
+    SmlMetInfAnchorPtr_t pAnchor;
+    Ret_t rc;
+
+    pScanner = pDecoder->scanner;
+
+    if (*ppElem == NULL) {
+        if ((pAnchor = (SmlMetInfAnchorPtr_t)smlLibMalloc(sizeof(SmlMetInfAnchor_t))) == NULL)
+            return SML_ERR_NOT_ENOUGH_SPACE;
+        smlLibMemset(pAnchor, 0, sizeof(SmlMetInfAnchor_t));
+    } else {
+        pAnchor = (SmlMetInfAnchorPtr_t)*ppElem;
+        if (pAnchor->next != NULL)
+            return SML_ERR_XLT_INVAL_SYNCML_DOC;
+    }
+
+    rc = buildPCData(pDecoder, (VoidPtr_t)&pAnchor->next);
+
+    if (rc != SML_ERR_OK && ppElem == NULL) {
+        smlFreeMetinfAnchor(pAnchor);
+        return rc;
+    }
+
+    if (ppElem == NULL) {
+        *ppElem = pAnchor;
+    }
+
+    return SML_ERR_OK;
+}
+
 Ret_t buildMetInfMemCmd(XltDecoderPtr_t pDecoder, VoidPtr_t *ppElem) {
     XltDecScannerPtr_t pScanner;
     SmlMetInfMemPtr_t pMem;
@@ -127,7 +158,7 @@ Ret_t buildMetInfMemCmd(XltDecoderPtr_t pDecoder, VoidPtr_t *ppElem) {
     pScanner = pDecoder->scanner;
 
     if (*ppElem != NULL)
-        return SML_ERR_XLT_INVAL_SYNCML_DOC;
+        return SML_DECODEERROR(SML_ERR_XLT_INVAL_SYNCML_DOC, pScanner, "buildMetInfMemCmd");
 
     if ((pMem = (SmlMetInfMemPtr_t)smlLibMalloc(sizeof(SmlMetInfMem_t))) == NULL)
         return SML_ERR_NOT_ENOUGH_SPACE;
@@ -166,7 +197,7 @@ Ret_t buildMetInfMemCmd(XltDecoderPtr_t pDecoder, VoidPtr_t *ppElem) {
                 break;
 
             default:
-                rc = SML_ERR_XLT_INVAL_SYNCML_DOC;
+                rc = SML_DECODEERROR(SML_ERR_XLT_INVAL_SYNCML_DOC, pScanner, "buildMetInfMemCmd_2");
         }
         if (rc != SML_ERR_OK) {
             smlFreeMetinfMem(pMem);
@@ -193,7 +224,7 @@ Ret_t buildMetInfMetInfCmd(XltDecoderPtr_t pDecoder, VoidPtr_t *ppElem) {
     pScanner = pDecoder->scanner;
 
     if (*ppElem != NULL)
-        return SML_ERR_XLT_INVAL_SYNCML_DOC;
+        return SML_DECODEERROR(SML_ERR_XLT_INVAL_SYNCML_DOC, pScanner, "buildMetInfMetInfCmd");
 
     if ((pMeta = (SmlMetInfMetInfPtr_t)smlLibMalloc(sizeof(SmlMetInfMetInf_t))) == NULL)
         return SML_ERR_NOT_ENOUGH_SPACE;
@@ -256,8 +287,13 @@ Ret_t buildMetInfMetInfCmd(XltDecoderPtr_t pDecoder, VoidPtr_t *ppElem) {
             rc = buildEmptyTag(pDecoder); // allow for <tag></tag> instead of <tag/>
             break;
 
+          /* Next without Anchor, Andris Pavenis 2012-05-29 */
+          case TN_METINF_NEXT:
+            rc = buildMetinfNextCmd(pDecoder, (VoidPtr_t)&pMeta->anchor);
+            break;
+
           default:
-              rc = SML_ERR_XLT_INVAL_SYNCML_DOC;
+              rc = SML_DECODEERROR(SML_ERR_XLT_INVAL_SYNCML_DOC, pScanner, "buildMetInfMetInfCmd_2");
         }
         if (rc != SML_ERR_OK) {
             smlFreeMetinfMetinf(pMeta);

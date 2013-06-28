@@ -2560,7 +2560,7 @@ bool TODBCApiAgent::getColumnValueAsField(
       notnull=getColumnValueAsString(aStatement,aColIndex,val,aDataCharSet, lem_cstr);
       if (!notnull) goto assignzone; // assign TCTX_UNKNOWN
       // convert to context
-      TimeZoneNameToContext(val.c_str(), tctx, getSessionZones());
+      TimeZoneNameToContext(val.c_str(), tctx, getSessionZones(), true);
       goto assignzone;
     assignoffs:
       tctx = TCTX_MINOFFSET(moffs);
@@ -3145,7 +3145,7 @@ bool TODBCApiAgent::getSQLiteColValueAsField(
       // get zone name as string
       appendStringAsUTF8((const char *)sqlite3_column_text(aStatement,aColIndex), val, aDataCharSet, lem_cstr);
       // convert to context
-      TimeZoneNameToContext(val.c_str(), tctx, getSessionZones());
+      TimeZoneNameToContext(val.c_str(), tctx, getSessionZones(), true);
       goto assignzone;
     assignoffs:
       tctx = TCTX_MINOFFSET(moffs);

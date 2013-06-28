@@ -325,9 +325,9 @@ public:
   // - also updates other item to make sure it is equal to the winning after the merge
   // sets (but does not reset) change status of this and other item.
   // Note that changes of non-relevant fields are not reported here.
-  virtual void mergeWith(TSyncItem &aItem, bool &aChangedThis, bool &aChangedOther, TLocalEngineDS *aDatastoreP);
+  virtual void mergeWith(TSyncItem &aItem, bool &aChangedThis, bool &aChangedOther, TLocalEngineDS *aDatastoreP, int mode = MERGE_OPTION_FROM_CONFIG);
   // standard merge (subset of mergeWith, used if no merge script is defined)
-  void standardMergeWith(TMultiFieldItem &aItem, bool &aChangedThis, bool &aChangedOther);
+  void standardMergeWith(TMultiFieldItem &aItem, bool &aChangedThis, bool &aChangedOther, int mode = MERGE_OPTION_FROM_CONFIG);
   // compare: returns 0 if equal, 1 if this > aItem, -1 if this < aItem
   // SYSYNC_NOT_COMPARABLE if not equal and no ordering known
   virtual sInt16 compareWith(

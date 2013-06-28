@@ -2507,7 +2507,7 @@ localstatus TBinfileImplDS::SaveAdminData(bool aSessionFinished, bool aSuccessfu
   fPendingMapHeader.remotepartyID = static_cast<TBinfileImplClient *>(fSessionP)->fRemotepartyID;
   fPendingMaps.setExtraHeaderDirty();
   // - now pending maps (unsent ones)
-  DEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_DETAILS,("SaveAdminData: saving %ld entries from fPendingAddMap to fPendingMaps binfile",(long)fPendingAddMaps.size()));
+  DEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_DETAILS,("SaveAdminData: saving %ld entries from fPendingAddMaps to fPendingMaps binfile",(long)fPendingAddMaps.size()));
   for (spos=fPendingAddMaps.begin();spos!=fPendingAddMaps.end();spos++) {
     string locID = (*spos).first;
     dsFinalizeLocalID(locID); // pending maps might have non-final ID, so give datastore implementation to return finalized version

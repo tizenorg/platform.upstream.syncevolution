@@ -29,10 +29,7 @@
 
 #if defined(HAVE_EDS)
 # if defined(USE_EDS_CLIENT)
-typedef SyncEvo::GListCXX<ESource, GList, SyncEvo::GObjectDestructor> ESourceListCXX;
-SE_GOBJECT_TYPE(ESourceRegistry)
-SE_GOBJECT_TYPE(ESource)
-SE_GOBJECT_TYPE(EClient)
+#  include <syncevo/EDSClient.h>
 # else
 SE_GOBJECT_TYPE(ESourceList)
 #endif
@@ -75,8 +72,16 @@ class EvolutionSyncSource : public TrackingSyncSource
     EClientCXX openESource(const char *extension,
                            ESource *(*refBuiltin)(ESourceRegistry *),
                            const boost::function<EClient *(ESource *, GError **gerror)> &newClient);
-    ESourceRegistryCXX getSourceRegistry();
+
+    // Implementation of SyncSource calls which only works when using EDS Client API
+    // and EDS > 3.4. Older EDS has no way of creating sources easily (or at all).
+    virtual Database createDatabase(const Database &database);
+    virtual void deleteDatabase(const std::string &uri);
+
+    /** E_SOURCE_EXTENSION_ADDRESS_BOOK, etc. */
+    virtual const char *sourceExtension() const = 0;
 #endif
+
     /**
      * searches the list for a source with the given uri or name
      *

@@ -1533,9 +1533,9 @@ bool TMimeDirProfileHandler::fieldToMIMEString(
         tctx = TCTX_MINOFFSET(fldP->getAsInteger());
       }
       else if (!fldP->isEmpty()) {
-        // string field can be timezone name or numeric minute offset
+        // string field can be timezone name (internal or olson) or numeric minute offset
         fldP->getAsString(s);
-        if (!TimeZoneNameToContext(s.c_str(),tctx,getSessionZones())) {
+        if (!TimeZoneNameToContext(s.c_str(),tctx,getSessionZones(), true)) {
           // if not recognized as time zone name, use integer value
           tctx = TCTX_MINOFFSET(fldP->getAsInteger());
         }
@@ -3486,7 +3486,7 @@ bool TMimeDirProfileHandler::MIMEStringToField(
         fPropTZIDtctx = tctx;
         goto timecontext;
       }
-      else if (TimeZoneNameToContext(aText, tctx, getSessionZones())) {
+      else if (TimeZoneNameToContext(aText, tctx, getSessionZones(), true)) {
         // found valid TZID property, save it so we can use it for all values of this property that don't specify their own TZ
         PDEBUGPRINTFX(DBG_ERROR,("Warning: TZID %s could be resolved against internal name, but appropriate VTIMEZONE is missing",aText));
         fPropTZIDtctx=tctx;

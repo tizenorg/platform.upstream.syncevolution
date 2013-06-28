@@ -9,7 +9,7 @@
 
 - (id)initWithCI:(UI_Call_In)aCI andSessionHandle:(SessionH)aSessionH;
 {
-  if ([super init]!=nil) {
+  if ((self = [super init])) {
     fCI = aCI;
     fSessionH = aSessionH;
     // also prepare tunnel wrapper
@@ -32,7 +32,9 @@
     }
   }
   // done
+  #if !__has_feature(objc_arc)
   [super dealloc];
+  #endif
 } // dealloc
 
 
@@ -87,7 +89,9 @@
   SettingsKey *sessionKey = [self newOpenSessionKeyWithMode:0 err:&sta];
   if (sta==LOCERR_OK) {
     [sessionKey setStringValueByName:"debugMsg" toValue:aMessage];
+    #if !__has_feature(objc_arc)
     [sessionKey release];
+    #endif
   }
 }
 
@@ -98,7 +102,9 @@
   SettingsKey *sessionKey = [self newOpenSessionKeyWithMode:0 err:&sta];
   if (sta==LOCERR_OK) {
     [sessionKey setStringValueByName:"errorMsg" toValue:aMessage];
+    #if !__has_feature(objc_arc)
     [sessionKey release];
+    #endif
   }
 }
 
@@ -295,7 +301,7 @@
   // empty prefix if none specified
   if (aEntryPointPrefix==nil) aEntryPointPrefix = @"";
   // init superclass and DLL
-  if (self == [super init]) {
+  if ((self = [super init])) {
     ConnectEngine_Func ConnectEngine_Var = NULL;
     #ifdef SYSYNC_ENGINE_STATIC
     // static: just directly use the entry point.
@@ -345,7 +351,9 @@
         DBGNSLOG(@"SySync engine platform = '%@'\n", [engineInfo stringValueByName:"platform"]);
         DBGNSLOG(@"library product name = '%@'\n", [engineInfo stringValueByName:"name"]);
         DBGNSLOG(@"version comment = '%@'\n", [engineInfo stringValueByName:"comment"]);
+        #if !__has_feature(objc_arc)
         [engineInfo release];
+        #endif
       }
     }
   }
@@ -353,7 +361,9 @@
     sta=LOCERR_OUTOFMEM; // probably...
   // kill or go
   if (sta!=LOCERR_OK) {
+    #if !__has_feature(objc_arc)
     [self dealloc];
+    #endif
     return nil;
   }
   // ok
@@ -395,7 +405,9 @@
   fCI = NULL;
   DisconnectEngine_Var = NULL;
   // done
+  #if !__has_feature(objc_arc)
   [super dealloc];
+  #endif
 }
 
 

@@ -17,7 +17,7 @@
 #if !DEBUG
 #define RELEASE_VERSION
 #endif
-#define RELEASE_SYDEBUG 2 // extended DBG included
+#define RELEASE_SYDEBUG 1 // no extended DBG included
 //#define OPTIONAL_SYDEBUG 1
 
 // Eval limit options

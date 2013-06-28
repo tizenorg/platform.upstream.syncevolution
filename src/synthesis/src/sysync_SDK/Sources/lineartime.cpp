@@ -61,8 +61,8 @@ int timeConv(int argc, const char *argv[])
     intime = getSystemNowAs(incontext,&zones);
   }
   else {
-    // get input context from name
-    if (!TimeZoneNameToContext(inzone.c_str(),incontext,&zones))
+    // get input context from name (internal or olson)
+    if (!TimeZoneNameToContext(inzone.c_str(),incontext,&zones, true))
       incontext=TCTX_UNKNOWN;
     // input time from 3rd argument
     if (argc!=3) {
@@ -95,7 +95,7 @@ int timeConv(int argc, const char *argv[])
     s.erase(); ContextToISO8601StrAppend(s, stdoffs, true);
     CONSOLEPRINTF(("Input time zone represented as TZ/DAYLIGHT :\n\nTZ:%s\nDAYLIGHT:%s\n",s.c_str(),z.c_str()));
   }
-  else if (!TimeZoneNameToContext(outzone.c_str(),outcontext,&zones))
+  else if (!TimeZoneNameToContext(outzone.c_str(),outcontext,&zones, true))
     outcontext=TCTX_UNKNOWN;
   // now show
   CONSOLEPRINTF((""));

@@ -1693,6 +1693,7 @@ AC_SUBST([am__untar])
 
 m4_include([m4-repo/autotroll.m4])
 m4_include([m4-repo/ax_boost_base.m4])
+m4_include([m4-repo/ax_boost_locale.m4])
 m4_include([m4-repo/dk-warn.m4])
 m4_include([m4-repo/se_macros.m4])
 m4_include([m4/intltool.m4])

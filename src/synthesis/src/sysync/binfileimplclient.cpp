@@ -1921,7 +1921,8 @@ bool TBinfileClientConfig::deleteProfile(sInt32 aProfileIndex)
   if (fProfileBinFile.getNumRecords()==0) {
     // last profile deleted, remove file itself to clean up as much as possible
     fProfileBinFile.closeAndDelete();
-    fProfileBinFile.open(); // re-open = re-create
+    // re-create
+    fProfileBinFile.create(sizeof(TBinfileDBSyncProfile),0,NULL,true);
   }
   else {
     // make sure header is up to date (in case we terminate improperly)
@@ -2298,7 +2299,7 @@ bool TBinfileClientConfig::deleteTarget(
   if (fTargetsBinFile.getNumRecords()==0) {
     // last target deleted, remove file itself to clean up as much as possible
     fTargetsBinFile.closeAndDelete();
-    fTargetsBinFile.open(); // re-open = re-create
+    fTargetsBinFile.create(sizeof(TBinfileDBSyncTarget),0,NULL,true);
   }
   else {
     // make sure header is up to date (in case we terminate improperly)
