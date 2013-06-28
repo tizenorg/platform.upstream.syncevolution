@@ -3480,7 +3480,8 @@ localstatus TLocalEngineDS::engGenerateClientSyncAlert(
     fNextLocalAnchor.c_str()
   ));
   // create appropriate initial alert command
-  uInt16 alertCode = getSyncStateAlertCode(fServerAlerted,true);
+  TAgentConfig *configP = static_cast<TAgentConfig *>(static_cast<TSyncAgent *>(getSession())->getRootConfig()->fAgentConfigP);
+  uInt16 alertCode = getSyncStateAlertCode(fServerAlerted, configP->fPreferSlowSync);
   // check for resume
   if (fResuming) {
     // check if what we resume is same as what we wanted to do

@@ -153,6 +153,12 @@ public:
   TAuthTypes fAssumedServerAuth;
   TFmtTypes fAssumedServerAuthEnc; // start with char encoding
   string fAssumedNonce; // start with no nonce
+  bool fPreferSlowSync; // Ask server for slow sync instead of refresh-from-server:
+                        // both have the same effect, but have different pros and cons.
+                        // Defaults to true, the traditional behavior of libsynthesis.
+                        // Some old servers only support slow sync. Some new ones
+                        // work better with refresh, because they throttle clients
+                        // which do slow syncs excessively.
   // auth retry options (mainly for stupid servers like SCTS)
   bool fNewSessionForAuthRetry; // restart session for auth retries
   bool fNoRespURIForAuthRetry; // send retry to original URI for auth retries

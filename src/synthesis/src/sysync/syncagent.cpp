@@ -400,6 +400,7 @@ void TAgentConfig::clear(void)
   fAssumedServerAuth=auth_none; // start with no auth
   fAssumedServerAuthEnc=fmt_chr; // start with char encoding
   fAssumedNonce.erase(); // start with no nonce
+  fPreferSlowSync=true;
   // auth retry options (mainly for stupid servers like SCTS)
   #ifdef SCTS_COMPATIBILITY_HACKS
   fNewSessionForAuthRetry=false;
@@ -474,6 +475,8 @@ bool TAgentConfig::localStartElement(const char *aElementName, const char **aAtt
       expectEnum(sizeof(fAssumedServerAuthEnc),&fAssumedServerAuthEnc,encodingFmtSyncMLNames,numFmtTypes);
     else if (strucmp(aElementName,"defaultauthnonce")==0)
       expectString(fAssumedNonce);
+    else if (strucmp(aElementName,"preferslowsync")==0)
+      expectBool(fPreferSlowSync);
     else if (strucmp(aElementName,"newsessionforretry")==0)
       expectBool(fNewSessionForAuthRetry);
     else if (strucmp(aElementName,"originaluriforretry")==0)

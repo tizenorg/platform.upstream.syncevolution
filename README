@@ -7,8 +7,8 @@ synchronize personal information management data
 ------------------------------------------------
 
 :Manual section: 1
-:Version: 1.2.99+20120606+SE+ff65aef+SYSYNC+2728cb4
-:Date: 2012-06-06
+:Version: 1.2.99+20120615+SE+1c2f1c2+SYSYNC+de54721
+:Date: 2012-06-15
 
 
 SYNOPSIS
@@ -937,6 +937,16 @@ enableWBXML (TRUE, unshared)
    use the more compact binary XML (WBXML) for messages between client and server;
    not applicable when the peer is a SyncML client, because then the client
    chooses the encoding
+
+enableRefreshSync (FALSE, unshared)
+   Use the more advanced refresh-from-server sync mode to
+   implement the refresh-from-remote operation. Some SyncML
+   servers do not support this. Therefore the default is to
+   delete local data before doing a slow sync, which has the
+   same effect. However, some servers work better when they
+   are told explicitly that the sync is a refresh sync. For
+   example, Funambol's One Media server rejects too many slow
+   syncs in a row with a 417 'retry later' error.
 
 maxMsgSize (150000, unshared), maxObjSize (4000000, unshared)
    The maximum size of each message can be set (maxMsgSize) and the

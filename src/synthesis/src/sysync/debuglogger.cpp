@@ -527,7 +527,11 @@ void TDebugLoggerBase::outputVia(TDebugLoggerBase *aDebugLoggerP)
   fOutputLoggerP = aDebugLoggerP;
 } // TDebugLoggerBase::outputVia
 
-
+#if defined(CONSOLEINFO) && defined(CONSOLEINFO_LIBC)
+extern "C" {
+  int (*SySync_ConsolePrintf)(FILE *stream, const char *format, ...) = fprintf;
+}
+#endif
 
 // output formatted text
 void TDebugLoggerBase::DebugVPrintf(TDBG_LOCATION_PROTO uInt32 aDbgMask, cAppCharP aFormat, va_list aArgs)

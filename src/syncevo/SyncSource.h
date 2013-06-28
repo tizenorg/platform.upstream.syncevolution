@@ -485,6 +485,15 @@ struct ClientTestConfig {
      */
     boost::function<void (std::string &)> m_update;
     boost::function<void (std::string &)> m_genericUpdate;
+
+    /**
+     * A list of m_sourceName values of other ClientTestConfigs
+     * which share the same database. Normally, sources are tested in
+     * isolation, but for such linked sources we also need to test
+     * interdependencies, in particular regarding change tracking and
+     * item listing.
+     */
+    std::list<std::string> m_linkedSources;
 };
 
 /**
@@ -530,6 +539,13 @@ class RegisterSyncSourceTest
 {
  public:
     /**
+     * Invoked after all global constructors are run.
+     * May add further RegisterSyncSourceTests to the
+     * global registry.
+     */
+    virtual void init() const {}
+
+    /**
      * This call is invoked after setting up the config with default
      * values for the test cases selected via the constructor's
      * testCaseName parameter (one of eds_contact, eds_contact, eds_event, eds_task;
@@ -561,6 +577,15 @@ class RegisterSyncSourceTest
 
     const string m_configName;
     const string m_testCaseName;
+
+    /**
+     * A list of m_configName values of other RegisterSyncSourceTest
+     * which share the same database. Normally, sources are tested in
+     * isolation, but for such linked sources we also need to test
+     * interdependencies, in particular regarding change tracking and
+     * item listing.
+     */
+    std::list<std::string> m_linkedSources;
 };
 
 class TestRegistry : public vector<const RegisterSyncSourceTest *>
@@ -1365,7 +1390,9 @@ class SyncSourceBase : public Logger {
          *
          * One example is adding <updateallfields>: this is necessary
          * in backends which depend on getting complete items (= for example,
-         * vCard 3.0 strings) from the engine.
+         * vCard 3.0 strings) from the engine. Note that any source
+         * derived from SyncSourceSerialize (= the majority of the backends)
+         * have this set by default.
          */
         std::string m_datastoreOptions;
 

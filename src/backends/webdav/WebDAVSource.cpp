@@ -242,6 +242,91 @@ WebDAVSource::WebDAVSource(const SyncSourceParams &params,
     LogRedirect::addIgnoreError("Read block (");
 }
 
+static const std::string UID("\nUID:");
+
+const std::string *WebDAVSource::createResourceName(const std::string &item, std::string &buffer, std::string &luid)
+{
+    luid = extractUID(item);
+    std::string suffix = getSuffix();
+    if (luid.empty()) {
+        // must modify item
+        luid = UUID();
+        buffer = item;
+        size_t start = buffer.find("\nEND:" + getContent());
+        if (start != buffer.npos) {
+            start++;
+            buffer.insert(start, StringPrintf("UID:%s\r\n", luid.c_str()));
+        }
+        luid += suffix;
+        return &buffer;
+    } else {
+        luid += suffix;
+        return &item;
+    }
+}
+
+const std::string *WebDAVSource::setResourceName(const std::string &item, std::string &buffer, const std::string &luid)
+{
+    std::string olduid = luid;
+    std::string suffix = getSuffix();
+    if (boost::ends_with(olduid, suffix)) {
+        olduid.resize(olduid.size() - suffix.size());
+    }
+
+    // first check if the item already contains the right UID
+    std::string uid = extractUID(item);
+    if (uid == olduid) {
+        return &item;
+    }
+
+    // insert or overwrite
+    buffer = item;
+    size_t start = buffer.find(UID);
+    if (start != buffer.npos) {
+        start += UID.size();
+        size_t end = buffer.find("\n", start);
+        if (end != buffer.npos) {
+            // overwrite
+            buffer.replace(start, end, olduid);
+        }
+    } else {
+        // insert
+        start = buffer.find("\nEND:" + getContent());
+        if (start != buffer.npos) {
+            start++;
+            buffer.insert(start, StringPrintf("UID:%s\n", olduid.c_str()));
+        }
+    }
+    return &buffer;
+}
+
+
+
+std::string WebDAVSource::extractUID(const std::string &item)
+{
+    std::string luid;
+    // find UID, use that plus ".vcf" as resource name (expected by Yahoo Contacts)
+    size_t start = item.find(UID);
+    if (start != item.npos) {
+        start += UID.size();
+        size_t end = item.find("\n", start);
+        if (end != item.npos) {
+            luid = item.substr(start, end - start);
+            if (boost::ends_with(luid, "\r")) {
+                luid.resize(luid.size() - 1);
+            }
+        }
+    }
+    return luid;
+}
+
+std::string WebDAVSource::getSuffix() const
+{
+    return getContent() == "VCARD" ?
+        ".vcf" :
+        ".ics";
+}
+
 void WebDAVSource::replaceHTMLEntities(std::string &item)
 {
     while (true) {
@@ -1164,15 +1249,65 @@ static const ne_propname getetag[] = {
 
 void WebDAVSource::listAllItems(RevisionMap_t &revisions)
 {
-    bool failed = false;
-    Timespec deadline = createDeadline();
-    m_session->propfindURI(m_calendar.m_path, 1, getetag,
-                           boost::bind(&WebDAVSource::listAllItemsCallback,
-                                       this, _1, _2, boost::ref(revisions),
-                                       boost::ref(failed)),
-                           deadline);
-    if (failed) {
-        SE_THROW("incomplete listing of all items");
+    if (!getContentMixed()) {
+        // Can use simple PROPFIND because we do not have to
+        // double-check that each item really contains the right data.
+        bool failed = false;
+        Timespec deadline = createDeadline();
+        m_session->propfindURI(m_calendar.m_path, 1, getetag,
+                               boost::bind(&WebDAVSource::listAllItemsCallback,
+                                           this, _1, _2, boost::ref(revisions),
+                                           boost::ref(failed)),
+                               deadline);
+        if (failed) {
+            SE_THROW("incomplete listing of all items");
+        }
+    } else {
+        // We have to read item data and verify that it really is
+        // something we have to (and may) work on. Currently only
+        // happens for CalDAV, CardDAV items are uniform. The CalDAV
+        // comp-filter alone should the trick, but some servers (for
+        // example Radicale 0.7) ignore it and thus we could end up
+        // deleting items we were not meant to touch.
+        const std::string query =
+            "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n"
+            "<C:calendar-query xmlns:D=\"DAV:\"\n"
+            "xmlns:C=\"urn:ietf:params:xml:ns:caldav\">\n"
+            "<D:prop>\n"
+            "<D:getetag/>\n"
+            "<C:calendar-data>\n"
+            "<C:comp name=\"VCALENDAR\">\n"
+            "<C:comp name=\"" + getContent() + "\">\n"
+            "<C:prop name=\"UID\"/>\n"
+            "</C:comp>\n"
+            "</C:comp>\n"
+            "</C:calendar-data>\n"
+            "</D:prop>\n"
+            // filter expected by Yahoo! Calendar
+            "<C:filter>\n"
+            "<C:comp-filter name=\"VCALENDAR\">\n"
+            "<C:comp-filter name=\"" + getContent() + "\">\n"
+            "</C:comp-filter>\n"
+            "</C:comp-filter>\n"
+            "</C:filter>\n"
+            "</C:calendar-query>\n";
+        Timespec deadline = createDeadline();
+        getSession()->startOperation("REPORT 'meta data'", deadline);
+        while (true) {
+            string data;
+            Neon::XMLParser parser;
+            parser.initReportParser(boost::bind(&WebDAVSource::checkItem, this,
+                                                boost::ref(revisions),
+                                                _1, _2, boost::ref(data)));
+            parser.pushHandler(boost::bind(Neon::XMLParser::accept, "urn:ietf:params:xml:ns:caldav", "calendar-data", _2, _3),
+                               boost::bind(Neon::XMLParser::append, boost::ref(data), _2, _3));
+            Neon::Request report(*getSession(), "REPORT", getCalendar().m_path, query, parser);
+            report.addHeader("Depth", "1");
+            report.addHeader("Content-Type", "application/xml; charset=\"utf-8\"");
+            if (report.run()) {
+                break;
+            }
+        }
     }
 }
 
@@ -1215,6 +1350,35 @@ void WebDAVSource::listAllItemsCallback(const Neon::URI &uri,
     }
 }
 
+int WebDAVSource::checkItem(RevisionMap_t &revisions,
+                            const std::string &href,
+                            const std::string &etag,
+                            std::string &data)
+{
+    // Ignore responses with no data: this is not perfect (should better
+    // try to figure out why there is no data), but better than
+    // failing.
+    //
+    // One situation is the response for the collection itself,
+    // which comes with a 404 status and no data with Google Calendar.
+    if (data.empty()) {
+        return 0;
+    }
+
+    // No need to parse, user content cannot start at start of line in
+    // iCalendar 2.0.
+    if (data.find("\nBEGIN:" + getContent()) != data.npos) {
+        std::string davLUID = path2luid(Neon::URI::parse(href).m_path);
+        std::string rev = ETag2Rev(etag);
+        revisions[davLUID] = rev;
+    }
+
+    // reset data for next item
+    data.clear();
+    return 0;
+}
+
+
 std::string WebDAVSource::path2luid(const std::string &path)
 {
     // m_calendar.m_path is normalized, path is not.
@@ -1247,8 +1411,19 @@ void WebDAVSource::readItem(const string &uid, std::string &item, bool raw)
                           "", item);
         // useful with CardDAV: server might support more than vCard 3.0, but we don't
         req.addHeader("Accept", contentType());
-        if (req.run()) {
-            break;
+        try {
+            if (req.run()) {
+                break;
+            }
+        } catch (const TransportStatusException &ex) {
+            if (ex.syncMLStatus() == 410) {
+                // Radicale reports 410 'Gone'. Hmm, okay.
+                // Let's map it to the expected 404.
+                SE_THROW_EXCEPTION_STATUS(TransportStatusException,
+	                                  "object not found (was 410 'Gone')",
+	                                  SyncMLStatus(404));
+            }
+            throw;
         }
     }
 }
@@ -1490,8 +1665,19 @@ void WebDAVSource::removeItem(const string &uid)
         // TODO: match exactly the expected revision, aka ETag,
         // or implement locking.
         // req.addHeader("If-Match", etag);
-        if (req->run()) {
-            break;
+        try {
+            if (req->run()) {
+                break;
+            }
+        } catch (const TransportStatusException &ex) {
+            if (ex.syncMLStatus() == 412) {
+                // Radicale reports 412 'Precondition Failed'. Hmm, okay.
+                // Let's map it to the expected 404.
+                SE_THROW_EXCEPTION_STATUS(TransportStatusException,
+	                                  "object not found (was 412 'Precondition Failed')",
+	                                  SyncMLStatus(404));
+            }
+            throw;
         }
     }
     SE_LOG_DEBUG(NULL, NULL, "remove item status: %s",
@@ -1499,6 +1685,9 @@ void WebDAVSource::removeItem(const string &uid)
     switch (req->getStatusCode()) {
     case 204:
         // the expected outcome
+        break;
+    case 200:
+        // reported by Radicale, also okay
         break;
     default:
         SE_THROW_EXCEPTION_STATUS(TransportStatusException,
