@@ -3046,7 +3046,7 @@ bool TMimeDirProfileHandler::MIMEStringToField(
   string s;
 	// RRULE
   lineartime_t dtstart;
-  timecontext_t startcontext, untilcontext;
+  timecontext_t startcontext = 0, untilcontext = 0;
   char freq;
   char freqmod;
   sInt16 interval;
@@ -3436,7 +3436,7 @@ bool TMimeDirProfileHandler::parseValue(
             p++;
             c=*p;
             if (!c) break; // half escape sequence, ignore
-            else if (c=='n') c='\n';
+            else if (c=='n' || c=='N') c='\n';
             // other escaped chars are shown as themselves
           }
           // add char
@@ -5000,6 +5000,20 @@ void TMimeDirProfileHandler::setProfileMode(sInt32 aMode)
   }
 } // TMimeDirProfileHandler::setProfileMode
 
+
+#ifndef NO_REMOTE_RULES
+void TMimeDirProfileHandler::setRemoteRule(const string &aRemoteRuleName)
+{
+  TSessionConfig *scP = getSession()->getSessionConfig();
+  TRemoteRulesList::iterator pos;
+  for(pos=scP->fRemoteRulesList.begin();pos!=scP->fRemoteRulesList.end();pos++) {
+    if((*pos)->fElementName == aRemoteRuleName) {
+      fAppliedRemoteRuleP = *pos;
+      break;
+    }
+  }
+} // TMimeDirProfileHandler::setRemoteRule
+#endif
 
 
 // - check mode

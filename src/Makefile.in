@@ -34,7 +34,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-EXTRA_PROGRAMS = $(am__EXEEXT_1)
+EXTRA_PROGRAMS = $(am__EXEEXT_1) abort-redirect$(EXEEXT)
 TESTS = $(am__EXEEXT_2)
 bin_PROGRAMS = syncevolution$(EXEEXT) $(am__EXEEXT_2)
 @COND_DBUS_TRUE@libexec_PROGRAMS = syncevo-dbus-server$(EXEEXT)
@@ -58,17 +58,15 @@ bin_PROGRAMS = syncevolution$(EXEEXT) $(am__EXEEXT_2)
 # haven't changed. If client-test is part of the regular targets built
 # by "all", then it must not depend on all!
 @ENABLE_TESTING_FALSE@am__append_8 = client-test
-@ENABLE_TESTING_FALSE@am__append_9 = all
+@ENABLE_TESTING_FALSE@am__append_9 = $(CLIENT_LIB_TEST_FILES)
+@ENABLE_TESTING_FALSE@am__append_10 = all
 subdir = src
 DIST_COMMON = $(am__nobase_dist_doc_DATA_DIST) \
 	$(nobase_dist_sysconf_DATA) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/m4/ax_boost_base.m4 \
-	$(top_srcdir)/m4/intltool.m4 $(top_srcdir)/m4/libtool.m4 \
-	$(top_srcdir)/m4/ltoptions.m4 $(top_srcdir)/m4/ltsugar.m4 \
-	$(top_srcdir)/m4/ltversion.m4 $(top_srcdir)/m4/lt~obsolete.m4 \
-	$(top_srcdir)/configure.in
+am__aclocal_m4_deps = $(top_srcdir)/m4-repo/ax_boost_base.m4 \
+	$(top_srcdir)/m4/intltool.m4 $(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
@@ -82,6 +80,17 @@ am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(libexecdir)" \
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 libexecPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS) $(libexec_PROGRAMS)
+am_abort_redirect_OBJECTS = abort_redirect-abort-redirect.$(OBJEXT)
+abort_redirect_OBJECTS = $(am_abort_redirect_OBJECTS)
+am__DEPENDENCIES_1 =
+@ENABLE_MODULES_FALSE@am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
+am__DEPENDENCIES_3 = $(am__DEPENDENCIES_2)
+am__DEPENDENCIES_4 = $(am__DEPENDENCIES_3) core/libsyncevolution.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
+abort_redirect_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CXXLD) \
+	$(abort_redirect_CXXFLAGS) $(CXXFLAGS) \
+	$(abort_redirect_LDFLAGS) $(LDFLAGS) -o $@
 am__client_test_SOURCES_DIST = client-test-app.cpp \
 	../test/ClientTest.cpp ../test/ClientTest.h \
 	../test/client-test-main.cpp \
@@ -103,14 +112,12 @@ am_client_test_OBJECTS = client_test-client-test-app.$(OBJEXT) \
 	client_test-client-test-main.$(OBJEXT) $(am__objects_3) \
 	$(am__objects_4)
 am__objects_5 =
-@ENABLE_TESTING_FALSE@nodist_client_test_OBJECTS = $(am__objects_5)
+am__objects_6 = $(am__objects_5)
+@ENABLE_TESTING_FALSE@am__objects_7 = $(am__objects_6)
+nodist_client_test_OBJECTS = client_test-test.$(OBJEXT) \
+	$(am__objects_7)
 client_test_OBJECTS = $(am_client_test_OBJECTS) \
 	$(nodist_client_test_OBJECTS)
-am__DEPENDENCIES_1 =
-@ENABLE_MODULES_FALSE@am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
-am__DEPENDENCIES_3 = $(am__DEPENDENCIES_2)
-am__DEPENDENCIES_4 = $(am__DEPENDENCIES_3) core/libsyncevolution.la \
-	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 client_test_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(client_test_CXXFLAGS) \
 	$(CXXFLAGS) $(client_test_LDFLAGS) $(LDFLAGS) -o $@
@@ -121,19 +128,20 @@ am__syncevo_dbus_server_SOURCES_DIST = syncevo-dbus-server.cpp \
 	backends/evolution/EvolutionContactSourceRegister.cpp \
 	backends/file/FileSyncSourceRegister.cpp \
 	backends/sqlite/SQLiteContactSourceRegister.cpp
-am__objects_6 =  \
+am__objects_8 =  \
 	syncevo_dbus_server-AddressBookSourceRegister.$(OBJEXT) \
 	syncevo_dbus_server-EvolutionCalendarSourceRegister.$(OBJEXT) \
 	syncevo_dbus_server-EvolutionContactSourceRegister.$(OBJEXT) \
 	syncevo_dbus_server-FileSyncSourceRegister.$(OBJEXT) \
 	syncevo_dbus_server-SQLiteContactSourceRegister.$(OBJEXT)
-@ENABLE_MODULES_FALSE@am__objects_7 = $(am__objects_6)
-am__objects_8 = $(am__objects_7)
+@ENABLE_MODULES_FALSE@am__objects_9 = $(am__objects_8)
+am__objects_10 = $(am__objects_9)
 @COND_DBUS_TRUE@am_syncevo_dbus_server_OBJECTS = syncevo_dbus_server-syncevo-dbus-server.$(OBJEXT) \
 @COND_DBUS_TRUE@	syncevo_dbus_server-DBusSyncClient.$(OBJEXT) \
-@COND_DBUS_TRUE@	$(am__objects_8)
+@COND_DBUS_TRUE@	$(am__objects_10)
 @COND_DBUS_TRUE@nodist_syncevo_dbus_server_OBJECTS =  \
-@COND_DBUS_TRUE@	syncevo_dbus_server-syncevo-marshal.$(OBJEXT)
+@COND_DBUS_TRUE@	syncevo_dbus_server-syncevo-marshal.$(OBJEXT) \
+@COND_DBUS_TRUE@	syncevo_dbus_server-test.$(OBJEXT)
 syncevo_dbus_server_OBJECTS = $(am_syncevo_dbus_server_OBJECTS) \
 	$(nodist_syncevo_dbus_server_OBJECTS)
 syncevo_dbus_server_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
@@ -146,16 +154,18 @@ am__syncevolution_SOURCES_DIST = syncevolution.cpp \
 	backends/evolution/EvolutionContactSourceRegister.cpp \
 	backends/file/FileSyncSourceRegister.cpp \
 	backends/sqlite/SQLiteContactSourceRegister.cpp
-am__objects_9 = syncevolution-AddressBookSourceRegister.$(OBJEXT) \
+am__objects_11 = syncevolution-AddressBookSourceRegister.$(OBJEXT) \
 	syncevolution-EvolutionCalendarSourceRegister.$(OBJEXT) \
 	syncevolution-EvolutionContactSourceRegister.$(OBJEXT) \
 	syncevolution-FileSyncSourceRegister.$(OBJEXT) \
 	syncevolution-SQLiteContactSourceRegister.$(OBJEXT)
-@ENABLE_MODULES_FALSE@am__objects_10 = $(am__objects_9)
-am__objects_11 = $(am__objects_10)
+@ENABLE_MODULES_FALSE@am__objects_12 = $(am__objects_11)
+am__objects_13 = $(am__objects_12)
 am_syncevolution_OBJECTS = syncevolution-syncevolution.$(OBJEXT) \
-	$(am__objects_11)
-syncevolution_OBJECTS = $(am_syncevolution_OBJECTS)
+	$(am__objects_13)
+nodist_syncevolution_OBJECTS = syncevolution-test.$(OBJEXT)
+syncevolution_OBJECTS = $(am_syncevolution_OBJECTS) \
+	$(nodist_syncevolution_OBJECTS)
 syncevolution_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(syncevolution_CXXFLAGS) \
 	$(CXXFLAGS) $(syncevolution_LDFLAGS) $(LDFLAGS) -o $@
@@ -182,10 +192,12 @@ CXXLD = $(CXX)
 CXXLINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
-SOURCES = $(client_test_SOURCES) $(nodist_client_test_SOURCES) \
-	$(syncevo_dbus_server_SOURCES) \
-	$(nodist_syncevo_dbus_server_SOURCES) $(syncevolution_SOURCES)
-DIST_SOURCES = $(am__client_test_SOURCES_DIST) \
+SOURCES = $(abort_redirect_SOURCES) $(client_test_SOURCES) \
+	$(nodist_client_test_SOURCES) $(syncevo_dbus_server_SOURCES) \
+	$(nodist_syncevo_dbus_server_SOURCES) $(syncevolution_SOURCES) \
+	$(nodist_syncevolution_SOURCES)
+DIST_SOURCES = $(abort_redirect_SOURCES) \
+	$(am__client_test_SOURCES_DIST) \
 	$(am__syncevo_dbus_server_SOURCES_DIST) \
 	$(am__syncevolution_SOURCES_DIST)
 RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
@@ -197,7 +209,8 @@ RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	ps-recursive uninstall-recursive
 am__nobase_dist_doc_DATA_DIST = testcases/vcard21.vcf \
 	testcases/vcard30.vcf testcases/ical20.ics \
-	testcases/imemo20.ics testcases/itodo20.ics
+	testcases/imemo20.ics testcases/itodo20.ics $(subst \
+	.patch,,$(subst $(srcdir)/../test/,,$(TEST_FILES_PATCHES)))
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
@@ -252,11 +265,11 @@ DBUS_SERVICES_DIR = @DBUS_SERVICES_DIR@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DSYMUTIL = @DSYMUTIL@
-DUMPBIN = @DUMPBIN@
 EBOOK_CFLAGS = @EBOOK_CFLAGS@
 EBOOK_LIBS = @EBOOK_LIBS@
 ECAL_CFLAGS = @ECAL_CFLAGS@
 ECAL_LIBS = @ECAL_LIBS@
+ECHO = @ECHO@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
@@ -264,7 +277,8 @@ EGREP = @EGREP@
 EPACKAGE_CFLAGS = @EPACKAGE_CFLAGS@
 EPACKAGE_LIBS = @EPACKAGE_LIBS@
 EXEEXT = @EXEEXT@
-FGREP = @FGREP@
+F77 = @F77@
+FFLAGS = @FFLAGS@
 FILE_CFLAGS = @FILE_CFLAGS@
 FILE_LIBS = @FILE_LIBS@
 GETTEXT_PACKAGE = @GETTEXT_PACKAGE@
@@ -284,37 +298,19 @@ INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 INSTOBJEXT = @INSTOBJEXT@
 INTLLIBS = @INTLLIBS@
-INTLTOOL_CAVES_RULE = @INTLTOOL_CAVES_RULE@
-INTLTOOL_DESKTOP_RULE = @INTLTOOL_DESKTOP_RULE@
-INTLTOOL_DIRECTORY_RULE = @INTLTOOL_DIRECTORY_RULE@
 INTLTOOL_EXTRACT = @INTLTOOL_EXTRACT@
-INTLTOOL_KBD_RULE = @INTLTOOL_KBD_RULE@
-INTLTOOL_KEYS_RULE = @INTLTOOL_KEYS_RULE@
 INTLTOOL_MERGE = @INTLTOOL_MERGE@
-INTLTOOL_OAF_RULE = @INTLTOOL_OAF_RULE@
 INTLTOOL_PERL = @INTLTOOL_PERL@
-INTLTOOL_POLICY_RULE = @INTLTOOL_POLICY_RULE@
-INTLTOOL_PONG_RULE = @INTLTOOL_PONG_RULE@
-INTLTOOL_PROP_RULE = @INTLTOOL_PROP_RULE@
-INTLTOOL_SCHEMAS_RULE = @INTLTOOL_SCHEMAS_RULE@
-INTLTOOL_SERVER_RULE = @INTLTOOL_SERVER_RULE@
-INTLTOOL_SERVICE_RULE = @INTLTOOL_SERVICE_RULE@
-INTLTOOL_SHEET_RULE = @INTLTOOL_SHEET_RULE@
-INTLTOOL_SOUNDLIST_RULE = @INTLTOOL_SOUNDLIST_RULE@
-INTLTOOL_THEME_RULE = @INTLTOOL_THEME_RULE@
-INTLTOOL_UI_RULE = @INTLTOOL_UI_RULE@
 INTLTOOL_UPDATE = @INTLTOOL_UPDATE@
-INTLTOOL_XAM_RULE = @INTLTOOL_XAM_RULE@
-INTLTOOL_XML_NOMERGE_RULE = @INTLTOOL_XML_NOMERGE_RULE@
-INTLTOOL_XML_RULE = @INTLTOOL_XML_RULE@
-LD = @LD@
+KEYRING_CFLAGS = @KEYRING_CFLAGS@
+KEYRING_LIBS = @KEYRING_LIBS@
 LDFLAGS = @LDFLAGS@
+LIBEXECDIR = @LIBEXECDIR@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
 LIBSOUP_CFLAGS = @LIBSOUP_CFLAGS@
 LIBSOUP_LIBS = @LIBSOUP_LIBS@
 LIBTOOL = @LIBTOOL@
-LIPO = @LIPO@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
@@ -324,11 +320,8 @@ MODIFY_SYNCCOMPARE = @MODIFY_SYNCCOMPARE@
 MSGFMT = @MSGFMT@
 MSGFMT_OPTS = @MSGFMT_OPTS@
 MSGMERGE = @MSGMERGE@
-NM = @NM@
 NMEDIT = @NMEDIT@
 OBJEXT = @OBJEXT@
-OTOOL = @OTOOL@
-OTOOL64 = @OTOOL64@
 PACKAGE = @PACKAGE@
 PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
 PACKAGE_NAME = @PACKAGE_NAME@
@@ -374,7 +367,7 @@ abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
-ac_ct_DUMPBIN = @ac_ct_DUMPBIN@
+ac_ct_F77 = @ac_ct_F77@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -405,7 +398,6 @@ libdir = @libdir@
 libexecdir = @libexecdir@
 localedir = @localedir@
 localstatedir = @localstatedir@
-lt_ECHO = @lt_ECHO@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
@@ -421,8 +413,8 @@ target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 BACKENDS = backends/addressbook backends/evolution backends/file backends/sqlite
+service_in_files = org.Moblin.SyncEvolution.service.in
 @COND_DBUS_TRUE@servicedir = $(DBUS_SERVICES_DIR)
-@COND_DBUS_TRUE@service_in_files = org.Moblin.SyncEvolution.service.in
 @COND_DBUS_TRUE@service_DATA = $(service_in_files:.service.in=.service)
 # jump into interface directory directly instead of going through dbus
 @COND_DBUS_FALSE@@COND_GUI_TRUE@DBUS_DIR = dbus/interfaces
@@ -434,13 +426,14 @@ BUILT_SOURCES =
 AM_CPPFLAGS = $(SUBDIRS:%=-I$(srcdir)/%) -I$(srcdir)/../test -I$(top_srcdir) $(BACKEND_CPPFLAGS) $(GLIB_CFLAGS)
 bin_SCRIPTS = synccompare
 SYNCEVOLUTION_DEP = $(am__append_2)
-EXTRA_DIST = shlibs.local Makefile-gen.am syncevolution.xml \
+EXTRA_DIST = shlibs.local Makefile-gen.am syncclient_sample_config.xml \
 	$(service_in_files) $(am__append_3)
-TEMPLATE_FILES = default/syncevolution/Funambol/sources/memo/config.ini default/syncevolution/Funambol/sources/todo/config.ini default/syncevolution/Funambol/sources/addressbook/config.ini default/syncevolution/Funambol/sources/calendar/config.ini default/syncevolution/Funambol/config.ini default/syncevolution/ScheduleWorld/sources/memo/config.ini default/syncevolution/ScheduleWorld/sources/todo/config.ini default/syncevolution/ScheduleWorld/sources/addressbook/config.ini default/syncevolution/ScheduleWorld/sources/calendar/config.ini default/syncevolution/ScheduleWorld/config.ini 
+TEMPLATE_FILES = default/syncevolution/Funambol/config.ini default/syncevolution/Funambol/sources/calendar/config.ini default/syncevolution/Funambol/sources/todo/config.ini default/syncevolution/Funambol/sources/addressbook/config.ini default/syncevolution/Funambol/sources/memo/config.ini default/syncevolution/ScheduleWorld/config.ini default/syncevolution/ScheduleWorld/sources/calendar/config.ini default/syncevolution/ScheduleWorld/sources/todo/config.ini default/syncevolution/ScheduleWorld/sources/addressbook/config.ini default/syncevolution/ScheduleWorld/sources/memo/config.ini 
 nobase_dist_sysconf_DATA = $(TEMPLATE_FILES)
 DISTCLEANFILES = synccompare
 MAINTAINERCLEANFILES = Makefile.in
-CLEANFILES = libstdc++.a client-test $(CLIENT_LIB_TEST_FILES)
+CLEANFILES = libstdc++.a client-test $(CLIENT_LIB_TEST_FILES) \
+	org.Moblin.SyncEvolution.service abort-redirect.log
 CORE_SOURCES = $(am__append_4)
 
 # The files which register backends have to be compiled into
@@ -461,6 +454,7 @@ syncevolution_SOURCES = \
 	syncevolution.cpp \
 	$(CORE_SOURCES)
 
+nodist_syncevolution_SOURCES = ../test/test.cpp
 
 # SYNCEVOLUTION_LDADD will be replaced with libsyncebook.la/libsyncecal.la/libsyncsqlite.la
 # if linking statically against them, empty otherwise;
@@ -474,9 +468,12 @@ syncevolution_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) # $(SYNTHESIS_DEP)
 @COND_DBUS_TRUE@	DBusSyncClient.cpp DBusSyncClient.h \
 @COND_DBUS_TRUE@	$(CORE_SOURCES)
 
-@COND_DBUS_TRUE@nodist_syncevo_dbus_server_SOURCES = dbus/interfaces/syncevo-marshal.c
-@COND_DBUS_TRUE@syncevo_dbus_server_LDADD = $(DBUS_GLIB_LIBS) $(CORE_LDADD)
-@COND_DBUS_TRUE@syncevo_dbus_server_CPPFLAGS = -DHAVE_CONFIG_H -Idbus/interfaces $(DBUS_GLIB_CFLAGS) $(AM_CPPFLAGS)
+@COND_DBUS_TRUE@nodist_syncevo_dbus_server_SOURCES = \
+@COND_DBUS_TRUE@	dbus/interfaces/syncevo-marshal.c \
+@COND_DBUS_TRUE@	../test/test.cpp
+
+@COND_DBUS_TRUE@syncevo_dbus_server_LDADD = $(DBUS_GLIB_LIBS) $(KEYRING_LIBS) $(CORE_LDADD)
+@COND_DBUS_TRUE@syncevo_dbus_server_CPPFLAGS = -DHAVE_CONFIG_H -Idbus/interfaces $(DBUS_GLIB_CFLAGS) $(KEYRING_CFLAGS) $(AM_CPPFLAGS)
 @COND_DBUS_TRUE@syncevo_dbus_server_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS)
 @COND_DBUS_TRUE@syncevo_dbus_server_LDFLAGS = $(CORE_LD_FLAGS)
 @COND_DBUS_TRUE@syncevo_dbus_server_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) $(SYNTHESIS_DEP)
@@ -488,26 +485,42 @@ syncevolution_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) # $(SYNTHESIS_DEP)
 client_test_SOURCES = client-test-app.cpp ../test/ClientTest.cpp \
 	../test/ClientTest.h ../test/client-test-main.cpp \
 	$(CORE_SOURCES) $(am__append_5)
-CLIENT_LIB_TEST_FILES = \
-	testcases/vcard21.vcf \
-	testcases/vcard30.vcf \
-	testcases/ical20.ics \
-	testcases/imemo20.ics \
-	testcases/itodo20.ics
+nodist_client_test_SOURCES = ../test/test.cpp $(am__append_9)
 
+# list of test file base files
+#
+# Generated files (testcases/ical20.ics.funambol.tem) are derived from
+# the original base file ($(srcdir)/test/testcases/ical20.ics) by
+# applying a patch ($(srcdir)/test/testcases/ical20.ics.funambol.tem.patch).
+# add files created via patches
+CLIENT_LIB_TEST_FILES = testcases/vcard21.vcf testcases/vcard30.vcf \
+	testcases/ical20.ics testcases/imemo20.ics \
+	testcases/itodo20.ics $(TEST_FILES_GENERATED)
+
+# all patch files
+TEST_FILES_PATCHES = $(wildcard $(srcdir)/../test/testcases/*.patch)
+# generated local files
+TEST_FILES_GENERATED = $(subst .patch,,$(subst $(srcdir)/../test/,,$(TEST_FILES_PATCHES)))
+# all patched files, regardless whether the patch already exists
+TEST_FILES_PATCHED = $(wildcard testcases/*.tem)
 client_test_CPPFLAGS = -DHAVE_CONFIG_H -DENABLE_INTEGRATION_TESTS -DENABLE_UNIT_TESTS $(AM_CPPFLAGS)
 client_test_CXXFLAGS = `cppunit-config --cflags` $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS)
 client_test_LDFLAGS = `cppunit-config --libs` `nm core/.libs/libsyncevolution.a | grep funambolAutoRegisterRegistry | sed -e 's/.* /-u /'` $(CORE_LD_FLAGS)
 client_test_LDADD = $(CORE_LDADD) $(SYNCSOURCES)
-# These dependencies are intentionally a bit too broad:
-# they ensure that all files are in place to *run* client-test.
-client_test_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) \
-	$(CLIENT_LIB_TEST_FILES) synccompare $(am__append_9)
 
-# copy test files because client-test expects them here
-LOCAL_TEST_FILES = $(subst $(srcdir)/../test/,,$(wildcard $(srcdir)/../test/* $(srcdir)/../test/testcases/*))
+# The binary does not really depend on the test cases, only running it does.
+# Listing the dependencies here is done to ensure that one doesn't accidentally
+# runs the binary with out-dated auxiliary files.
+client_test_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) \
+	$(CLIENT_LIB_TEST_FILES) testcase2patch synccompare \
+	$(am__append_10)
 @ENABLE_TESTING_TRUE@nobase_dist_doc_DATA = $(CLIENT_LIB_TEST_FILES)
-@ENABLE_TESTING_FALSE@nodist_client_test_SOURCES = $(CLIENT_LIB_TEST_FILES)
+abort_redirect_SOURCES = ../test/abort-redirect.cpp
+abort_redirect_CPPFLAGS = -DHAVE_CONFIG_H $(AM_CPPFLAGS)
+abort_redirect_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS)
+abort_redirect_LDFLAGS = $(CORE_LD_FLAGS)
+abort_redirect_LDADD = $(CORE_LDADD)
+abort_redirect_DEPENDENCIES = all
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
@@ -598,6 +611,9 @@ clean-libexecPROGRAMS:
 	  echo " rm -f $$p $$f"; \
 	  rm -f $$p $$f ; \
 	done
+abort-redirect$(EXEEXT): $(abort_redirect_OBJECTS) $(abort_redirect_DEPENDENCIES) 
+	@rm -f abort-redirect$(EXEEXT)
+	$(abort_redirect_LINK) $(abort_redirect_OBJECTS) $(abort_redirect_LDADD) $(LIBS)
 client-test$(EXEEXT): $(client_test_OBJECTS) $(client_test_DEPENDENCIES) 
 	@rm -f client-test$(EXEEXT)
 	$(client_test_LINK) $(client_test_OBJECTS) $(client_test_LDADD) $(LIBS)
@@ -633,6 +649,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/abort_redirect-abort-redirect.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-AddressBookSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-ClientTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-EvolutionCalendarSourceRegister.Po@am__quote@
@@ -641,6 +658,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-SQLiteContactSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-client-test-app.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-client-test-main.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-AddressBookSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-DBusSyncClient.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-EvolutionCalendarSourceRegister.Po@am__quote@
@@ -649,12 +667,14 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-SQLiteContactSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-syncevo-dbus-server.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-syncevo-marshal.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-AddressBookSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-EvolutionCalendarSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-EvolutionContactSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-FileSyncSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-SQLiteContactSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-syncevolution.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-test.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -711,6 +731,20 @@ syncevo_dbus_server-syncevo-marshal.obj: dbus/interfaces/syncevo-marshal.c
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LTCXXCOMPILE) -c -o $@ $<
+
+abort_redirect-abort-redirect.o: ../test/abort-redirect.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(abort_redirect_CPPFLAGS) $(CPPFLAGS) $(abort_redirect_CXXFLAGS) $(CXXFLAGS) -MT abort_redirect-abort-redirect.o -MD -MP -MF $(DEPDIR)/abort_redirect-abort-redirect.Tpo -c -o abort_redirect-abort-redirect.o `test -f '../test/abort-redirect.cpp' || echo '$(srcdir)/'`../test/abort-redirect.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/abort_redirect-abort-redirect.Tpo $(DEPDIR)/abort_redirect-abort-redirect.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='../test/abort-redirect.cpp' object='abort_redirect-abort-redirect.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(abort_redirect_CPPFLAGS) $(CPPFLAGS) $(abort_redirect_CXXFLAGS) $(CXXFLAGS) -c -o abort_redirect-abort-redirect.o `test -f '../test/abort-redirect.cpp' || echo '$(srcdir)/'`../test/abort-redirect.cpp
+
+abort_redirect-abort-redirect.obj: ../test/abort-redirect.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(abort_redirect_CPPFLAGS) $(CPPFLAGS) $(abort_redirect_CXXFLAGS) $(CXXFLAGS) -MT abort_redirect-abort-redirect.obj -MD -MP -MF $(DEPDIR)/abort_redirect-abort-redirect.Tpo -c -o abort_redirect-abort-redirect.obj `if test -f '../test/abort-redirect.cpp'; then $(CYGPATH_W) '../test/abort-redirect.cpp'; else $(CYGPATH_W) '$(srcdir)/../test/abort-redirect.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/abort_redirect-abort-redirect.Tpo $(DEPDIR)/abort_redirect-abort-redirect.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='../test/abort-redirect.cpp' object='abort_redirect-abort-redirect.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(abort_redirect_CPPFLAGS) $(CPPFLAGS) $(abort_redirect_CXXFLAGS) $(CXXFLAGS) -c -o abort_redirect-abort-redirect.obj `if test -f '../test/abort-redirect.cpp'; then $(CYGPATH_W) '../test/abort-redirect.cpp'; else $(CYGPATH_W) '$(srcdir)/../test/abort-redirect.cpp'; fi`
 
 client_test-client-test-app.o: client-test-app.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-client-test-app.o -MD -MP -MF $(DEPDIR)/client_test-client-test-app.Tpo -c -o client_test-client-test-app.o `test -f 'client-test-app.cpp' || echo '$(srcdir)/'`client-test-app.cpp
@@ -824,6 +858,20 @@ client_test-SQLiteContactSourceRegister.obj: backends/sqlite/SQLiteContactSource
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-SQLiteContactSourceRegister.obj `if test -f 'backends/sqlite/SQLiteContactSourceRegister.cpp'; then $(CYGPATH_W) 'backends/sqlite/SQLiteContactSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/sqlite/SQLiteContactSourceRegister.cpp'; fi`
 
+client_test-test.o: ../test/test.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-test.o -MD -MP -MF $(DEPDIR)/client_test-test.Tpo -c -o client_test-test.o `test -f '../test/test.cpp' || echo '$(srcdir)/'`../test/test.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/client_test-test.Tpo $(DEPDIR)/client_test-test.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='../test/test.cpp' object='client_test-test.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-test.o `test -f '../test/test.cpp' || echo '$(srcdir)/'`../test/test.cpp
+
+client_test-test.obj: ../test/test.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-test.obj -MD -MP -MF $(DEPDIR)/client_test-test.Tpo -c -o client_test-test.obj `if test -f '../test/test.cpp'; then $(CYGPATH_W) '../test/test.cpp'; else $(CYGPATH_W) '$(srcdir)/../test/test.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/client_test-test.Tpo $(DEPDIR)/client_test-test.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='../test/test.cpp' object='client_test-test.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-test.obj `if test -f '../test/test.cpp'; then $(CYGPATH_W) '../test/test.cpp'; else $(CYGPATH_W) '$(srcdir)/../test/test.cpp'; fi`
+
 syncevo_dbus_server-syncevo-dbus-server.o: syncevo-dbus-server.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-syncevo-dbus-server.o -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-syncevo-dbus-server.Tpo -c -o syncevo_dbus_server-syncevo-dbus-server.o `test -f 'syncevo-dbus-server.cpp' || echo '$(srcdir)/'`syncevo-dbus-server.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-syncevo-dbus-server.Tpo $(DEPDIR)/syncevo_dbus_server-syncevo-dbus-server.Po
@@ -922,6 +970,20 @@ syncevo_dbus_server-SQLiteContactSourceRegister.obj: backends/sqlite/SQLiteConta
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-SQLiteContactSourceRegister.obj `if test -f 'backends/sqlite/SQLiteContactSourceRegister.cpp'; then $(CYGPATH_W) 'backends/sqlite/SQLiteContactSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/sqlite/SQLiteContactSourceRegister.cpp'; fi`
 
+syncevo_dbus_server-test.o: ../test/test.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-test.o -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-test.Tpo -c -o syncevo_dbus_server-test.o `test -f '../test/test.cpp' || echo '$(srcdir)/'`../test/test.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-test.Tpo $(DEPDIR)/syncevo_dbus_server-test.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='../test/test.cpp' object='syncevo_dbus_server-test.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-test.o `test -f '../test/test.cpp' || echo '$(srcdir)/'`../test/test.cpp
+
+syncevo_dbus_server-test.obj: ../test/test.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-test.obj -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-test.Tpo -c -o syncevo_dbus_server-test.obj `if test -f '../test/test.cpp'; then $(CYGPATH_W) '../test/test.cpp'; else $(CYGPATH_W) '$(srcdir)/../test/test.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-test.Tpo $(DEPDIR)/syncevo_dbus_server-test.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='../test/test.cpp' object='syncevo_dbus_server-test.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-test.obj `if test -f '../test/test.cpp'; then $(CYGPATH_W) '../test/test.cpp'; else $(CYGPATH_W) '$(srcdir)/../test/test.cpp'; fi`
+
 syncevolution-syncevolution.o: syncevolution.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -MT syncevolution-syncevolution.o -MD -MP -MF $(DEPDIR)/syncevolution-syncevolution.Tpo -c -o syncevolution-syncevolution.o `test -f 'syncevolution.cpp' || echo '$(srcdir)/'`syncevolution.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevolution-syncevolution.Tpo $(DEPDIR)/syncevolution-syncevolution.Po
@@ -1005,6 +1067,20 @@ syncevolution-SQLiteContactSourceRegister.obj: backends/sqlite/SQLiteContactSour
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/sqlite/SQLiteContactSourceRegister.cpp' object='syncevolution-SQLiteContactSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -c -o syncevolution-SQLiteContactSourceRegister.obj `if test -f 'backends/sqlite/SQLiteContactSourceRegister.cpp'; then $(CYGPATH_W) 'backends/sqlite/SQLiteContactSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/sqlite/SQLiteContactSourceRegister.cpp'; fi`
+
+syncevolution-test.o: ../test/test.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -MT syncevolution-test.o -MD -MP -MF $(DEPDIR)/syncevolution-test.Tpo -c -o syncevolution-test.o `test -f '../test/test.cpp' || echo '$(srcdir)/'`../test/test.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevolution-test.Tpo $(DEPDIR)/syncevolution-test.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='../test/test.cpp' object='syncevolution-test.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -c -o syncevolution-test.o `test -f '../test/test.cpp' || echo '$(srcdir)/'`../test/test.cpp
+
+syncevolution-test.obj: ../test/test.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -MT syncevolution-test.obj -MD -MP -MF $(DEPDIR)/syncevolution-test.Tpo -c -o syncevolution-test.obj `if test -f '../test/test.cpp'; then $(CYGPATH_W) '../test/test.cpp'; else $(CYGPATH_W) '$(srcdir)/../test/test.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevolution-test.Tpo $(DEPDIR)/syncevolution-test.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='../test/test.cpp' object='syncevolution-test.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -c -o syncevolution-test.obj `if test -f '../test/test.cpp'; then $(CYGPATH_W) '../test/test.cpp'; else $(CYGPATH_W) '$(srcdir)/../test/test.cpp'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -1478,7 +1554,7 @@ dist-hook:
 		  ( rm -f ChangeLog.tmp ; \
 		     echo Failed to generate ChangeLog >&2 ) \
                 ); \
-	elsif test $SYNTHESIS_SRC != "no-synthesis-source"; \
+	elif test $(SYNTHESIS_SRC) != "no-synthesis-source"; then \
 		cp -a $(SYNTHESIS_SRC)/* $(distdir)/synthesis  && \
 		for i in _build autom4te.cache; do [ ! -d "$(SYNTHESIS_SRC)/$$i" ] || chmod -R u+rwx "$(SYNTHESIS_SRC)/$$i"; done && \
 		find "$(distdir)" -name .libs -o -name "*~" -o -name ".*" -o -name "*.o" -o -name "*.lo" -o -name CVS -o -name .svn -o -name .git -o -name autom4te.cache -print0 | xargs -0 rm -rf; \
@@ -1494,7 +1570,47 @@ testclean:
 distclean-local:
 	rm -rf $(SYNTHESIS_SUBDIR)
 	rm -rf $(CLEAN_CLIENT_SRC)
-$(filter testcases/%, $(filter $(LOCAL_TEST_FILES), $(CLIENT_LIB_TEST_FILES))) : % : $(srcdir)/../test/%
+# These dependencies are intentionally a bit too broad:
+# they ensure that all files are in place to *run* client-test.
+
+# rule to generate patched files from patches:
+# make cannot compute the dependencies completely, so run the commands
+# on each make invocation and do the time stamp test ourselves
+.PHONY: $(TEST_FILES_GENERATED)
+$(TEST_FILES_GENERATED):
+	@ mkdir -p testcases
+	@ echo "checking whether server specific test cases $@ are up-to-date"
+	set -e; \
+	patchfile=$(srcdir)/../test/$@.patch; \
+	basefile=$(srcdir)/../test/$(basename $(basename $@)); \
+	[ ! $@ -ot $$patchfile ] && [ ! $@ -ot $$basefile ] || \
+	(echo '*** foo'; echo '--- bar'; cat $$patchfile) | patch -o $@ $$basefile
+
+# rule to regenerate patches:
+# like generating the patched files, this is run every time.
+# It must avoid making the patch file more recent than the
+# patched file, otherwise the rule above would needlessly recreate
+# it (not nice when having the file open in an editor).
+#
+# To avoid needlessly updating the content of the patch file,
+# the first two lines with changing information (paths, file dates)
+# are stripped from it.
+.PHONY: testcase2patch
+testcase2patch: $(TEST_FILES_GENERATED)
+	@ echo "checking whether test case patch files are up-to-date"
+	set -e; \
+	for i in testcases/*.tem; do \
+		patchfile=$(srcdir)/../test/$$i.patch; \
+		basefile=$(srcdir)/../test/`echo $$i | cut -d . -f  -2`; \
+		if [ $$patchfile -ot $$i ] || [ $$patchfile -ot $$basefile ]; then \
+			diff -u $$basefile $$i | tail -n +3 > $$patchfile || true; \
+			touch -r $$i $$patchfile; \
+			echo "updated $$patchfile"; \
+		fi; \
+	done
+
+# copy base test files
+$(filter-out %.tem, $(filter testcases/%, $(subst $(srcdir)/../test/,,$(CLIENT_LIB_TEST_FILES)))) : % : $(srcdir)/../test/%
 	mkdir -p testcases
 	cp $< $@
 

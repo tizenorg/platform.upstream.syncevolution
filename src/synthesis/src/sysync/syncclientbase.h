@@ -85,6 +85,10 @@ public:
   /// @return LOCERR_OK on success, SyncML or LOCERR_xxx error code on failure
   virtual TSyError SessionStep(SessionH aSessionH, uInt16 &aStepCmd,  TEngineProgressInfo *aInfoP = NULL);
 
+  virtual TSyError debugPuts(cAppCharP aFile, int aLine, cAppCharP aFunction,
+                             int aDbgLevel, cAppCharP aLinePrefix,
+                             cAppCharP aText);
+
 protected:
 
   /// @brief returns the SML instance for a given session handle

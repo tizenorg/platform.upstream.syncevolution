@@ -1344,6 +1344,38 @@ bool TSyncServer::isAuthTypeAllowed(TAuthTypes aAuthType)
 // -----------------------------------------
 
 
+#ifndef ENGINE_LIBRARY
+
+// dummy server engine support to allow AsKey from plugins
+
+#warning "using ENGINEINTERFACE_SUPPORT in old-style appbase-rooted environment. Should be converted to real engine usage later"
+
+// Engine factory function for non-Library case
+ENGINE_IF_CLASS *newEngine(void)
+{
+  // For real engine based targets, newEngine must create a target-specific derivate
+  // of the engine, which then has a suitable newSyncAppBase() method to create the
+  // appBase. For old-style environment, a generic TServerEngineInterface is ok, as this
+  // in turn calls the global newSyncAppBase() which then returns the appropriate
+  // target specific appBase. Here we just return a dummy server engine base. 
+  return new TDummyServerEngineInterface;
+} // newEngine
+
+/// @brief returns a new application base.
+TSyncAppBase *TDummyServerEngineInterface::newSyncAppBase(void)
+{
+  // For not really engine based targets, the appbase factory function is
+  // a global routine (for real engine targets, it is a true virtual of
+  // the engineInterface, implemented in the target's leaf engineInterface derivate.
+  // - for now, use the global appBase creator routine
+  return sysync::newSyncAppBase(); // use global factory function 
+} // TDummyServerEngineInterface::newSyncAppBase
+
+
+#else
+
+// Real server engine support
+
 /// @brief Executes next step of the session
 /// @param aStepCmd[in/out] step command (STEPCMD_xxx):
 ///        - tells caller to send or receive data or end the session etc.
@@ -1393,7 +1425,7 @@ TSyError TSyncServer::SessionStep(uInt16 &aStepCmd, TEngineProgressInfo *aInfoP)
       break;
 
     // Waiting until SyncML answer data is sent
-    case ces_dataready:
+    case ses_dataready:
       switch (stepCmdIn) {
         case STEPCMD_SENTDATA :
           // sent data, now wait for next request
@@ -1480,7 +1512,7 @@ TSyError TSyncServer::processingStep(uInt16 &aStepCmd, TEngineProgressInfo *aInf
     // abort the session (causing proper error events to be generated and reported back)
     AbortSession(LOCERR_PROCESSMSG, true);
     // session is now done
-    fEngineState = ces_done;
+    fEngineState = ses_done;
     // step by itself is ok - let app continue stepping (to restart session or complete abort)
     aStepCmd = STEPCMD_OK;
     sta = LOCERR_OK;
@@ -1517,6 +1549,9 @@ TSyError TSyncServer::generatingStep(uInt16 &aStepCmd, TEngineProgressInfo *aInf
   // return status
   return sta;
 } // TSyncServer::generatingStep
+
+
+#endif // ENGINE_LIBRARY
 
 
 
@@ -1627,7 +1662,7 @@ uInt8P TServerParamsKey::getStructAddr(void)
 } // TServerParamsKey::getStructAddr
 
 
-#endif ENGINEINTERFACE_SUPPORT
+#endif // ENGINEINTERFACE_SUPPORT
 
 
 } // namespace sysync

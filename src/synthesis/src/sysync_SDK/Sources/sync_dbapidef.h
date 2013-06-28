@@ -359,7 +359,12 @@ struct TunnelWrapper {
  *  The same structure contains all call-in functions for the UI Api.
  */
 
-/* <debugFlags>: Reserved plugin specific bit masks */
+/**
+ * <debugFlags>: Reserved plugin specific bit masks.
+ * These flags are only used by the SDK_util logging helper functions.
+ * They are *not* passed into the Synthesis engine and thus cannot
+ * control how the logged text is stored in the log file.
+ */
 enum DebugFlags {
   /** No debugging */
   DBG_PLUGIN_NONE  = 0x0000,

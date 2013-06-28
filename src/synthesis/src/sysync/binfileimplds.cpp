@@ -209,6 +209,12 @@ void TBinfileDSConfig::clear(void)
   // init defaults
   fLocalDBPath.erase();
   fDSAvailFlag=0;
+  // set default according to former build-time target setting
+  #ifdef SYNCTIME_IS_ENDOFSESSION
+  fCmpRefTimeStampAtEnd = true;
+  #else
+  fCmpRefTimeStampAtEnd = false;
+  #endif
   // clear inherited
   inherited::clear();
 } // TBinfileDSConfig::clear
@@ -224,6 +230,8 @@ bool TBinfileDSConfig::localStartElement(const char *aElementName, const char **
     expectString(fLocalDBPath);
   else if (strucmp(aElementName,"dsavailflag")==0)
     expectUInt16(fDSAvailFlag);
+  else if (strucmp(aElementName,"cmptimestampatend")==0)
+    expectBool(fCmpRefTimeStampAtEnd);
   // - none known here
   else
     return TLocalDSConfig::localStartElement(aElementName,aAttributes,aLine);
@@ -304,15 +312,15 @@ void TBinfileDSConfig::initTarget(
   AssignCString(aTarget.remoteDBpath,aRemoteName,remoteDBpathMaxLen);
   // - init new target record's variables (will be updated after sync)
   aTarget.lastSync=0; // no last sync date yet
-  aTarget.lastTwoWaySync=0;
+  aTarget.lastChangeCheck=0;
   aTarget.lastSuspendModCount=0; /// @note: before DS 1.2 enginem this was used as "lastModCount"
   aTarget.resumeAlertCode=0; // no resume yet
   aTarget.lastTwoWayModCount=0;
   aTarget.remoteAnchor[0]=0; // no anchor yet
   // Version 6 and later
   #if TARGETS_DB_VERSION>5
-  aTarget.lastSyncIdentifier[0]=0;
-  aTarget.lastSuspendIdentifier[0]=0;
+  aTarget.dummyIdentifier1[0]=0;
+  aTarget.dummyIdentifier2[0]=0;
   AssignCString(aTarget.remoteDBdispName, getName(), dispNameMaxLen); // default to local name
   aTarget.filterCapDesc[0]=0;
   aTarget.remoteFilters[0]=0;
@@ -515,6 +523,8 @@ bool TBinfileImplDS::openChangeLog(void)
     // create new change log or overwrite incompatible one
     // - init changelog header fields
     fChgLogHeader.modcount=0;
+  	AssignCString(fChgLogHeader.lastChangeCheckIdentifier,NULL,0);
+  	fChgLogHeader.lastChangeCheck = noLinearTime;
     // - create new changelog
     fChangeLog.create(sizeof(TChangeLogEntry),sizeof(TChangeLogHeader),&fChgLogHeader,true);
     PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI,("openChangeLog: changelog did not exist (or bad version) -> created new"));
@@ -552,9 +562,10 @@ bool TBinfileImplDS::openPendingMaps(void)
 // Note: this time marks the beginning of the sync session. If possible
 //       datastore should mark all modifications with this time, even if
 //       they occur later during the sync session. Only if setting the
-//       modified date explicitly is not possible, defining SYNCTIME_IS_ENDOFSESSION
-//       can be used to make sure that modifications made during the session
-//       are not detected as changed for the next session.
+//       modified date explicitly is not possible, setting fCmpRefTimeStampAtEnd
+//       (default = defined(SYNCTIME_IS_ENDOFSESSION)) can be used to make sure
+//       that modifications made during the session are not detected as changed
+//       for the next session.
 lineartime_t TBinfileImplDS::getThisSyncModRefTime(void)
 {
   return
@@ -611,8 +622,13 @@ localstatus TBinfileImplDS::changeLogPreflight(bool &aValidChangelog)
   // make sure we have the change log DB open
   openChangeLog();
   // - get saved modcount for this database and increment for this preflight
-  fChgLogHeader.modcount+=1;
-  fCurrentModCount=fChgLogHeader.modcount;
+  fChgLogHeader.modcount += 1;
+  fCurrentModCount = fChgLogHeader.modcount;
+  #ifdef CHANGEDETECTION_AVAILABLE
+  // - update date of last check to start of sync - everything happening during or after this sync is for next session
+  fChgLogHeader.lastChangeCheck = fCurrentSyncTime;
+  #endif
+  // change log header is dirty
   fChangeLog.setExtraHeaderDirty();
   PDEBUGBLOCKCOLL("changeLogPreflight");
   #ifdef SYDEBUG
@@ -651,14 +667,16 @@ localstatus TBinfileImplDS::changeLogPreflight(bool &aValidChangelog)
   // Now update the changelog using CRC checks
   // loop through entire database
   #ifndef CHANGEDETECTION_AVAILABLE
+  // - we do the change detection via CRC comparison
   #ifdef RECORDHASH_FROM_DBAPI
+  //   - DB can deliver CRC directly
   foundone=getFirstItemCRC(itemLocalID,dataCRC);
   #else
-  // - get first
+  //   - We need to get the item and calculate the CRC here
   foundone=getFirstItem(itemP);
   #endif
   #else
-  // - get first info
+  // - the DB layer can report changes directly
   foundone=getFirstItemInfo(itemLocalID,itemIsModified);
   #endif
   while (foundone) {
@@ -733,6 +751,7 @@ localstatus TBinfileImplDS::changeLogPreflight(bool &aValidChangelog)
       // no CRC yet
       newentry.dataCRC=0;
       #endif
+      newentry.flags |= chgl_newadd;
       PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_EXOTIC,("- does not yet exist in changelog, created new"));
     }
     // now check what to do
@@ -742,6 +761,7 @@ localstatus TBinfileImplDS::changeLogPreflight(bool &aValidChangelog)
     #endif
     // - check if new or changed
     if (chgentryexists) {
+        existingentries[logindex].flags &= ~chgl_newadd;
       // entry exists, could be changed
       #ifndef CHANGEDETECTION_AVAILABLE
       // - check CRC
@@ -888,15 +908,11 @@ localstatus TBinfileImplDS::changeLogPreflight(bool &aValidChangelog)
     }
   }
   #endif
-  fChangeLog.updateRecord(0,existingentries,numexistinglogentries);
+  fChangeLog.updateRecord(0,existingentries,numexistinglogentries);  
   aValidChangelog=true;
-  /* %%% not true for resuming session
-  // number of changes are all records if its a slow sync
-  if (fSlowSync) fNumberOfLocalChanges=seen;
-  */
   DEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_EXOTIC,("changeLogPreflight: seen=%ld, fNumberOfLocalChanges=%ld",(long)seen,(long)fNumberOfLocalChanges));
 done:
-  sta = err==BFE_OK ? LOCERR_OK : LOCERR_UNDEFINED;
+  sta = err==BFE_OK ? LOCERR_OK : (err==BFE_MEMORY ? LOCERR_OUTOFMEM : LOCERR_UNDEFINED);
 error:
   // release buffered changelog
   if (existingentries) sysync_free(existingentries);
@@ -994,14 +1010,6 @@ localstatus TBinfileImplDS::implMakeAdminReady(
   // - get last sync time and changelog cursor
   fPreviousToRemoteModCount = fTarget.lastTwoWayModCount; // reference is when we've last full-synced!
   fPreviousSyncTime = fTarget.lastSync;
-  #ifdef CHANGEDETECTION_AVAILABLE
-  fPreviousToRemoteSyncCmpRef=fTarget.lastTwoWaySync;
-  #endif
-  #if TARGETS_DB_VERSION>=6
-  // - DB api level change detection identifiers
-  fPreviousToRemoteSyncIdentifier.assign(fTarget.lastSyncIdentifier);
-  fPreviousSuspendIdentifier.assign(fTarget.lastSuspendIdentifier);
-  #endif
   PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI,(
     "implMakeAdminReady(binfile): ResumeAlertCode=%hd, PreviousSuspendModCount=%ld, PreviousToRemoteModCount=%ld, LastRemoteAnchor='%s'",
     fResumeAlertCode,
@@ -1018,10 +1026,35 @@ localstatus TBinfileImplDS::implMakeAdminReady(
       // - force slow sync
       fTarget.forceSlowSync=true; // set target flag to force slowsync even if we repeat this
       fLastRemoteAnchor.erase();
-      fPreviousSyncTime=0;
-      fPreviousToRemoteModCount=0;
-      fPreviousSuspendModCount=0;
+      fPreviousSyncTime = noLinearTime;
+      fPreviousToRemoteModCount = 0;
+      fPreviousSuspendModCount = 0;
+      // - no compare references yet
+      fPreviousToRemoteSyncCmpRef = noLinearTime;
+      fPreviousSuspendIdentifier.erase(); 
     }
+    else {
+      // Get token and date representing last update of this changelog (last preflight)
+      // Note: towards the database, we only check for changes since the last preflight (the fPreviousToRemoteSyncCmpRef is semantically
+      //       incorrect when TCustomImplDS is used with BASED_ON_BINFILE_CLIENT on top of binfile).
+      //       The separation between changes since last-to-remote sync and last resume is done based on the changelog modcounts.
+      #ifdef CHANGEDETECTION_AVAILABLE
+      // - get date of last check
+      fPreviousToRemoteSyncCmpRef=fChgLogHeader.lastChangeCheck;
+      fPreviousSuspendCmpRef=fPreviousToRemoteSyncCmpRef; // DB on top of binfile only needs one reference time, which is the last changelog check time.
+      #ifdef SYDEBUG
+      string lsd;
+      StringObjTimestamp(lsd,fPreviousToRemoteSyncCmpRef);
+	    PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI,("- last preflight update (fPreviousToRemoteSyncCmpRef) at %s",lsd.c_str()));
+      #endif // SYDEBUG
+      #endif // CHANGEDETECTION_AVAILABLE
+      #if TARGETS_DB_VERSION>=6
+      // - DB api level change detection identifiers
+      fPreviousToRemoteSyncIdentifier.assign(fChgLogHeader.lastChangeCheckIdentifier);
+      fPreviousSuspendIdentifier = fPreviousToRemoteSyncIdentifier; // DB on top of binfile only needs one reference time, which is the last changelog check time.
+	    PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI,("- last preflight update (fPreviousToRemoteSyncIdentifier) is '%s'",fPreviousToRemoteSyncIdentifier.c_str()));
+      #endif // TARGETS_DB_VERSION>=6
+  	}  
   }
   // get pending maps anyway (even if not resuming there might be pending maps)
   if(openPendingMaps()) {
@@ -1442,7 +1475,10 @@ localstatus TBinfileImplDS::implGetItem(
           }
         }
         // added or changed, syncop is replace
-        myitemP->setSyncOp(sop_replace);
+        if( chglogP->flags & chgl_newadd)
+            myitemP->setSyncOp(sop_soft_add);
+        else
+            myitemP->setSyncOp(sop_replace);
         // make sure item has the localid which was used to retrieve it
         ASSIGN_LOCALID_TO_ITEM(*myitemP,chglogP->dbrecordid);
       }
@@ -1897,11 +1933,6 @@ localstatus TBinfileImplDS::implSaveEndOfSession(bool aUpdateAnchors)
     if (!fRefreshOnly || fSlowSync) {
       // This was really a two-way sync or we implicitly know that
       // we are now in sync with remote (like after one-way-from-remote refresh = reload local)
-      #if defined(CHANGEDETECTION_AVAILABLE) && defined(SYNCTIME_IS_ENDOFSESSION)
-      fPreviousToRemoteSyncCmpRef = getSystemNowAs(TCTX_UTC); // NOW ! (again);
-      #else
-      fPreviousToRemoteSyncCmpRef = fCurrentSyncTime;
-      #endif
       fPreviousToRemoteModCount = fCurrentModCount;
     }
     // updating anchor means invalidating last Suspend
@@ -1987,6 +2018,19 @@ localstatus TBinfileImplDS::SaveAdminData(bool aSessionFinished, bool aSuccessfu
     fChangeLog.updateRecord(0,fLoadedChangeLog,fLoadedChangeLogEntries);
     forgetChangeLog();
   }
+  // save the "last changelog update" identifier into the changelog header
+  //   Note: fPreviousToRemoteSyncCmpRef/fPreviousToRemoteSyncIdentifier represent last update of changelog
+  //   in binfileds, rather than last to-remote-sync as in non-binfile based setups.
+  // - update the identifier (token for StartDataRead)
+  AssignCString(fChgLogHeader.lastChangeCheckIdentifier, fPreviousToRemoteSyncIdentifier.c_str(),changeIndentifierMaxLen);
+  // - update compare reference time for next preflight if fCmpRefTimeStampAtEnd is set (default = defined(SYNCTIME_IS_ENDOFSESSION))
+  //   Note: preflight has already set fChgLogHeader.lastChangeCheck to the beginning of the sync
+  //         Update it here only if synctime must be end of session.
+  if (fConfigP->fCmpRefTimeStampAtEnd) {
+	  fChgLogHeader.lastChangeCheck = getSession()->getSystemNowAs(TCTX_UTC); // NOW ! (again);
+  }
+  fChangeLog.setExtraHeaderDirty();
+  fChangeLog.flushHeader();
   // save other admin data
   TBinFile *targetsBinFileP = &(static_cast<TBinfileImplClient *>(fSessionP)->fConfigP->fTargetsBinFile);
   // update target fields
@@ -1995,19 +2039,22 @@ localstatus TBinfileImplDS::SaveAdminData(bool aSessionFinished, bool aSuccessfu
   PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI,("SaveAdminData: saving remote anchor = '%s'",fLastRemoteAnchor.c_str()));
   // - update this sync time (last sync field in DB) and modcount
   fTarget.lastSync=fPreviousSyncTime;
-  fTarget.lastTwoWayModCount=fPreviousToRemoteModCount; // not just refreshing, remote has all our data
+  fTarget.lastTwoWayModCount=fPreviousToRemoteModCount;
+  // Note: compare times and identifiers are not needed any more (these are now in the changelog),
+  //       But we assigne some for dbg purposes.
+  // - update the last changelog check time.
   #ifdef CHANGEDETECTION_AVAILABLE
-  fTarget.lastTwoWaySync=fPreviousToRemoteSyncCmpRef;
+  fTarget.lastChangeCheck=fPreviousToRemoteSyncCmpRef;
   #endif
   #if TARGETS_DB_VERSION>=6
-  AssignCString(fTarget.lastSyncIdentifier,fPreviousToRemoteSyncIdentifier.c_str(),remoteAnchorMaxLen);
-  AssignCString(fTarget.lastSuspendIdentifier,fPreviousSuspendIdentifier.c_str(),remoteAnchorMaxLen);
+  // - identifiers (tokens for StartDataRead)
+  AssignCString(fTarget.dummyIdentifier1,fPreviousToRemoteSyncIdentifier.c_str(),remoteAnchorMaxLen); // former lastSyncIdentifier 
+  AssignCString(fTarget.dummyIdentifier2,NULL,remoteAnchorMaxLen); // former lastSuspendIdentifier, not needed, make empty
   // store remote datastore's display name (is empty if we haven't got one from the remote via devInf)
   if (getRemoteDatastore()) {
     AssignCString(fTarget.remoteDBdispName,getRemoteDatastore()->getDisplayName(),dispNameMaxLen);
   }
   #endif
-  PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI,("SaveAdminData: lastTwoWayModCount = %ld, lastTwoWaySync = " PRINTF_LLD,(long)fPreviousToRemoteModCount,PRINTF_LLD_ARG(fPreviousToRemoteSyncCmpRef)));
   // check for other target record updates needed at end of session
   if (aSessionFinished && aSuccessful) {
     // - reset mode back to normal, that is after a forced reload of client OR server
@@ -2020,11 +2067,11 @@ localstatus TBinfileImplDS::SaveAdminData(bool aSessionFinished, bool aSuccessfu
   // special operations needed depending on suspend state
   fTarget.resumeAlertCode=fResumeAlertCode;
   if (fResumeAlertCode==0) {
-    fTarget.lastSuspendModCount=0;
+    fTarget.lastSuspendModCount = 0;
   }
   else {
     /// @note: lastSuspendModCount is the same target field that previously was called "lastModCount"
-    fTarget.lastSuspendModCount=fPreviousSuspendModCount;
+    fTarget.lastSuspendModCount = fPreviousSuspendModCount;
     // make sure that resume alert codes of all other profile's targets for this datastore are erased
     // (because we have only a single changelog (markforresume flags!) and single pendingmap+pendingitem files)
     TBinfileDBSyncTarget otherTarget;
@@ -2046,6 +2093,7 @@ localstatus TBinfileImplDS::SaveAdminData(bool aSessionFinished, bool aSuccessfu
       }
     }
   }
+  PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI,("SaveAdminData: lastTwoWayModCount = %ld, lastSuspendModCount = %ld", (long)fPreviousToRemoteModCount, (long)fPreviousSuspendModCount));
   // save pending maps (anyway, even if not suspended)
   openPendingMaps(); // make sure we have the pendingmap file open now
   fPendingMaps.truncate(0); // delete current contents

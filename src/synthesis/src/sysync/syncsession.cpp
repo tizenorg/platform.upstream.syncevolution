@@ -820,11 +820,6 @@ void TSessionConfig::localResolve(bool aLastPass)
     for(pos=fRemoteRulesList.begin();pos!=fRemoteRulesList.end();pos++)
       (*pos)->Resolve(aLastPass);
     #endif
-    #ifndef HARDCODED_CONFIG
-    // - resolve datastores
-    if (fDatastores.size()==0)
-      SYSYNC_THROW(TConfigParseException("At least one 'datastore' must be defined"));
-    #endif
     TLocalDSList::iterator pos2;
     for(pos2=fDatastores.begin();pos2!=fDatastores.end();pos2++)
       (*pos2)->Resolve(aLastPass);
@@ -924,22 +919,31 @@ TSyncSession::TSyncSession(
   fSessionLogger.setEnabled(fSessionDebugLogs); // init from session-level flag @todo: get rid of this special session level flag, handle it all via session logger's fDebugEnabled / getDbgMask()
   fSessionLogger.setMask(getRootConfig()->fDebugConfig.fDebug); // init from config
   fSessionLogger.setOptions(&(getRootConfig()->fDebugConfig.fSessionDbgLoggerOptions));
-  fSessionLogger.installOutput(getSyncAppBase()->newDbgOutputter(false)); // install the output object (and pass ownership!)
-  fSessionLogger.setDebugPath(getRootConfig()->fDebugConfig.fDebugInfoPath.c_str()); // base path
-  fSessionLogger.appendToDebugPath(TARGETID);
-  if (getRootConfig()->fDebugConfig.fSingleSessionLog) {
-    getRootConfig()->fDebugConfig.fSessionDbgLoggerOptions.fAppend=true; // One single log - in this case, we MUST append to current log
-    fSessionLogger.appendToDebugPath("_session"); // only single session log, always with the same name
-  }
+  if (getRootConfig()->fDebugConfig.fLogSessionsToGlobal) {
+		// pass session output to app global logger
+    fSessionLogger.outputVia(getSyncAppBase()->getDbgLogger());
+    // show start of log
+    PDEBUGPRINTFX(DBG_HOT,("--------- START of embedded log for session ID '%s' ---------", fLocalSessionID.c_str()));
+	}
   else {
-    if (getRootConfig()->fDebugConfig.fTimedSessionLogNames) {
-      fSessionLogger.appendToDebugPath("_");
-      string t;
-      TimestampToISO8601Str(t, getSystemNowAs(TCTX_UTC), TCTX_UTC, false, false);
-      fSessionLogger.appendToDebugPath(t.c_str());
+  	// use separate output for session logs  
+    fSessionLogger.installOutput(getSyncAppBase()->newDbgOutputter(false)); // install the output object (and pass ownership!)
+    fSessionLogger.setDebugPath(getRootConfig()->fDebugConfig.fDebugInfoPath.c_str()); // base path
+    fSessionLogger.appendToDebugPath(TARGETID);
+    if (getRootConfig()->fDebugConfig.fSingleSessionLog) {
+      getRootConfig()->fDebugConfig.fSessionDbgLoggerOptions.fAppend=true; // One single log - in this case, we MUST append to current log
+      fSessionLogger.appendToDebugPath("_session"); // only single session log, always with the same name
     }
-    fSessionLogger.appendToDebugPath("_s");
-    fSessionLogger.appendToDebugPath(fLocalSessionID.c_str());
+    else {
+      if (getRootConfig()->fDebugConfig.fTimedSessionLogNames) {
+        fSessionLogger.appendToDebugPath("_");
+        string t;
+        TimestampToISO8601Str(t, getSystemNowAs(TCTX_UTC), TCTX_UTC, false, false);
+        fSessionLogger.appendToDebugPath(t.c_str());
+      }
+      fSessionLogger.appendToDebugPath("_s");
+      fSessionLogger.appendToDebugPath(fLocalSessionID.c_str());
+    }
   }
   fSessionLogger.DebugDefineMainThread();
   // initialize session level dump flags
@@ -1057,6 +1061,10 @@ TSyncSession::~TSyncSession()
   // debug
   DEBUGPRINTFX(DBG_OBJINST,("-------- TSyncSession almost destroyed (except implicit member destruction)"));
   #ifdef SYDEBUG
+  if (getRootConfig()->fDebugConfig.fLogSessionsToGlobal) {
+    // show end of embedded log
+    PDEBUGPRINTFX(DBG_HOT,("--------- END of embedded log for session ID '%s' ---------", fLocalSessionID.c_str()));
+	}
   fSessionLogger.DebugThreadOutputDone();
   #endif
 } // TSyncSession::~TSyncSession
@@ -1431,6 +1439,7 @@ void TSyncSession::InternalResetSessionEx(bool terminationCall)
   fOutgoingMsgID=0; // starting answers with MsgID=1, so must be 0 as it will be incremented before sending a new message
   fAborted=false; // not yet aborted
   fSuspended=false; // not being suspended yet
+  fSuspendAlertSent=false; // no suspend alert sent so far
   fFailedDatastores=0; // none failed
   fErrorItemDatastores=0; // none generated or detected error items
   fInProgress=false; // not yet in progress
@@ -1556,6 +1565,12 @@ void TSyncSession::SuspendSession(TSyError aReason)
     AbortSession(500,true,aReason);
   }
 } // TSyncSession::SuspendSession
+
+
+void TSyncSession::MarkSuspendAlertSent(bool aSent)
+{
+  fSuspendAlertSent = aSent;
+}
 
 
 // abort session (that is: flag abortion)
@@ -4254,14 +4269,14 @@ localstatus TSyncSession::checkRemoteSpecifics(SmlDevInfDevInfPtr_t aDevInfP)
   for(pos=scP->fRemoteRulesList.begin();pos!=scP->fRemoteRulesList.end();pos++) {
     // compare with devinf (or test for default-rule if aDevInfP is NULL
     if (
-      ((*pos)->fManufacturer.empty() || aDevInfP && strwildcmp(smlPCDataToCharP(aDevInfP->man),(*pos)->fManufacturer.c_str())==0) &&
-      ((*pos)->fModel.empty() || aDevInfP && strwildcmp(smlPCDataToCharP(aDevInfP->mod),(*pos)->fModel.c_str())==0) &&
-      ((*pos)->fOem.empty() || aDevInfP && strwildcmp(smlPCDataToCharP(aDevInfP->oem),(*pos)->fOem.c_str())==0) &&
-      ((*pos)->fFirmwareVers.empty() || aDevInfP && (*pos)->fFirmwareVers==smlPCDataToCharP(aDevInfP->fwv)) &&
-      ((*pos)->fSoftwareVers.empty() || aDevInfP && (*pos)->fSoftwareVers==smlPCDataToCharP(aDevInfP->swv)) &&
-      ((*pos)->fHardwareVers.empty() || aDevInfP && (*pos)->fHardwareVers==smlPCDataToCharP(aDevInfP->hwv)) &&
-      ((*pos)->fDevId.empty() || aDevInfP && (*pos)->fDevId==smlPCDataToCharP(aDevInfP->devid)) &&
-      ((*pos)->fDevTyp.empty() || aDevInfP && (*pos)->fDevTyp==smlPCDataToCharP(aDevInfP->devtyp))
+      ((*pos)->fManufacturer.empty() || (aDevInfP && strwildcmp(smlPCDataToCharP(aDevInfP->man),(*pos)->fManufacturer.c_str())==0)) &&
+      ((*pos)->fModel.empty() || (aDevInfP && strwildcmp(smlPCDataToCharP(aDevInfP->mod),(*pos)->fModel.c_str())==0)) &&
+      ((*pos)->fOem.empty() || (aDevInfP && strwildcmp(smlPCDataToCharP(aDevInfP->oem),(*pos)->fOem.c_str())==0)) &&
+      ((*pos)->fFirmwareVers.empty() || (aDevInfP && (*pos)->fFirmwareVers==smlPCDataToCharP(aDevInfP->fwv))) &&
+      ((*pos)->fSoftwareVers.empty() || (aDevInfP && (*pos)->fSoftwareVers==smlPCDataToCharP(aDevInfP->swv))) &&
+      ((*pos)->fHardwareVers.empty() || (aDevInfP && (*pos)->fHardwareVers==smlPCDataToCharP(aDevInfP->hwv))) &&
+      ((*pos)->fDevId.empty() || (aDevInfP && (*pos)->fDevId==smlPCDataToCharP(aDevInfP->devid))) &&
+      ((*pos)->fDevTyp.empty() || (aDevInfP && (*pos)->fDevTyp==smlPCDataToCharP(aDevInfP->devtyp)))
     ) {
       // found, apply rules
       TRemoteRuleConfig *ruleP = *pos;
@@ -5098,7 +5113,7 @@ Ret_t TSyncSession::EndMessage(Boolean_t final)
   // Note: do it here because we have processed all commands (alerts) now but
   //       server response alerts are still in the fEndOfMessageCommands queue.
   //       This ensures that clients gets PUT before it gets ALERTs.
-  if (!fRemoteGotDevinf && fRemoteMustSeeDevinf) {
+  if (!fRemoteGotDevinf && mustSendDevInf()) {
     // remote has not got devinf and should see it
     if (!getRootConfig()->fNeverPutDevinf) {
       // PUT devinf now

@@ -55,8 +55,8 @@
 #endif
 
 #ifndef SYSYNC_BUILDNUMBER
-#define SYSYNC_BUILDNUMBER          31
-#define SYSYNC_BUILDNUMBER_TXT     "31"
+#define SYSYNC_BUILDNUMBER          32
+#define SYSYNC_BUILDNUMBER_TXT     "32"
 #endif
 
 

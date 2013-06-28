@@ -43,6 +43,22 @@ using namespace SyncEvolution;
 class SourceList;
 class EvolutionSyncSource;
 
+struct SuspendFlags
+{
+    static const time_t ABORT_INTERVAL = 2; 
+    enum CLIENT_STATE
+    {
+        CLIENT_NORMAL,
+        CLIENT_SUSPEND,
+        CLIENT_ABORT,
+        CLIENT_ILLEGAL
+    }state;
+    time_t last_suspend;
+
+    SuspendFlags():state(CLIENT_NORMAL),last_suspend(0)
+    {}
+};
+
 /**
  * This is the main class inside SyncEvolution which
  * looks at the configuration, activates all enabled
@@ -59,6 +75,11 @@ class EvolutionSyncClient : public EvolutionSyncConfig, public ConfigUserInterfa
     const bool m_doLogging;
     bool m_quiet;
     bool m_dryrun;
+
+    /**
+     * flags for suspend and abort
+     */
+    static SuspendFlags s_flags;
 
     /**
      * a pointer to the active SourceList instance if one exists; 
@@ -109,6 +130,8 @@ class EvolutionSyncClient : public EvolutionSyncConfig, public ConfigUserInterfa
 
     bool getDryRun() { return m_dryrun; }
     void setDryRun(bool dryrun) { m_dryrun = dryrun; }
+
+    static SuspendFlags& getSuspendFlags() {return s_flags;}
 
     /**
      * Executes the sync, throws an exception in case of failure.
@@ -231,17 +254,45 @@ class EvolutionSyncClient : public EvolutionSyncConfig, public ConfigUserInterfa
     SharedEngine getEngine() { return m_engine; }
     const SharedEngine getEngine() const { return m_engine; }
 
+    bool getDoLogging() { return m_doLogging; }
+    std::string getServer() { return m_server; }
+
     /**
      * Handle for active session, may be NULL.
      */
     SharedSession getSession() { return m_session; }
 
   protected:
+    /** exchange active Synthesis engine */
     SharedEngine swapEngine(SharedEngine newengine) {
         SharedEngine oldengine = m_engine;
         m_engine = newengine;
         return oldengine;
     }
+
+    /** sentinel class which creates, installs and removes a new
+        Synthesis engine for the duration of its own life time */
+    class SwapEngine {
+        EvolutionSyncClient &m_client;
+        SharedEngine m_oldengine;
+
+    public:
+        SwapEngine(EvolutionSyncClient &client) :
+        m_client(client) {
+            SharedEngine syncengine(m_client.createEngine());
+            m_oldengine = m_client.swapEngine(syncengine);
+        }
+
+        ~SwapEngine() {
+            m_client.swapEngine(m_oldengine);
+        }
+    };
+
+    /**
+     * Create a Synthesis engine for the currently active
+     * sources (might be empty!) and settings.
+     */
+    SharedEngine createEngine();
 
     /**
      * Maps from source name to sync mode with one default
@@ -407,7 +458,7 @@ class EvolutionSyncClient : public EvolutionSyncConfig, public ConfigUserInterfa
      *
      * @return true if user wants to abort
      */
-    virtual bool checkForAbort() { return false; }
+    virtual bool checkForAbort() { return (s_flags.state == SuspendFlags::CLIENT_ABORT);}
 
     /**
      * Called to find out whether user wants to suspend sync.
@@ -415,7 +466,7 @@ class EvolutionSyncClient : public EvolutionSyncConfig, public ConfigUserInterfa
      * Same as checkForAbort(), but the session is finished
      * gracefully so that it can be resumed.
      */
-    virtual bool checkForSuspend() { return false; }
+    virtual bool checkForSuspend() { return (s_flags.state == SuspendFlags::CLIENT_SUSPEND);}
 
  private:
     /**
@@ -435,6 +486,13 @@ class EvolutionSyncClient : public EvolutionSyncConfig, public ConfigUserInterfa
      * sets up Synthesis session and executes it
      */
     SyncMLStatus doSync();
+
+    /**
+     * iterate over files mentioned in getSSLServerCertificates()
+     * and return name of first one which is found, empty string
+     * if none
+     */
+    std::string findSSLServerCertificate();
 
     /**
      * override sync mode of all active sync sources if set

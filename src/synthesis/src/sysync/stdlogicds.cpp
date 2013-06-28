@@ -125,7 +125,7 @@ localstatus TStdLogicDS::logicMakeAdminReady(cAppCharP aDataStoreURI, cAppCharP 
     // - create this session's local anchor string from timestamp
     TimestampToISO8601Str(fNextLocalAnchor,fCurrentSyncTime,TCTX_UTC,false,false);
     // - check if config has changed since last sync
-    if (fSessionP->mustSendDevInf() || fFirstTimeSync || fPreviousSyncTime<=fSessionP->getRootConfig()->fConfigDate) {
+    if (fFirstTimeSync || fPreviousSyncTime<=fSessionP->getRootConfig()->fConfigDate) {
       // remote should see our (probably changed) devInf
       PDEBUGPRINTFX(DBG_PROTO,("First time sync or config changed since last sync -> remote should see our devinf"));
       fSessionP->remoteMustSeeDevinf();

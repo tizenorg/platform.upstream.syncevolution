@@ -905,8 +905,15 @@ localstatus TSyncClient::NextMessage(bool &aDone)
       if (localDS->fFirstTimeSync) anyfirstsyncs=true;
       if (localDS->fSlowSync) anyslowsyncs=true;
     }
-    // create Put command if any datastore is doing first time sync / slow sync or devinf Put is externally requested
-    if (mustSendDevInf() || anyfirstsyncs || (anyslowsyncs && static_cast<TClientConfig *>(getRootConfig()->fAgentConfigP)->fPutDevInfAtSlowSync)) {
+    // send devinf in Put command right away with init message if either...
+    // - mustSendDevInf() returns true signalling an external condition that suggests sending devInf (like changed config)
+    // - any datastore is doing first time sync
+    // - fPutDevInfAtSlowSync is true and any datastore is doing slow sync
+    if (
+    	mustSendDevInf() ||
+      anyfirstsyncs ||
+      (anyslowsyncs && static_cast<TClientConfig *>(getRootConfig()->fAgentConfigP)->fPutDevInfAtSlowSync)
+    ) {
       TDevInfPutCommand *putcmdP = new TDevInfPutCommand(this);
       issueRootPtr(putcmdP);
     }
@@ -1048,6 +1055,7 @@ localstatus TSyncClient::NextMessage(bool &aDone)
     ISSUE_COMMAND_ROOT(this,alertCmdP);
     // outgoing message is final, regardless of any session state
     outgoingfinal=true;
+    MarkSuspendAlertSent(true);
   }
   else {
     // Determine if package can be final and if we need an 222 Alert
@@ -1173,7 +1181,7 @@ bool TSyncClient::MessageStarted(SmlSyncHdrPtr_t aContentP, TStatusCommand &aSta
   }
   // check for suspend: if we are suspended at this point, this means that we have sent the Suspend Alert already
   // in the previous message (due to user suspend request), so we can now terminate the session
-  if (isSuspending()) {
+  if (isSuspending() && isSuspendAlertSent()) {
     AbortSession(514,true,LOCERR_USERSUSPEND);
     return false;
   }

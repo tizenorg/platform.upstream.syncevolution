@@ -1,8 +1,8 @@
 BACKENDS =  backends/addressbook backends/evolution backends/file backends/sqlite
 
+service_in_files = org.Moblin.SyncEvolution.service.in
 if COND_DBUS
 servicedir = $(DBUS_SERVICES_DIR)
-service_in_files = org.Moblin.SyncEvolution.service.in
 service_DATA = $(service_in_files:.service.in=.service)
 $(service_DATA): $(service_in_files) Makefile
 	@sed -e "s|\@libexecdir\@|$(libexecdir)|" $< > $@
@@ -39,14 +39,15 @@ else
 SYNCEVOLUTION_LDADD += $(SYNCSOURCES)
 SYNCEVOLUTION_DEP += $(SYNCSOURCES)
 endif
-EXTRA_DIST = shlibs.local Makefile-gen.am syncevolution.xml $(service_in_files)
+EXTRA_DIST = shlibs.local Makefile-gen.am syncclient_sample_config.xml $(service_in_files)
 
-TEMPLATE_FILES = default/syncevolution/Funambol/sources/memo/config.ini default/syncevolution/Funambol/sources/todo/config.ini default/syncevolution/Funambol/sources/addressbook/config.ini default/syncevolution/Funambol/sources/calendar/config.ini default/syncevolution/Funambol/config.ini default/syncevolution/ScheduleWorld/sources/memo/config.ini default/syncevolution/ScheduleWorld/sources/todo/config.ini default/syncevolution/ScheduleWorld/sources/addressbook/config.ini default/syncevolution/ScheduleWorld/sources/calendar/config.ini default/syncevolution/ScheduleWorld/config.ini 
+TEMPLATE_FILES = default/syncevolution/Funambol/config.ini default/syncevolution/Funambol/sources/calendar/config.ini default/syncevolution/Funambol/sources/todo/config.ini default/syncevolution/Funambol/sources/addressbook/config.ini default/syncevolution/Funambol/sources/memo/config.ini default/syncevolution/ScheduleWorld/config.ini default/syncevolution/ScheduleWorld/sources/calendar/config.ini default/syncevolution/ScheduleWorld/sources/todo/config.ini default/syncevolution/ScheduleWorld/sources/addressbook/config.ini default/syncevolution/ScheduleWorld/sources/memo/config.ini 
 nobase_dist_sysconf_DATA = $(TEMPLATE_FILES)
 
 DISTCLEANFILES = synccompare
 MAINTAINERCLEANFILES = Makefile.in
-CLEANFILES = libstdc++.a client-test $(CLIENT_LIB_TEST_FILES)
+CLEANFILES = libstdc++.a client-test $(CLIENT_LIB_TEST_FILES) \
+	org.Moblin.SyncEvolution.service
 
 # synccompare is created by replacing its 'import Algorithm::Diff;'
 # with a simplified copy of Diff.pm.
@@ -84,6 +85,7 @@ libstdc++.a :
 syncevolution_SOURCES = \
 	syncevolution.cpp \
 	$(CORE_SOURCES)
+nodist_syncevolution_SOURCES = ../test/test.cpp
 
 # SYNCEVOLUTION_LDADD will be replaced with libsyncebook.la/libsyncecal.la/libsyncsqlite.la
 # if linking statically against them, empty otherwise;
@@ -117,7 +119,7 @@ dist-hook:
 		  ( rm -f ChangeLog.tmp ; \
 		     echo Failed to generate ChangeLog >&2 ) \
                 ); \
-	elsif test $SYNTHESIS_SRC != "no-synthesis-source"; \
+	elif test $(SYNTHESIS_SRC) != "no-synthesis-source"; then \
 		cp -a $(SYNTHESIS_SRC)/* $(distdir)/synthesis  && \
 		for i in _build autom4te.cache; do [ ! -d "$(SYNTHESIS_SRC)/$$i" ] || chmod -R u+rwx "$(SYNTHESIS_SRC)/$$i"; done && \
 		find "$(distdir)" -name .libs -o -name "*~" -o -name ".*" -o -name "*.o" -o -name "*.lo" -o -name CVS -o -name .svn -o -name .git -o -name autom4te.cache -print0 | xargs -0 rm -rf; \
@@ -139,10 +141,12 @@ syncevo_dbus_server_SOURCES = \
 	syncevo-dbus-server.cpp syncevo-dbus-server.h \
 	DBusSyncClient.cpp DBusSyncClient.h \
 	$(CORE_SOURCES)
-nodist_syncevo_dbus_server_SOURCES = dbus/interfaces/syncevo-marshal.c
+nodist_syncevo_dbus_server_SOURCES = \
+	dbus/interfaces/syncevo-marshal.c \
+	../test/test.cpp
 
-syncevo_dbus_server_LDADD = $(DBUS_GLIB_LIBS) $(CORE_LDADD)
-syncevo_dbus_server_CPPFLAGS = -DHAVE_CONFIG_H -Idbus/interfaces $(DBUS_GLIB_CFLAGS) $(AM_CPPFLAGS)
+syncevo_dbus_server_LDADD = $(DBUS_GLIB_LIBS) $(KEYRING_LIBS) $(CORE_LDADD)
+syncevo_dbus_server_CPPFLAGS = -DHAVE_CONFIG_H -Idbus/interfaces $(DBUS_GLIB_CFLAGS) $(KEYRING_CFLAGS) $(AM_CPPFLAGS)
 syncevo_dbus_server_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS)
 syncevo_dbus_server_LDFLAGS = $(CORE_LD_FLAGS)
 syncevo_dbus_server_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) $(SYNTHESIS_DEP)
@@ -158,6 +162,7 @@ client_test_SOURCES = \
 	../test/ClientTest.h \
 	../test/client-test-main.cpp \
 	$(CORE_SOURCES)
+nodist_client_test_SOURCES = ../test/test.cpp
 
 # Always compile the registry files into client-test because that is
 # the only place where they are compiled with
@@ -168,26 +173,80 @@ if ENABLE_MODULES
 client_test_SOURCES += $(BACKEND_REGISTRIES)
 endif
 
+# list of test file base files
+#
+# Generated files (testcases/ical20.ics.funambol.tem) are derived from
+# the original base file ($(srcdir)/test/testcases/ical20.ics) by
+# applying a patch ($(srcdir)/test/testcases/ical20.ics.funambol.tem.patch).
 CLIENT_LIB_TEST_FILES = \
 	testcases/vcard21.vcf \
 	testcases/vcard30.vcf \
 	testcases/ical20.ics \
 	testcases/imemo20.ics \
 	testcases/itodo20.ics
+
+# all patch files
+TEST_FILES_PATCHES = $(wildcard $(srcdir)/../test/testcases/*.patch)
+# generated local files
+TEST_FILES_GENERATED = $(subst .patch,,$(subst $(srcdir)/../test/,,$(TEST_FILES_PATCHES)))
+# all patched files, regardless whether the patch already exists
+TEST_FILES_PATCHED = $(wildcard testcases/*.tem)
+# add files created via patches
+CLIENT_LIB_TEST_FILES += $(TEST_FILES_GENERATED)
+
 client_test_CPPFLAGS = -DHAVE_CONFIG_H -DENABLE_INTEGRATION_TESTS -DENABLE_UNIT_TESTS $(AM_CPPFLAGS)
 client_test_CXXFLAGS = `cppunit-config --cflags` $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS)
 client_test_LDFLAGS = `cppunit-config --libs` `nm core/.libs/libsyncevolution.a | grep funambolAutoRegisterRegistry | sed -e 's/.* /-u /'` $(CORE_LD_FLAGS)
 client_test_LDADD = $(CORE_LDADD) $(SYNCSOURCES)
 # These dependencies are intentionally a bit too broad:
 # they ensure that all files are in place to *run* client-test.
-client_test_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) $(CLIENT_LIB_TEST_FILES) synccompare
 
-# copy test files because client-test expects them here
+# rule to generate patched files from patches:
+# make cannot compute the dependencies completely, so run the commands
+# on each make invocation and do the time stamp test ourselves
+.PHONY: $(TEST_FILES_GENERATED)
+$(TEST_FILES_GENERATED):
+	@ mkdir -p testcases
+	@ echo "checking whether server specific test cases $@ are up-to-date"
+	set -e; \
+	patchfile=$(srcdir)/../test/$@.patch; \
+	basefile=$(srcdir)/../test/$(basename $(basename $@)); \
+	[ ! $@ -ot $$patchfile ] && [ ! $@ -ot $$basefile ] || \
+	(echo '*** foo'; echo '--- bar'; cat $$patchfile) | patch -o $@ $$basefile
 
-LOCAL_TEST_FILES=$(subst $(srcdir)/../test/,,$(wildcard $(srcdir)/../test/* $(srcdir)/../test/testcases/*))
-$(filter testcases/%, $(filter $(LOCAL_TEST_FILES), $(CLIENT_LIB_TEST_FILES))) : % : $(srcdir)/../test/%
+# rule to regenerate patches:
+# like generating the patched files, this is run every time.
+# It must avoid making the patch file more recent than the
+# patched file, otherwise the rule above would needlessly recreate
+# it (not nice when having the file open in an editor).
+#
+# To avoid needlessly updating the content of the patch file,
+# the first two lines with changing information (paths, file dates)
+# are stripped from it.
+.PHONY: testcase2patch
+testcase2patch: $(TEST_FILES_GENERATED)
+	@ echo "checking whether test case patch files are up-to-date"
+	set -e; \
+	for i in testcases/*.tem; do \
+		patchfile=$(srcdir)/../test/$$i.patch; \
+		basefile=$(srcdir)/../test/`echo $$i | cut -d . -f  -2`; \
+		if [ $$patchfile -ot $$i ] || [ $$patchfile -ot $$basefile ]; then \
+			diff -u $$basefile $$i | tail -n +3 > $$patchfile || true; \
+			touch -r $$i $$patchfile; \
+			echo "updated $$patchfile"; \
+		fi; \
+	done
+
+# copy base test files
+$(filter-out %.tem, $(filter testcases/%, $(subst $(srcdir)/../test/,,$(CLIENT_LIB_TEST_FILES)))) : % : $(srcdir)/../test/%
 	mkdir -p testcases
 	cp $< $@
+
+# The binary does not really depend on the test cases, only running it does.
+# Listing the dependencies here is done to ensure that one doesn't accidentally
+# runs the binary with out-dated auxiliary files.
+client_test_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) $(CLIENT_LIB_TEST_FILES) testcase2patch synccompare
+
 
 # distribute test system?
 if ENABLE_TESTING
@@ -200,9 +259,20 @@ else
 # haven't changed. If client-test is part of the regular targets built
 # by "all", then it must not depend on all!
 EXTRA_PROGRAMS += client-test
-nodist_client_test_SOURCES = $(CLIENT_LIB_TEST_FILES)
+nodist_client_test_SOURCES += $(CLIENT_LIB_TEST_FILES)
 client_test_DEPENDENCIES += all
 endif
+
+# test program for output redirection, has to be built
+# and run manually
+EXTRA_PROGRAMS += abort-redirect
+CLEANFILES += abort-redirect.log
+abort_redirect_SOURCES = ../test/abort-redirect.cpp
+abort_redirect_CPPFLAGS = -DHAVE_CONFIG_H $(AM_CPPFLAGS)
+abort_redirect_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS)
+abort_redirect_LDFLAGS = $(CORE_LD_FLAGS)
+abort_redirect_LDADD = $(CORE_LDADD)
+abort_redirect_DEPENDENCIES = all
 
 
 # special target for testing with valgrind

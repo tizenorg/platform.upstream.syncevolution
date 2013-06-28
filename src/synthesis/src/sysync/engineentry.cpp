@@ -329,6 +329,15 @@ void CB_Connect( void* aCB )
 } // CB_Connect
 
 
+void SySyncDebugPuts(void* aCB,
+                     cAppCharP aFile, int aLine, cAppCharP aFunction,
+                     int aDbgLevel, cAppCharP aLinePrefix,
+                     cAppCharP aText)
+{
+  URef( aCB )->debugPuts(aFile, aLine, aFunction,
+                         aDbgLevel, aLinePrefix, aText);
+}
+
 } // namespace sysync
 
 // eof

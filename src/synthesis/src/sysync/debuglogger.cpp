@@ -461,6 +461,7 @@ TDebugLoggerBase::TDebugLoggerBase(GZones *aGZonesP) :
   fIndent=0;
   fBlockHistory=NULL; // no Block open yet
   fOutStarted=false; // not yet started
+  fOutputLoggerP=NULL; // no redirected output yet
 } // TDebugLoggerBase::TDebugLoggerBase
 
 
@@ -495,6 +496,16 @@ void TDebugLoggerBase::installOutput(TDbgOut *aDbgOutP)
   if (fDbgOutP) delete fDbgOutP;
   fDbgOutP=aDbgOutP;
 } // TDebugLoggerBase::installOutput
+
+
+/// @brief link this logger to another logger and redirect output to that logger
+/// @param aDebugLoggerP[in] another logger, that must be alive as long as this logger is alive
+void TDebugLoggerBase::outputVia(TDebugLoggerBase *aDebugLoggerP)
+{
+	// save logger and prefix
+  fOutputLoggerP = aDebugLoggerP;
+} // TDebugLoggerBase::outputVia
+
 
 
 // output formatted text
@@ -902,11 +913,11 @@ void TDebugLoggerBase::DebugVOpenBlock(cAppCharP aBlockName, cAppCharP aBlockTit
         if (fDbgOptionsP->fFoldingMode!=dbgfold_none) {
           StringObjAppendPrintf(bl,
             "<div id=\"E%ld\" style=\"display:%s\" class=\"exp\" onclick=\"exp('%ld')\">+</div><div id=\"C%ld\" style=\"display:%s\" class=\"coll\" onclick=\"coll('%ld')\">&ndash;</div>",
-                                long(fBlockNo), aCollapsed ? "inline" : "none", long(fBlockNo),
-                                long(fBlockNo), aCollapsed ? "none" : "inline", long(fBlockNo)
+                                long(getBlockNo()), aCollapsed ? "inline" : "none", long(getBlockNo()),
+                                long(getBlockNo()), aCollapsed ? "none" : "inline", long(getBlockNo())
           );
         }
-        StringObjAppendPrintf(bl,"<a name=\"H%ld\">", long(fBlockNo));
+        StringObjAppendPrintf(bl,"<a name=\"H%ld\">", long(getBlockNo()));
         if (withTime) {
           bl+="[" + ts + "] ";
         }
@@ -998,11 +1009,11 @@ void TDebugLoggerBase::DebugVOpenBlock(cAppCharP aBlockName, cAppCharP aBlockTit
         if (fDbgOptionsP->fFoldingMode!=dbgfold_none) {
           StringObjAppendPrintf(bl,
             "&nbsp;<span class=\"doall\" onclick=\"doall('%ld',true)\">[--]</span><span class=\"doall\" onclick=\"doall('%ld',false)\">[++]</span>",
-                                long(fBlockNo), long(fBlockNo)
+                                long(getBlockNo()), long(getBlockNo())
           );
         }
         // link to end of block
-        StringObjAppendPrintf(bl,"&nbsp;<a class=\"jump\" href=\"#F%ld\">[->end]</a>", long(fBlockNo));
+        StringObjAppendPrintf(bl,"&nbsp;<a class=\"jump\" href=\"#F%ld\">[->end]</a>", long(getBlockNo()));
         // link to start of enclosing block (if any)
         if (fBlockHistory) {
           StringObjAppendPrintf(bl,"&nbsp;<a class=\"jump\" href=\"#H%ld\">[->enclosing]</a>", long(fBlockHistory->fBlockNo));
@@ -1011,7 +1022,7 @@ void TDebugLoggerBase::DebugVOpenBlock(cAppCharP aBlockName, cAppCharP aBlockTit
         if (fDbgOptionsP->fFoldingMode!=dbgfold_none) {
           StringObjAppendPrintf(bl,
             "<div class=\"blk\" id=\"B%ld\" style=\"display:%s\">",
-            long(fBlockNo),
+            long(getBlockNo()),
             aCollapsed ? "none" : "inline"
           );
         }
@@ -1030,7 +1041,8 @@ void TDebugLoggerBase::DebugVOpenBlock(cAppCharP aBlockName, cAppCharP aBlockTit
     TBlockLevel *newLevel = new TBlockLevel;
     newLevel->fBlockName=aBlockName;
     newLevel->fNext=fBlockHistory;
-    newLevel->fBlockNo=fBlockNo++; // save block number to reference block in collapse box at end of block
+    newLevel->fBlockNo=getBlockNo(); // save block number to reference block in collapse box at end of block
+    nextBlock(); // increment block number
     fBlockHistory=newLevel; // insert new level at start of list
   }
 } // TDebugLoggerBase::DebugVOpenBlock
@@ -1169,38 +1181,55 @@ void TDebugLoggerBase::internalCloseBlocks(cAppCharP aBlockName, cAppCharP aClos
 
 
 // start debugging output if needed and sets fOutStarted
-void TDebugLoggerBase::DebugStartOutput(void)
+bool TDebugLoggerBase::DebugStartOutput(void)
 {
-  if (!fOutStarted && fDbgOptionsP && fDbgOutP && !fDbgPath.empty()) {
-    // try to open the debug channel (force to openclose if we have multiple threads mixed in one file)
-    if (fDbgOutP->openDbg(
-      fDbgPath.c_str(),
-      DbgOutFormatExtensions[fDbgOptionsP->fOutputFormat],
-      fDbgOptionsP->fSubThreadMode==dbgsubthread_linemix ? dbgflush_openclose : fDbgOptionsP->fFlushMode,
-      !fDbgOptionsP->fAppend
-    )) {
-      // make sure we don't recurse when we produce some output
-      fOutStarted=true;
-      fIndent=0; // reset to make sure
-      // create a block number that is unique in the file, even if we append multiple times.
-      // We assume that a block consumes at least 256 bytes, so size_of_file/256 always gets
-      // an unused block ID within that file
-      // 256 is a safe assumption because the "fold" button <divs> alone are around 250 bytes
-      fBlockNo = 1 + (fDbgOutP->dbgFileSize()/256);
-      // now create required prefix
-      DebugPutLine(fDbgOptionsP->fCustomPrefix.empty() ? DbgOutDefaultPrefixes[fDbgOptionsP->fOutputFormat] : fDbgOptionsP->fCustomPrefix.c_str());
-      // add folding javascript if needed
-      if (fDbgOptionsP->fOutputFormat==dbgfmt_html && fDbgOptionsP->fFoldingMode!=dbgfold_none) {
-        DebugPutLine(FoldingPrefix);
+	if (!fOutStarted) {
+  	if (fOutputLoggerP) {
+      // using another logger, call it to start output
+      fOutStarted = fOutputLoggerP->DebugStartOutput();
+      if (fOutStarted) {
+        // start with indent level of parent logger
+        fIndent = fOutputLoggerP->fIndent;
+        // note: we'll use the parent logger's block number...
+        fBlockNo = 0; // ...but init to something just in case
       }
-    } // debug channel opened successfully
+    }
+    else if (fDbgOptionsP && fDbgOutP && !fDbgPath.empty()) {
+      // try to open the debug channel (force to openclose if we have multiple threads mixed in one file)
+      if (fDbgOutP->openDbg(
+        fDbgPath.c_str(),
+        DbgOutFormatExtensions[fDbgOptionsP->fOutputFormat],
+        fDbgOptionsP->fSubThreadMode==dbgsubthread_linemix ? dbgflush_openclose : fDbgOptionsP->fFlushMode,
+        !fDbgOptionsP->fAppend
+      )) {
+        // make sure we don't recurse when we produce some output
+        fOutStarted = true;
+        fIndent = 0; // reset to make sure
+        // create a block number that is unique in the file, even if we append multiple times.
+        // We assume that a block consumes at least 256 bytes, so size_of_file/256 always gets
+        // an unused block ID within that file
+        // 256 is a safe assumption because the "fold" button <divs> alone are around 250 bytes
+        fBlockNo = 1 + (fDbgOutP->dbgFileSize()/256);
+        // now create required prefix
+        DebugPutLine(fDbgOptionsP->fCustomPrefix.empty() ? DbgOutDefaultPrefixes[fDbgOptionsP->fOutputFormat] : fDbgOptionsP->fCustomPrefix.c_str());
+        // add folding javascript if needed
+        if (fDbgOptionsP->fOutputFormat==dbgfmt_html && fDbgOptionsP->fFoldingMode!=dbgfold_none) {
+          DebugPutLine(FoldingPrefix);
+        }
+      } // debug channel opened successfully
+    } // use own debug channel
   } // environment ready to start output
+  return fOutStarted;
 } // TDebugLoggerBase::DebugStartOutput
 
 
 // @brief finalize debugging output (close Blocks, close output channel)
 void TDebugLoggerBase::DebugFinalizeOutput(void)
 {
+  if (fOutputLoggerP) {
+  	// just close my own blocks
+    internalCloseBlocks(NULL,"closed because sub-log ends here");    
+  }
   if (fOutStarted && fDbgOptionsP && fDbgOutP) {
     // close all left-open open Blocks
     internalCloseBlocks(NULL,"closed because log ends here");
@@ -1221,7 +1250,7 @@ void TDebugLoggerBase::DebugFinalizeOutput(void)
 // Output single line to debug channel (includes indenting and other prefixing, but no further formatting)
 void TDebugLoggerBase::DebugPutLine(cAppCharP aText, stringSize aTextSize, bool aPre)
 {
-  if (!aText || !fDbgOutP) return;
+  if (!aText || (!fDbgOutP && !fOutputLoggerP)) return;
   if (*aText) {
     // not an empty line
     string msg;
@@ -1248,7 +1277,14 @@ void TDebugLoggerBase::DebugPutLine(cAppCharP aText, stringSize aTextSize, bool 
     else
       msg.append(aText);
     // now output
-    fDbgOutP->putLine(msg.c_str(),false); // %%% no forceflush for now
+    if (fOutputLoggerP) {
+    	// use parent's output
+	    fOutputLoggerP->fDbgOutP->putLine(msg.c_str(),false); // %%% no forceflush for now
+    }
+    else {
+    	// use my own output channel
+	    fDbgOutP->putLine(msg.c_str(),false); // %%% no forceflush for now
+    }
   }
 } // TDebugLoggerBase::DebugPutLine
 

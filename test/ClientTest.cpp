@@ -36,6 +36,7 @@
 #include <Logging.h>
 #include <SyncEvolutionUtil.h>
 #include <EvolutionSyncClient.h>
+#include <VolatileConfigNode.h>
 
 #include <synthesis/dataconversion.h>
 
@@ -291,7 +292,7 @@ static std::string updateItem(CreateSource createSource, const std::string &uid,
     SyncItem item;
     item.setKey(uid.c_str());
     item.setData(data, (long)strlen(data) + 1);
-    item.setDataType((""));
+    item.setDataType("raw");
     SOURCE_ASSERT_EQUAL(source.get(), STATUS_OK, source->updateItem(item));
     SOURCE_ASSERT(source.get(), !item.getKey().empty());
     newuid = item.getKey();
@@ -781,14 +782,15 @@ void LocalTests::testImport() {
     std::auto_ptr<SyncSource> source;
     SOURCE_ASSERT_NO_FAILURE(source.get(), source.reset(createSourceA()));
     SOURCE_ASSERT_EQUAL(source.get(), STATUS_OK, source->beginSync(SYNC_NONE));
-    SOURCE_ASSERT_EQUAL(source.get(), 0, config.import(client, *source.get(), config.testcases));
+    std::string testcases;
+    SOURCE_ASSERT_EQUAL(source.get(), 0, config.import(client, *source.get(), config.testcases, testcases));
     SOURCE_ASSERT_EQUAL(source.get(), STATUS_OK, source->endSync());
     CPPUNIT_ASSERT_NO_THROW(source.reset());
 
     // export again and compare against original file
     std::auto_ptr<SyncSource> copy;
     SOURCE_ASSERT_NO_FAILURE(copy.get(), copy.reset(createSourceA()));
-    compareDatabases(config.testcases, *copy.get());
+    compareDatabases(testcases.c_str(), *copy.get());
     CPPUNIT_ASSERT_NO_THROW(source.reset());
 }
 
@@ -1675,9 +1677,7 @@ void SyncTests::addTests() {
             }
         }
 
-        // TODO: enable interrupted sync tests again
-        if (false &&
-            config.retrySync &&
+        if (config.retrySync &&
             config.insertItem &&
             config.updateItem &&
             accessClientB &&
@@ -1691,8 +1691,26 @@ void SyncTests::addTests() {
             ADD_TEST_TO_SUITE(retryTests, SyncTests, testInterruptResumeServerRemove);
             ADD_TEST_TO_SUITE(retryTests, SyncTests, testInterruptResumeServerUpdate);
             ADD_TEST_TO_SUITE(retryTests, SyncTests, testInterruptResumeFull);
-            addTest(retryTests);
+            addTest(FilterTest(retryTests));
         }
+
+        if (config.retrySync &&
+            config.insertItem &&
+            config.updateItem &&
+            accessClientB &&
+            config.dump &&
+            config.compare) {
+            CppUnit::TestSuite *suspendTests = new CppUnit::TestSuite(getName() + "::Suspend");
+            ADD_TEST_TO_SUITE(suspendTests, SyncTests, testUserSuspendClientAdd);
+            ADD_TEST_TO_SUITE(suspendTests, SyncTests, testUserSuspendClientRemove);
+            ADD_TEST_TO_SUITE(suspendTests, SyncTests, testUserSuspendClientUpdate);
+            ADD_TEST_TO_SUITE(suspendTests, SyncTests, testUserSuspendServerAdd);
+            ADD_TEST_TO_SUITE(suspendTests, SyncTests, testUserSuspendServerRemove);
+            ADD_TEST_TO_SUITE(suspendTests, SyncTests, testUserSuspendServerUpdate);
+            ADD_TEST_TO_SUITE(suspendTests, SyncTests, testUserSuspendFull);
+            addTest(FilterTest(suspendTests));
+        }
+
     }
 }
 
@@ -2035,15 +2053,20 @@ void SyncTests::testMerge() {
         it->second->update(it->second->createSourceA, it->second->config.mergeItem2, it->second->config.itemType);
     }
 
-    // send change to server from client A (no conflict), then from B (conflict)
-    doSync("send",
+    // send change to server from client A (no conflict)
+    doSync("update",
            SyncOptions(SYNC_TWO_WAY,
                        CheckSyncReport(0,0,0, 0,1,0, true, SYNC_TWO_WAY)));
-    doSync("recv",
-           SyncOptions(SYNC_TWO_WAY,
-                       CheckSyncReport(-1,-1,-1, -1,-1,-1, true, SYNC_TWO_WAY)));
+    // Now the changes from client B (conflict!).
+    // There are several possible outcomes:
+    // - client item completely replaces server item
+    // - server item completely replaces client item (update on client)
+    // - server merges and updates client
+    accessClientB->doSync("conflict",
+                          SyncOptions(SYNC_TWO_WAY,
+                                      CheckSyncReport(-1,-1,-1, -1,-1,-1, true, SYNC_TWO_WAY)));
 
-    // figure out how the conflict during ".recv" was handled
+    // figure out how the conflict during ".conflict" was handled
     for (it = accessClientB->sources.begin(); it != accessClientB->sources.end(); ++it) {
         std::auto_ptr<SyncSource> copy;
         SOURCE_ASSERT_NO_FAILURE(copy.get(), copy.reset(it->second->createSourceA()));
@@ -2053,10 +2076,25 @@ void SyncTests::testMerge() {
         SOURCE_ASSERT_EQUAL(copy.get(), STATUS_OK, copy->endSync());
         CPPUNIT_ASSERT(numItems >= 1);
         CPPUNIT_ASSERT(numItems <= 2);
-        std::cout << " " << it->second->config.sourceName << ": " << (numItems == 1 ? "conflicting items were merged" : "both of the conflicting items were preserved") << " ";
+        std::cout << " \"" << it->second->config.sourceName << ": " << (numItems == 1 ? "conflicting items were merged" : "both of the conflicting items were preserved") << "\" ";
         std::cout.flush();
-        CPPUNIT_ASSERT_NO_THROW(copy.reset());
+        CPPUNIT_ASSERT_NO_THROW(copy.reset());        
     }
+
+    // now pull the same changes into client A
+    doSync("refresh",
+           SyncOptions(SYNC_TWO_WAY,
+                       CheckSyncReport(-1,-1,-1, 0,0,0, true, SYNC_TWO_WAY)));
+
+    // client A and B should have identical data now
+    compareDatabases();
+
+    // Furthermore, it should be identical with the server.
+    // Be extra careful and pull that data anew and compare once more.
+    doSync("check",
+           SyncOptions(SYNC_REFRESH_FROM_SERVER,
+                       CheckSyncReport(-1,-1,-1, -1,-1,-1, true, SYNC_REFRESH_FROM_SERVER)));
+    compareDatabases();
 }
 
 // test what the server does when it has to execute a slow sync
@@ -2129,7 +2167,7 @@ void SyncTests::testOneWayFromServer() {
 
     // add one item on first client, copy to server, and check change tracking via second source
     for (it = sources.begin(); it != sources.end(); ++it) {
-        it->second->insertManyItems(it->second->createSourceA, 1, 1);
+        it->second->insertManyItems(it->second->createSourceA, 200, 1);
     }
     doSync("send",
            SyncOptions(SYNC_TWO_WAY,
@@ -2446,7 +2484,8 @@ bool SyncTests::doConversionCallback(bool *success,
         }
 
         std::list<std::string> items;
-        ClientTest::getItems(config->testcases, items);
+        std::string testcases;
+        ClientTest::getItems(config->testcases, items, testcases);
         std::string converted = getCurrentTest();
         converted += ".converted.";
         converted += config->sourceName;
@@ -2467,7 +2506,7 @@ bool SyncTests::doConversionCallback(bool *success,
             }
         }
         out.close();
-        CPPUNIT_ASSERT(config->compare(client, config->testcases, converted.c_str()));
+        CPPUNIT_ASSERT(config->compare(client, testcases.c_str(), converted.c_str()));
     }
 
     // abort sync after completing the test successfully (no exception so far!)
@@ -2603,7 +2642,11 @@ void SyncTests::testManyItems() {
  */
 void SyncTests::doVarSizes(bool withMaxMsgSize,
                            bool withLargeObject) {
-    static const int maxMsgSize = 8 * 1024;
+    int maxMsgSize = 8 * 1024;
+    const char* maxItemSize = getenv("CLIENT_TEST_MAX_ITEMSIZE");
+    int tmpSize = maxItemSize ? atoi(maxItemSize) : 0;
+    if(tmpSize > 0) 
+        maxMsgSize = tmpSize;
 
     // clean server and client A
     deleteAll();
@@ -2642,29 +2685,15 @@ void SyncTests::doVarSizes(bool withMaxMsgSize,
     compareDatabases();
 }
 
-// TODO: this class needs to be used by TestClient::sync() to interrupt message transmission
-class TransportFaultInjector : public TransportAgent {
-    int m_interruptAtMessage, m_messageCount;
-    TransportAgent *m_wrappedAgent;
-    Status m_status;
+class TransportFaultInjector : public TransportWrapper{
 public:
-    TransportFaultInjector(int interruptAtMessage) {
-        m_messageCount = 0;
-        m_interruptAtMessage = interruptAtMessage;
-        m_wrappedAgent = NULL;
-        m_status = INACTIVE;
+    TransportFaultInjector()
+         :TransportWrapper() {
     }
+
     ~TransportFaultInjector() {
     }
 
-    int getMessageCount() { return m_messageCount; }
-
-    virtual void setURL(const std::string &url) { m_wrappedAgent->setURL(url); }
-    virtual void setProxy(const std::string &proxy) { m_wrappedAgent->setProxy(proxy); }
-    virtual void setProxyAuth(const std::string &user,
-                              const std::string &password) { m_wrappedAgent->setProxyAuth(user, password); }
-    virtual void setContentType(const std::string &type) { m_wrappedAgent->setContentType(type); }
-    virtual void setUserAgent(const::string &agent) { m_wrappedAgent->setUserAgent(agent); }
     virtual void send(const char *data, size_t len)
     {
         if (m_interruptAtMessage == m_messageCount) {
@@ -2674,9 +2703,6 @@ public:
         if (m_interruptAtMessage >= 0 &&
             m_messageCount > m_interruptAtMessage) {
             throw string("TransportFaultInjector: interrupt before send");
-        }
-        if (m_interruptAtMessage == m_messageCount) {
-            // TODO: force message receive error m_wrappedAgent->setMaxMsgSize(1);
         }
     
         m_wrappedAgent->send(data, len);
@@ -2693,13 +2719,48 @@ public:
         }
     }
 
-    virtual void cancel() { m_wrappedAgent->cancel(); }
-    virtual Status wait() { return m_status; }
     virtual void getReply(const char *&data, size_t &len, std::string &contentType) {
         if (m_status == FAILED) {
             data = "";
             len = 0;
         } else {
+            m_wrappedAgent->getReply(data, len, contentType);
+        }
+    }
+};
+
+/**
+ * Emulates a user suspend just after receving response 
+ * from server.
+ */
+class UserSuspendInjector : public TransportWrapper{
+public:
+    UserSuspendInjector()
+         :TransportWrapper() {
+    }
+
+    ~UserSuspendInjector() {
+    }
+
+    virtual void send(const char *data, size_t len)
+    {
+        m_wrappedAgent->send(data, len);
+        m_status = m_wrappedAgent->wait();
+    }
+
+    virtual void getReply(const char *&data, size_t &len, std::string &contentType) {
+        if (m_status == FAILED) {
+            data = "";
+            len = 0;
+        } else {
+            if (m_interruptAtMessage == m_messageCount) {
+                 SE_LOG_DEBUG(NULL, NULL, "UserSuspendInjector: user suspend after getting reply #%d", m_messageCount);
+            }
+            m_messageCount++;
+            if (m_interruptAtMessage >= 0 &&
+                    m_messageCount > m_interruptAtMessage) {
+                m_options->m_isSuspended = true;
+            }
             m_wrappedAgent->getReply(data, len, contentType);
         }
     }
@@ -2753,11 +2814,14 @@ public:
  * >= 0 to execute one uninterrupted run and then interrupt at that
  * message.
  */
-void SyncTests::doInterruptResume(int changes)
+void SyncTests::doInterruptResume(int changes, 
+                  boost::shared_ptr<TransportWrapper> wrapper)
 {
     int interruptAtMessage = -1;
     const char *t = getenv("CLIENT_TEST_INTERRUPT_AT");
     int requestedInterruptAt = t ? atoi(t) : -1;
+    const char *s = getenv("CLIENT_TEST_INTERRUPT_SLEEP");
+    int sleep_t = s ? atoi(s) : 0;
     size_t i;
     std::string refFileBase = getCurrentTest() + ".ref.";
     bool equal = true;
@@ -2838,18 +2902,18 @@ void SyncTests::doInterruptResume(int changes)
         }
 
         // Now do an interrupted sync between B and server.
-        // The wrapper is a factory and the created transport
-        // all in one class, allocated on the stack. The
-        // explicit delete of the TransportAgent is suppressed
+        // The explicit delete of the TransportAgent is suppressed
         // by overloading the delete operator.
         int wasInterrupted;
         {
-            TransportFaultInjector faultInjector(interruptAtMessage);
+            wrapper->reset();
+            wrapper->setInterruptAtMessage(interruptAtMessage);
             accessClientB->doSync("changesFromB",
                                   SyncOptions(SYNC_TWO_WAY,
-                                              CheckSyncReport(-1, -1, -1, -1, -1, -1, false)));
+                                              CheckSyncReport(-1, -1, -1, -1,
+                                                  -1, -1, false)).setTransportAgent(wrapper));
             wasInterrupted = interruptAtMessage != -1 &&
-                faultInjector.getMessageCount() <= interruptAtMessage;
+                wrapper->getMessageCount() <= interruptAtMessage;
         }
 
         if (interruptAtMessage != -1) {
@@ -2858,7 +2922,9 @@ void SyncTests::doInterruptResume(int changes)
                 break;
             }
 
-            // continue
+            // continue, wait until server timeout
+            if(sleep_t) 
+                sleep (sleep_t);
             accessClientB->doSync("retryB", SyncOptions(SYNC_TWO_WAY));
         }
 
@@ -2917,39 +2983,76 @@ void SyncTests::doInterruptResume(int changes)
 
 void SyncTests::testInterruptResumeClientAdd()
 {
-    doInterruptResume(CLIENT_ADD);
+    doInterruptResume(CLIENT_ADD, boost::shared_ptr<TransportWrapper> (new TransportFaultInjector()));
 }
 
 void SyncTests::testInterruptResumeClientRemove()
 {
-    doInterruptResume(CLIENT_REMOVE);
+    doInterruptResume(CLIENT_REMOVE, boost::shared_ptr<TransportWrapper> (new TransportFaultInjector()));
 }
 
 void SyncTests::testInterruptResumeClientUpdate()
 {
-    doInterruptResume(CLIENT_UPDATE);
+    doInterruptResume(CLIENT_UPDATE, boost::shared_ptr<TransportWrapper> (new TransportFaultInjector()));
 }
 
 void SyncTests::testInterruptResumeServerAdd()
 {
-    doInterruptResume(SERVER_ADD);
+    doInterruptResume(SERVER_ADD, boost::shared_ptr<TransportWrapper> (new TransportFaultInjector()));
 }
 
 void SyncTests::testInterruptResumeServerRemove()
 {
-    doInterruptResume(SERVER_REMOVE);
+    doInterruptResume(SERVER_REMOVE, boost::shared_ptr<TransportWrapper> (new TransportFaultInjector()));
 }
 
 void SyncTests::testInterruptResumeServerUpdate()
 {
-    doInterruptResume(SERVER_UPDATE);
+    doInterruptResume(SERVER_UPDATE, boost::shared_ptr<TransportWrapper> (new TransportFaultInjector()));
 }
 
 void SyncTests::testInterruptResumeFull()
 {
     doInterruptResume(CLIENT_ADD|CLIENT_REMOVE|CLIENT_UPDATE|
-                      SERVER_ADD|SERVER_REMOVE|SERVER_UPDATE);
+                      SERVER_ADD|SERVER_REMOVE|SERVER_UPDATE, boost::shared_ptr<TransportWrapper> (new TransportFaultInjector()));
 }
+
+void SyncTests::testUserSuspendClientAdd()
+{
+    doInterruptResume(CLIENT_ADD, boost::shared_ptr<TransportWrapper> (new UserSuspendInjector()));
+}
+
+void SyncTests::testUserSuspendClientRemove()
+{
+    doInterruptResume(CLIENT_REMOVE, boost::shared_ptr<TransportWrapper> (new UserSuspendInjector()));
+}
+
+void SyncTests::testUserSuspendClientUpdate()
+{
+    doInterruptResume(CLIENT_UPDATE, boost::shared_ptr<TransportWrapper> (new UserSuspendInjector()));
+}
+
+void SyncTests::testUserSuspendServerAdd()
+{
+    doInterruptResume(SERVER_ADD, boost::shared_ptr<TransportWrapper> (new UserSuspendInjector()));
+}
+
+void SyncTests::testUserSuspendServerRemove()
+{
+    doInterruptResume(SERVER_REMOVE, boost::shared_ptr<TransportWrapper> (new UserSuspendInjector()));
+}
+
+void SyncTests::testUserSuspendServerUpdate()
+{
+    doInterruptResume(SERVER_UPDATE, boost::shared_ptr<TransportWrapper> (new UserSuspendInjector()));
+}
+
+void SyncTests::testUserSuspendFull()
+{
+    doInterruptResume(CLIENT_ADD|CLIENT_REMOVE|CLIENT_UPDATE|
+                      SERVER_ADD|SERVER_REMOVE|SERVER_UPDATE, boost::shared_ptr<TransportWrapper> (new UserSuspendInjector()));
+}
+
 
 void SyncTests::doSync(const SyncOptions &options)
 {
@@ -3030,10 +3133,10 @@ public:
                 LocalTests *sourcetests =
                     client.createLocalTests(tests->getName() + "::" + config.sourceName, source, config);
                 sourcetests->addTests();
-                tests->addTest(sourcetests);
+                tests->addTest(FilterTest(sourcetests));
             }
         }
-        alltests->addTest(tests);
+        alltests->addTest(FilterTest(tests));
         tests = 0;
 
         // create sync tests with just one source
@@ -3047,7 +3150,7 @@ public:
                 SyncTests *synctests =
                     client.createSyncTests(tests->getName() + "::" + config.sourceName, sources);
                 synctests->addTests();
-                tests->addTest(synctests);
+                tests->addTest(FilterTest(synctests));
             }
         }
 
@@ -3072,7 +3175,7 @@ public:
             SyncTests *synctests =
                 client.createSyncTests(tests->getName() + "::" + name, sources);
             synctests->addTests();
-            tests->addTest(synctests);
+            tests->addTest(FilterTest(synctests));
             synctests = 0;
 
             // now also in reversed order - who knows, it might make a difference
@@ -3080,11 +3183,11 @@ public:
             synctests =
                 client.createSyncTests(tests->getName() + "::" + name_reversed, sources);
             synctests->addTests();
-            tests->addTest(synctests);
+            tests->addTest(FilterTest(synctests));
             synctests = 0;
         }
 
-        alltests->addTest(tests);
+        alltests->addTest(FilterTest(tests));
         tests = 0;
 
         return alltests;
@@ -3128,25 +3231,30 @@ SyncTests *ClientTest::createSyncTests(const std::string &name, std::vector<int>
 
 int ClientTest::dump(ClientTest &client, SyncSource &source, const char *file)
 {
-    std::ofstream out(file);
-
     std::auto_ptr<SyncItem> item;
-    SOURCE_ASSERT_NO_FAILURE(&source, item.reset(source.getFirstItem()));
-    while (item.get()) {
-        out << (char *)item->getData() << std::endl;
-        SOURCE_ASSERT_NO_FAILURE(&source, item.reset(source.getNextItem()));
-    }
-    out.close();
-    return out.bad();
+    BackupReport report;
+    VolatileConfigNode node;
+
+    rm_r(file);
+    mkdir_p(file);
+    source.backupData(file, node, report);
+    return 0;
 }
 
-void ClientTest::getItems(const char *file, list<string> &items)
+void ClientTest::getItems(const char *file, list<string> &items, std::string &testcases)
 {
     items.clear();
 
     // import the file
     std::ifstream input;
-    input.open(file);
+    string server = getenv("CLIENT_TEST_SERVER");
+    testcases = string(file) + '.' + server +".tem";
+    input.open(testcases.c_str());
+
+    if(input.fail()) {
+        testcases = file;
+        input.open(testcases.c_str());
+    }
     CPPUNIT_ASSERT(!input.bad());
     CPPUNIT_ASSERT(input.is_open());
     std::string data, line;
@@ -3174,10 +3282,10 @@ void ClientTest::getItems(const char *file, list<string> &items)
     }
 }
 
-int ClientTest::import(ClientTest &client, SyncSource &source, const char *file)
+int ClientTest::import(ClientTest &client, SyncSource &source, const char *file, std::string &realfile)
 {
     list<string> items;
-    getItems(file, items);
+    getItems(file, items, realfile);
     BOOST_FOREACH(string &data, items) {
         importItem(&source, data);
     }
@@ -3240,6 +3348,9 @@ void ClientTest::getTestData(const char *type, Config &config)
     config.retrySync = true;
     config.sourceKnowsItemSemantic = true;
     config.itemType = "";
+    config.import = import;
+    config.dump = dump;
+    config.compare = compare;
 
     if (!strcmp(type, "vcard30")) {
         config.sourceName = "vcard30";
@@ -3306,9 +3417,6 @@ void ClientTest::getTestData(const char *type, Config &config)
         config.templateItem = config.insertItem;
         config.uniqueProperties = "FN:N:X-EVOLUTION-FILE-AS";
         config.sizeProperty = "NOTE";
-        config.import = import;
-        config.dump = dump;
-        config.compare = compare;
         config.testcases = "testcases/vcard30.vcf";
     } else if (!strcmp(type, "vcard21")) {
         config.sourceName = "vcard21";
@@ -3346,7 +3454,7 @@ void ClientTest::getTestData(const char *type, Config &config)
             "BDAY:2006-01-08\n"
             "X-MOZILLA-HTML:TRUE\n"
             "END:VCARD\n";
-        /* add a telephone number, email and X-AIM to initial item */
+        /* add email and X-AIM to initial item */
         config.mergeItem1 =
             "BEGIN:VCARD\n"
             "VERSION:2.1\n"
@@ -3358,6 +3466,7 @@ void ClientTest::getTestData(const char *type, Config &config)
             "EMAIL:john.doe@work.com\n"
             "X-AIM:AIM JOHN\n"
             "END:VCARD\n";
+        /* change X-MOZILLA-HTML */
         config.mergeItem2 =
             "BEGIN:VCARD\n"
             "VERSION:2.1\n"
@@ -3370,9 +3479,6 @@ void ClientTest::getTestData(const char *type, Config &config)
         config.templateItem = config.insertItem;
         config.uniqueProperties = "FN:N";
         config.sizeProperty = "NOTE";
-        config.import = import;
-        config.dump = dump;
-        config.compare = compare;
         config.testcases = "testcases/vcard21.vcf";
     } else if(!strcmp(type, "ical20")) {
         config.sourceName = "ical20";
@@ -3418,7 +3524,7 @@ void ClientTest::getTestData(const char *type, Config &config)
             "SEQUENCE:1\n"
             "END:VEVENT\n"
             "END:VCALENDAR\n";
-        /* change location in insertItem in testMerge() */
+        /* change location and description of insertItem in testMerge(), add alarm */
         config.mergeItem1 =
             "BEGIN:VCALENDAR\n"
             "PRODID:-//Ximian//NONSGML Evolution Calendar//EN\n"
@@ -3437,8 +3543,14 @@ void ClientTest::getTestData(const char *type, Config &config)
             "CLASS:PUBLIC\n"
             "TRANSP:OPAQUE\n"
             "SEQUENCE:1\n"
+            "BEGIN:VALARM\n"
+            "DESCRIPTION:alarm\n"
+            "ACTION:DISPLAY\n"
+            "TRIGGER;VALUE=DURATION;RELATED=START:-PT15M\n"
+            "END:VALARM\n"
             "END:VEVENT\n"
             "END:VCALENDAR\n";
+        /* change location to something else, add category */
         config.mergeItem2 =
             "BEGIN:VCALENDAR\n"
             "PRODID:-//Ximian//NONSGML Evolution Calendar//EN\n"
@@ -3453,6 +3565,7 @@ void ClientTest::getTestData(const char *type, Config &config)
             "LAST-MODIFIED:20060409T213201\n"
             "CREATED:20060409T213201\n"
             "LOCATION:my office\n"
+            "CATEGORIES:WORK\n"
             "DESCRIPTION:what the heck\\, let's even shout a bit\n"
             "CLASS:PUBLIC\n"
             "TRANSP:OPAQUE\n"
@@ -3502,9 +3615,6 @@ void ClientTest::getTestData(const char *type, Config &config)
         config.templateItem = config.insertItem;
         config.uniqueProperties = "SUMMARY:UID:LOCATION";
         config.sizeProperty = "DESCRIPTION";
-        config.import = import;
-        config.dump = dump;
-        config.compare = compare;
         config.testcases = "testcases/ical20.ics";
     } if(!strcmp(type, "vcal10")) {
         config.sourceName = "vcal10";
@@ -3562,9 +3672,6 @@ void ClientTest::getTestData(const char *type, Config &config)
         config.templateItem = config.insertItem;
         config.uniqueProperties = "SUMMARY:UID:LOCATION";
         config.sizeProperty = "DESCRIPTION";
-        config.import = import;
-        config.dump = dump;
-        config.compare = compare;
         config.testcases = "testcases/vcal10.ics";
     } else if(!strcmp(type, "itodo20")) {
         config.sourceName = "itodo20";
@@ -3638,10 +3745,53 @@ void ClientTest::getTestData(const char *type, Config &config)
         config.templateItem = config.insertItem;
         config.uniqueProperties = "SUMMARY:UID";
         config.sizeProperty = "DESCRIPTION";
-        config.import = import;
-        config.dump = dump;
-        config.compare = compare;
         config.testcases = "testcases/itodo20.ics";
+    } else if(!strcmp(type, "text")) {
+        // The "text" test uses iCalendar 2.0 VJOURNAL
+        // as format because synccompare doesn't handle
+        // plain text. A backend which wants to use this
+        // test data must support importing/exporting
+        // the test data in that format, see EvolutionMemoSource
+        // for an example.
+        config.uri = "note"; // ScheduleWorld
+        config.type = "memo";
+        config.itemType = "text/calendar";
+        config.insertItem =
+            "BEGIN:VCALENDAR\n"
+            "PRODID:-//Ximian//NONSGML Evolution Calendar//EN\n"
+            "VERSION:2.0\n"
+            "METHOD:PUBLISH\n"
+            "BEGIN:VJOURNAL\n"
+            "SUMMARY:Summary\n"
+            "DESCRIPTION:Summary\\nBody text<<REVISION>>\n"
+            "END:VJOURNAL\n"
+            "END:VCALENDAR\n";
+        config.updateItem =
+            "BEGIN:VCALENDAR\n"
+            "PRODID:-//Ximian//NONSGML Evolution Calendar//EN\n"
+            "VERSION:2.0\n"
+            "METHOD:PUBLISH\n"
+            "BEGIN:VJOURNAL\n"
+            "SUMMARY:Summary Modified\n"
+            "DESCRIPTION:Summary Modified\\nBody text\n"
+            "END:VJOURNAL\n"
+            "END:VCALENDAR\n";
+        /* change summary, as in updateItem, and the body in the other merge item */
+        config.mergeItem1 = config.updateItem;
+        config.mergeItem2 =
+            "BEGIN:VCALENDAR\n"
+            "PRODID:-//Ximian//NONSGML Evolution Calendar//EN\n"
+            "VERSION:2.0\n"
+            "METHOD:PUBLISH\n"
+            "BEGIN:VJOURNAL\n"
+            "SUMMARY:Summary\n"
+            "DESCRIPTION:Summary\\nBody modified\n"
+            "END:VJOURNAL\n"
+            "END:VCALENDAR\n";                
+        config.templateItem = config.insertItem;
+        config.uniqueProperties = "SUMMARY:DESCRIPTION";
+        config.sizeProperty = "DESCRIPTION";
+        config.testcases = "testcases/imemo20.ics";
     }
 }
 

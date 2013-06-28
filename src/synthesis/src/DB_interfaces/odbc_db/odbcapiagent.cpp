@@ -1797,6 +1797,7 @@ void TODBCApiAgent::addSQLParameterMap(
   map.fieldP=aFieldP;
   map.maxSize=std_paramsize;
   map.dbFieldType=aDbFieldType;
+  map.outSiz=0;
   // save in list
   fParameterMaps.push_back(map);
 } // TODBCApiAgent::addSQLParameterMap

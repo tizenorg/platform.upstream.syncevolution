@@ -29,8 +29,15 @@
 #include <string.h>
 #include <limits.h>
 
-
 #include <dbus/dbus-glib-bindings.h>
+
+#ifdef USE_GNOME_KEYRING
+// extern "C" is missing in 2.24.1, leading to
+// link errors. Specifying it here is a workaround.
+extern "C" {
+#include <gnome-keyring.h>
+}
+#endif
 
 #include "EvolutionSyncSource.h"
 #include "syncevo-dbus-server.h"
@@ -38,7 +45,6 @@
 
 static gboolean syncevo_start_sync (SyncevoDBusServer *obj, char *server, GPtrArray *sources, GError **error);
 static gboolean syncevo_abort_sync (SyncevoDBusServer *obj, char *server, GError **error);
-static gboolean syncevo_set_password (SyncevoDBusServer *obj, char *server, char *password, GError **error);
 static gboolean syncevo_get_templates (SyncevoDBusServer *obj, GPtrArray **templates, GError **error);
 static gboolean syncevo_get_template_config (SyncevoDBusServer *obj, char *templ, GPtrArray **options, GError **error);
 static gboolean syncevo_get_servers (SyncevoDBusServer *obj, GPtrArray **servers, GError **error);
@@ -87,7 +93,7 @@ syncevo_dbus_error_get_type (void)
 typedef GValueArray SyncevoSource;
 #define SYNCEVO_OPTION_TYPE (dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID))
 typedef GValueArray SyncevoOption;
-#define SYNCEVO_SERVER_TYPE (dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID))
+#define SYNCEVO_SERVER_TYPE (dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_BOOLEAN, G_TYPE_INVALID))
 typedef GValueArray SyncevoServer;
 
 #define SYNCEVO_REPORT_TYPE (dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_INT, G_TYPE_INT, G_TYPE_INT, G_TYPE_INT, G_TYPE_INT, G_TYPE_INT, G_TYPE_INT, G_TYPE_INT, G_TYPE_INT, G_TYPE_INT, G_TYPE_INT, G_TYPE_INT, G_TYPE_INT, G_TYPE_INVALID))
@@ -173,18 +179,23 @@ syncevo_option_free (SyncevoOption *option)
 	}
 }
 
-SyncevoServer* syncevo_server_new (char *name, char *url, char *icon)
+SyncevoServer* syncevo_server_new (char *name, char *url, char *icon, gboolean consumer_ready)
 {
 	GValue val = {0, };
 
 	g_value_init (&val, SYNCEVO_SERVER_TYPE);
 	g_value_take_boxed (&val, dbus_g_type_specialized_construct (SYNCEVO_SERVER_TYPE));
-	dbus_g_type_struct_set (&val, 0, name, 1, url, 2, icon, G_MAXUINT);
+	dbus_g_type_struct_set (&val,
+	                        0, name,
+	                        1, url,
+	                        2, icon,
+	                        3, consumer_ready,
+	                        G_MAXUINT);
 
 	return (SyncevoServer*) g_value_get_boxed (&val);
 }
 
-void syncevo_server_get (SyncevoServer *server, const char **name, const char **url, const char **icon)
+void syncevo_server_get (SyncevoServer *server, const char **name, const char **url, const char **icon, gboolean *consumer_ready)
 {
 	if (name) {
 		*name = g_value_get_string (g_value_array_get_nth (server, 0));
@@ -194,6 +205,9 @@ void syncevo_server_get (SyncevoServer *server, const char **name, const char **
 	}
 	if (icon) {
 		*icon = g_value_get_string (g_value_array_get_nth (server, 2));
+	}
+	if (consumer_ready) {
+		*consumer_ready = g_value_get_boolean (g_value_array_get_nth (server, 3));
 	}
 }
 
@@ -399,7 +413,6 @@ syncevo_report_array_free (SyncevoReportArray *array)
 enum {
 	PROGRESS,
 	SERVER_MESSAGE,
-	NEED_PASSWORD,
 	LAST_SIGNAL
 };
 static guint signals[LAST_SIGNAL] = {0};
@@ -455,17 +468,42 @@ emit_server_message (const char *message,
 	               message);
 }
 
+#ifdef USE_GNOME_KEYRING
 char*
-need_password (const char *message,
+need_password (const char *username,
+               const char *server_url,
                gpointer data)
 {
-	SyncevoDBusServer *obj = (SyncevoDBusServer *)data;
+	char *password = NULL;
+	char *server = NULL;
+	GnomeKeyringResult res;
 
-	g_signal_emit (obj, signals[NEED_PASSWORD], 0);
+	server = strstr (server_url, "://");
+	if (server)
+		server = server + 3;
 
-	/* TODO */
-	return NULL;
+	if (!server)
+		return NULL;
+
+	res = gnome_keyring_find_password_sync (GNOME_KEYRING_NETWORK_PASSWORD,
+	                                        &password,
+	                                        "user", username,
+	                                        "server", server,
+	                                        NULL);
+
+	switch (res) {
+	case GNOME_KEYRING_RESULT_OK:
+	case GNOME_KEYRING_RESULT_NO_MATCH:
+		break;
+	default:
+		g_warning ("Failed to get password from keyring: %s", 
+		           gnome_keyring_result_to_message (res));
+		break;
+	}
+
+	return password;
 }
+#endif
 
 gboolean 
 check_for_suspend (gpointer data)
@@ -541,9 +579,17 @@ syncevo_start_sync (SyncevoDBusServer *obj,
 
 	map<string,int> source_map;
 	g_ptr_array_foreach (sources, (GFunc)syncevo_source_add_to_map, &source_map);
+
+#ifdef USE_GNOME_KEYRING
 	obj->client = new DBusSyncClient (string (server), source_map, 
 	                                  emit_progress, emit_server_message, need_password, check_for_suspend,
 	                                  obj);
+#else
+	obj->client = new DBusSyncClient (string (server), source_map, 
+	                                  emit_progress, emit_server_message, NULL, check_for_suspend,
+	                                  obj);
+#endif
+
 	g_idle_add ((GSourceFunc)do_sync, obj); 
 
 	return TRUE;
@@ -574,21 +620,6 @@ syncevo_abort_sync (SyncevoDBusServer *obj,
 }
 
 static gboolean 
-syncevo_set_password (SyncevoDBusServer *obj,
-                              char *server,
-                              char *password,
-                              GError **error)
-{
-	*error = g_error_new (SYNCEVO_DBUS_ERROR,
-	                      SYNCEVO_DBUS_ERROR_GENERIC_ERROR, 
-	                      "SetPassword not supported yet");
-
-	update_shutdown_timer (obj);
-
-	return FALSE;
-}
-
-static gboolean 
 syncevo_get_servers (SyncevoDBusServer *obj,
                      GPtrArray **servers,
                      GError **error)
@@ -605,7 +636,10 @@ syncevo_get_servers (SyncevoDBusServer *obj,
 	EvolutionSyncConfig::ServerList list = EvolutionSyncConfig::getServers();
 
 	BOOST_FOREACH(const EvolutionSyncConfig::ServerList::value_type &server,list) {
-		char *name, *url, *icon;
+		char *name = NULL;
+		char *url = NULL;
+		char *icon = NULL;
+		gboolean ready = TRUE;
 		SyncevoServer *srv;
 
 		boost::shared_ptr<EvolutionSyncConfig> config (EvolutionSyncConfig::createServerTemplate (server.first));
@@ -613,9 +647,11 @@ syncevo_get_servers (SyncevoDBusServer *obj,
 		if (config.get()) {
 			url = g_strdup (config->getWebURL().c_str());
 			icon = g_strdup (config->getIconURI().c_str());
+			ready = config->getConsumerReady();
 		}
 		name = g_strdup (server.first.c_str());
-		srv = syncevo_server_new (name, url, icon);
+		srv = syncevo_server_new (name, url, icon, ready);
+
 		g_ptr_array_add (*servers, srv);
 	}
 
@@ -642,13 +678,16 @@ syncevo_get_templates (SyncevoDBusServer *obj,
 
 	BOOST_FOREACH(const EvolutionSyncConfig::ServerList::value_type &server,list) {
 		char *name, *url, *icon;
+		gboolean ready;
 		SyncevoServer *temp;
 
 		boost::shared_ptr<EvolutionSyncConfig> config (EvolutionSyncConfig::createServerTemplate (server.first));
 		name = g_strdup (server.first.c_str());
 		url = g_strdup (config->getWebURL().c_str());
 		icon = g_strdup (config->getIconURI().c_str());
-		temp = syncevo_server_new (name, url, icon);
+		ready = config->getConsumerReady();
+		temp = syncevo_server_new (name, url, icon, ready);
+
 		g_ptr_array_add (*templates, temp);
 	}
 
@@ -664,33 +703,41 @@ syncevo_get_template_config (SyncevoDBusServer *obj,
                              GError **error)
 {
 	SyncevoOption *option;
+	const char *ready;
 
 	if (!templ || !options) {
+		if (options)
+			*options = NULL;
+
 		*error = g_error_new (SYNCEVO_DBUS_ERROR,
 		                      SYNCEVO_DBUS_ERROR_MISSING_ARGS, 
 		                      "Template and options arguments must be given");
 		return FALSE;
 	}
 
-	*options = g_ptr_array_new ();
-
 	boost::shared_ptr<EvolutionSyncConfig> config (EvolutionSyncConfig::createServerTemplate (string (templ)));
 	if (!config.get()) {
+		*options = NULL;
 		*error = g_error_new (SYNCEVO_DBUS_ERROR,
 		                      SYNCEVO_DBUS_ERROR_NO_SUCH_SERVER, 
 		                      "No template '%s' found", templ);
 		return FALSE;
 	}
+
+	*options = g_ptr_array_new ();
 	option = syncevo_option_new (NULL, g_strdup ("syncURL"), g_strdup(config->getSyncURL()));
 	g_ptr_array_add (*options, option);
 	option = syncevo_option_new (NULL, g_strdup("username"), g_strdup(config->getUsername()));
-	g_ptr_array_add (*options, option);
-	option = syncevo_option_new (NULL, g_strdup("password"), g_strdup(config->getPassword()));
 	g_ptr_array_add (*options, option);
 	option = syncevo_option_new (NULL, g_strdup("webURL"), g_strdup(config->getWebURL().c_str()));
 	g_ptr_array_add (*options, option);
 	option = syncevo_option_new (NULL, g_strdup("iconURI"), g_strdup(config->getIconURI().c_str()));
 	g_ptr_array_add (*options, option);
+
+	ready = (config->getConsumerReady() ? "yes" : "no");
+	option = syncevo_option_new (NULL, g_strdup("consumerReady"), g_strdup(ready));
+	g_ptr_array_add (*options, option);
+
 	option = syncevo_option_new (NULL, g_strdup("fromTemplate"), g_strdup("yes"));
 	g_ptr_array_add (*options, option);
 
@@ -735,25 +782,28 @@ syncevo_get_server_config (SyncevoDBusServer *obj,
 	SyncevoOption *option;
 
 	if (!server || !options) {
+		if (options)
+			*options = NULL;
 		*error = g_error_new (SYNCEVO_DBUS_ERROR,
 		                      SYNCEVO_DBUS_ERROR_MISSING_ARGS, 
 		                      "Server and options arguments must be given");
 		return FALSE;
 	}
 
-	*options = g_ptr_array_new ();
-
 	boost::shared_ptr<EvolutionSyncConfig> from(new EvolutionSyncConfig (string (server)));
 	/* if config does not exist, create from template */
 	if (!from->exists()) {
 		from = EvolutionSyncConfig::createServerTemplate( string (server));
 		if (!from.get()) {
+			*options = NULL;
 			*error = g_error_new (SYNCEVO_DBUS_ERROR,
 			                      SYNCEVO_DBUS_ERROR_NO_SUCH_SERVER,
 			                      "No server or template '%s' found", server);
 			return FALSE;
 		}
 	}
+
+	*options = g_ptr_array_new ();
 	boost::shared_ptr<EvolutionSyncConfig> config(new EvolutionSyncConfig(string (server)));
 	config->copy(*from, NULL);
 
@@ -761,17 +811,21 @@ syncevo_get_server_config (SyncevoDBusServer *obj,
 	g_ptr_array_add (*options, option);
 	option = syncevo_option_new (NULL, g_strdup("username"), g_strdup(config->getUsername()));
 	g_ptr_array_add (*options, option);
-	option = syncevo_option_new (NULL, g_strdup("password"), g_strdup(config->getPassword()));
-	g_ptr_array_add (*options, option);
 
-	/* url and icon from template if it exists */
+	/* get template options if template exists */
 	boost::shared_ptr<EvolutionSyncConfig> templ = EvolutionSyncConfig::createServerTemplate( string (server));
 	if (templ.get()) {
+		const char *ready;
+
 		option = syncevo_option_new (NULL, g_strdup("fromTemplate"), g_strdup("yes"));
 		g_ptr_array_add (*options, option);
 		option = syncevo_option_new (NULL, g_strdup("webURL"), g_strdup(templ->getWebURL().c_str()));
 		g_ptr_array_add (*options, option);
 		option = syncevo_option_new (NULL, g_strdup("iconURI"), g_strdup(templ->getIconURI().c_str()));
+		g_ptr_array_add (*options, option);
+
+		ready = templ->getConsumerReady() ? "yes" : "no";
+		option = syncevo_option_new (NULL, g_strdup("consumerReady"), g_strdup (ready));
 		g_ptr_array_add (*options, option);
 	}
 
@@ -1041,14 +1095,6 @@ syncevo_dbus_server_class_init(SyncevoDBusServerClass *klass)
 	                                  syncevo_marshal_VOID__STRING_STRING,
 	                                  G_TYPE_NONE, 
 	                                  2, G_TYPE_STRING, G_TYPE_STRING);
-	signals[NEED_PASSWORD] = g_signal_new ("need-password",
-	                                  G_TYPE_FROM_CLASS (klass),
-	                                  (GSignalFlags)(G_SIGNAL_RUN_FIRST | G_SIGNAL_NO_RECURSE),
-	                                  G_STRUCT_OFFSET (SyncevoDBusServerClass, need_password),
-	                                  NULL, NULL,
-	                                  g_cclosure_marshal_VOID__VOID,
-	                                  G_TYPE_NONE, 
-	                                  0);
 
 	/* dbus_glib_syncevo_object_info is provided in the generated glue file */
 	dbus_g_object_type_install_info (SYNCEVO_TYPE_DBUS_SERVER, &dbus_glib_syncevo_object_info);
@@ -1100,6 +1146,7 @@ int main()
 
 	g_type_init ();
 	g_thread_init (NULL);
+	g_set_application_name ("SyncEvolution");
 
 	server = (SyncevoDBusServer*)g_object_new (SYNCEVO_TYPE_DBUS_SERVER, NULL);
 

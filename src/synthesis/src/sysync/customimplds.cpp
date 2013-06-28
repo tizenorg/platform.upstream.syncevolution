@@ -1417,7 +1417,7 @@ bool TCustomImplDS::dsOptionFilterFetchesFromDB(void)
 } // TCustomImplDS::dsOptionFilterFetchesFromDB
 
 
-#endif
+#endif // OBJECT_FILTERING
 
 
 
@@ -2920,6 +2920,9 @@ localstatus TCustomImplDS::implSaveEndOfSession(bool aUpdateAnchors)
       // we are now in sync with remote (like after one-way-from-remote refresh = reload local)
       #ifndef BASED_ON_BINFILE_CLIENT
       // Note: in case of BASED_ON_BINFILE_CLIENT, these updates will be done by binfileds
+      //       (also note that fPreviousToRemoteSyncCmpRef has different semantics in BASED_ON_BINFILE_CLIENT,
+      //       as it serves as a last-changelog-update reference then)
+      // But here, fPreviousToRemoteSyncCmpRef is what it seems - the timestamp corresponding to last sync to remote
       if (fConfigP->fSyncTimeStampAtEnd) {
         // if datastore cannot explicitly set modification timestamps, best time to save is current time
         fPreviousToRemoteSyncCmpRef = fAgentP->getDatabaseNowAs(TCTX_UTC);
@@ -3060,16 +3063,6 @@ bool TCustomImplDS::makeSyncSetLoaded(bool aNeedAll)
 /// @return false if no item found
 bool TCustomImplDS::getFirstItemInfo(localid_out_t &aLocalID, bool &aItemHasChanged)
 {
-  /*
-  // make sure we have the sync set
-  if (!makeSyncSetLoaded(
-    fSlowSync
-    #ifdef OBJECT_FILTERING
-    || fFilteringNeededForAll
-    #endif
-  ))
-    return false; // failed = no item to return
-  */
   // reset the iterator
   fSyncSetPos = fSyncSetList.begin();
   // now get first item's info

@@ -358,15 +358,15 @@ static void skipS(xmlScannerPrivPtr_t pScanner)
 }
 static Ret_t bomDecl(xmlScannerPrivPtr_t pScanner)
 {
-    if (pScanner->pos + 4 > pScanner->bufend) { /* 4 is the max length of BOM */
-        return SML_ERR_OK;
-    }
-
     Short_t bomLength = 0;
     MemByte_t bom0 = *(pScanner->pos);
     MemByte_t bom1 = *(pScanner->pos + 1);
     MemByte_t bom2 = *(pScanner->pos + 2);
     MemByte_t bom3 = *(pScanner->pos + 3);
+
+    if (pScanner->pos + 4 > pScanner->bufend) { /* 4 is the max length of BOM */
+        return SML_ERR_OK;
+    }
 
     if (bom0 != 0x00 && bom1 != 0x00 &&
             bom0 < 0xfe && bom1 < 0xfe) {//utf-8

@@ -446,7 +446,7 @@ bool SyncEvolutionCmdline::run() {
                 return false;
             }
 
-            return client.sync() == STATUS_OK;
+            return ( client.sync() == STATUS_OK);
         }
     }
 
@@ -778,7 +778,7 @@ void SyncEvolutionCmdline::usage(bool full, const string &error, const string &p
 }
 
 #ifdef ENABLE_UNIT_TESTS
-#include <cppunit/extensions/HelperMacros.h>
+#include "test.h"
 
 /** simple line-by-line diff */
 static string diffStrings(const string &lhs, const string &rhs)
@@ -987,7 +987,9 @@ class SyncEvolutionCmdlineTest : public CppUnit::TestFixture {
 public:
     SyncEvolutionCmdlineTest() :
         m_testDir("SyncEvolutionCmdlineTest"),
-        m_scheduleWorldConfig("config.ini:syncURL = http://sync.scheduleworld.com/funambol/ds\n"
+        m_scheduleWorldConfig(".internal.ini:# HashCode = 0\n"
+                              ".internal.ini:# ConfigDate = \n"
+                              "config.ini:syncURL = http://sync.scheduleworld.com/funambol/ds\n"
                               "config.ini:username = your SyncML server account name\n"
                               "config.ini:password = your SyncML server password\n"
                               "config.ini:# logdir = \n"
@@ -1000,7 +1002,7 @@ public:
                               "config.ini:# proxyPassword = \n"
                               "config.ini:# clientAuthType = md5\n"
                               "config.ini:deviceId = fixed-devid\n" /* this is not the default! */
-                              "config.ini:# enableWBXML = 0\n"
+                              "config.ini:# enableWBXML = 1\n"
                               "config.ini:# maxMsgSize = 20000\n"
                               "config.ini:# maxObjSize = 4000000\n"
                               "config.ini:# enableCompression = 0\n"
@@ -1009,6 +1011,7 @@ public:
                               "config.ini:# SSLVerifyHost = 1\n"
                               "config.ini:WebURL = http://sync.scheduleworld.com\n"
                               "config.ini:# IconURI = \n"
+                              "config.ini:ConsumerReady = 1\n"
                               "sources/addressbook/.internal.ini:# last = 0\n"
                               "sources/addressbook/config.ini:sync = two-way\n"
                               "sources/addressbook/config.ini:type = addressbook:text/vcard\n"
@@ -1037,7 +1040,14 @@ public:
                               "sources/todo/config.ini:uri = task2\n"
                               "sources/todo/config.ini:# evolutionuser = \n"
                               "sources/todo/config.ini:# evolutionpassword = \n")
-    {}
+    {
+#ifdef ENABLE_LIBSOUP
+        // path to SSL certificates has to be set only for libsoup
+        boost::replace_first(m_scheduleWorldConfig,
+                             "SSLServerCertificates = ",
+                             "SSLServerCertificates = /etc/ssl/certs/ca-certificates.crt:/etc/pki/tls/certs/ca-bundle.crt:/usr/share/ssl/certs/ca-bundle.crt");
+#endif
+    }
 
 protected:
 
@@ -1198,9 +1208,11 @@ protected:
         help.doit();
         CPPUNIT_ASSERT_EQUAL_DIFF("Available configuration templates:\n"
                                   "   Funambol = http://my.funambol.com\n"
+                                  "   Google = http://m.google.com/sync\n"
                                   "   Memotoo = http://www.memotoo.com\n"
                                   "   ScheduleWorld = http://sync.scheduleworld.com\n"
-                                  "   Synthesis = http://www.synthesis.ch\n",
+                                  "   Synthesis = http://www.synthesis.ch\n"
+                                  "   ZYB = http://www.zyb.com\n",
                                   help.m_out.str());
         CPPUNIT_ASSERT_EQUAL_DIFF("", help.m_err.str());
     }
@@ -1419,7 +1431,9 @@ protected:
                               "\n"
                               "WebURL:\n"
                               "\n"
-                              "IconURI:\n");
+                              "IconURI:\n"
+                              "\n"
+                              "ConsumerReady:\n");
         string sourceProperties("sync:\n"
                                 "\n"
                                 "type:\n"
@@ -1478,6 +1492,8 @@ protected:
         InitList<string> props = InitList<string>("serverNonce") +
             "clientNonce" +
             "devInfoHash" +
+            "HashCode" +
+            "ConfigDate" +
             "last";
         BOOST_FOREACH(string &prop, props) {
             boost::replace_all(oldConfig,
@@ -1646,7 +1662,7 @@ protected:
     }
 
     const string m_testDir;
-    const string m_scheduleWorldConfig;
+    string m_scheduleWorldConfig;
         
 
 private:
@@ -1739,6 +1755,10 @@ private:
                              "WebURL = http://my.funambol.com");
 
         boost::replace_first(config,
+                             "# enableWBXML = 1",
+                             "enableWBXML = 0");
+
+        boost::replace_first(config,
                              "addressbook/config.ini:uri = card3",
                              "addressbook/config.ini:uri = card");
         boost::replace_first(config,
@@ -1749,15 +1769,15 @@ private:
                              "calendar/config.ini:uri = cal2",
                              "calendar/config.ini:uri = event");
         boost::replace_first(config,
-                             "calendar/config.ini:sync = two-way",
-                             "calendar/config.ini:sync = disabled");
+                             "calendar/config.ini:type = calendar",
+                             "calendar/config.ini:type = calendar:text/calendar!");
 
         boost::replace_first(config,
                              "todo/config.ini:uri = task2",
                              "todo/config.ini:uri = task");
         boost::replace_first(config,
-                             "todo/config.ini:sync = two-way",
-                             "todo/config.ini:sync = disabled");
+                             "todo/config.ini:type = todo",
+                             "todo/config.ini:type = todo:text/calendar!");
 
         return config;
     }
@@ -1771,6 +1791,10 @@ private:
         boost::replace_first(config,
                              "WebURL = http://sync.scheduleworld.com",
                              "WebURL = http://www.synthesis.ch");        
+
+        boost::replace_first(config,
+                             "ConsumerReady = 1",
+                             "# ConsumerReady = 0");
 
         boost::replace_first(config,
                              "addressbook/config.ini:uri = card3",

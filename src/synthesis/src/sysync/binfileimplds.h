@@ -139,7 +139,9 @@ typedef struct {
   #define CHANGELOG_DB_SUFFIX "_clg.bfi"
 #endif
 #define CHANGELOG_DB_ID 4
-#define CHANGELOG_DB_VERSION 2
+#define CHANGELOG_DB_VERSION 3
+
+const uInt16 changeIndentifierMaxLen=128;
 
 // changelog flag bits
 const uInt8 chgl_deleted=0x80;
@@ -148,6 +150,7 @@ const uInt8 chgl_receive_only=0x20;
 const uInt8 chgl_markedforresume=0x10;
 const uInt8 chgl_resend=0x08;
 const uInt8 chgl_modbysync=0x04;
+const uInt8 chgl_newadd=0x02;
 //%%%never used, NOW CONFLICTS WITH chgl_resend and chgl_noresume: const uInt8 chgl_category_mask=0x0F;
 
 // single changelog entry
@@ -175,6 +178,10 @@ typedef struct {
 typedef struct {
   // modification count source (will be used to mark modified records)
   uInt32 modcount;
+  // V3 additions
+  // - global change tracking anchors
+  char lastChangeCheckIdentifier[changeIndentifierMaxLen];  // string field to save identifier for last changelog update
+  lineartime_t lastChangeCheck; // reference time for last changelog update
 } TChangeLogHeader;
 
 #endif
@@ -301,8 +308,9 @@ typedef struct {
   char remoteDBpath[remoteDBpathMaxLen];
   // - time of last sync
   lineartime_t lastSync;
-  lineartime_t lastTwoWaySync;
-  // - modification count of last sync (refers to changelog)
+  //%%%lineartime_t lastTwoWaySync;
+  lineartime_t lastChangeCheck; // (formerly lastTwoWaySync) reference time for last changelog update
+  // - modification count of last sync and suspend (refers to changelog)
   uInt32 lastSuspendModCount; /// @note: before DS 1.2 enginem this was used as "lastModCount"
   uInt32 lastTwoWayModCount;
   // - last remote (server) anchor
@@ -329,8 +337,8 @@ typedef struct {
   // ===========================
   #if TARGETS_DB_VERSION>5
   // storage for non-time sync identifiers in case DB on top is customImplDS
-  char lastSyncIdentifier[remoteAnchorMaxLen];  // string field to save fPreviousToRemoteSyncIdentifier
-  char lastSuspendIdentifier[remoteAnchorMaxLen];  // string field to save fPreviousSuspendIdentifier
+  char dummyIdentifier1[remoteAnchorMaxLen];  // (formerly lastSyncIdentifier) not used any more - single identifier in changelog is sufficient
+  char dummyIdentifier2[remoteAnchorMaxLen];  // (formerly lastSuspendIdentifier) not used any more - single identifier in changelog is sufficient
   // remote datastore info (retrieved from devInf, if possible)
   char remoteDBdispName[dispNameMaxLen]; // display name of remote datastore
   char filterCapDesc[filterCapDescMaxLen]; // description string of remote filter capabilities
@@ -623,6 +631,10 @@ public:
   string fLocalDBPath;
   // - flag that corresponds with profile.dsAvailFlags / dsavail_xxx
   uInt16 fDSAvailFlag;
+  // - if set, the compare reference time for changelog updates is set to end-of-session time
+  //   Note: before 3.2.0.32, this was hardcoded via SYNCTIME_IS_ENDOFSESSION. Now SYNCTIME_IS_ENDOFSESSION
+  //         only defines the default value for this setting
+  bool fCmpRefTimeStampAtEnd;  
   // public methods
   // - init a default target for this datastore
   virtual void initTarget(
@@ -665,8 +677,11 @@ protected:
   /// @Note Some of these will be updated during the session, but in a way that does NOT affect the anchoring of current/last session
   //
   /// @{
-  /// Reference time of previous sync which sent data to remote to compare modification dates against
-  /// @note normally==fPreviousSyncTime, but can be end of sync for datastore that can't write modified timestamps at will
+  /// Reference time of previous changelog update (preflight)
+  /// @note the name of the variable indicates "previous to remote sync" time because in BASED_ON_BINFILE_CLIENT case where
+  //        TCustomImplDS sits on top of binfile, it expects that instance var name (because in non binfile-based cases,
+  //        that is in fact the "previous to remote sync" date. With the intermediate binfile changelog however, only
+  //        changes since last preflight (changelog update) need to be reported.
   lineartime_t fPreviousToRemoteSyncCmpRef;
   /// Reference string used by database API level (in BASED_ON_BINFILE_CLIENT case) to detect changes
   string fPreviousToRemoteSyncIdentifier;

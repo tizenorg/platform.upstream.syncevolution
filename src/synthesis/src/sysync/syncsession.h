@@ -298,11 +298,13 @@ public:
   virtual bool syncHdrFailure(bool aTryAgain) = 0;
   // Abort session
   void AbortSession(TSyError aStatusCode, bool aLocalProblem, TSyError aReason=0); // resets session and sets aborted flag to prevent further processing of message
+  void MarkSuspendAlertSent(bool aSent);
   // Suspend session
   void SuspendSession(TSyError aReason);
   // Session status
   bool isAborted(void) { return fAborted; }; // test abort status
   bool isSuspending(void) { return fSuspended; }; // test if flagged for suspend
+  bool isSuspendAlertSent (void) { return fSuspendAlertSent; }; // test if suspend alert was already sent
   bool isAllSuccess(void); // test if session was completely successful
   void DatastoreFailed(TSyError aStatusCode, bool aLocalProblem=false); // let session know that datastore has failed
   void DatastoreHadErrors(void) { fErrorItemDatastores++; }; // let session know that sync was ok, but some items had errors
@@ -505,7 +507,7 @@ public:
     TLocalEngineDS *aForDatastoreP
   );
   // access to session info from commands
-  bool mustSendDevInf(void) { return false; }; // can be overridden to force devinf sending (e.g if list of synced fields has changed since last sync)
+  bool mustSendDevInf(void) { return fRemoteMustSeeDevinf; };
   // - access DevInf (session owned)
   SmlItemPtr_t getLocalDevInfItem(bool aAlertedOnly, bool aWithoutCTCapProps);
   // - analyze devinf of remote party (can be derived to add client or server specific analysis)
@@ -870,6 +872,7 @@ protected:
   bool fMessageRetried; // if set (by TSyncHeader::execute()) we have received a retried message and should resend the last answer
   bool fAborted; // if set, session is being aborted (and will be deleted at EndRequest)
   bool fSuspended; // if set, session is being suspended (stopped processing commands, will send Suspend Alert to remote at next opportunity)
+  bool fSuspendAlertSent; // if set, session has sent a suspend alert to the remote party
   uInt16 fFailedDatastores;
   uInt16 fErrorItemDatastores;
   TSyError fAbortReasonStatus; // if fAborted, this contains a status code what command has aborted the session

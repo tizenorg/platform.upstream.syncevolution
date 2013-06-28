@@ -120,10 +120,6 @@
 /* compiling for iPhone */
 #undef IPHONE
 
-/* Define to the sub-directory in which libtool stores uninstalled libraries.
-   */
-#undef LT_OBJDIR
-
 /* Name of package */
 #undef PACKAGE
 
@@ -145,8 +141,14 @@
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
 
+/* default value for SSLServerCertificates option */
+#undef SYNCEVOLUTION_SSL_SERVER_CERTIFICATES
+
 /* "using Synthesis engine" */
 #undef SYNTHESIS
+
+/* define if gnome keyring should be used in dbus service */
+#undef USE_GNOME_KEYRING
 
 /* Use the MUX widget library */
 #undef USE_MOBLIN_UX

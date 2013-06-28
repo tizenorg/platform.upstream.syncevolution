@@ -57,10 +57,21 @@ server_config_update_from_entry (server_config *server, GtkEntry *entry)
     g_assert (str);
     new_str = gtk_entry_get_text (entry);
 
-    if (*str == NULL || strcmp (*str, new_str) != 0) {
+    if ((*str == NULL && strlen (new_str) != 0) ||
+        (*str != NULL && strcmp (*str, new_str) != 0)) {
+
+        server->changed = TRUE;
+
+        if (*str == server->password) {
+            server->auth_changed = TRUE;
+            server->password_changed = TRUE;
+        } else if (*str == server->username ||
+                   *str == server->base_url) {
+            server->auth_changed = TRUE;
+        }
+
         g_free (*str);
         *str = g_strdup (new_str);
-        server->changed = TRUE;
     }
 }
 
@@ -78,9 +89,6 @@ server_config_update_from_option (server_config *server, SyncevoOption *option)
         } else if (strcmp (key, "username") == 0) {
             g_free (server->username);
             server->username = g_strdup (value);
-        } else if (strcmp (key, "password") == 0) {
-            g_free (server->password);
-            server->password = g_strdup (value);
         } else if (strcmp (key, "webURL") == 0) {
             if (server->web_url)
             g_free (server->web_url);
@@ -127,12 +135,17 @@ server_config_get_option_array (server_config *server)
     g_ptr_array_add (options, option);
     option = syncevo_option_new (NULL, g_strdup ("username"), g_strdup (server->username));
     g_ptr_array_add (options, option);
-    option = syncevo_option_new (NULL, g_strdup ("password"), g_strdup (server->password));
-    g_ptr_array_add (options, option);
     option = syncevo_option_new (NULL, g_strdup ("webURL"), g_strdup (server->web_url));
     g_ptr_array_add (options, option);
     option = syncevo_option_new (NULL, g_strdup ("iconURI"), g_strdup (server->icon_uri));
     g_ptr_array_add (options, option);
+
+    /* if gnome-keyring password was set, set password option to "-"
+     * (meaning 'use AskPassword()'). Otherwise don't touch the password */
+    if (server->password_changed) {
+        option = syncevo_option_new (NULL, g_strdup ("password"), g_strdup ("-"));
+        g_ptr_array_add (options, option);
+    }
 
     for (l = server->source_configs; l; l = l->next) {
         source_config *source = (source_config*)l->data;

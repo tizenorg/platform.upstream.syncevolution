@@ -55,7 +55,7 @@ class EvolutionContactSource : public TrackingSyncSource
     virtual const char *getMimeVersion() const;
     virtual const char *getSupportedTypes() const { return "text/vcard:3.0,text/x-vcard:2.1"; }
    
-    virtual SyncItem *createItem(const string &uid);
+    virtual SyncItem *createItem(const string &uid, const char *type = NULL);
     
   protected:
     //
@@ -70,9 +70,10 @@ class EvolutionContactSource : public TrackingSyncSource
     // need to override native format: it is always vCard 3.0
     void getSynthesisInfo(string &profile,
                           string &datatypes,
-                          string &native)
+                          string &native,
+                          XMLConfigFragments &fragments)
     {
-        TrackingSyncSource::getSynthesisInfo(profile, datatypes, native);
+        TrackingSyncSource::getSynthesisInfo(profile, datatypes, native, fragments);
         profile = "\"vCard\", 2";
         native = "vCard30";
     }

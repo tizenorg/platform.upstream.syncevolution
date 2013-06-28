@@ -657,6 +657,21 @@ class EvolutionSyncConfig {
     virtual std::string getIconURI() const;
     virtual void setIconURI(const std::string &uri, bool temporarily = false);
 
+    /**
+     * A property of server template configs. True if the server is
+     * ready for use by "normal" users (everyone can get an account
+     * and some kind of support, we have tested the server well
+     * enough, ...).
+     */
+    virtual bool getConsumerReady() const;
+    virtual void setConsumerReady(bool ready);
+
+    virtual unsigned long getHashCode() const;
+    virtual void setHashCode(unsigned long hashCode);
+
+    virtual std::string getConfigDate() const;
+    virtual void setConfigDate(); /* set current time always */
+
     /**@}*/
 
     /**
@@ -803,6 +818,13 @@ struct ConstSyncSourceNodes {
     const boost::shared_ptr<const ConfigNode> m_trackingNode;
 };
 
+struct SourceType {
+    SourceType():m_forceFormat(false)
+    {}
+    string m_backend; /**< identifies the SyncEvolution backend (either via a generic term like "addressbook" or a specific one like "Evolution Contacts") */
+    string m_format; /**< the format to be used (typically a MIME type) */
+    bool   m_forceFormat; /**< force to use the client's preferred format instead giving the engine and server a choice */
+};
 
 /**
  * This class maps per-source properties to ConfigNode properties.
@@ -855,9 +877,9 @@ class EvolutionSyncSourceConfig {
      *         sourcePropSourceType in SyncEvolutionConfig.cpp
      *         for details
      */
-    static pair<string, string> getSourceType(const SyncSourceNodes &nodes);
+    static SourceType getSourceType(const SyncSourceNodes &nodes);
     static string getSourceTypeString(const SyncSourceNodes &nodes);
-    virtual pair<string, string> getSourceType() const;
+    virtual SourceType getSourceType() const;
 
     /** set the source type in <backend>[:format] style */
     virtual void setSourceType(const string &value, bool temporarily = false);

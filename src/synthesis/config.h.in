@@ -3,8 +3,17 @@
 /* libsynthesis.a linked statically */
 #undef DBAPI_LINKED
 
+/* avoid hard dependency on Evolution shared objects */
+#undef EVOLUTION_COMPATIBILITY
+
+/* Define to 1 use builtin xmltok as XML Parser */
+#undef HAVE_BUILTIN_XMLTOK
+
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
+
+/* Define to 1 to use expat as XML parser */
+#undef HAVE_EXPAT
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
@@ -36,12 +45,11 @@
 /* Define to 1 if you have the <sys/types.h> header file. */
 #undef HAVE_SYS_TYPES_H
 
+/* Define to 1 use system xmltok as XML parser */
+#undef HAVE_SYS_XMLTOK
+
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
-
-/* Define to the sub-directory in which libtool stores uninstalled libraries.
-   */
-#undef LT_OBJDIR
 
 /* Define to 1 if your C compiler doesn't accept -c and -o together. */
 #undef NO_MINUS_C_MINUS_O

@@ -9,3 +9,6 @@ EXTRA_DIST =
 MAINTAINERCLEANFILES = Makefile.in config.guess config.sub configure depcomp install-sh ltmain.sh missing mkinstalldirs
 
 ACLOCAL_AMFLAGS = -I m4
+
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = synthesis.pc

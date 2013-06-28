@@ -21,22 +21,15 @@
       <arg type="s" name="server"/>
       <arg type="s" name="message"/>
     </signal>
-    <signal name="NeedPassword">
-      <arg type="s" name="server"/>
-    </signal>
-    <method name="setPassword">
-      <arg type="s" name="server" direction="in"/>
-      <arg type="s" name="password" direction="in"/>
-    </method>
     <method name="GetTemplates">
-      <arg type="a(sss)" name="templates" direction="out"/>
+      <arg type="a(sssb)" name="templates" direction="out"/>
     </method>
     <method name="GetTemplateConfig">
       <arg type="s" name="template" direction="in"/>
       <arg type="a(sss)" name="properties" direction="out"/>
     </method>
     <method name="GetServers">
-      <arg type="a(sss)" name="servers" direction="out"/>
+      <arg type="a(sssb)" name="servers" direction="out"/>
     </method>
     <method name="GetServerConfig">
       <arg type="s" name="server" direction="in"/>

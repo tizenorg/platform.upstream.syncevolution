@@ -64,6 +64,7 @@ my $synthesis = $server =~ /synthesis/;
 
 my $egroupware = $server =~ /egroupware/;
 my $funambol = $server =~ /funambol/;
+my $google = $server =~ /google/;
 my $evolution = $client =~ /evolution/;
 my $addressbook = $client =~ /addressbook/;
 
@@ -201,6 +202,15 @@ sub Normalize {
     # removed or added by servers
     s/^DESCRIPTION:(.*?)(\\n)+$/DESCRIPTION:$1/gm;
 
+    # use the shorter property name when there are alternatives,
+    # but avoid duplicates
+    foreach my $i ("SPOUSE", "MANAGER", "ASSISTANT", "ANNIVERSARY") {
+        if (/^X-\Q$i\E:(.*?)$/m) {
+            s/^X-EVOLUTION-\Q$i\E:\Q$1\E\n//m;
+        }
+    }
+    s/^X-EVOLUTION-(SPOUSE|MANAGER|ASSISTANT|ANNIVERSARY)/X-$1/gm;
+
     # if there is no DESCRIPTION in a VJOURNAL, then use the
     # summary: that's what is done when exchanging such a
     # VJOURNAL as plain text
@@ -225,7 +235,7 @@ sub Normalize {
     s;^BEGIN:VTIMEZONE.*?^TZID:/[^/\n]*/[^/\n]*/(\S+).*^END:VTIMEZONE;BEGIN:VTIMEZONE\nTZID:$1 [...]\nEND:VTIMEZONE;gms;
     s;TZID=/[^/\n]*/[^/\n]*/(.*)$;TZID=$1;gm;
 
-    if ($scheduleworld || $egroupware || $synthesis || $addressbook || $funambol) {
+    if ($scheduleworld || $egroupware || $synthesis || $addressbook || $funambol ||$google) {
       # does not preserve X-EVOLUTION-UI-SLOT=
       s/^(\w+)([^:\n]*);X-EVOLUTION-UI-SLOT=\d+/$1$2/mg;
     }
@@ -249,6 +259,23 @@ sub Normalize {
       s/^ADR(.*?):([^;]*?);[^;]*?;/ADR$1:$2;;/mg;
       # has no concept of "preferred" phone number
       s/^(TEL.*);TYPE=PREF/$1/mg;
+    }
+
+   if($google) {
+      # ignore the PHOTO encoding data 
+      s/^PHOTO(.*?): .*\n/^PHOTO$1: [...]\n/mg; 
+      # FN propertiey is not correct 
+      s/^FN:.*\n/FN$1: [...]\n/mg;
+      # ';' in NOTE is lost by the server: ; in middle is replace by white space
+      # while ; in the end is omitted.
+      while (s!^NOTE:(.*)\\\;(.+)\n!NOTE:$1 $2\n!mg) {}
+      s!^NOTE:(.*)\\\;\n!NOTE:$1\n!mg;
+      # ';' in ORG is lost 
+      while (s!^ORG:(.*)\;(.*)\n!ORG:$1 $2\n!mg) {}
+      # Not support car type in telephone
+      s!^TEL\;TYPE=CAR(.*)\n!TEL$1\n!mg;
+      # some properties are lost
+      s/^(X-EVOLUTION-FILE-AS|NICKNAME|BDAY|CATEGORIES|CALURI|FBURL|ROLE|URL|X-AIM|X-EVOLUTION-UI-SLOT|X-ANNIVERSARY|X-ASSISTANT|X-EVOLUTION-BLOG-URL|X-EVOLUTION-VIDEO-URL|X-GROUPWISE|X-ICQ|X-MANAGER|X-SPOUSE|X-MOZILLA-HTML|X-YAHOO)(;[^:;\n]*)*:.*\r?\n?//gm;
     }
 
     if ($addressbook) {
@@ -293,7 +320,7 @@ sub Normalize {
 
     if ($funambol) {
       # several properties are not preserved
-      s/^(CALURI|FBURL|FN|PHOTO|X-EVOLUTION-ANNIVERSARY|X-MOZILLA-HTML|X-EVOLUTION-FILE-AS|X-AIM|X-EVOLUTION-ASSISTANT|X-EVOLUTION-BLOG-URL|X-EVOLUTION-MANAGER|X-EVOLUTION-SPOUSE|X-EVOLUTION-VIDEO-URL|X-GROUPWISE|X-ICQ|X-YAHOO)(;[^:;\n]*)*:.*\r?\n?//gm;
+      s/^(CALURI|FBURL|X-MOZILLA-HTML|X-EVOLUTION-FILE-AS|X-AIM|X-EVOLUTION-BLOG-URL|X-EVOLUTION-VIDEO-URL|X-GROUPWISE|X-ICQ|X-YAHOO|X-ASSISTANT)(;[^:;\n]*)*:.*\r?\n?//gm;
 
       # quoted-printable line breaks are =0D=0A, not just single =0A
       s/(?<!=0D)=0A/=0D=0A/g;
@@ -301,6 +328,26 @@ sub Normalize {
       s/^EMAIL:john.doe\@yet.another.world\n\r?//mg;
       # this particular type is not preserved
       s/ADR;TYPE=PARCEL:Test Box #3/ADR;TYPE=HOME:Test Box #3/;
+    }
+    if ($funambol) {
+      #several properties are not preserved by funambol server in icalendar2.0 format
+      s/^(UID|SEQUENCE|TRANSP|LAST-MODIFIED|X-EVOLUTION-ALARM-UID)(;[^:;\n]*)*:.*\r?\n?//gm;
+      if (/^BEGIN:VEVENT/m ) {
+        #several properties are not preserved by funambol server in itodo2.0 format and
+        s/^(RECURRENCE-ID|ATTENDEE)(;[^:;\n]*)*:.*\r?\n?//gm;
+        #REPEAT:0 is added by funambol server so ignore it
+        s/^(REPEAT:0).*\r?\n?//gm;
+        #CN parameter is lost by funambol server
+        s/^ORGANIZER([^:\n]*);CN=([^:\n]*)(;[^:\n])*:(.*\r?\n?)/ORGANIZER$1$3:$4/mg;
+      }
+
+      if (/^BEGIN:VTODO/m ) {
+        #several properties are not preserved by funambol server in itodo2.0 format and
+        s/^(STATUS|URL)(;[^:;\n]*)*:.*\r?\n?//gm;
+
+        #some new properties are added by funambol server
+        s/^(CLASS:PUBLIC|PERCENT-COMPLETE:0).*\r?\n?//gm;
+      }
     }
 
     if ($funambol || $egroupware) {

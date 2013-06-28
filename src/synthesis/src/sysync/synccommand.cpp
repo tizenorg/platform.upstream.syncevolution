@@ -1525,6 +1525,7 @@ TSyncOpCommand::TSyncOpCommand(
       break;
     case sop_wants_replace:
     case sop_replace:
+    case sop_soft_add:
       fSyncOpElementP->elementType=SML_PE_REPLACE;
       fCmdType=scmd_replace;
       break;

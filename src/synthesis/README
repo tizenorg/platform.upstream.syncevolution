@@ -2,10 +2,10 @@ Build dependencies
 ------------------
 pcre
 sqlite3
-xmltok (optional, bundled source is used automatically if not installed)
+xmltok or expat (optional, bundled source is used automatically if not installed)
 zlib
 
-Ubuntu 8.04: libpcre3-dev libsqlite3-dev libxmltok1-dev libz-dev
+Ubuntu 8.04: libpcre3-dev libsqlite3-dev libexpat-dev libz-dev
 
 Contributions
 -------------

@@ -63,7 +63,10 @@ TSyError TEngineModuleBase::Connect( string   aEngineName,
   fDebugFlags = aDebugFlags;
 
   #if defined SYSYNC_ENGINE || defined SYSYNC_ENGINE_TEST
-    if (fCI==NULL)       fCI= new SDK_Interface_Struct;
+    if (fCI==NULL) {
+      fCI = &fCIBuffer;
+      fCIisStatic = true;
+    }
     InitCallback_Exotic( fCI,      DB_Callback_Version );
                          fCI->thisBase= this; // get <this> later for callback calls
     CB_Connect         ( fCI );

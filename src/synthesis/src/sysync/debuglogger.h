@@ -196,6 +196,11 @@ public:
   /// @brief install output channel handler object (and pass it's ownership!)
   /// @param aDbgOutP[in] output channel to be used for this logger (will be owned and finally destroyed by the logger)
   void installOutput(TDbgOut *aDbgOutP);
+  /// @brief link this logger to another logger and redirect output to that logger
+  /// @param aDebugLoggerP[in] another logger, that must be alive as long as this logger is alive
+  void outputVia(TDebugLoggerBase *aDebugLoggerP);
+  /// @brief check if an output channel is already established other than with default values
+  bool outputEstablished(void) { return fOutStarted; };
   /// @brief set debug options
   void setOptions(const TDbgOptions *aDbgOptionsP) { fDbgOptionsP=aDbgOptionsP; };
   /// @brief get debug options pointer
@@ -217,11 +222,11 @@ public:
   /// @brief append to debug output path + filename (no extension, please)
   void appendToDebugPath(cAppCharP aPathElement) { fDbgPath += aPathElement; };
   /// @brief get debug output file path (w/o extension)
-  cAppCharP getDebugPath(void) { return fDbgPath.c_str(); };
+  cAppCharP getDebugPath(void) { return fOutputLoggerP ? fOutputLoggerP->getDebugPath() : fDbgPath.c_str(); };
   /// @brief get debug output file name (w/o path or extension)
-  cAppCharP getDebugFilename(void) { size_t n=fDbgPath.find_last_of("\\/:"); return fDbgPath.c_str()+(n!=string::npos ? n+1 : 0); };
+  cAppCharP getDebugFilename(void) { if (fOutputLoggerP) return fOutputLoggerP->getDebugFilename(); size_t n=fDbgPath.find_last_of("\\/:"); return fDbgPath.c_str()+(n!=string::npos ? n+1 : 0); };
   /// @brief get debug output file extension
-  cAppCharP getDebugExt(void) { return fDbgOptionsP ? DbgOutFormatExtensions[fDbgOptionsP->fOutputFormat] : ""; };
+  cAppCharP getDebugExt(void) { return fOutputLoggerP ? fOutputLoggerP->getDebugExt() : fDbgOptionsP ? DbgOutFormatExtensions[fDbgOptionsP->fOutputFormat] : ""; };
   // - normal output
   /// @brief Write text to debug output channel.
   /// Notes:
@@ -241,9 +246,9 @@ public:
   /// @param aDbgMask debug mask, bits set here must be set in the debuglogger's own mask in order to display the debug text
   /// @param aFormat[in] format text in printf style to be written out
   void DebugPrintf(uInt32 aDbgMask, cAppCharP aFormat, ...)
-    #ifdef __GNUC__
+  	#ifdef __GNUC__
     __attribute__((format(printf, 3, 4)))
-#endif
+		#endif
     ;
   /// @brief set debug mask to be used for next DebugPrintfLastMask() call
   /// @param aDbgMask debug mask, bits set here must be set in the debuglogger's own mask in order to display the debug text
@@ -251,9 +256,9 @@ public:
   /// @brief like DebugPrintf(), but using mask previously set by setNextMask()
   /// @param aFormat[in] format text in printf style to be written out
   void DebugPrintfLastMask(cAppCharP aFormat, ...)
-#ifdef __GNUC__
+		#ifdef __GNUC__
     __attribute__((format(printf, 2, 3)))
-#endif
+		#endif
     ;
   // - Blocks
   /// @brief Open structure Block. Depending on the output format, this will generate indent, XML tags, HTML headers etc.
@@ -266,19 +271,19 @@ public:
   virtual void DebugVOpenBlock(cAppCharP aBlockName, cAppCharP aBlockTitle, bool aCollapsed, cAppCharP aBlockFmt, va_list aArgs);
   /// @brief Open structure Block, printf style variant
   void DebugOpenBlock(cAppCharP aBlockName, cAppCharP aBlockTitle, bool aCollapsed, cAppCharP aBlockFmt, ...)
-#ifdef __GNUC__
+    #ifdef __GNUC__
     __attribute__((format(printf, 5, 6)))
-#endif
+		#endif
       ;
   void DebugOpenBlockExpanded(cAppCharP aBlockName, cAppCharP aBlockTitle, cAppCharP aBlockFmt, ...)
-#ifdef __GNUC__
+    #ifdef __GNUC__
     __attribute__((format(printf, 4, 5)))
-#endif
+		#endif
     ;
   void DebugOpenBlockCollapsed(cAppCharP aBlockName, cAppCharP aBlockTitle, cAppCharP aBlockFmt, ...)
-#ifdef __GNUC__
+    #ifdef __GNUC__
     __attribute__((format(printf, 4, 5)))
-#endif
+		#endif
     ;
   /// @brief Open structure Block, without any attributes
   virtual void DebugOpenBlock(cAppCharP aBlockName, cAppCharP aBlockTitle=NULL, bool aCollapsed=false);
@@ -287,11 +292,15 @@ public:
 protected:
   // helper methods
   /// @brief start debugging output if needed and sets fOutStarted
-  void DebugStartOutput(void);
+  bool DebugStartOutput(void);
   /// @brief Output single line to debug channel (includes indenting, but no other formatting)
   void DebugPutLine(cAppCharP aText, stringSize aTextSize=0, bool aPre=false);
   /// @brief finalize debugging output
   void DebugFinalizeOutput(void);
+  /// @brief get block number
+  uInt32 getBlockNo(void) { return fOutputLoggerP ? fOutputLoggerP->getBlockNo() : fBlockNo; };
+  /// @brief increment block number
+  void nextBlock(void) { if (fOutputLoggerP) fOutputLoggerP->nextBlock(); else fBlockNo++; };
   /// @brief internal helper for closing debug Blocks
   /// @param aBlockName[in]   Name of Block to close. All Blocks including the first with given name will be closed. If NULL, all Blocks will be closed.
   /// @param aCloseComment[in]  Comment about closing Block. If NULL, no comment will be shown (unless implicit closes occur, which auto-creates a comment)
@@ -308,6 +317,7 @@ protected:
   bool fOutStarted; // set if output has started
   uInt32 fBlockNo; // block count for folding
   GZones *fGZonesP; // zones list for time conversions
+  TDebugLoggerBase *fOutputLoggerP; // another logger to be used for output
 }; // TDebugLoggerBase
 
 

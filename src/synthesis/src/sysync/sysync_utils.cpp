@@ -1915,6 +1915,10 @@ void MD5B64(const char *aString, sInt32 aLen, string &aMD5B64)
 void StringObjTimestamp(string &aStringObj, lineartime_t aTimer)
 {
   // format the time
+  if (aTimer==noLinearTime) {
+  	aStringObj = "<no time>";
+    return;
+  }
   sInt16 y,mo,d,h,mi,s,ms;
   lineartime2date(aTimer,&y,&mo,&d);
   lineartime2time(aTimer,&h,&mi,&s,&ms);

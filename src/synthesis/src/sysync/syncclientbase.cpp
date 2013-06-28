@@ -306,6 +306,19 @@ InstanceID_t TClientEngineInterface::getSmlInstanceOfSession(SessionH aSessionH)
   return clientSessionP->getSmlWorkspaceID();
 } // TClientEngineInterface::getSmlInstanceOfSession
 
+TSyError TClientEngineInterface::debugPuts(cAppCharP aFile, int aLine, cAppCharP aFunction,
+                                           int aDbgLevel, cAppCharP aPrefix,
+                                           cAppCharP aText)
+{
+  #if defined(SYDEBUG)
+  static_cast<TSyncClientBase *>(getSyncAppBase())->getDbgLogger()->DebugPuts(/* aFile, aLine, aFunction, aPrefix */
+                                                                              aDbgLevel, aText);
+  return 0;
+  #else
+  return LOCERR_NOTIMP;
+  #endif
+}
+
 #endif // ENGINE_LIBRARY
 
 #endif // ENGINEINTERFACE_SUPPORT

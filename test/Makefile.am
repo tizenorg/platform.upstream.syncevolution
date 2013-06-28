@@ -1,9 +1,11 @@
 EXTRA_DIST = \
+	abort-redirect.cpp \
         ClientTest.h \
         ClientTest.cpp \
 	COPYING \
         client-test-main.cpp \
 	test.h \
+	test.cpp \
         Algorithm/Artistic \
         Algorithm/COPYING \
         Algorithm/Diff.pm \
@@ -14,4 +16,5 @@ EXTRA_DIST = \
         testcases/vcard21.vcf \
         testcases/vcard30.vcf \
         testcases/imemo20.ics \
+	$(wildcard testcases/*.patch) \
         synccompare.pl

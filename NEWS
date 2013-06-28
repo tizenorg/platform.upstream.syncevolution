@@ -1,3 +1,69 @@
+SyncEvolution 0.9 beta 2 -> 0.9 beta 3, 21.07.2009
+--------------------------------------------------
+Synthesis SyncML Engine version: see src/synthesis/ChangeLog
+
+Enabled calendar and task synchronization for myFunambol.com.
+Not all iCalendar 2.0 features are supported by the server,
+most notably support for meetings (drops attendees), meeting
+invitations (drops UID), detached recurrences
+(drops RECURRENCE-ID). See README.funambol for details.
+
+Interoperability with the Funambol server was improved by adding
+support for some vCard extensions (X-MANAGER/ASSISTANT/SPOUSE/ANNIVERSARY,
+Bugzilla #2418). Lost ACTION property is worked around (#2422).
+
+Synchronization with Google Contacts was enabled and tested.
+A configuration template for that server is now provided. Google
+follows the vCard 2.1 specification and thus does not support some
+of the vCard 3.0 additions, nor some of the common extensions. As
+a result, several properties are not synchronized (nickname, birthday,
+spouse/manager, URLs, ...). Only one top-level organization seems to
+be supported. For details, see README.google.
+
+Regarding Google's SyncML support, refresh-from-client and
+one-way-from-client sync modes are not supported. Deleting contacts
+moves them out of the main address without deleting them permanently. When
+adding such a contact again, the server discards the data sent by the
+client and recreates the contact with the data that it remembered.
+
+SSL certificate checking with libsoup (the default transport) is now
+supported (#2431). However, libsoup/gnutls are very strict about SSL
+certificate checking and reject version 1 certificates, like the one
+used by Verisign for Google (#4551). At the moment the only solution
+is to fall back to plain http in the Google configuration template.
+
+CTRL-C no longer kills SyncEvolution right away. Instead it
+asks the server to suspend the session. If that takes too
+long, then pressing CTRL-C twice quickly will abort the sync
+without waiting for the server (warning, this may lead to a
+slow sync in the next session).
+
+WBXML is enabled by default now, except for Funambol (#2415).
+Using WBXML reduces message sizes and increases parsing
+performance. It was not enabled initially in the 0.9 releases in order
+to test this new feature more thoroughly. Old configs don't have an
+explicit enableWBXML setting and therefore will automatically use the
+new default.
+
+Various bug fixes and improvements:
+
+* only show servers in GUI which are tested and supported (Bugzilla #3336)
+* a single log file is written in .html format (#3474)
+* added several translations of the GUI
+* lots of testing improvements, build binary packages again
+
+UPGRADING
+
+When enabling calendar and todo synchronization with Funambol
+in an existing configuration, set the type so that iCalendar 2.0 is used:
+  syncevolution --configure --source-type sync=two-way funambol calendar todo
+  syncevolution --configure --source-type type='calendar:text/calendar!' funambol calendar
+  syncevolution --configure --source-type type='todo:text/calendar!' funambol todo
+
+When creating a configuration anew, this is not necessary because the
+configuration template contains those types.
+
+
 SyncEvolution 0.9 beta 1 -> 0.9 beta 2, 12.06.2009
 --------------------------------------------------
 Synthesis SyncML Engine version: see src/synthesis/ChangeLog

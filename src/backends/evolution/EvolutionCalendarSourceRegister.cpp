@@ -26,16 +26,16 @@
 
 static EvolutionSyncSource *createSource(const EvolutionSyncSourceParams &params)
 {
-    pair <string, string> sourceType = EvolutionSyncSource::getSourceType(params.m_nodes);
+    SourceType sourceType = EvolutionSyncSource::getSourceType(params.m_nodes);
     bool isMe;
     bool enabled;
 
     EDSAbiWrapperInit();
     enabled = EDSAbiHaveEcal && EDSAbiHaveEdataserver;
 
-    isMe = sourceType.first == "Evolution Task List";
-    if (isMe || sourceType.first == "todo") {
-        if (sourceType.second == "" || sourceType.second == "text/calendar") {
+    isMe = sourceType.m_backend == "Evolution Task List";
+    if (isMe || sourceType.m_backend == "todo") {
+        if (sourceType.m_format == "" || sourceType.m_format == "text/calendar") { 
             return
 #ifdef ENABLE_ECAL
                 enabled ? new EvolutionCalendarSource(E_CAL_SOURCE_TYPE_TODO, params) :
@@ -44,15 +44,15 @@ static EvolutionSyncSource *createSource(const EvolutionSyncSourceParams &params
         }
     }
 
-    isMe = sourceType.first == "Evolution Memos";
-    if (isMe || sourceType.first == "memo") {
-        if (sourceType.second == "" || sourceType.second == "text/plain") {
+    isMe = sourceType.m_backend == "Evolution Memos";
+    if (isMe || sourceType.m_backend == "memo") {
+        if (sourceType.m_format == "" || sourceType.m_format == "text/plain") {
             return
 #ifdef ENABLE_ECAL
                 enabled ? new EvolutionMemoSource(params) :
 #endif
                 isMe ? RegisterSyncSource::InactiveSource : NULL;
-        } else if (sourceType.second == "text/calendar") {
+        } else if (sourceType.m_format == "text/calendar") {
             return
 #ifdef ENABLE_ECAL
                 enabled ? new EvolutionCalendarSource(E_CAL_SOURCE_TYPE_JOURNAL, params) :
@@ -63,10 +63,10 @@ static EvolutionSyncSource *createSource(const EvolutionSyncSourceParams &params
         }
     }
 
-    isMe = sourceType.first == "Evolution Calendar";
-    if (isMe || sourceType.first == "calendar") {
-        if (sourceType.second == "" || sourceType.second == "text/calendar" ||
-            sourceType.second == "text/x-vcalendar" /* this is for backwards compatibility with broken configs */ ) {
+    isMe = sourceType.m_backend == "Evolution Calendar";
+    if (isMe || sourceType.m_backend == "calendar") {
+        if (sourceType.m_format == "" || sourceType.m_format == "text/calendar" ||
+            sourceType.m_format == "text/x-vcalendar" /* this is for backwards compatibility with broken configs */ ) {
             return
 #ifdef ENABLE_ECAL
                 enabled ? new EvolutionCalendarSource(E_CAL_SOURCE_TYPE_EVENT, params) :
@@ -331,52 +331,11 @@ public:
 
 static class MemoTest : public RegisterSyncSourceTest {
 public:
-    MemoTest() : RegisterSyncSourceTest("text", "") {}
+    MemoTest() : RegisterSyncSourceTest("text", "text") {}
 
     virtual void updateConfig(ClientTestConfig &config) const
     {
-        config.uri = "note"; // ScheduleWorld
         config.type = "Evolution Memos"; // use an alias here to test that
-        config.itemType = "text/calendar";
-        config.insertItem =
-            "BEGIN:VCALENDAR\n"
-            "PRODID:-//Ximian//NONSGML Evolution Calendar//EN\n"
-            "VERSION:2.0\n"
-            "METHOD:PUBLISH\n"
-            "BEGIN:VJOURNAL\n"
-            "SUMMARY:Summary\n"
-            "DESCRIPTION:Summary\\nBody text<<REVISION>>\n"
-            "END:VJOURNAL\n"
-            "END:VCALENDAR\n";
-        config.updateItem =
-            "BEGIN:VCALENDAR\n"
-            "PRODID:-//Ximian//NONSGML Evolution Calendar//EN\n"
-            "VERSION:2.0\n"
-            "METHOD:PUBLISH\n"
-            "BEGIN:VJOURNAL\n"
-            "SUMMARY:Summary Modified\n"
-            "DESCRIPTION:Summary Modified\\nBody text\n"
-            "END:VJOURNAL\n"
-            "END:VCALENDAR\n";
-        /* change summary, as in updateItem, and the body in the other merge item */
-        config.mergeItem1 = config.updateItem;
-        config.mergeItem2 =
-            "BEGIN:VCALENDAR\n"
-            "PRODID:-//Ximian//NONSGML Evolution Calendar//EN\n"
-            "VERSION:2.0\n"
-            "METHOD:PUBLISH\n"
-            "BEGIN:VJOURNAL\n"
-            "SUMMARY:Summary\n"
-            "DESCRIPTION:Summary\\nBody modified\n"
-            "END:VJOURNAL\n"
-            "END:VCALENDAR\n";                
-        config.templateItem = config.insertItem;
-        config.uniqueProperties = "SUMMARY:DESCRIPTION";
-        config.sizeProperty = "DESCRIPTION";
-        config.import = ClientTest::import;
-        config.compare = ClientTest::compare;
-        config.testcases = "testcases/imemo20.ics";
-        config.type = "evolution-memos";
     }
 } memoTest;
 

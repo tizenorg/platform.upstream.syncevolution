@@ -44,6 +44,9 @@ class CurlTransportAgent : public TransportAgent
     virtual void setURL(const std::string &url);
     virtual void setProxy(const std::string &proxy);
     virtual void setProxyAuth(const std::string &user, const std::string &password);
+    virtual void setSSL(const std::string &cacerts,
+                        bool verifyServer,
+                        bool verifyHost);
     virtual void setContentType(const std::string &type);
     virtual void setUserAgent(const std::string &agent);
     virtual void send(const char *data, size_t len);
@@ -61,7 +64,8 @@ class CurlTransportAgent : public TransportAgent
      * libcurl < 7.17.0 does not copy strings passed into curl_easy_setopt().
      * These are local copies that remain valid as long as needed.
      */
-    string m_url, m_proxy, m_auth, m_agent;
+    string m_url, m_proxy, m_auth, m_agent,
+        m_cacerts;
 
     /** message buffer (owned by caller) */
     const char *m_message;
@@ -87,6 +91,9 @@ class CurlTransportAgent : public TransportAgent
     /** CURLOPT_WRITEFUNCTION, stream == CurlTransportAgent */
     static size_t writeDataCallback(void *ptr, size_t size, size_t nmemb, void *stream) throw();
     size_t writeData(void *buffer, size_t size) throw();
+
+    /** CURLOPT_PROGRESS callback, use this function to detect user abort */
+    static int progressCallback (void *ptr, double dltotal, double dlnow, double uptotal, double upnow);
 
     /** check curl error code and turn into exception */
     void checkCurl(CURLcode code);

@@ -18,6 +18,7 @@
  */
 
 #include "SoupTransportAgent.h"
+#include "EvolutionSyncClient.h"
 
 #ifdef ENABLE_LIBSOUP
 
@@ -38,6 +39,7 @@ SoupTransportAgent::SoupTransportAgent(GMainLoop *loop) :
            g_main_loop_new(NULL, TRUE),
            "Soup main loop"),
     m_status(INACTIVE),
+    m_abortEventSource(-1),
     m_response(NULL)
 {
 #ifdef HAVE_LIBSOUP_SOUP_GNOME_FEATURES_H
@@ -79,6 +81,14 @@ void SoupTransportAgent::setProxyAuth(const std::string &user, const std::string
     m_proxyPassword = password;
 }
 
+void SoupTransportAgent::setSSL(const std::string &cacerts,
+                                bool verifyServer,
+                                bool verifyHost)
+{
+    m_verifySSL = verifyServer || verifyHost;
+    m_cacerts = cacerts;
+}
+
 void SoupTransportAgent::setContentType(const std::string &type)
 {
     m_contentType = type;
@@ -94,20 +104,38 @@ void SoupTransportAgent::setUserAgent(const std::string &agent)
 void SoupTransportAgent::send(const char *data, size_t len)
 {
     // ownership is transferred to libsoup in soup_session_queue_message()
-    SoupMessage *message = soup_message_new("POST", m_URL.c_str());
-    if (!message) {
+    eptr<SoupMessage, GObject> message(soup_message_new("POST", m_URL.c_str()));
+    if (!message.get()) {
         SE_THROW_EXCEPTION(TransportException, "could not allocate SoupMessage");
     }
-    soup_message_set_request(message, m_contentType.c_str(),
+
+    // use CA certificates if available and needed,
+    // fail if not available and needed
+    if (m_verifySSL) {
+        if (!m_cacerts.empty()) {
+            g_object_set(m_session.get(), SOUP_SESSION_SSL_CA_FILE, m_cacerts.c_str(), NULL);
+        } else {
+            SoupURI *uri = soup_message_get_uri(message.get());
+            if (!strcmp(uri->scheme, SOUP_URI_SCHEME_HTTPS)) {
+                SE_THROW_EXCEPTION(TransportException, "SSL certificate checking requested, but no CA certificate file configured");
+            }
+        }
+    }
+
+    soup_message_set_request(message.get(), m_contentType.c_str(),
                              SOUP_MEMORY_TEMPORARY, data, len);
     m_status = ACTIVE;
-    soup_session_queue_message(m_session.get(), message,
+    m_abortEventSource = g_timeout_add_seconds(ABORT_CHECK_INTERVAL, (GSourceFunc) AbortCallback, static_cast<gpointer> (this));
+    soup_session_queue_message(m_session.get(), message.release(),
                                SessionCallback, static_cast<gpointer>(this));
 }
 
 void SoupTransportAgent::cancel()
 {
-    /** @TODO: implement if needed */
+    m_status = FAILED;
+    soup_session_abort(m_session.get());
+    if(g_main_loop_is_running(m_loop.get()))
+      g_main_loop_quit(m_loop.get());
 }
 
 TransportAgent::Status SoupTransportAgent::wait()
@@ -133,6 +161,7 @@ TransportAgent::Status SoupTransportAgent::wait()
         SE_THROW_EXCEPTION(TransportException, failure);
     }
 
+    g_source_remove(m_abortEventSource);
     return m_status;
 }
 
@@ -188,6 +217,18 @@ void SoupTransportAgent::HandleSessionCallback(SoupSession *session,
     }
 
     g_main_loop_quit(m_loop.get());
+}
+
+gboolean SoupTransportAgent::AbortCallback(gpointer transport)
+{
+    SuspendFlags& s_flags = EvolutionSyncClient::getSuspendFlags();
+
+    if (s_flags.state == SuspendFlags::CLIENT_ABORT)
+    {
+        static_cast<SoupTransportAgent *>(transport)->cancel();
+        return FALSE;
+    }
+    return TRUE;
 }
 
 } // namespace SyncEvolution

@@ -243,7 +243,7 @@ const TStructFieldInfo TargetFieldInfos[] =
   // read-only status info
   { "dbname", VALTYPE_TEXT, false, OFFS_SZ_TG(dbname) },
   { "lastSync", VALTYPE_TIME64, false, OFFS_SZ_TG(lastSync) },
-  { "lastToRemoteSync", VALTYPE_TIME64, false, OFFS_SZ_TG(lastTwoWaySync) },
+  { "lastChangeCheck", VALTYPE_TIME64, false, OFFS_SZ_TG(lastChangeCheck) },
   { "resumeAlertCode", VALTYPE_INT16, true, OFFS_SZ_TG(resumeAlertCode) },
   // programmatic danger flags (will sync zap client or server data?)
   { "dangerFlags", VALTYPE_INT8, false, 0,0, &readTargetDangerFlags, NULL },
@@ -255,7 +255,6 @@ const TStructFieldInfo TargetFieldInfos[] =
   { "dispName", VALTYPE_TEXT, false, 0,0, &readDispName, NULL }, // display name from config
   // new fields of TARGETS_DB_VERSION 6 and beyond
   #if TARGETS_DB_VERSION>5
-  { "lastSyncIdentifer", VALTYPE_TEXT, false, OFFS_SZ_TG(lastSyncIdentifier) },
   { "remoteDispName", VALTYPE_TEXT, false, OFFS_SZ_TG(remoteDBdispName) },
   // filtering
   { "filterCapDesc", VALTYPE_TEXT, false, OFFS_SZ_TG(filterCapDesc) },
@@ -1338,8 +1337,8 @@ static uInt32 targetUpdateFunc(uInt32 aOldVersion, uInt32 aNewVersion, void *aOl
     #if TARGETS_DB_VERSION >= 6
     if (aOldVersion<6) {
       // init new version 6 fields
-      AssignCString(targetP->lastSyncIdentifier,NULL,remoteAnchorMaxLen);
-      AssignCString(targetP->lastSuspendIdentifier,NULL,remoteAnchorMaxLen);
+      AssignCString(targetP->dummyIdentifier1,NULL,remoteAnchorMaxLen);
+      AssignCString(targetP->dummyIdentifier2,NULL,remoteAnchorMaxLen);
       AssignCString(targetP->remoteDBdispName,NULL,dispNameMaxLen);
       AssignCString(targetP->filterCapDesc,NULL,filterCapDescMaxLen);
       AssignCString(targetP->remoteFilters,NULL,filterExprMaxLen);

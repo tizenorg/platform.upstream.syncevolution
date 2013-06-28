@@ -5,6 +5,7 @@ VER_1.0 {
         SySync_DisconnectEngine;
         extern "C++" {
                sysync::DataConversion*;
+               sysync::SySyncDebugPuts*;
         };
     local:
         *;

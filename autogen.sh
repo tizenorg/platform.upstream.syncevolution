@@ -2,35 +2,19 @@
 
 set -e
 
-# generate configure.in from main configure-*.in pieces
-# and all backend configure-sub.in pieces
-rm -f configure.in
-cat configure-pre.in >>configure.in
-BACKENDS=
-SUBS=
-for sub in src/backends/*/configure-sub.in; do
-    BACKENDS="$BACKENDS `dirname $sub | sed -e 's;^src/;;'`"
-    SUBS="$SUBS $sub"
-    echo "# vvvvvvvvvvvvvv $sub vvvvvvvvvvvvvv" >>configure.in
-    cat $sub >>configure.in
-    echo "AC_CONFIG_FILES(`echo $sub | sed -e s/configure-sub.in/Makefile/`)" >>configure.in
-    echo "# ^^^^^^^^^^^^^^ $sub ^^^^^^^^^^^^^^" >>configure.in
-    echo >>configure.in
-done
-cat configure-post.in >>configure.in
+# wipe out temporary autotools files, necessary
+# when switching between distros
+rm -rf aclocal.m4 m4 autom4te.cache config.guess config.sub config.h.in configure depcomp install-sh ltmain.sh missing 
 
-sed -e "s;@BACKEND_REGISTRIES@;`echo src/backends/*/*Register.cpp | sed -e s%src/%%g`;" \
-    -e "s;@BACKENDS@;$BACKENDS;" \
-    -e "s;@TEMPLATE_FILES@;`cd src && find default/syncevolution -type f \( -name '*.png' -o -name '*.svg' -o -name '*.ini' \) -printf '%p '`;" \
-     src/Makefile-gen.am >src/Makefile.am
+# intltoolize fails to copy its macros unless m4 exits
+mkdir m4
 
-sed -e "s;@CONFIG_SUBS@;$SUBS;" \
-    Makefile-gen.am >Makefile.am
+sh ./gen-autotools.sh
 
 libtoolize -c
 glib-gettextize --force --copy
 intltoolize --force --copy --automake
-aclocal -I m4
+aclocal -I m4 -I m4-repo
 autoheader
 automake -a -c -Wno-portability
 autoconf

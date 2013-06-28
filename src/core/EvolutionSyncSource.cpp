@@ -190,7 +190,7 @@ public:
 EvolutionSyncSource *EvolutionSyncSource::createSource(const EvolutionSyncSourceParams &params, bool error)
 {
     string sourceTypeString = getSourceTypeString(params.m_nodes);
-    pair<string, string> sourceType = getSourceType(params.m_nodes);
+    SourceType sourceType = EvolutionSyncSource::getSourceType(params.m_nodes);
 
     const SourceRegistry &registry(getSourceRegistry());
     BOOST_FOREACH(const RegisterSyncSource *sourceInfos, registry) {
@@ -237,7 +237,8 @@ EvolutionSyncSource *EvolutionSyncSource::createTestingSource(const string &name
 
 void EvolutionSyncSource::getSynthesisInfo(string &profile,
                                            string &datatypes,
-                                           string &native)
+                                           string &native,
+                                           XMLConfigFragments &fragments)
 {
     string type = getMimeType();
 
@@ -271,28 +272,41 @@ void EvolutionSyncSource::getSynthesisInfo(string &profile,
         throwError(string("default MIME type not supported: ") + type);
     }
 
-    pair <string, string> sourceType = getSourceType();
-    if (!sourceType.second.empty()) {
-        type = sourceType.second;
+    SourceType sourceType = getSourceType();
+    if (!sourceType.m_format.empty()) {
+        type = sourceType.m_format;
     }
 
     if (type == "text/x-vcard:2.1" || type == "text/x-vcard") {
         datatypes =
-            "        <use datatype='vCard21' mode='rw' preferred='yes'/>\n"
-            "        <use datatype='vCard30' mode='rw'/>\n";
+            "        <use datatype='vCard21' mode='rw' preferred='yes'/>\n";
+        if (!sourceType.m_forceFormat) {
+            datatypes +=
+                "        <use datatype='vCard30' mode='rw'/>\n";
+        }
     } else if (type == "text/vcard:3.0" || type == "text/vcard") {
         datatypes =
-            "        <use datatype='vCard21' mode='rw'/>\n"
             "        <use datatype='vCard30' mode='rw' preferred='yes'/>\n";
+        if (!sourceType.m_forceFormat) {
+            datatypes +=
+                "        <use datatype='vCard21' mode='rw'/>\n";
+        }
     } else if (type == "text/x-vcalendar:2.0" || type == "text/x-vcalendar") {
         datatypes =
-            "        <use datatype='vcalendar10' mode='rw' preferred='yes'/>\n"
-            "        <use datatype='icalendar20' mode='rw'/>\n";
+            "        <use datatype='vcalendar10' mode='rw' preferred='yes'/>\n";
+        if (!sourceType.m_forceFormat) {
+            datatypes +=
+                "        <use datatype='icalendar20' mode='rw'/>\n";
+        }
     } else if (type == "text/calendar:2.0" || type == "text/calendar") {
         datatypes =
-            "        <use datatype='vcalendar10' mode='rw'/>\n"
             "        <use datatype='icalendar20' mode='rw' preferred='yes'/>\n";
+        if (!sourceType.m_forceFormat) {
+            datatypes +=
+                "        <use datatype='vcalendar10' mode='rw'/>\n";
+        }
     } else if (type == "text/plain:1.0" || type == "text/plain") {
+        // note10 are the same as note11, so ignore force format
         datatypes =
             "        <use datatype='note10' mode='rw' preferred='yes'/>\n"
             "        <use datatype='note11' mode='rw'/>\n";
@@ -301,14 +315,14 @@ void EvolutionSyncSource::getSynthesisInfo(string &profile,
     }
 }
 
-void EvolutionSyncSource::getDatastoreXML(string &xml)
+void EvolutionSyncSource::getDatastoreXML(string &xml, XMLConfigFragments &fragments)
 {
     stringstream xmlstream;
     string profile;
     string datatypes;
     string native;
 
-    getSynthesisInfo(profile, datatypes, native);
+    getSynthesisInfo(profile, datatypes, native, fragments);
 
     xmlstream <<
         "      <plugin_module>SyncEvolution</plugin_module>\n"
@@ -351,10 +365,10 @@ void EvolutionSyncSource::getDatastoreXML(string &xml)
         "           string itemdata;\n"
         "        ]]></initscript>\n"
         "        <beforewritescript><![CDATA[\n"
-        "           itemdata = MAKETEXTWITHPROFILE(" << profile << ");\n"
+        "           itemdata = MAKETEXTWITHPROFILE(" << profile << ", \"EVOLUTION\");\n"
         "        ]]></beforewritescript>\n"
         "        <afterreadscript><![CDATA[\n"
-        "           PARSETEXTWITHPROFILE(itemdata, " << profile << ");\n"
+        "           PARSETEXTWITHPROFILE(itemdata, " << profile << ", \"EVOLUTION\");\n"
         "        ]]></afterreadscript>\n"
         "        <map name='data' references='itemdata' type='string'/>\n"
         "      </fieldmap>\n"
@@ -445,8 +459,7 @@ void EvolutionSyncSource::rewindItems() throw()
 
 SyncItem::State EvolutionSyncSource::nextItem(string *data, string &luid) throw()
 {
-    /** @TODO: avoid reading data if not necessary */
-    SyncItem *item = m_allItems.iterate();
+    cxxptr<SyncItem> item(m_allItems.iterate(data ? false : true));
     SyncItem::State state = SyncItem::NO_MORE_ITEMS;
 
     if (item) {
@@ -660,15 +673,14 @@ SyncItem *EvolutionSyncSource::Items::start()
     return iterate();
 }
 
-SyncItem *EvolutionSyncSource::Items::iterate()
+SyncItem *EvolutionSyncSource::Items::iterate(bool idOnly)
 {
     if (m_it != end()) {
         const string &uid( *m_it );
         SE_LOG_DEBUG(&m_source, NULL, "next %s item: %s", m_type.c_str(), uid.c_str());
         ++m_it;
-        if (&m_source.m_deletedItems == this) {
-            // just tell caller the uid of the deleted item
-            // and the type that it probably had
+        if (&m_source.m_deletedItems == this || idOnly) {
+            // just tell caller the uid of the (possibly deleted) item
             cxxptr<SyncItem> item(new SyncItem());
             item->setKey(uid);
             return item.release();

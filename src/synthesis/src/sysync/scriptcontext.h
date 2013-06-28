@@ -231,6 +231,9 @@ public:
 }; // TScriptErrorException
 
 
+// folder mapping table
+typedef std::vector<string> TMacroArgsArray;
+
 
 // script execution state stack
 typedef enum {
@@ -262,7 +265,7 @@ public:
   TScriptContext(TSyncAppBase *aAppBaseP, TSyncSession *aSessionP);
   virtual ~TScriptContext();
   // Tokenizing is available without context
-  static void Tokenize(TSyncAppBase *aAppBaseP, cAppCharP aScriptName, sInt32 aLine, cAppCharP aScriptText, string &aTScript, const TFuncTable *aContextFuncs, bool aFuncHeader=false, bool aNoDeclarations=false);
+  static void Tokenize(TSyncAppBase *aAppBaseP, cAppCharP aScriptName, sInt32 aLine, cAppCharP aScriptText, string &aTScript, const TFuncTable *aContextFuncs, bool aFuncHeader=false, bool aNoDeclarations=false, TMacroArgsArray *aMacroArgsP=NULL);
   static void TokenizeAndResolveFunction(TSyncAppBase *aAppBaseP, sInt32 aLine, cAppCharP aScriptText, TUserScriptFunction &aFuncDef);
   // resolve identifiers in a script, if there is a context passed at all
   static void resolveScript(TSyncAppBase *aAppBaseP, string &aTScript,TScriptContext *&aCtxP, TFieldListConfig *aFieldListConfigP);

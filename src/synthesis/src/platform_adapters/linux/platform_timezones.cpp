@@ -18,6 +18,13 @@
 # include <config.h>
 #endif
 
+#if defined(HAVE_LIBICAL) && defined(EVOLUTION_COMPATIBILITY)
+# ifndef _GNU_SOURCE
+#  define _GNU_SOURCE 1
+# endif
+# include <dlfcn.h>
+#endif
+
 #include "timezones.h"
 #include "vtimezone.h"
 
@@ -36,6 +43,101 @@
   extern int   daylight;
 #endif
 
+#ifdef EVOLUTION_COMPATIBILITY
+// Avoid calling libical directly. This way libsynthesis does not
+// depend on a specific version of libecal (which changed its soname
+// frequently, without affecting libical much!) or libical. The user
+// of libsynthesis has to make sure that the necessary ical functions
+// can be found via dlsym(RTLD_DEFAULT) when
+// loadSystemZoneDefinitions() is invoked during the initialization of
+// a Synthesis engine.
+static struct {
+  icalarray *(* icaltimezone_get_builtin_timezones_p)();
+  void *(* icalarray_element_at_p)(icalarray *array, unsigned index);
+  icalcomponent *(* icaltimezone_get_component_p)(icaltimezone *zone);
+  char *(* icalcomponent_as_ical_string_p)(icalcomponent *comp);
+  bool must_free_strings;
+} icalcontext;
+
+static icalarray *ICALTIMEZONE_GET_BUILTIN_TIMEZONES()
+{
+  // Called once by loadSystemZoneDefinitions(), so initialize context
+  // now. Redoing this on each invocation allows unloading libical
+  // because we won't reuse stale pointers.
+  memset(&icalcontext, 0, sizeof(icalcontext));
+  icalcontext.icaltimezone_get_builtin_timezones_p =
+    (typeof(icalcontext.icaltimezone_get_builtin_timezones_p))dlsym(RTLD_DEFAULT, "icaltimezone_get_builtin_timezones");
+  icalcontext.icalarray_element_at_p =
+    (typeof(icalcontext.icalarray_element_at_p))dlsym(RTLD_DEFAULT, "icalarray_element_at");
+  icalcontext.icaltimezone_get_component_p =
+    (typeof(icalcontext.icaltimezone_get_component_p))dlsym(RTLD_DEFAULT, "icaltimezone_get_component");
+  icalcontext.icalcomponent_as_ical_string_p =
+    (typeof(icalcontext.icalcomponent_as_ical_string_p))dlsym(RTLD_DEFAULT, "icalcomponent_as_ical_string_r");
+  if (icalcontext.icalcomponent_as_ical_string_p) {
+    // found icalcomponent_as_ical_string_r() which always requires freeing
+    icalcontext.must_free_strings = TRUE;
+  } else {
+    // fall back to older icalcomponent_as_ical_string() which may or may not
+    // require freeing the returned string; this can be determined by checking
+    // for "ical_memfixes" (EDS libical)
+    icalcontext.icalcomponent_as_ical_string_p =
+      (typeof(icalcontext.icalcomponent_as_ical_string_p))dlsym(RTLD_DEFAULT, "icalcomponent_as_ical_string");
+    icalcontext.must_free_strings = dlsym(RTLD_DEFAULT, "ical_memfixes") != NULL;
+  }
+
+  return icalcontext.icaltimezone_get_builtin_timezones_p ?
+    icalcontext.icaltimezone_get_builtin_timezones_p() :
+    NULL;
+}
+
+static void *ICALARRAY_ELEMENT_AT(icalarray *array, unsigned index)
+{
+  return icalcontext.icalarray_element_at_p ?
+    icalcontext.icalarray_element_at_p(array, index) :
+    NULL;
+}
+
+static icalcomponent *ICALTIMEZONE_GET_COMPONENT(icaltimezone *zone)
+{
+  return icalcontext.icaltimezone_get_component_p ?
+    icalcontext.icaltimezone_get_component_p(zone) :
+    NULL;
+}
+
+static char *ICALCOMPONENT_AS_ICAL_STRING(icalcomponent *comp)
+{
+  return icalcontext.icalcomponent_as_ical_string_p ?
+    icalcontext.icalcomponent_as_ical_string_p(comp) :
+    NULL;
+}
+
+static void ICAL_FREE(char *str)
+{
+  if (icalcontext.must_free_strings && str)
+    free(str);
+}
+
+#else
+// call functions directly
+# define ICALTIMEZONE_GET_BUILTIN_TIMEZONES icaltimezone_get_builtin_timezones
+# define ICALARRAY_ELEMENT_AT icalarray_element_at
+# define ICALTIMEZONE_GET_COMPONENT icaltimezone_get_component
+
+# if defined(HAVE_LIBICAL) && !defined(HAVE_LIBECAL)
+#  // new-style libical _r version which requires freeing the string
+#  define ICALCOMPONENT_AS_ICAL_STRING icalcomponent_as_ical_string_r
+#  define ICAL_FREE(_x) free(_x)
+# else
+#  define ICALCOMPONENT_AS_ICAL_STRING icalcomponent_as_ical_string
+#  ifdef LIBICAL_MEMFIXES
+   // new-style Evolution libical: memory must be freed by caller
+#   define ICAL_FREE(_x) free(_x)
+#  else
+#   define ICAL_FREE(_x) free(_x)
+#  endif
+# endif
+#endif
+
 
 namespace sysync {
 
@@ -47,15 +149,15 @@ bool loadSystemZoneDefinitions(GZones* aGZones)
 {
 	// load zones from system here
 	#ifdef HAVE_LIBICAL
-  icalarray *builtin = icaltimezone_get_builtin_timezones();
+  icalarray *builtin = ICALTIMEZONE_GET_BUILTIN_TIMEZONES();
   for (unsigned i = 0; builtin && i < builtin->num_elements; i++) {
-    icaltimezone *zone = (icaltimezone *)icalarray_element_at(builtin, i);
+    icaltimezone *zone = (icaltimezone *)ICALARRAY_ELEMENT_AT(builtin, i);
     if (!zone)
       continue;
-    icalcomponent *comp = icaltimezone_get_component(zone);
+    icalcomponent *comp = ICALTIMEZONE_GET_COMPONENT(zone);
     if (!comp)
       continue;
-    char *vtimezone = icalcomponent_as_ical_string(comp);
+    char *vtimezone = ICALCOMPONENT_AS_ICAL_STRING(comp);
     if (!vtimezone)
       continue;
     tz_entry t;
@@ -83,10 +185,7 @@ bool loadSystemZoneDefinitions(GZones* aGZones)
       }
       aGZones->tzP.push_back(t);
     }
-		#ifdef LIBICAL_MEMFIXES
-    // new-style Evolution libical: memory must be freed by caller
-    free(vtimezone);
-		#endif
+    ICAL_FREE(vtimezone);
   }
 	#endif // HAVE_LIBICAL
 	// return true if this list is considered complete (i.e. no built-in zones should be used additionally)

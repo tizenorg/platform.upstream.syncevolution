@@ -428,6 +428,7 @@ typedef enum {
 typedef enum {
   sop_wants_add,      ///< like add, but is still available for slowsync match
   sop_add,
+  sop_soft_add,        // a client side add
   sop_wants_replace,  ///< like replace, but not yet conflict-checked
   sop_replace,
   sop_reference_only, ///< slowsync resume only: like sop_wants_add/sop_wants_replace, but ONLY for comparing with incoming add/replace from client and avoiding add when matching - NEVER send these to client

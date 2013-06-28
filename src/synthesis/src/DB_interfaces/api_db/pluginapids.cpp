@@ -1161,7 +1161,7 @@ localstatus TPluginApiDS::apiReadSyncSet(bool aNeedAll)
   StringObjTimestamp(ts1,getPreviousToRemoteSyncCmpRef());
   StringObjTimestamp(ts2,getPreviousSuspendCmpRef());
   PDEBUGPRINTFX(DBG_DATA,(
-    "Now reading local sync set: last sync to remote at %s, last suspend at %s",
+    "Now reading local sync set: report changes since reference1 at %s, and since reference2 at %s",
     ts1.c_str(),
     ts2.c_str()
   ));
@@ -1249,8 +1249,8 @@ localstatus TPluginApiDS::apiReadSyncSet(bool aNeedAll)
         PDEBUGPRINTFX(DBG_DATA+DBG_EXOTIC,(
           "read local item info in sync set: localid='%s'%s%s",
           syncSetItemP->localid.c_str(),
-          syncSetItemP->isModified ? ", MODIFIED since last sync" : "",
-          syncSetItemP->isModifiedAfterSuspend ? " AND since last suspend" : ""
+          syncSetItemP->isModified ? ", MODIFIED since reference1" : "",
+          syncSetItemP->isModifiedAfterSuspend ? " AND since reference2" : ""
         ));
         #endif
         // no data yet, no item yet
@@ -2041,8 +2041,10 @@ localstatus TPluginApiDS::apiSaveAdminData(bool aDataCommitted, bool aSessionFin
 ///   - fLastRemoteAnchor = anchor string used by remote party for last session (and saved to DB then)
 ///   - fPreviousSyncTime = anchor (beginning of session) timestamp of last session.
 ///   - fPreviousToRemoteSyncCmpRef = Reference time to determine items modified since last time sending data to remote
-///   - fPreviousToRemoteSyncIdentifier = string identifying last session that sent data to remote (needs only be saved
-///                         if derived datastore cannot work with timestamps and has its own identifier).
+///                         (or last changelog update in case of BASED_ON_BINFILE_CLIENT)
+///   - fPreviousToRemoteSyncIdentifier = string identifying last session that sent data to remote
+///                         (or last changelog update in case of BASED_ON_BINFILE_CLIENT). Needs only be saved
+///                         if derived datastore cannot work with timestamps and has its own identifier.
 ///   - fMapTable         = list<TMapEntry> containing map entries. The implementation must load all map entries
 ///                         related to the current sync target identified by the triple of (aDeviceID,aDatabaseID,aRemoteDBID)
 ///                         or by fTargetKey. The entries added to fMapTable must have "changed", "added" and "deleted" flags

@@ -166,6 +166,10 @@ public:
   // set profile options
   // - mode (for those profiles that have more than one, like MIME-DIR's old/standard)
   virtual void setProfileMode(sInt32 aMode) { /* nop here */ };
+#ifndef NO_REMOTE_RULES
+  // - choose remote rule by name, true if found
+  virtual void setRemoteRule(const string &aRemoteRuleName) { /* nop here */ }
+#endif
   // set related datastore (NULL for independent use e.g. from script functions)
   void setRelatedDatastore(TLocalEngineDS *aRelatedDatastoreP) { fRelatedDatastoreP = aRelatedDatastoreP; };
   // generate Text Data

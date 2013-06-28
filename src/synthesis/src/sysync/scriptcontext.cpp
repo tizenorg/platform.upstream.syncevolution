@@ -1985,7 +1985,7 @@ public:
   }
 
 
-  // integer PARSETEXTWITHPROFILE(string textformat, string profileName [, int mode])
+  // integer PARSETEXTWITHPROFILE(string textformat, string profileName [, int mode = 0 = default [, string remoteRuleName = "" = other]])
   static void func_ParseTextWithProfile(TItemField *&aTermP, TScriptContext *aFuncContextP)
   {
   	bool ok = false;
@@ -1999,8 +1999,19 @@ public:
       if (profileHandlerP) {
       	// now we can convert
         // - set the mode code (none = 0 = default)
+        // TODO? Shouldn't this check whether arg #2 was passed at all? If not,
+        // the code will segfault when trying to call getAsInteger()
         profileHandlerP->setProfileMode(aFuncContextP->getLocalVar(2)->getAsInteger());
-  			profileHandlerP->setRelatedDatastore(NULL); // no datastore in particular is related
+        profileHandlerP->setRelatedDatastore(NULL); // no datastore in particular is related
+#ifndef NO_REMOTE_RULES
+        // - try to find remote rule
+        TItemField *field = aFuncContextP->getLocalVar(3);
+        if (field) {
+          field->getAsString(s);
+          if (!s.empty())
+            profileHandlerP->setRemoteRule(s);
+        }
+#endif
         // - convert
 	    	aFuncContextP->getLocalVar(0)->getAsString(s);
         ok = profileHandlerP->parseText(s.c_str(), s.size(), *itemP);
@@ -2012,7 +2023,7 @@ public:
   } // func_ParseTextWithProfile
 
 
-  // string MAKETEXTWITHPROFILE(string profileName [, int mode])
+  // string MAKETEXTWITHPROFILE(string profileName [, int mode [, string remoteRuleName = "" = other] ])
   static void func_MakeTextWithProfile(TItemField *&aTermP, TScriptContext *aFuncContextP)
   {
     if (aFuncContextP->fParentContextP) {
@@ -2027,11 +2038,23 @@ public:
         // - set the mode code (none = 0 = default)
         profileHandlerP->setProfileMode(aFuncContextP->getLocalVar(1)->getAsInteger());
         profileHandlerP->setRelatedDatastore(NULL); // no datastore in particular is related
+#ifndef NO_REMOTE_RULES
+        // - try to find remote rule
+        TItemField *field = aFuncContextP->getLocalVar(2);
+        if (field) {
+          field->getAsString(s);
+          if (!s.empty())
+            profileHandlerP->setRemoteRule(s);
+        }
+#endif
         // - convert, after clearing the string (some generateText() implementations
         // append instead of overwriting)
         s = "";
         profileHandlerP->generateText(*itemP,s);
         aTermP->setAsString(s); // return text generated according to profile
+
+        // - forget
+        delete profileHandlerP;
       }
     }
   } // func_MakeTextWithProfile
@@ -2075,8 +2098,8 @@ const uInt8 param_NumFormat[] = { VAL(fty_integer), VAL(fty_integer), OPTVAL(fty
 const uInt8 param_Explode[] = { VAL(fty_string), REFARR(fty_none) };
 const uInt8 param_parseEmailSpec[] = { VAL(fty_string), REF(fty_string), REF(fty_string) };
 const uInt8 param_makeEmailSpec[] = { VAL(fty_string), VAL(fty_string) };
-const uInt8 param_parseTextWithProfile[] = { VAL(fty_string), VAL(fty_string), OPTVAL(fty_integer) };
-const uInt8 param_makeTextWithProfile[] = { VAL(fty_string), OPTVAL(fty_integer) };
+const uInt8 param_parseTextWithProfile[] = { VAL(fty_string), VAL(fty_string), OPTVAL(fty_integer), OPTVAL(fty_string) };
+const uInt8 param_makeTextWithProfile[] = { VAL(fty_string), OPTVAL(fty_integer), OPTVAL(fty_string) };
 
 
 #ifdef REGEX_SUPPORT
@@ -2174,8 +2197,8 @@ const TBuiltInFuncDef BuiltInFuncDefs[] = {
   { "PARSE_RRULE", TBuiltinStdFuncs::func_Parse_RRULE, fty_integer, 8, param_Parse_RRULE },
   { "PARSEEMAILSPEC", TBuiltinStdFuncs::func_ParseEmailSpec, fty_integer, 3, param_parseEmailSpec },
   { "MAKEEMAILSPEC", TBuiltinStdFuncs::func_MakeEmailSpec, fty_string, 2, param_makeEmailSpec },
-  { "PARSETEXTWITHPROFILE", TBuiltinStdFuncs::func_ParseTextWithProfile, fty_integer, 3, param_parseTextWithProfile },
-  { "MAKETEXTWITHPROFILE", TBuiltinStdFuncs::func_MakeTextWithProfile, fty_string, 2, param_makeTextWithProfile },
+  { "PARSETEXTWITHPROFILE", TBuiltinStdFuncs::func_ParseTextWithProfile, fty_integer, 4, param_parseTextWithProfile },
+  { "MAKETEXTWITHPROFILE", TBuiltinStdFuncs::func_MakeTextWithProfile, fty_string, 3, param_makeTextWithProfile },
   { "SYNCMLVERS", TBuiltinStdFuncs::func_SyncMLVers, fty_string, 0, NULL },
   { "ALLDAYCOUNT", TBuiltinStdFuncs::func_AlldayCount, fty_integer, 4, param_AlldayCount },
   { "MAKEALLDAY", TBuiltinStdFuncs::func_MakeAllday, fty_integer, 3, param_MakeAllday },
@@ -2333,7 +2356,7 @@ static void addSourceLine(uInt16 aLine, const char *aText, string &aScript, bool
 
 
 // Tokenize input string
-void TScriptContext::Tokenize(TSyncAppBase *aAppBaseP, cAppCharP aScriptName, sInt32 aLine, cAppCharP aScriptText, string &aTScript, const TFuncTable *aContextFuncs, bool aFuncHeader, bool aNoDeclarations)
+void TScriptContext::Tokenize(TSyncAppBase *aAppBaseP, cAppCharP aScriptName, sInt32 aLine, cAppCharP aScriptText, string &aTScript, const TFuncTable *aContextFuncs, bool aFuncHeader, bool aNoDeclarations, TMacroArgsArray *aMacroArgsP)
 {
   string itm;
   string macro;
@@ -2364,6 +2387,40 @@ void TScriptContext::Tokenize(TSyncAppBase *aAppBaseP, cAppCharP aScriptName, sI
     // insert source line identification token for start of script for all but completely empty scripts
     addSourceLine(line,text,aTScript,includesource,lastincludedline);
   }
+  // marco argument expansion
+  // Note: $n (with n=1,2,3...9) is expanded before any other processing. To insert e.g. $2 literally, use $$2.
+  //       $n macros that can't be expanded will be left in the text AS IS
+  string itext;
+  if (aMacroArgsP) {
+  	itext = text; // we need a string to substitute macro args in
+    size_t i = 0;
+    while (i<itext.size()) {
+    	c=itext[i++];
+      if (c=='$') {
+      	// could be macro argument
+        c=itext[i];
+        if (c=='$') {
+        	// $$ expands to $
+          itext.erase(i, 1); // erase second occurrence of $
+          continue;
+        }
+        else if (isdigit(c)) {
+          size_t argidx = c-'1';
+          if (argidx>=0 && argidx<aMacroArgsP->size()) {
+          	// found macro argument, replace in input string
+            itext.replace(i-1, 2, (*aMacroArgsP)[argidx]);
+            // no nested macro argument eval, just advance pointer behind replacement text
+            i += (*aMacroArgsP)[argidx].size()-1;
+            // check next char
+            continue;
+          }
+        }
+      }
+    }
+    // now use expanded version of text for tokenizing
+    text = itext.c_str();
+  }
+  // actual tokenisation
   SYSYNC_TRY {
     // process text
     while (*text) {
@@ -2548,6 +2605,31 @@ void TScriptContext::Tokenize(TSyncAppBase *aAppBaseP, cAppCharP aScriptName, sI
             TStringToStringMap::iterator pos = cfgP->fScriptMacros.find(itm);
             if (pos==cfgP->fScriptMacros.end())
               SYSYNC_THROW(TTokenizeException(aScriptName,"unknown macro",aScriptText,p-1-aScriptText,line));
+            TMacroArgsArray macroArgs;
+            // check for macro arguments
+            if (*text=='(') {
+            	// Macro has Arguments
+              text++;
+              string arg;
+              // Note: closing brackets and commas must be escaped when used as part of a macro argument
+              while (*text) {
+              	c=*text++;
+              	if (c==',' || c==')') {
+                	// end of argument
+                  macroArgs.push_back(arg); // save it in array
+                  arg.erase();
+                  if (c==')') break; // end of macro
+                  continue; // skip comma, next arg
+                }
+                else if (c=='\\') {
+                  if (*text==0) break; // end of string
+                	// escaped - use next char w/o testing for , or )
+                  c=*text++;
+                }
+                // add to argument string
+                arg += c;
+              }
+            }
             // continue tokenizing with macro text
             TScriptContext::Tokenize(
               aAppBaseP,
@@ -2557,7 +2639,8 @@ void TScriptContext::Tokenize(TSyncAppBase *aAppBaseP, cAppCharP aScriptName, sI
               macro, // produce tokenized macro here
               aContextFuncs, // same context
               false, // not in function header
-              aNoDeclarations // same condition
+              aNoDeclarations, // same condition
+              &macroArgs // macro arguments
             );
             // append tokenized macro to current script
             aTScript+=macro;

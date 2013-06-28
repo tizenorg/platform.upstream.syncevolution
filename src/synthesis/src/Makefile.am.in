@@ -91,9 +91,9 @@ endif
 # incompatible way, increment CURRENT and reset AGE and REVISION to
 # zero. When fixing something without interface change, increment
 # REVISION.
-ENGINE_CURRENT = 0
+ENGINE_CURRENT = 1
 ENGINE_REVISION = 0
-ENGINE_AGE = 0
+ENGINE_AGE = 1
 libsynthesis_la_LDFLAGS = -version-info $(ENGINE_CURRENT):$(ENGINE_REVISION):$(ENGINE_AGE) \
 	-Wl,--version-script=$(srcdir)/synthesis-linker.map
 libsynthesis_la_DEPENDENCIES = $(srcdir)/synthesis-linker.map libsmltk.la

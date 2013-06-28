@@ -1,6 +1,5 @@
 <?xml version="1.0"?>
-<!-- SYNTHESIS SYNC CLIENT Version 3.1 Configuration file -->
-<!-- (works for V3.1.1.0 and later) -->
+<!-- SYNTHESIS SYNCML CLIENT Version 3.2 Configuration file -->
 
 <sysync_config version="1.0">
 
@@ -19,14 +18,15 @@
   <hardwareversion/>
   <firmwareversion/>
   <devicetype/>
+  <configdate/>
 
   <debug/>
 
-  <!-- Note: since 2.1.1.5, clients have a <transport> section to specify <keepconnection> behaviour -->
   <transport type="xpt">
     <!-- allow HTTP 1.1 kepp-alive (multiple request-answer-exchanges in single TCP connection) -->
     <keepconnection>true</keepconnection>
   </transport>
+
 
   <scripting>
     <looptimeout>5</looptimeout>
@@ -66,7 +66,7 @@
           DTSTART = CONVERTTOUSERZONE(DTSTART);
           MAKEALLDAY(DTSTART,DTEND,i);
         }
-        // - shape attendees  (and make sure ATTENDEES[] is assigned even for empty email addresses)
+        // - shape attendees (and make sure ATTENDEES[] is assigned even for empty email addresses)
         i=0;
         while(i<SIZE(ATTENDEES) || i<SIZE(ATTENDEE_CNS)) {
           PARSEEMAILSPEC(ATTENDEES[i], CN, EM);
@@ -94,6 +94,12 @@
         // due shaping for non-iCalendar 2.0
         if (ITEMDATATYPE()=="vCalendar10" && ALLDAYCOUNT(DUE,DUE,TRUE,TRUE)>0) {
         	DUE = DATEONLY(DUE);
+        }
+      }
+      // a workaround for funambol: adding 'action' for 'alarm'
+      if (ITEMDATATYPE()=="iCalendar20") {
+        if (ALARM_TIME!=EMPTY && ALARM_ACTION==EMPTY) {
+            ALARM_ACTION = "DISPLAY";
         }
       }
     ]]></macro>
@@ -369,70 +375,105 @@
           </parameter>
         </property>
 
-        <property name="CALURI">
+        <property name="CALURI" suppressempty="yes">
           <value field="CALURI" show="yes"/>
         </property>
-        <property name="FBURL">
+        <property name="FBURL" suppressempty="yes">
           <value field="FBURL" show="yes"/>
         </property>
-        <property name="X-EVOLUTION-BLOG-URL">
+        <property name="X-EVOLUTION-BLOG-URL" suppressempty="yes">
           <value field="BLOGURL" show="yes"/>
         </property>
-        <property name="X-EVOLUTION-VIDEO-URL">
+        <property name="X-EVOLUTION-VIDEO-URL" suppressempty="yes">
           <value field="VIDEOURL" show="yes"/>
         </property>
 
-        <property name="X-EVOLUTION-MANAGER">
+        <!-- item for SyncML server: EVOLUTION rule not active,
+             both X-EVOLUTION-MANAGER and X-MANAGER are sent.
+
+             item from SyncML server: EVOLUTION rule not active,
+             both X-EVOLUTION-MANAGER and X-MANAGER are checked,
+             but X-EVOLUTION-MANAGER later so that it overwrites
+             a value set earlier by X-MANAGER (if any). This is
+             a more or less arbitrary priority, chosen because
+             servers that know about SyncEvolution (ScheduleWorld,
+             Memotoo) use the X-EVOLUTION variant.
+
+             item to/from Evolution: EVOLUTION rule is active,
+             only X-EVOLUTION-MANAGER is used. -->
+        <property name="X-EVOLUTION-MANAGER" suppressempty="yes" delayedparsing="1">
           <value field="MANAGER" show="yes"/>
         </property>
-        <property name="X-EVOLUTION-ASSISTANT">
+        <property name="X-MANAGER" suppressempty="yes" rule="EVOLUTION"/> <!-- disables the X-MANAGER for EVOLUTION -->
+        <property name="X-MANAGER" suppressempty="yes" rule="other">
+          <value field="MANAGER" show="yes"/>
+        </property>
+
+        <property name="X-EVOLUTION-ASSISTANT" suppressempty="yes" delayedparsing="1">
           <value field="ASSISTANT" show="yes"/>
         </property>
-        <property name="X-EVOLUTION-SPOUSE">
+        <property name="X-ASSISTANT" suppressempty="yes" rule="EVOLUTION"/>
+        <property name="X-ASSISTANT" suppressempty="yes" rule="other">
+          <value field="ASSISTANT" show="yes"/>
+        </property>
+
+        <property name="X-EVOLUTION-SPOUSE" suppressempty="yes" delayedparsing="1">
           <value field="SPOUSE" show="yes"/>
+        </property>
+        <property name="X-SPOUSE" suppressempty="yes" rule="EVOLUTION"/>
+        <property name="X-SPOUSE" suppressempty="yes" rule="other">
+          <value field="SPOUSE" show="yes"/>
+        </property>
+
+        <property name="X-EVOLUTION-ANNIVERSARY" suppressempty="yes" delayedparsing="1">
+          <value field="ANNIVERSARY" show="yes"/>
+        </property>
+        <property name="X-ANNIVERSARY" suppressempty="yes" rule="EVOLUTION"/>
+        <property name="X-ANNIVERSARY" suppressempty="yes" rule="other">
+          <value field="ANNIVERSARY" show="yes"/>
         </property>
 
         <property name="X-MOZILLA-HTML">
           <value field="WANTS_HTML" show="yes"/>
         </property>
 
-        <property name="X-AIM">
+        <property name="X-AIM" suppressempty="yes">
           <value field="AIM_HANDLE"/>
           <parameter name="X-EVOLUTION-UI-SLOT" positional="no" show="yes">
             <value field="AIM_SLOT"/>
           </parameter>
         </property>
-        <property name="X-GADUGADU">
+        <property name="X-GADUGADU" suppressempty="yes">
           <value field="GADUGADU_HANDLE"/>
           <parameter name="X-EVOLUTION-UI-SLOT" positional="no" show="yes">
             <value field="GADUGADU_SLOT"/>
           </parameter>
         </property>
-        <property name="X-GROUPWISE">
+        <property name="X-GROUPWISE" suppressempty="yes">
           <value field="GROUPWISE_HANDLE"/>
           <parameter name="X-EVOLUTION-UI-SLOT" positional="no" show="yes">
             <value field="GROUPWISE_SLOT"/>
           </parameter>
         </property>
-        <property name="X-ICQ">
+        <property name="X-ICQ" suppressempty="yes">
           <value field="ICQ_HANDLE"/>
           <parameter name="X-EVOLUTION-UI-SLOT" positional="no" show="yes">
             <value field="ICQ_SLOT"/>
           </parameter>
         </property>
-        <property name="X-JABBER">
+        <property name="X-JABBER" suppressempty="yes">
           <value field="JABBER_HANDLE"/>
           <parameter name="X-EVOLUTION-UI-SLOT" positional="no" show="yes">
             <value field="JABBER_SLOT"/>
           </parameter>
         </property>
-        <property name="X-MSN">
+        <property name="X-MSN" suppressempty="yes">
           <value field="MSN_HANDLE"/>
           <parameter name="X-EVOLUTION-UI-SLOT" positional="no" show="yes">
             <value field="MSN_SLOT"/>
           </parameter>
         </property>
-        <property name="X-YAHOO">
+        <property name="X-YAHOO" suppressempty="yes">
           <value field="YAHOO_HANDLE"/>
           <parameter name="X-EVOLUTION-UI-SLOT" positional="no" show="yes">
             <value field="YAHOO_SLOT"/>
@@ -462,10 +503,6 @@
 
         <property name="BDAY">
           <value field="BDAY"/>
-        </property>
-
-        <property name="X-EVOLUTION-ANNIVERSARY">
-          <value field="ANNIVERSARY"/>
         </property>
 
         <property name="NOTE" filter="no">
@@ -573,6 +610,9 @@
     <!-- vCalendar with VTODO and VEVENT variants -->
     <mimeprofile name="vCalendar" fieldlist="calendar">
 
+      <vtimezonegenmode>current</vtimezonegenmode>
+      <tzidgenmode>olson</tzidgenmode>
+
       <profile name="VCALENDAR" nummandatory="1">
 
         <property name="VERSION" mandatory="yes">
@@ -602,7 +642,7 @@
         <!-- sub-profile for todoz -->
         <subprofile name="VTODO" nummandatory="1" showifselectedonly="yes" field="ISEVENT" value="0">
 
-          <property name="LAST-MODIFIED">
+          <property name="LAST-MODIFIED" suppressempty="yes">
             <value field="DMODIFIED"/>
           </property>
 
@@ -653,6 +693,9 @@
             <value field="SUMMARY"/>
           </property>
 
+          <!-- DESCRIPTION is an optional property and libical does not like
+               empty properties, so suppress it here. However, in the scripts
+               we ensure that the DESCRIPTION field should never be empty. -->
           <property name="DESCRIPTION" suppressempty="yes" mandatory="no">
             <value field="DESCRIPTION"/>
           </property>
@@ -734,7 +777,7 @@
             </value>
           </property>
 
-          <property name="PERCENT-COMPLETE" suppressempty="yes">
+          <property name="PERCENT-COMPLETE" onlyformode="standard" suppressempty="yes">
             <value field="PERCENT_COMPLETE"/>
           </property>          
 
@@ -800,7 +843,7 @@
         <!-- sub-profile for event -->
         <subprofile name="VEVENT" nummandatory="1" showifselectedonly="yes" field="ISEVENT" value="1">
 
-          <property name="LAST-MODIFIED">
+          <property name="LAST-MODIFIED" suppressempty="yes">
             <value field="DMODIFIED"/>
           </property>
 
@@ -871,6 +914,9 @@
             <value field="SUMMARY"/>
           </property>
 
+          <!-- DESCRIPTION is an optional property and libical does not like
+               empty properties, so suppress it here. However, in the scripts
+               we ensure that the DESCRIPTION field should never be empty. -->
           <property name="DESCRIPTION" suppressempty="yes" mandatory="no">
             <value field="DESCRIPTION"/>
           </property>
@@ -927,6 +973,7 @@
             <value field="EXDATES"/>
             <position field="EXDATES" repeat="array" increment="1" minshow="0"/>
           </property>
+
 
           <property name="DTEND" suppressempty="yes" delayedparsing="1">
             <value field="DTEND" conversion="autoenddate"/>
@@ -1061,6 +1108,7 @@
           </subprofile>
 
         </subprofile>
+        
       </profile>
     </mimeprofile>
 
@@ -1195,8 +1243,11 @@
       <use profile="vBookmark"/>
     </datatype>
 
-
+    <fieldlists/>
+    <profiles/>
+    <datatypes/>
   </datatypes>
+
 
   <client type="plugin">
     <binfilespath>$(binfilepath)</binfilespath>
@@ -1210,6 +1261,12 @@
     <fakedeviceid/>
 
     <datastore/>
+
+    <remoterule name="EVOLUTION">
+      <deviceid>none - this rule is activated via its name in MAKE/PARSETEXTWITHPROFILE() macro calls</deviceid>
+    </remoterule>
+
+    <remoterules/>
   </client>
 
 </sysync_config>

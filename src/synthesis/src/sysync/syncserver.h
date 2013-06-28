@@ -130,7 +130,7 @@ public:
     TStatusCommand &aStatusCommand, // pre-set 200 status, can be modified in case of errors
     bool &aQueueForLater // will be set if command must be queued for later (re-)execution
   );
-  #ifdef ENGINEINTERFACE_SUPPORT
+  #ifdef ENGINE_LIBRARY
   // Support for EngineModule common interface
   /// @brief Executes next step of the session
   /// @param aStepCmd[in/out] step command (STEPCMD_xxx):
@@ -139,9 +139,11 @@ public:
   /// @param aInfoP[in] pointer to a TEngineProgressInfo structure, NULL if no progress info needed
   /// @return LOCERR_OK on success, SyncML or LOCERR_xxx error code on failure
   TSyError SessionStep(uInt16 &aStepCmd, TEngineProgressInfo *aInfoP);
+  #endif // ENGINE_LIBRARY
+  #ifdef ENGINEINTERFACE_SUPPORT
   /// @brief Get new session key to access details of this session
   virtual appPointer newSessionKey(TEngineInterface *aEngineInterfaceP);
-  #endif
+  #endif // ENGINEINTERFACE_SUPPORT
 protected:
   // access to config
   TServerConfig *getServerConfig(void);
@@ -196,6 +198,30 @@ protected:
 
 // Support for EngineModule common interface
 // =========================================
+
+
+#ifndef ENGINE_LIBRARY
+
+#warning "using ENGINEINTERFACE_SUPPORT in old-style appbase-rooted environment. Should be converted to real engine usage later"
+
+// Define dummy server engine class - no implementation of actual server engine routines,
+// defaults from TEngineInterface (returning error codes) will be used.
+class TDummyServerEngineInterface :
+  public TEngineInterface
+{
+  typedef TEngineInterface inherited;
+public:
+  // constructor
+  TDummyServerEngineInterface() {};
+
+  // appbase factory
+  virtual TSyncAppBase *newSyncAppBase(void);
+
+}; // TDummyServerEngineInterface
+
+#endif // not ENGINE_LIBRARY
+
+
 
 // server runtime parameters
 class TServerParamsKey :

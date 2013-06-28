@@ -20,7 +20,13 @@
 
 // expat if not hardcoded config
 #ifndef HARDCODED_CONFIG
+# ifdef HAVE_EXPAT
+#include <expat.h>
+# elif defined(HAVE_SYS_XMLTOK)
+#include <xmltok/xmlparse.h>
+# else /* HAVE_BUILTIN_XMLTOK */
 #include "xmlparse.h"
+# endif
 #endif
 
 
@@ -283,6 +289,8 @@ public:
   bool fSingleSessionLog;
   // if set, ISO8601 timestamp will be added as part of the session log filename
   bool fTimedSessionLogNames;
+  // if set, session logs will be embedded into global log. Note: only reliably works in unthreaded environments
+  bool fLogSessionsToGlobal;
 protected:
   #ifndef HARDCODED_CONFIG
   // parsing

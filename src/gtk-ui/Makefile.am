@@ -1,6 +1,7 @@
 applicationsdir = $(datadir)/applications
 applications_in_files = sync.desktop.in
-applications_DATA = $(applications_in_files:.desktop.in=.desktop)
+applications_generated = $(applications_in_files:.desktop.in=.desktop)
+applications_DATA = $(applications_generated)
 @INTLTOOL_DESKTOP_RULE@
 
 gladedir = $(datadir)/syncevolution/
@@ -14,13 +15,11 @@ themerc_DATA = \
 	sync-ui.rc
 
 desktopdir = $(datadir)/applications
-desktop_DATA = \
-	sync.desktop
 
 EXTRA_DIST = \
 	ui.glade \
 	$(themerc_DATA) \
-	$(desktop_DATA) \
+	$(applications_in_files) \
 	$(noinst_DATA)
 
 ui.xml: ui.glade
@@ -32,19 +31,24 @@ bin_PROGRAMS = \
 
 sync_ui_SOURCES = \
 	main.c sync-ui.c sync-ui.h sync-ui-config.c sync-ui-config.h \
-	mux-frame.c mux-frame.h mux-window.c mux-window.h mux-icon-button.c mux-icon-button.h \
-	sync-ui-marshal.c sync-ui-marshal.h
+	mux-frame.c mux-frame.h mux-window.c mux-window.h mux-icon-button.c mux-icon-button.h
+nodist_sync_ui_SOURCES = sync-ui-marshal.c sync-ui-marshal.h
 sync_ui_LDADD = $(GUI_LIBS) $(DBUS_GLIB_LIBS) -L$(top_builddir)/src/dbus -lsyncevo-dbus
 sync_ui_CFLAGS = $(GUI_CFLAGS) $(DBUS_GLIB_CFLAGS) \
                  -DGLADEDIR=\""$(gladedir)"\" \
                  -DTHEMEDIR=\""$(themercdir)"\" \
+                 -DLIBEXECDIR=\"@libexecdir@\" \
                  -DSYNCEVOLUTION_LOCALEDIR=\"${SYNCEVOLUTION_LOCALEDIR}\"
 sync_ui_CPPFLAGS = -I$(top_builddir) -I$(top_srcdir) -I$(top_builddir)/src/dbus -I$(top_srcdir)/src/dbus $(SYNTHESIS_CFLAGS) 
 
 noinst_DATA = sync-ui-marshal.list
+if COND_GUI
 BUILT_SOURCES = \
 	syncevo-bindings.h sync-ui-marshal.c sync-ui-marshal.h
-CLEANFILES = $(BUILT_SOURCES) 
+endif
+CLEANFILES = $(BUILT_SOURCES) \
+	ui.xml \
+        $(applications_generated)
 
 %-bindings.h: stamp-%-bindings.h
 	@true

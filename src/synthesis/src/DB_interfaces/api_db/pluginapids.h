@@ -194,9 +194,11 @@ public:
   ///   - fLastRemoteAnchor = anchor string used by remote party for last session (and saved to DB then)
   ///   - fPreviousSyncTime = anchor (beginning of session) timestamp of last session.
   ///   - fPreviousToRemoteSyncCmpRef = Reference time to determine items modified since last time sending data to remote
-  ///   - fPreviousToRemoteSyncIdentifier = string identifying last session that sent data to remote (needs only be saved
-  ///                         if derived datastore cannot work with timestamps and has its own identifier).
-  ///   - fMapTable         = list<TMapEntry> containing map entries. The implementation must load all map entries
+  ///                         (or last changelog update in case of BASED_ON_BINFILE_CLIENT)
+  ///   - fPreviousToRemoteSyncIdentifier = string identifying last session that sent data to remote
+  ///                         (or last changelog update in case of BASED_ON_BINFILE_CLIENT). Needs only be saved
+  ///                         if derived datastore cannot work with timestamps and has its own identifier.
+	///   - fMapTable         = list<TMapEntry> containing map entries. The implementation must load all map entries
   ///                         related to the current sync target identified by the triple of (aDeviceID,aDatabaseID,aRemoteDBID)
   ///                         or by fTargetKey. The entries added to fMapTable must have "changed", "added" and "deleted" flags
   ///                         set to false.
@@ -225,8 +227,10 @@ public:
   ///   - fLastRemoteAnchor = anchor string used by remote party for this session (and saved to DB then)
   ///   - fPreviousSyncTime = anchor (beginning of session) timestamp of this session.
   ///   - fPreviousToRemoteSyncCmpRef = Reference time to determine items modified since last time sending data to remote
-  ///   - fPreviousToRemoteSyncIdentifier = string identifying last session that sent data to remote (needs only be saved
-  ///                         if derived datastore cannot work with timestamps and has its own identifier).
+  ///                         (or last changelog update in case of BASED_ON_BINFILE_CLIENT)
+  ///   - fPreviousToRemoteSyncIdentifier = string identifying last session that sent data to remote
+  ///                         (or last changelog update in case of BASED_ON_BINFILE_CLIENT). Needs only be saved
+  ///                         if derived datastore cannot work with timestamps and has its own identifier.
   ///   - fMapTable         = list<TMapEntry> containing map entries. The implementation must save all map entries
   ///                         that have changed, are new or are deleted. See below for additional resume requirements.
   ///   For resumable datastores:

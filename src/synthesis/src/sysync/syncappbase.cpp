@@ -686,15 +686,16 @@ void TDebugConfig::clear(void)
   // set defaults
   fGlobalDbgLoggerOptions.clear(); // set logger options to defaults
   fSessionDbgLoggerOptions.clear(); // set logger options to defaults
-  fDebug=DEFAULT_DEBUG; // if <>0 (and #defined SYDEBUG), debug output is generated, value is used as mask
-  fMsgDump=DEFAULT_MSGDUMP; // if set (and #defined MSGDUMP), messages sent and received are logged;
-  fSingleGlobLog=false; // create a separate global log per app start
-  fSingleSessionLog=false; // create separate session logs
-  fTimedSessionLogNames=true; // add session start time into file name
-  fXMLtranslate=DEFAULT_XMLTRANSLATE; // if set, communication will be translated to XML and logged
-  fSimMsgRead=DEFAULT_SIMMSGREAD; // if set (and #defined SIMMSGREAD), simulated input with "i_" prefixed incoming messages are supported
-  fGlobalDebugLogs=DEFAULT_GLOBALDEBUGLOGS;
-  fSessionDebugLogs=DEFAULT_SESSIONDEBUGLOGS;
+  fDebug = DEFAULT_DEBUG; // if <>0 (and #defined SYDEBUG), debug output is generated, value is used as mask
+  fMsgDump = DEFAULT_MSGDUMP; // if set (and #defined MSGDUMP), messages sent and received are logged;
+  fSingleGlobLog = false; // create a separate global log per app start
+  fSingleSessionLog = false; // create separate session logs
+  fTimedSessionLogNames = true; // add session start time into file name
+  fLogSessionsToGlobal = false; // use separate file(s) for session log
+  fXMLtranslate = DEFAULT_XMLTRANSLATE; // if set, communication will be translated to XML and logged
+  fSimMsgRead = DEFAULT_SIMMSGREAD; // if set (and #defined SIMMSGREAD), simulated input with "i_" prefixed incoming messages are supported
+  fGlobalDebugLogs = DEFAULT_GLOBALDEBUGLOGS;
+  fSessionDebugLogs = DEFAULT_SESSIONDEBUGLOGS;
   if (getPlatformString(pfs_defout_path,fDebugInfoPath))
     makeOSDirPath(fDebugInfoPath);
   else
@@ -704,7 +705,7 @@ void TDebugConfig::clear(void)
   #ifndef SYSYNC_TOOL
   // and make sure final resolve takes place early when <debug> element finishes parsing
   // (but not for SYSYNC_TOOL, where we want no debug output at all during config read & resolve!)
-  fResolveImmediately=true;
+  fResolveImmediately = true;
   #endif
   // clear inherited
   inherited::clear();
@@ -738,24 +739,27 @@ void TDebugConfig::localResolve(bool aLastPass)
         #endif
       #endif
     #endif
-    // initialize global debug logging
+    // initialize global debug logging options
     getSyncAppBase()->fAppLogger.setMask(fDebug); // set initial debug mask from config
     getSyncAppBase()->fAppLogger.setEnabled(fGlobalDebugLogs); // init from config
     getSyncAppBase()->fAppLogger.setOptions(&fGlobalDbgLoggerOptions);
-    getSyncAppBase()->fAppLogger.installOutput(getSyncAppBase()->newDbgOutputter(true)); // install the output object (and pass ownership!) // %%% later request this from sessionbase which can return the appropriate platform-adapted type
-    getSyncAppBase()->fAppLogger.setDebugPath(fDebugInfoPath.c_str()); // global log all in one file
-    getSyncAppBase()->fAppLogger.appendToDebugPath(TARGETID);
-    if (fSingleGlobLog) {
-      // One single log - in this case, we MUST append to current log
-      fGlobalDbgLoggerOptions.fAppend=true;
-    }
-    else {
-      // create a new global log for each app start
-      getSyncAppBase()->fAppLogger.appendToDebugPath("_");
-      string t;
-      TimestampToISO8601Str(t, getSyncAppBase()->getSystemNowAs(TCTX_UTC), TCTX_UTC, false, false);
-      getSyncAppBase()->fAppLogger.appendToDebugPath(t.c_str());
-      getSyncAppBase()->fAppLogger.appendToDebugPath("_global");
+    // install outputter, but only if not yet installed in an earlier invocation. We only want ONE log per engine instantiation!
+    if (!getSyncAppBase()->fAppLogger.outputEstablished()) {
+      getSyncAppBase()->fAppLogger.installOutput(getSyncAppBase()->newDbgOutputter(true)); // install the output object (and pass ownership!)
+      getSyncAppBase()->fAppLogger.setDebugPath(fDebugInfoPath.c_str()); // global log all in one file
+      getSyncAppBase()->fAppLogger.appendToDebugPath(TARGETID);
+      if (fSingleGlobLog) {
+        // One single log - in this case, we MUST append to current log
+        fGlobalDbgLoggerOptions.fAppend=true;
+      }
+      else {
+        // create a new global log for each app start
+        getSyncAppBase()->fAppLogger.appendToDebugPath("_");
+        string t;
+        TimestampToISO8601Str(t, getSyncAppBase()->getSystemNowAs(TCTX_UTC), TCTX_UTC, false, false);
+        getSyncAppBase()->fAppLogger.appendToDebugPath(t.c_str());
+        getSyncAppBase()->fAppLogger.appendToDebugPath("_global");
+      }
     }
     // define this as the main thread
     getSyncAppBase()->fAppLogger.DebugDefineMainThread();
@@ -933,6 +937,8 @@ bool TDebugConfig::localStartElement(const char *aElementName, const char **aAtt
     expectBool(fSingleSessionLog);
   else if (strucmp(aElementName,"timedsessionlognames")==0)
     expectBool(fTimedSessionLogNames);
+  else if (strucmp(aElementName,"logsessionstoglobal")==0)
+    expectBool(fLogSessionsToGlobal);
   else
     return false; // invalid element
   return true;
@@ -1639,7 +1645,8 @@ localstatus TSyncAppBase::readXMLConfigStream(TXMLConfigReadFunc aReaderFunc, vo
     // check if ok or not
     if ((fatalerr=fConfigP->getFatalError())!=LOCERR_OK) {
       // config failed, reset
-      fConfigP->clear();
+      // %%% do not clear the config here
+      //fConfigP->clear();
       ConferrPrintf(
         "Fatal error %hd, no valid configuration could be read from XML file",
         (sInt16)fatalerr
@@ -1789,6 +1796,11 @@ localstatus TSyncAppBase::readXMLConfigFile(cAppCharP aFilePath)
     // now read the config file (and possibly override fConfigDate)
     if ((fatalerr=readXMLConfigCFile(cfgfile))!=LOCERR_OK) {
       fclose(cfgfile);
+      PDEBUGPRINTFX(DBG_ERROR,(
+        "==== Fatal Error %hd reading config file '%s'",
+        fatalerr,
+        aFilePath
+      ));
       return fatalerr; // config file with fatal errors
     }
     fclose(cfgfile);

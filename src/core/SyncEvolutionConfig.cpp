@@ -18,12 +18,15 @@
  * 02110-1301  USA
  */
 
+#include "config.h"
+
 #include "SyncEvolutionConfig.h"
 #include "EvolutionSyncSource.h"
 #include "EvolutionSyncClient.h"
 #include "FileConfigTree.h"
 #include "VolatileConfigTree.h"
 #include "VolatileConfigNode.h"
+#include "synthesis/timeutil.h"
 
 #include <boost/foreach.hpp>
 #include <iterator>
@@ -160,6 +163,8 @@ EvolutionSyncConfig::ServerList EvolutionSyncConfig::getServerTemplates()
     result.addDefaultTemplate("ScheduleWorld", "http://sync.scheduleworld.com");
     result.addDefaultTemplate("Synthesis", "http://www.synthesis.ch");
     result.addDefaultTemplate("Memotoo", "http://www.memotoo.com");
+    result.addDefaultTemplate("Google", "http://m.google.com/sync");
+    result.addDefaultTemplate("ZYB", "http://www.zyb.com");
 
     result.sort();
     return result;
@@ -252,6 +257,7 @@ boost::shared_ptr<EvolutionSyncConfig> EvolutionSyncConfig::createServerTemplate
         boost::iequals(server, "default")) {
         config->setSyncURL("http://sync.scheduleworld.com/funambol/ds");
         config->setWebURL("http://sync.scheduleworld.com");
+        config->setConsumerReady(true);
         source = config->getSyncSourceConfig("addressbook");
         source->setURI("card3");
         source->setSourceType("addressbook:text/vcard");
@@ -264,10 +270,16 @@ boost::shared_ptr<EvolutionSyncConfig> EvolutionSyncConfig::createServerTemplate
     } else if (boost::iequals(server, "funambol")) {
         config->setSyncURL("http://my.funambol.com/sync");
         config->setWebURL("http://my.funambol.com");
+        config->setWBXML(false);
+        config->setConsumerReady(true);
         source = config->getSyncSourceConfig("calendar");
-        source->setSync("disabled");
+        source->setSync("two-way");
+        source->setURI("event");
+        source->setSourceType("calendar:text/calendar!");
         source = config->getSyncSourceConfig("todo");
-        source->setSync("disabled");
+        source->setSync("two-way");
+        source->setURI("task");
+        source->setSourceType("todo:text/calendar!");
     } else if (boost::iequals(server, "synthesis")) {
         config->setSyncURL("http://www.synthesis.ch/sync");
         config->setWebURL("http://www.synthesis.ch");
@@ -292,6 +304,35 @@ boost::shared_ptr<EvolutionSyncConfig> EvolutionSyncConfig::createServerTemplate
         source->setURI("task");
         source = config->getSyncSourceConfig("memo");
         source->setURI("note");
+    } else if (boost::iequals(server, "google")) {
+        config->setSyncURL("http://m.google.com/syncml");
+        config->setWebURL("http://m.google.com/sync");
+        config->setClientAuthType("syncml:auth-basic");
+        config->setWBXML(true);
+        config->setConsumerReady(true);
+        source = config->getSyncSourceConfig("addressbook");
+        source->setURI("contacts");
+        source->setSourceType("addressbook:text/x-vcard");
+        /* Google support only addressbook sync via syncml */
+        source = config->getSyncSourceConfig("calendar");
+        source->setSync("none");
+        source = config->getSyncSourceConfig("todo");
+        source->setSync("none");
+        source = config->getSyncSourceConfig("memo");
+        source->setSync("none");
+    } else if (boost::iequals(server, "zyb")) {
+        config->setSyncURL("http://sync.zyb.com");
+        config->setWebURL("http://www.zyb.com");
+        source = config->getSyncSourceConfig("addressbook");
+        source->setURI("contacts");
+        source = config->getSyncSourceConfig("calendar");
+        source->setURI("calendar");
+        source = config->getSyncSourceConfig("todo");
+        source->setURI("task");
+        source->setSync("disabled");
+        source = config->getSyncSourceConfig("memo");
+        source->setURI("note");
+        source->setSync("disabled");
     } else {
         config.reset();
     }
@@ -413,7 +454,7 @@ static UIntConfigProperty syncPropMaxObjSize("maxObjSize", "", "4000000");
 static BoolConfigProperty syncPropCompression("enableCompression", "enable compression of network traffic (not currently supported)");
 static BoolConfigProperty syncPropWBXML("enableWBXML",
                                         "use the more compact binary XML (WBXML) for messages between client and server",
-                                        /* TODO: enable it again by default once ScheduleWorld handles it */ "FALSE");
+                                        "TRUE");
 static ConfigProperty syncPropLogDir("logdir",
                                      "full path to directory where automatic backups and logs\n"
                                      "are stored for all synchronizations; if unset, then\n"
@@ -442,7 +483,8 @@ static BoolConfigProperty syncPropPrintChanges("printChanges",
 static ConfigProperty syncPropSSLServerCertificates("SSLServerCertificates",
                                                     "A string specifying the location of the certificates\n"
                                                     "used to authenticate the server. When empty, the\n"
-                                                    "system's default location will be searched.");
+                                                    "system's default location will be searched.",
+                                                    SYNCEVOLUTION_SSL_SERVER_CERTIFICATES);
 static BoolConfigProperty syncPropSSLVerifyServer("SSLVerifyServer",
                                                   "The client refuses to establish the connection unless\n"
                                                   "the server presents a valid certificate. Disabling this\n"
@@ -466,6 +508,18 @@ static ConfigProperty syncPropIconURI("IconURI",
                                       "The URI of an icon representing the server graphically.\n"
                                       "Should be a 48x48 pixmap or a SVG (preferred).\n"
                                       "Used only by the GUI.");
+
+static BoolConfigProperty syncPropConsumerReady("ConsumerReady",
+                                                "Set to true in a configuration template to indicate\n"
+                                                "that the server works well enough and is available\n"
+                                                "for normal users. Used by the GUI to limit the choice\n"
+                                                "of configurations offered to users.\n"
+                                                "Has no effect in a user's server configuration.\n",
+                                                "0");
+
+static ULongConfigProperty syncPropHashCode("HashCode", "used by the SyncML library internally; do not modify");
+
+static ConfigProperty syncPropConfigDate("ConfigDate", "used by the SyncML library internally; do not modify");
 
 ConfigPropertyRegistry &EvolutionSyncConfig::getRegistry()
 {
@@ -499,6 +553,11 @@ ConfigPropertyRegistry &EvolutionSyncConfig::getRegistry()
         registry.push_back(&syncPropSSLVerifyHost);
         registry.push_back(&syncPropWebURL);
         registry.push_back(&syncPropIconURI);
+        registry.push_back(&syncPropConsumerReady);
+        registry.push_back(&syncPropHashCode);
+        syncPropHashCode.setHidden(true);
+        registry.push_back(&syncPropConfigDate);
+        syncPropConfigDate.setHidden(true);
         initialized = true;
     }
 
@@ -594,7 +653,20 @@ void EvolutionSyncConfig::setPrintChanges(bool value, bool temporarily) { syncPr
 std::string EvolutionSyncConfig::getWebURL() const { return syncPropWebURL.getProperty(*m_configNode); }
 void EvolutionSyncConfig::setWebURL(const std::string &url, bool temporarily) { syncPropWebURL.setProperty(*m_configNode, url, temporarily); }
 std::string EvolutionSyncConfig::getIconURI() const { return syncPropIconURI.getProperty(*m_configNode); }
+bool EvolutionSyncConfig::getConsumerReady() const { return syncPropConsumerReady.getProperty(*m_configNode); }
+void EvolutionSyncConfig::setConsumerReady(bool ready) { return syncPropConsumerReady.setProperty(*m_configNode, ready); }
 void EvolutionSyncConfig::setIconURI(const std::string &uri, bool temporarily) { syncPropIconURI.setProperty(*m_configNode, uri, temporarily); }
+unsigned long EvolutionSyncConfig::getHashCode() const { return syncPropHashCode.getProperty(*m_hiddenNode); }
+void EvolutionSyncConfig::setHashCode(unsigned long code) { syncPropHashCode.setProperty(*m_hiddenNode, code); }
+std::string EvolutionSyncConfig::getConfigDate() const { return syncPropConfigDate.getProperty(*m_hiddenNode); }
+void EvolutionSyncConfig::setConfigDate() { 
+    /* Set current timestamp as configdate */
+    char buffer[17]; 
+    time_t ts = time(NULL);
+    strftime(buffer, sizeof(buffer), "%Y%m%dT%H%M%SZ", gmtime(&ts));
+    const std::string date(buffer);
+    syncPropConfigDate.setProperty(*m_hiddenNode, date);
+}
 const char* EvolutionSyncConfig::getSSLServerCertificates() const { return m_stringCache.getProperty(*m_configNode, syncPropSSLServerCertificates); }
 void EvolutionSyncConfig::setSSLServerCertificates(const string &value, bool temporarily) { syncPropSSLServerCertificates.setProperty(*m_configNode, value, temporarily); }
 bool EvolutionSyncConfig::getSSLVerifyServer() const { return syncPropSSLVerifyServer.getProperty(*m_configNode); }
@@ -888,17 +960,26 @@ void EvolutionSyncSourceConfig::setSync(const string &value, bool temporarily) {
 unsigned long EvolutionSyncSourceConfig::getLast() const { return sourcePropLast.getProperty(*m_nodes.m_hiddenNode); }
 void EvolutionSyncSourceConfig::setLast(unsigned long timestamp) { sourcePropLast.setProperty(*m_nodes.m_hiddenNode, timestamp); }
 string EvolutionSyncSourceConfig::getSourceTypeString(const SyncSourceNodes &nodes) { return sourcePropSourceType.getProperty(*nodes.m_configNode); }
-pair<string, string> EvolutionSyncSourceConfig::getSourceType(const SyncSourceNodes &nodes) {
+SourceType EvolutionSyncSourceConfig::getSourceType(const SyncSourceNodes &nodes) {
     string type = getSourceTypeString(nodes);
+    SourceType sourceType;
     size_t colon = type.find(':');
     if (colon != type.npos) {
         string backend = type.substr(0, colon);
         string format = type.substr(colon + 1);
         sourcePropSourceType.normalizeValue(backend);
-        return pair<string, string>(backend, format);
+        size_t formatLen = format.size();
+        if(format[formatLen - 1] == '!') {
+            sourceType.m_forceFormat = true;
+            format = format.substr(0, formatLen - 1);
+        }
+        sourceType.m_backend = backend;
+        sourceType.m_format  = format;
     } else {
-        return pair<string, string>(type, "");
+        sourceType.m_backend = type;
+        sourceType.m_format  = "";
     }
+    return sourceType;
 }
-pair<string, string> EvolutionSyncSourceConfig::getSourceType() const { return getSourceType(m_nodes); }
+SourceType EvolutionSyncSourceConfig::getSourceType() const { return getSourceType(m_nodes); }
 void EvolutionSyncSourceConfig::setSourceType(const string &value, bool temporarily) { sourcePropSourceType.setProperty(*m_nodes.m_configNode, value, temporarily); }

@@ -192,6 +192,7 @@
 // - if defined, code for incoming and outgoing SyncML dumping into (WB)XML logfiles is included
 #define MSGDUMP 1
 
-
+// - enable support for remote rules, despite being a client
+#undef NO_REMOTE_RULES
 
 /* eof */
