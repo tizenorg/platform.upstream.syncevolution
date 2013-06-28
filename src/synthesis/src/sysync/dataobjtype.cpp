@@ -161,11 +161,11 @@ bool TDataObjConfig::localStartElement(const char *aElementName, const char **aA
   } // if
   // - none known here
   if (inherited::localStartElement(aElementName,aAttributes,aLine))
-  	return true;
+    return true;
   // let the profile parse as if it was inside a <textprofile> or <mimeprofile>
   if (fProfileConfigP)
     return delegateParsingTo(fProfileConfigP,aElementName,aAttributes,aLine);
-	// cannot parse
+  // cannot parse
   return false;
 } // TDataObjConfig::localStartElement
 
@@ -224,8 +224,8 @@ TDataObjType::TDataObjType(
   fTypeCfgP = static_cast<TDataObjConfig *>(aTypeCfgP);
   // create the profile handler if there is one at all (a profile is optional)
   if (fTypeCfgP->fProfileConfigP) {
-  	// create the handler
-	  fProfileHandlerP = fTypeCfgP->fProfileConfigP->newProfileHandler(this);
+    // create the handler
+    fProfileHandlerP = fTypeCfgP->fProfileConfigP->newProfileHandler(this);
     // set profile mode
     fProfileHandlerP->setProfileMode(fTypeCfgP->fProfileMode);
   }
@@ -236,7 +236,7 @@ TDataObjType::~TDataObjType()
 {
   // handler not needed any more
   if (fProfileHandlerP)
-  	delete fProfileHandlerP;
+    delete fProfileHandlerP;
 } // TDataObjType::~TDataObjType
 
 
@@ -475,7 +475,7 @@ void TDataObjType::generateData(TLocalEngineDS *aDatastoreP, TMultiFieldItem &aI
 
     if ((*pos)->fEmbedded && fProfileHandlerP) {
       // set related datastore so handler can access session specific datastore state
-  		fProfileHandlerP->setRelatedDatastore(aDatastoreP);
+      fProfileHandlerP->setRelatedDatastore(aDatastoreP);
       fProfileHandlerP->generateText(aItem, v);
       AppendCDATA( aString, TCFG_CSTR((*pos)->fXmlTag), v.c_str());
       continue; // it's done now for this element
@@ -868,7 +868,7 @@ bool TDataObjType::parseData(const char *aText, stringSize aSize, TMultiFieldIte
 
                 // delegate parsing of embedded object
                 if ((*pos)->fEmbedded && fProfileHandlerP) {
-						      // set related datastore so handler can access session specific datastore state
+                  // set related datastore so handler can access session specific datastore state
                   fProfileHandlerP->setRelatedDatastore(aDatastoreP);
                   // vPos,vSize is not a copy, but a direct reference into <aText>
                   bool ok= fProfileHandlerP->parseText(vPos,vSize, aItem);
@@ -926,7 +926,7 @@ void TDataObjType::addFilterCapPropsAndKeywords(SmlPcdataListPtr_t &aFilterKeywo
   }
   // let embedded profile add the keywords
   if (fProfileHandlerP) {
-	  fProfileHandlerP->addFilterCapPropsAndKeywords(aFilterKeywords, aFilterProps, aVariantDescriptor, this);
+    fProfileHandlerP->addFilterCapPropsAndKeywords(aFilterKeywords, aFilterProps, aVariantDescriptor, this);
   }
   // let base class add own keywords/props
   inherited::addFilterCapPropsAndKeywords(aFilterKeywords, aFilterProps, aVariantDescriptor);

@@ -56,7 +56,7 @@ TSyncSessionHandle::~TSyncSessionHandle()
 // NOTE: keeps session Enter()ed, to avoid any other thread to enter.
 bool TSyncSessionHandle::EnterAndTerminateSession(uInt16 aStatusCode)
 {
-	// no locks here, so just call TerminateSession
+  // no locks here, so just call TerminateSession
   return TerminateSession(aStatusCode);
 } // TSyncSessionHandle::EnterAndTerminateSession
 
@@ -431,21 +431,21 @@ void TSyncSessionDispatch::deleteListedSessions(TSyncSessionHandlePList &aDelSes
           // make it used again, so it will timeout later again
           sessionHP->fSessionP->SessionUsed();
           // re-insert into queue
-      	  LockSessions();
-      	  // however, if we now see that there is NO other session running, we'll risk crashing here and delete the session
-      	  if (fSessions.size()==0) {
-      	    // we'll do no harm to other sessions because there are none - try to hard-kill the session
+          LockSessions();
+          // however, if we now see that there is NO other session running, we'll risk crashing here and delete the session
+          if (fSessions.size()==0) {
+            // we'll do no harm to other sessions because there are none - try to hard-kill the session
             PDEBUGPRINTFX(DBG_ERROR,("No non-ZOMBIE sessions running -> risking to delete this ZOMBIE",deletedsessionid.c_str()));
-      	    delete sessionHP;
-      	  }
-      	  else {			
-        		fSessions[deletedsessionid]=sessionHP;
-        		PDEBUGPRINTFX(DBG_HOT,(
-        		  "ZOMBIE session ID='%s' is now again in session list, waiting once more for timeout and hopefully clean deletion later",
-        		  deletedsessionid.c_str()
-        		));
-      	  }
-      	  ReleaseSessions();
+            delete sessionHP;
+          }
+          else {
+            fSessions[deletedsessionid]=sessionHP;
+            PDEBUGPRINTFX(DBG_HOT,(
+              "ZOMBIE session ID='%s' is now again in session list, waiting once more for timeout and hopefully clean deletion later",
+              deletedsessionid.c_str()
+            ));
+          }
+          ReleaseSessions();
         }
         else {
           PDEBUGPRINTFX(DBG_ERROR,("Termination failed, but sessionP gone nevertheless"));
@@ -483,11 +483,11 @@ TSyncSessionHandle *TSyncSessionDispatch::CreateAndEnterServerSession(cAppCharP 
       lineartime2date(nw,&y,&mo,&d);
       // - calculate scrambled version thereof
       fScrambledNow=
-      	(y-1720)*12*42+
-      	(mo-1)*42+
-      	(d+7);
-    	if (fScrambledNow>SCRAMBLED_EXPIRY_VALUE)
-    	  fAppExpiryStatus = LOCERR_EXPIRED; // hard expiry
+        (y-1720)*12*42+
+        (mo-1)*42+
+        (d+7);
+      if (fScrambledNow>SCRAMBLED_EXPIRY_VALUE)
+        fAppExpiryStatus = LOCERR_EXPIRED; // hard expiry
     }
     #endif
     #ifdef SYSER_REGISTRATION
@@ -633,9 +633,9 @@ Ret_t TSyncSessionDispatch::EndRequest(InstanceID_t aSmlWorkspaceID, bool &aHasD
       // end of request that could not be assiged a session at all
       DEBUGPRINTFX(DBG_HOT,("Request ended with no session attached"));
     }
-		#ifdef SYDEBUG
+    #ifdef SYDEBUG
     dbgListSessions();
-		#endif
+    #endif
     return SML_ERR_OK;
   }
   catch (exception &e) {

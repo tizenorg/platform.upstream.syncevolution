@@ -587,8 +587,8 @@ localstatus TStdLogicDS::startDataAccessForServer(void)
         // this will not work, warn (but no longer abort session, as Siemens S55 guys don't like that)
         CONSOLEPRINTF((
           "Warning: Synchronisation involves more items (%ld) than client can possibly manage (%ld",
-          (sInt32)fItems.size(),
-          (sInt32)getRemoteDatastore()->getMaxID()
+          (long)fItems.size(),
+          (long)getRemoteDatastore()->getMaxID()
         ));
         PDEBUGPRINTFX(DBG_ERROR,(
           "Warning: Synchronisation involves more items (%ld) than client can possibly manage (%ld)",
@@ -1103,6 +1103,73 @@ void TStdLogicDS::logicMarkOnlyUngeneratedForResume(void)
     #endif // SYSYNC_CLIENT
   }
 } // TStdLogicDS::logicMarkOnlyUngeneratedForResume
+
+
+
+/// helper to merge database version of an item with the passed version of the same item;
+/// does age comparison by default, with "local side wins" as fallback
+TMultiFieldItem *TStdLogicDS::mergeWithDatabaseVersion(TSyncItem *aSyncItemP, bool &aChangedDBVersion, bool &aChangedNewVersion)
+{
+  aChangedDBVersion = false;
+  aChangedNewVersion = false;
+
+  TStatusCommand dummy(fSessionP);
+  TMultiFieldItem *dbVersionItemP = (TMultiFieldItem *)newItemForRemote(aSyncItemP->getTypeID());
+  if (!dbVersionItemP) return NULL;
+  // - set IDs
+  dbVersionItemP->setLocalID(aSyncItemP->getLocalID());
+  dbVersionItemP->setRemoteID(aSyncItemP->getRemoteID());
+  // - result is always a replace (item exists in DB)
+  dbVersionItemP->setSyncOp(sop_wants_replace);
+  // - try to get from DB
+  bool ok=logicRetrieveItemByID(*dbVersionItemP,dummy);
+  if (ok && dummy.getStatusCode()!=404) {
+    // item found in DB, merge with original item
+    // TODO (?): make this configurable
+    TConflictResolution crstrategy = cr_newer_wins;
+
+    if (crstrategy==cr_newer_wins) {
+      sInt16 cmpRes = aSyncItemP->compareWith(
+        *dbVersionItemP,
+        eqm_nocompare,this
+        #ifdef SYDEBUG
+        ,PDEBUGTEST(DBG_CONFLICT+DBG_DETAILS) // show age comparisons only if we want to see details
+        #endif
+      );
+      if (cmpRes==-1) crstrategy=cr_server_wins;
+      else crstrategy=cr_client_wins;
+      PDEBUGPRINTFX(DBG_DATA,(
+        "Newer item determined: %s",
+        crstrategy==cr_client_wins ?
+        "Incoming item is newer and wins" :
+        "DB item is newer and wins"
+      ));
+      if (crstrategy==cr_client_wins) {
+        aSyncItemP->mergeWith(*dbVersionItemP, aChangedNewVersion, aChangedDBVersion, this);
+      } else {
+        dbVersionItemP->mergeWith(*aSyncItemP, aChangedDBVersion, aChangedNewVersion, this);
+      }
+      PDEBUGPRINTFX(DBG_DATA,(
+        "Merged incoming item (%s,relevant,%smodified) with version from database (%s,%s,%smodified)",
+        crstrategy==cr_client_wins ? "winning" : "loosing",
+        aChangedNewVersion ? "" : "NOT ",
+        crstrategy==cr_server_wins ? "winning" : "loosing",
+        aChangedDBVersion ? "to-be-replaced" : "to-be-left-unchanged",
+        aChangedDBVersion ? "" : "NOT "
+      ));
+    }
+  }
+  else {
+    // no item found, we cannot force a conflict
+    PDEBUGPRINTFX(DBG_ERROR,("Could not retrieve database version of item, DB status code = %hd",dummy.getStatusCode()));
+    delete dbVersionItemP;
+    dbVersionItemP=NULL;
+    return NULL;
+  }
+  return dbVersionItemP;
+} // TStdLogicDS::mergeWithDatabaseVersion
+
+
 
 
 

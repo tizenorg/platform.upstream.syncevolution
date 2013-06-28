@@ -27,7 +27,7 @@
 #include <stdarg.h>
 
 #include <syncevo/declarations.h>
-
+using namespace std;
 namespace {
 
 std::string lookupDebug, lookupInfo;
@@ -284,6 +284,7 @@ extern "C" void EDSAbiWrapperInit()
                 &EDSAbiWrapperSingleton.icalparameter_get_tzid, "icalparameter_get_tzid",
                 &EDSAbiWrapperSingleton.icalparameter_set_tzid, "icalparameter_set_tzid",
                 &EDSAbiWrapperSingleton.icalparameter_new_from_value_string, "icalparameter_new_from_value_string",
+                &EDSAbiWrapperSingleton.icalparameter_new_clone, "icalparameter_new_clone",
                 &EDSAbiWrapperSingleton.icalproperty_new_clone, "icalproperty_new_clone",
                 &EDSAbiWrapperSingleton.icalproperty_free, "icalproperty_free",
                 &EDSAbiWrapperSingleton.icalproperty_get_description, "icalproperty_get_description",
@@ -301,12 +302,17 @@ extern "C" void EDSAbiWrapperInit()
                 &EDSAbiWrapperSingleton.icalproperty_new_summary, "icalproperty_new_summary",
                 &EDSAbiWrapperSingleton.icalproperty_new_uid, "icalproperty_new_uid",
                 &EDSAbiWrapperSingleton.icalproperty_new_sequence, "icalproperty_new_sequence",
+                &EDSAbiWrapperSingleton.icalproperty_new_recurrenceid, "icalproperty_new_recurrenceid",
                 &EDSAbiWrapperSingleton.icalproperty_set_value_from_string, "icalproperty_set_value_from_string",
                 &EDSAbiWrapperSingleton.icalproperty_set_dtstamp, "icalproperty_set_dtstamp",
                 &EDSAbiWrapperSingleton.icalproperty_set_lastmodified, "icalproperty_set_lastmodified",
                 &EDSAbiWrapperSingleton.icalproperty_set_sequence, "icalproperty_set_sequence",
                 &EDSAbiWrapperSingleton.icalproperty_set_uid, "icalproperty_set_uid",
                 &EDSAbiWrapperSingleton.icalproperty_remove_parameter_by_kind, "icalproperty_remove_parameter_by_kind",
+                &EDSAbiWrapperSingleton.icalproperty_add_parameter, "icalproperty_add_parameter",
+                &EDSAbiWrapperSingleton.icalproperty_get_value_as_string, "icalproperty_get_value_as_string",
+                &EDSAbiWrapperSingleton.icalproperty_get_x_name, "icalproperty_get_x_name",
+                &EDSAbiWrapperSingleton.icalproperty_new_from_string, "icalproperty_new_from_string",
                 &EDSAbiWrapperSingleton.icaltime_is_null_time, "icaltime_is_null_time",
                 &EDSAbiWrapperSingleton.icaltime_is_utc, "icaltime_is_utc",
                 &EDSAbiWrapperSingleton.icaltime_as_ical_string, "icaltime_as_ical_string",
@@ -331,6 +337,7 @@ extern "C" void EDSAbiWrapperInit()
                 FIND_SYMBOLS_LENIENT_MAX_VERSION, NULL,
                 &EDSAbiWrapperSingleton.icalcomponent_as_ical_string_r, "icalcomponent_as_ical_string_r",
                 &EDSAbiWrapperSingleton.icaltime_as_ical_string_r, "icaltime_as_ical_string_r",
+                &EDSAbiWrapperSingleton.icalproperty_get_value_as_string_r, "icalproperty_get_value_as_string_r",
                 (void *)0);
 # endif // ENABLE_ECAL
 

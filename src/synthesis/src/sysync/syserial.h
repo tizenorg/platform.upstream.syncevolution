@@ -1,7 +1,7 @@
 /*
  *  File:         syserial.h
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  Serial number generator and checker
  *
@@ -81,25 +81,25 @@ namespace sysync {
 #define SYSER_PRODCODE_CLIENT_DEMO 15 // Demo Client (Text only)
 
 // - Outlook client
-#define SYSER_PRODCODE_CLIENT_OUTLOOK_STD		16 // Outlook Client STD
-#define SYSER_PRODCODE_CLIENT_OUTLOOK_PRO 	17 // Outlook Client PRO (with email)
+#define SYSER_PRODCODE_CLIENT_OUTLOOK_STD   16 // Outlook Client STD
+#define SYSER_PRODCODE_CLIENT_OUTLOOK_PRO   17 // Outlook Client PRO (with email)
 
 // - Client Libraries
-#define SYSER_PRODCODE_CLIENT_LIB_WIN32   	18 // Win32 ODBC PRO
-#define SYSER_PRODCODE_CLIENT_LIB_MACOSX  	19 // for Mac OS X
-#define SYSER_PRODCODE_CLIENT_LIB_LINUX   	20 // for Linux
-#define SYSER_PRODCODE_CLIENT_LIB_SYMBIAN 	21 // for Symbian
-#define SYSER_PRODCODE_CLIENT_LIB_WM      	22 // for Windows Mobile
-#define SYSER_PRODCODE_CLIENT_LIB_PALM    	23 // for PALMOS
+#define SYSER_PRODCODE_CLIENT_LIB_WIN32     18 // Win32 ODBC PRO
+#define SYSER_PRODCODE_CLIENT_LIB_MACOSX    19 // for Mac OS X
+#define SYSER_PRODCODE_CLIENT_LIB_LINUX     20 // for Linux
+#define SYSER_PRODCODE_CLIENT_LIB_SYMBIAN   21 // for Symbian
+#define SYSER_PRODCODE_CLIENT_LIB_WM        22 // for Windows Mobile
+#define SYSER_PRODCODE_CLIENT_LIB_PALM      23 // for PALMOS
 #define SYSER_PRODCODE_CLIENT_LIB_IPHONEOS  28 // iPhone OS
 #define SYSER_PRODCODE_CLIENT_LIB_ANDROID   40 // Android
 
 
-#define SYSER_PRODCODE_CLIENT_LIB_ALL     	24 // ALL Platforms
-#define SYSER_PRODCODE_CLIENT_LIB_MOBILE  	25 // ALL Mobile Platforms
-#define SYSER_PRODCODE_CLIENT_LIB_DESK    	26 // ALL Desktop Platforms
+#define SYSER_PRODCODE_CLIENT_LIB_ALL       24 // ALL Platforms
+#define SYSER_PRODCODE_CLIENT_LIB_MOBILE    25 // ALL Mobile Platforms
+#define SYSER_PRODCODE_CLIENT_LIB_DESK      26 // ALL Desktop Platforms
 
-#define SYSER_PRODCODE_CLIENT_LIB_DEMO    	27 // All DEMO Libraries
+#define SYSER_PRODCODE_CLIENT_LIB_DEMO      27 // All DEMO Libraries
 
 
 // - Client product flags (no flags -> only XPT version allowed)
@@ -110,21 +110,21 @@ namespace sysync {
 // Servers
 
 // - Server (=usually unified server+client) Libraries
-#define SYSER_PRODCODE_SERVER_LIB_WIN32   	39 // Win32 ODBC PRO
-#define SYSER_PRODCODE_SERVER_LIB_MACOSX  	29 // for Mac OS X
-#define SYSER_PRODCODE_SERVER_LIB_LINUX   	30 // for Linux
-#define SYSER_PRODCODE_SERVER_LIB_SYMBIAN 	31 // for Symbian
-#define SYSER_PRODCODE_SERVER_LIB_WM      	32 // for Windows Mobile
-#define SYSER_PRODCODE_SERVER_LIB_PALM    	33 // for PALMOS
+#define SYSER_PRODCODE_SERVER_LIB_WIN32     39 // Win32 ODBC PRO
+#define SYSER_PRODCODE_SERVER_LIB_MACOSX    29 // for Mac OS X
+#define SYSER_PRODCODE_SERVER_LIB_LINUX     30 // for Linux
+#define SYSER_PRODCODE_SERVER_LIB_SYMBIAN   31 // for Symbian
+#define SYSER_PRODCODE_SERVER_LIB_WM        32 // for Windows Mobile
+#define SYSER_PRODCODE_SERVER_LIB_PALM      33 // for PALMOS
 #define SYSER_PRODCODE_SERVER_LIB_IPHONEOS  38 // iPhone OS
 #define SYSER_PRODCODE_SERVER_LIB_ANDROID   41 // Android
 
 
-#define SYSER_PRODCODE_SERVER_LIB_ALL     	34 // ALL Platforms
-#define SYSER_PRODCODE_SERVER_LIB_MOBILE  	35 // ALL Mobile Platforms
-#define SYSER_PRODCODE_SERVER_LIB_DESK    	36 // ALL Desktop Platforms
+#define SYSER_PRODCODE_SERVER_LIB_ALL       34 // ALL Platforms
+#define SYSER_PRODCODE_SERVER_LIB_MOBILE    35 // ALL Mobile Platforms
+#define SYSER_PRODCODE_SERVER_LIB_DESK      36 // ALL Desktop Platforms
 
-#define SYSER_PRODCODE_SERVER_LIB_DEMO    	37 // All DEMO Libraries
+#define SYSER_PRODCODE_SERVER_LIB_DEMO      37 // All DEMO Libraries
 
 // - Demo
 #define SYSER_PRODCODE_SERVER_DEMO 50 // Demo Server (Text only)

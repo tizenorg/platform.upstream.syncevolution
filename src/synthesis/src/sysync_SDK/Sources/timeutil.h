@@ -1,7 +1,7 @@
 /*
  *  File:         timeutil.h
  *
- *  Authors:		  Lukas Zeller (luz@plan44.ch)
+ *  Authors:      Lukas Zeller (luz@plan44.ch)
  *                Beat Forster (bfo@synthesis.ch)
  *
  *  ISO8601 / Lineartime functions

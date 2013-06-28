@@ -182,7 +182,7 @@ protected:
 
 
   // helper for detecting generic field attribute access
-	bool checkFieldAttrs(cAppCharP aName, size_t &aBaseNameSize, sInt32 &aFldID);
+  bool checkFieldAttrs(cAppCharP aName, size_t &aBaseNameSize, sInt32 &aFldID);
   // helper for returning generic field attribute type
   bool checkAttrValueType(sInt32 aID, uInt16 &aValType);
   // helper for returning generic field attribute values
@@ -765,7 +765,7 @@ public:
     EMBVIRTUAL TSyError ReadItemAsKey    ( SessionH aSessionH, cItemID aID, KeyH aItemKey ) TUNNEL_IMPL;
     EMBVIRTUAL TSyError InsertItemAsKey  ( SessionH aSessionH, KeyH aItemKey,  ItemID aID ) TUNNEL_IMPL;
     EMBVIRTUAL TSyError UpdateItemAsKey  ( SessionH aSessionH, KeyH aItemKey, cItemID aID, ItemID updID ) TUNNEL_IMPL;
-    
+
     EMBVIRTUAL TSyError debugPuts(cAppCharP aFile, int aLine, cAppCharP aFunction,
                                   int aDbgLevel, cAppCharP aLinePrefix,
                                   cAppCharP aText);

@@ -1,7 +1,7 @@
 /*
  *  File:         platform_headers.h
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  Common include files for all platform-related standard headers
  *  (suitable for precompiled headers and/or prefix file)

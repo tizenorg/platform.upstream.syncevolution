@@ -54,6 +54,17 @@ class WebDAVSource : public TrackingSyncSource, private boost::noncopyable
      */
     void contactServer();
 
+    /**
+     * Scan server based on username/password/syncURL. Callback is
+     * passed name and URL of each collection (in this order), may
+     * return false to stop scanning gracefully or throw errors to
+     * abort.
+     *
+     * @return true if scanning completed, false if callback requested stop
+     */
+    bool findCollections(const boost::function<bool (const std::string &,
+                                                     const Neon::URI &)> &callback);
+
     /** store resource URL permanently after successful sync */
     void storeServerInfos();
 
@@ -142,6 +153,12 @@ class WebDAVSource : public TrackingSyncSource, private boost::noncopyable
     virtual std::string homeSetProp() const = 0;
 
     /**
+     * well-known URL, including full path (/.well-known/caldav),
+     * empty if none
+     */
+    virtual std::string wellKnownURL() const = 0;
+
+    /**
      * HTTP content type for PUT
      */
     virtual std::string contentType() const = 0;
@@ -180,6 +197,8 @@ class WebDAVSource : public TrackingSyncSource, private boost::noncopyable
 
     /** extract value from first <DAV:href>value</DAV:href>, empty string if not inside propval */
     std::string extractHREF(const std::string &propval);
+    /** extract all <DAV:href>value</DAV:href> values from a set, empty if none */
+    std::list<std::string> extractHREFs(const std::string &propval);
 
     void openPropCallback(const Neon::URI &uri,
                           const ne_propname *prop,
@@ -207,6 +226,15 @@ class WebDAVSource : public TrackingSyncSource, private boost::noncopyable
         op(oldBackup, dryrun, report);
     }
 
+    /**
+     * return true if the resource with the given properties is one
+     * of those collections which is guaranteed to not contain
+     * other, unrelated collections (a CalDAV collection must not
+     * contain a CardDAV collection, for example)
+     */
+    bool ignoreCollection(const StringMap &props) const;
+
+ protected:
     /**
      * Extracts ETag from response header, empty if not found.
      */

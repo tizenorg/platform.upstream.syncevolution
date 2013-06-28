@@ -33,16 +33,18 @@ BoolConfigProperty &WebDAVCredentialsOkay()
 class ContextSettings : public Neon::Settings {
     boost::shared_ptr<SyncConfig> m_context;
     std::string m_url;
+    /** do change tracking without relying on CTag */
+    bool m_noCTag;
     bool m_googleUpdateHack;
     bool m_googleChildHack;
     bool m_googleAlarmHack;
     // credentials were valid in the past: stored persistently in tracking node
     bool m_credentialsOkay;
 
-
 public:
     ContextSettings(const boost::shared_ptr<SyncConfig> &context) :
         m_context(context),
+        m_noCTag(false),
         m_googleUpdateHack(false),
         m_googleChildHack(false),
         m_googleAlarmHack(false),
@@ -81,6 +83,8 @@ public:
                             m_googleUpdateHack =
                                 m_googleChildHack =
                                 m_googleAlarmHack = true;
+                        } else if (boost::iequals(*flag, "NoCTag")) {
+                            m_noCTag = true;
                         } else {
                             SE_THROW(StringPrintf("unknown SyncEvolution flag %s in URL %s",
                                                   std::string(flag->begin(), flag->end()).c_str(),
@@ -121,6 +125,7 @@ public:
         }
     }
 
+    bool noCTag() const { return m_noCTag; }
     virtual bool googleUpdateHack() const { return m_googleUpdateHack; }
     virtual bool googleChildHack() const { return m_googleChildHack; }
     virtual bool googleAlarmHack() const { return m_googleChildHack; }
@@ -159,7 +164,7 @@ public:
     virtual int logLevel()
     {
         return m_context ?
-            m_context->getLogLevel() :
+            m_context->getLogLevel().get() :
             0;
     }
 };
@@ -179,6 +184,11 @@ WebDAVSource::WebDAVSource(const SyncSourceParams &params,
                                             this, m_operations.m_backupData, _1, _2, _3);
     m_operations.m_restoreData = boost::bind(&WebDAVSource::restoreData,
                                              this, m_operations.m_restoreData, _1, _2, _3);
+
+    // ignore the "Request ends, status 207 class 2xx, error line:" printed by neon
+    LogRedirect::addIgnoreError(", error line:");
+    // ignore error messages in returned data
+    LogRedirect::addIgnoreError("Read block (");
 }
 
 void WebDAVSource::replaceHTMLEntities(std::string &item)
@@ -300,6 +310,15 @@ void WebDAVSource::open()
     // Nothing to do here, expensive initialization is in contactServer().
 }
 
+static bool setFirstURL(Neon::URI &result,
+                        const std::string &name,
+                        const Neon::URI &uri)
+{
+    result = uri;
+    // stop
+    return false;
+}
+
 void WebDAVSource::contactServer()
 {
     if (!m_calendar.empty() &&
@@ -307,11 +326,14 @@ void WebDAVSource::contactServer()
         // we have done this work before, no need to repeat it
     }
 
+    SE_LOG_DEBUG(NULL, NULL, "using libneon %s with %s",
+                 ne_version_string(), Neon::features().c_str());
+
     // Can we skip auto-detection because a full resource URL is set?
     std::string database = getDatabaseID();
     if (!database.empty() &&
         m_contextSettings) {
-        m_calendar = Neon::URI::parse(database);
+        m_calendar = Neon::URI::parse(database, true);
         // m_contextSettings = m_settings, so this sets m_settings->getURL()
         m_contextSettings->setURL(database);
         // start talking to host defined by m_settings->getURL()
@@ -323,20 +345,65 @@ void WebDAVSource::contactServer()
         return;
     }
 
+    // Create session and find first collection (the default).
+    m_calendar = Neon::URI();
+    findCollections(boost::bind(setFirstURL,
+                                boost::ref(m_calendar),
+                                _1, _2));
+    if (m_calendar.empty()) {
+        throwError("no database found");
+    }
+    SE_LOG_DEBUG(NULL, NULL, "picked final path %s", m_calendar.m_path.c_str());
+
+    // Check some server capabilities. Purely informational at this
+    // point, doesn't have to succeed either (Google 401 throttling
+    // workaround not active here, so it may really fail!).
+#ifdef HAVE_LIBNEON_OPTIONS
+    if (LoggerBase::instance().getLevel() >= Logger::DEV) {
+        try {
+            SE_LOG_DEBUG(NULL, NULL, "read capabilities of %s", m_calendar.toURL().c_str());
+            m_session->startOperation("OPTIONS", Timespec());
+            int caps = m_session->options(m_calendar.m_path);
+            static const Flag descr[] = {
+                { NE_CAP_DAV_CLASS1, "Class 1 WebDAV (RFC 2518)" },
+                { NE_CAP_DAV_CLASS2, "Class 2 WebDAV (RFC 2518)" },
+                { NE_CAP_DAV_CLASS3, "Class 3 WebDAV (RFC 4918)" },
+                { NE_CAP_MODDAV_EXEC, "mod_dav 'executable' property" },
+                { NE_CAP_DAV_ACL, "WebDAV ACL (RFC 3744)" },
+                { NE_CAP_VER_CONTROL, "DeltaV version-control" },
+                { NE_CAP_CO_IN_PLACE, "DeltaV checkout-in-place" },
+                { NE_CAP_VER_HISTORY, "DeltaV version-history" },
+                { NE_CAP_WORKSPACE, "DeltaV workspace" },
+                { NE_CAP_UPDATE, "DeltaV update" },
+                { NE_CAP_LABEL, "DeltaV label" },
+                { NE_CAP_WORK_RESOURCE, "DeltaV working-resouce" },
+                { NE_CAP_MERGE, "DeltaV merge" },
+                { NE_CAP_BASELINE, "DeltaV baseline" },
+                { NE_CAP_ACTIVITY, "DeltaV activity" },
+                { NE_CAP_VC_COLLECTION, "DeltaV version-controlled-collection" },
+                { 0, NULL }
+            };
+            SE_LOG_DEBUG(NULL, NULL, "%s WebDAV capabilities: %s",
+                         m_session->getURL().c_str(),
+                         Flags2String(caps, descr).c_str());
+        } catch (...) {
+            Exception::handle();
+        }
+    }
+#endif // HAVE_LIBNEON_OPTIONS
+}
+
+bool WebDAVSource::findCollections(const boost::function<bool (const std::string &,
+                                                               const Neon::URI &)> &storeResult)
+{
+    bool res = true; // completed
+    bool found = false;
     int timeoutSeconds = m_settings->timeoutSeconds();
     int retrySeconds = m_settings->retrySeconds();
     SE_LOG_DEBUG(this, NULL, "timout %ds, retry %ds => %s",
                  timeoutSeconds, retrySeconds,
                  (timeoutSeconds <= 0 ||
                   retrySeconds <= 0) ? "resending disabled" : "resending allowed");
-
-    // ignore the "Request ends, status 207 class 2xx, error line:" printed by neon
-    LogRedirect::addIgnoreError(", error line:");
-    // ignore error messages in returned data
-    LogRedirect::addIgnoreError("Read block (");
-
-    SE_LOG_DEBUG(NULL, NULL, "using libneon %s with %s",
-                 ne_version_string(), Neon::features().c_str());
 
     std::string username, password;
     m_contextSettings->getCredentials("", username, password);
@@ -438,8 +505,18 @@ void WebDAVSource::contactServer()
     // TODO: support more than one calendar. Instead of stopping at the first one,
     // scan more throroughly, then decide deterministically.
     int counter = 0;
-    const int limit = 10;
-    std::set<std::string> tried;
+    const int limit = 1000;
+    class Tried : public std::set<std::string> {
+    public:
+        bool isNew(const std::string &path) {
+            return find(Neon::URI::normalizePath(path, true)) == end();
+        }
+        std::string insert(const std::string &path) {
+            std::string normal = Neon::URI::normalizePath(path, true);
+            std::set<std::string>::insert(normal);
+            return normal;
+        }
+    } tried;
     std::list<std::string> candidates;
     std::string path = m_session->getURI().m_path;
     Neon::Session::PropfindPropCallback_t callback =
@@ -458,6 +535,17 @@ void WebDAVSource::contactServer()
     // Therefore resending is okay.
     Timespec finalDeadline = createDeadline(); // no resending if left empty
 
+    // Add well-known URL as fallback to be tried if configured
+    // path was empty. eGroupware also replies with a redirect for the
+    // empty path, but relying on that alone is risky because it isn't
+    // specified.
+    if (path.empty() || path == "/") {
+        std::string wellknown = wellKnownURL();
+        if (!wellknown.empty()) {
+            candidates.push_back(wellknown);
+        }
+    }
+
     while (true) {
         bool usernameInserted = false;
         std::string next;
@@ -472,9 +560,8 @@ void WebDAVSource::contactServer()
         }
 
         // must normalize so that we can compare against results from server
-        path = Neon::URI::normalizePath(path, true);
+        path = tried.insert(path);
         SE_LOG_DEBUG(NULL, NULL, "testing %s", path.c_str());
-        tried.insert(path);
 
         // Accessing the well-known URIs should lead to a redirect, but
         // with Yahoo! Calendar all I got was a 502 "connection refused".
@@ -509,11 +596,15 @@ void WebDAVSource::contactServer()
                 // First dump WebDAV "allprops" properties (does not contain
                 // properties which must be asked for explicitly!). Only
                 // relevant for debugging.
-                SE_LOG_DEBUG(NULL, NULL, "debugging: read all WebDAV properties of %s", path.c_str());
-                Neon::Session::PropfindPropCallback_t callback =
-                    boost::bind(&WebDAVSource::openPropCallback,
-                                this, _1, _2, _3, _4);
-                m_session->propfindProp(path, 0, NULL, callback, deadline);
+                try {
+                    SE_LOG_DEBUG(NULL, NULL, "debugging: read all WebDAV properties of %s", path.c_str());
+                    Neon::Session::PropfindPropCallback_t callback =
+                        boost::bind(&WebDAVSource::openPropCallback,
+                                    this, _1, _2, _3, _4);
+                    m_session->propfindProp(path, 0, NULL, callback, Timespec());
+                } catch (...) {
+                    handleException();
+                }
             }
         
             // Now ask for some specific properties of interest for us.
@@ -579,8 +670,18 @@ void WebDAVSource::contactServer()
             success = true;
         } catch (const Neon::RedirectException &ex) {
             // follow to new location
-            Neon::URI next = Neon::URI::parse(ex.getLocation());
+            Neon::URI next = Neon::URI::parse(ex.getLocation(), true);
             Neon::URI old = m_session->getURI();
+            // keep old host + scheme + port if not set in next location
+            if (next.m_scheme.empty()) {
+                next.m_scheme = old.m_scheme;
+            }
+            if (next.m_host.empty()) {
+                next.m_host = old.m_host;
+            }
+            if (!next.m_port) {
+                next.m_port = old.m_port;
+            }
             if (next.m_scheme != old.m_scheme ||
                 next.m_host != old.m_host ||
                 next.m_port != old.m_port) {
@@ -588,10 +689,22 @@ void WebDAVSource::contactServer()
                              ex.getLocation().c_str());
                 if (candidates.empty()) {
                     // nothing left to try, bail out with this error
-                    throw;
+                    // unless we found something else already
+                    if (found) {
+                        break;
+                    } else {
+                        throw;
+                    }
                 }
-            } else {
+            } else if (tried.isNew(next.m_path)) {
+                SE_LOG_DEBUG(NULL, NULL, "new candidate from %s -> %s redirect",
+                             old.m_path.c_str(),
+                             next.m_path.c_str());
                 candidates.push_front(next.m_path);
+            } else {
+                SE_LOG_DEBUG(NULL, NULL, "already known candidate from %s -> %s redirect",
+                             old.m_path.c_str(),
+                             next.m_path.c_str());
             }
         } catch (const TransportStatusException &ex) {
             SE_LOG_DEBUG(NULL, NULL, "TransportStatusException: %s", ex.what());
@@ -629,36 +742,69 @@ void WebDAVSource::contactServer()
         }
 
         if (success) {
-            if (m_davProps.find(path) == m_davProps.end()) {
+            Props_t::iterator pathProps = m_davProps.find(path);
+            if (pathProps == m_davProps.end()) {
                 // No reply for requested path? Happens with Yahoo Calendar server,
                 // which returns information about "/dav" when asked about "/".
                 // Move to that path.
                 if (!m_davProps.empty()) {
-                    string newpath = m_davProps.begin()->first;
+                    pathProps = m_davProps.begin();
+                    string newpath = pathProps->first;
                     SE_LOG_DEBUG(NULL, NULL, "use properties for '%s' instead of '%s'",
                                  newpath.c_str(), path.c_str());
                     path = newpath;
                 }
             }
-            StringMap &props = m_davProps[path];
+            StringMap &props = pathProps->second;
             if (typeMatches(props)) {
-                // found it
-                break;
+                StringMap::const_iterator it;
+
+                // TODO: filter out CalDAV collections which do
+                // not contain the right components
+                // (urn:ietf:params:xml:ns:caldav:supported-calendar-component-set)
+
+                // found something
+                found = true;
+                it = props.find("DAV::displayname");
+                Neon::URI uri = m_session->getURI();
+                uri.m_path = path;
+                std::string name;
+                if (it != props.end()) {
+                    name = it->second;
+                }
+                SE_LOG_DEBUG(NULL, NULL, "found %s = %s",
+                             name.c_str(),
+                             uri.toURL().c_str());
+                res = storeResult(name,
+                                  uri);
+                if (!res) {
+                    // done
+                    break;
+                } else {
+                    goto next;
+                }
             }
 
             // find next path:
             // prefer CardDAV:calendar-home-set or CalDAV:addressbook-home-set
-            std::string home = extractHREF(props[homeSetProp()]);
-            if (!home.empty() &&
-                tried.find(home) == tried.end()) {
-                next = home;
-                SE_LOG_DEBUG(NULL, NULL, "follow home-set property to %s", next.c_str());
+            std::list<std::string> homes = extractHREFs(props[homeSetProp()]);
+            BOOST_FOREACH(const std::string &home, homes) {
+                if (!home.empty() &&
+                    tried.isNew(home)) {
+                    if (next.empty()) {
+                        SE_LOG_DEBUG(NULL, NULL, "follow home-set property to %s", home.c_str());
+                        next = home;
+                    } else {
+                        SE_LOG_DEBUG(NULL, NULL, "new candidate from home-set property %s", home.c_str());
+                        candidates.push_front(home);
+                    }
+                }
             }
             // alternatively, follow principal URL
             if (next.empty()) {
                 std::string principal = extractHREF(props["DAV::current-user-principal"]);
                 if (!principal.empty() &&
-                    tried.find(principal) == tried.end()) {
+                    tried.isNew(principal)) {
                     next = principal;
                     SE_LOG_DEBUG(NULL, NULL, "follow current-user-prinicipal to %s", next.c_str());
                 }
@@ -685,13 +831,14 @@ void WebDAVSource::contactServer()
                     };
                     m_davProps.clear();
                     m_session->propfindProp(path, 1, props, callback, finalDeadline);
+                    std::set<std::string> subs;
                     BOOST_FOREACH(Props_t::value_type &entry, m_davProps) {
                         const std::string &sub = entry.first;
                         const std::string &subType = entry.second["DAV::resourcetype"];
                         // new candidates are:
                         // - untested
                         // - not already a candidate
-                        // - a resource
+                        // - a resource, but not the CalDAV schedule-inbox/outbox
                         // - not shared ("global-addressbook" in Apple Calendar Server),
                         //   because these are unlikely to be the right "default" collection
                         //
@@ -700,30 +847,43 @@ void WebDAVSource::contactServer()
                         // type (example: Apple Calendar Server "inbox" under
                         // calendar-home-set URL with type "CALDAV:schedule-inbox") requires
                         // knowledge not current provided by derived classes. TODO (?).
-                        if (tried.find(sub) == tried.end() &&
-                            std::find(candidates.begin(), candidates.end(), sub) == candidates.end() &&
+                        if (tried.isNew(sub) &&
                             subType.find("<DAV:collection></DAV:collection>") != subType.npos &&
-                            subType.find("<http://calendarserver.org/ns/shared") == subType.npos) {
-                            // insert before other candidates (depth-first search)
-                            candidates.push_front(sub);
-                            if (next.empty() && typeMatches(entry.second)) {
-                                // try this one before or all other candidates
-                                next = sub;
-                            }
+                            subType.find("<urn:ietf:params:xml:ns:caldavschedule-") == subType.npos &&
+                            subType.find("<http://calendarserver.org/ns/shared") == subType.npos &&
+                            (typeMatches(entry.second) || !ignoreCollection(entry.second))) {
+                            subs.insert(sub);
                             SE_LOG_DEBUG(NULL, NULL, "new candidate: %s", sub.c_str());
+                        } else {
+                            SE_LOG_DEBUG(NULL, NULL, "skipping: %s", sub.c_str());
                         }
                     }
+
+                    // insert before other candidates, sorted
+                    // alphabetically
+                    candidates.insert(candidates.begin(),
+                                      subs.begin(),
+                                      subs.end());
                 }
             }
         }
 
+        next:
         if (next.empty()) {
-            // use next candidate
-            if (candidates.empty()) {
-                throwError(StringPrintf("no collection found in %s", path.c_str()));
+            // use next untried candidate
+            next = "";
+            while (!candidates.empty() ) {
+                std::string candidate = candidates.front();
+                candidates.pop_front();
+                if (tried.isNew(candidate)) {
+                    next = candidate;
+                    break;
+                }
             }
-            next = candidates.front();
-            candidates.pop_front();
+            if (next.empty()) {
+                // done searching
+                break;
+            }
             SE_LOG_DEBUG(NULL, NULL, "follow candidate %s", next.c_str());
         }
 
@@ -734,47 +894,7 @@ void WebDAVSource::contactServer()
         path = next;
     }
 
-    // Pick final path.
-    m_calendar = m_session->getURI();
-    m_calendar.m_path = path;
-    SE_LOG_DEBUG(NULL, NULL, "picked final path %s", m_calendar.m_path.c_str());
-
-    // Check some server capabilities. Purely informational at this
-    // point, doesn't have to succeed either (Google 401 throttling
-    // workaround not active here, so it may really fail!).
-#ifdef HAVE_LIBNEON_OPTIONS
-    if (LoggerBase::instance().getLevel() >= Logger::DEV) {
-        try {
-            SE_LOG_DEBUG(NULL, NULL, "read capabilities of %s", m_calendar.toURL().c_str());
-            m_session->startOperation("OPTIONS", Timespec());
-            int caps = m_session->options(path);
-            static const Flag descr[] = {
-                { NE_CAP_DAV_CLASS1, "Class 1 WebDAV (RFC 2518)" },
-                { NE_CAP_DAV_CLASS2, "Class 2 WebDAV (RFC 2518)" },
-                { NE_CAP_DAV_CLASS3, "Class 3 WebDAV (RFC 4918)" },
-                { NE_CAP_MODDAV_EXEC, "mod_dav 'executable' property" },
-                { NE_CAP_DAV_ACL, "WebDAV ACL (RFC 3744)" },
-                { NE_CAP_VER_CONTROL, "DeltaV version-control" },
-                { NE_CAP_CO_IN_PLACE, "DeltaV checkout-in-place" },
-                { NE_CAP_VER_HISTORY, "DeltaV version-history" },
-                { NE_CAP_WORKSPACE, "DeltaV workspace" },
-                { NE_CAP_UPDATE, "DeltaV update" },
-                { NE_CAP_LABEL, "DeltaV label" },
-                { NE_CAP_WORK_RESOURCE, "DeltaV working-resouce" },
-                { NE_CAP_MERGE, "DeltaV merge" },
-                { NE_CAP_BASELINE, "DeltaV baseline" },
-                { NE_CAP_ACTIVITY, "DeltaV activity" },
-                { NE_CAP_VC_COLLECTION, "DeltaV version-controlled-collection" },
-                { 0, NULL }
-            };
-            SE_LOG_DEBUG(NULL, NULL, "%s WebDAV capabilities: %s",
-                         m_session->getURL().c_str(),
-                         Flags2String(caps, descr).c_str());
-        } catch (...) {
-            Exception::handle();
-        }
-    }
-#endif // HAVE_LIBNEON_OPTIONS
+    return res;
 }
 
 std::string WebDAVSource::extractHREF(const std::string &propval)
@@ -792,6 +912,33 @@ std::string WebDAVSource::extractHREF(const std::string &propval)
         }
     }
     return "";
+}
+
+std::list<std::string> WebDAVSource::extractHREFs(const std::string &propval)
+{
+    std::list<std::string> res;
+
+    // all additional parameters after opening resp. closing tag
+    static const std::string hrefStart = "<DAV:href";
+    static const std::string hrefEnd = "</DAV:href";
+    size_t current = 0;
+    while (current < propval.size()) {
+        size_t start = propval.find(hrefStart, current);
+        start = propval.find('>', start);
+        if (start != propval.npos) {
+            start++;
+            size_t end = propval.find(hrefEnd, start);
+            if (end != propval.npos) {
+                res.push_back(propval.substr(start, end - start));
+                current = end;
+            } else {
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+    return res;
 }
 
 void WebDAVSource::openPropCallback(const Neon::URI &uri,
@@ -829,13 +976,43 @@ void WebDAVSource::close()
     m_session.reset();
 }
 
+static bool storeCollection(SyncSource::Databases &result,
+                            const std::string &name,
+                            const Neon::URI &uri)
+{
+    std::string url = uri.toURL();
+
+    // avoid duplicates
+    BOOST_FOREACH(const SyncSource::Database &entry, result) {
+        if (entry.m_uri == url) {
+            // already found before
+            return true;
+        }
+    }
+
+    result.push_back(SyncSource::Database(name, url));
+    return true;
+}
+
 WebDAVSource::Databases WebDAVSource::getDatabases()
 {
     Databases result;
 
-    // TODO: scan for right collections
-    result.push_back(Database("select database via relative URI",
-                              "<path>"));
+    // do a scan if at least username is set
+    std::string username, password;
+    m_contextSettings->getCredentials("", username, password);
+
+    if (!username.empty()) {
+        findCollections(boost::bind(storeCollection,
+                                    boost::ref(result),
+                                    _1, _2));
+        if (!result.empty()) {
+            result.front().m_isDefault = true;
+        }
+    } else {
+        result.push_back(Database("select database via absolute URL, set username/password to scan, set syncURL to base URL if server does not support auto-discovery",
+                                  "<path>"));
+    }
     return result;
 }
 
@@ -909,6 +1086,11 @@ static const ne_propname getctag[] = {
 
 std::string WebDAVSource::databaseRevision()
 {
+    if (m_contextSettings && m_contextSettings->noCTag()) {
+        // return empty string to disable usage of CTag
+        return "";
+    }
+
     Timespec deadline = createDeadline();
     Neon::Session::PropfindPropCallback_t callback =
         boost::bind(&WebDAVSource::openPropCallback,
@@ -984,11 +1166,15 @@ void WebDAVSource::listAllItemsCallback(const Neon::URI &uri,
 
 std::string WebDAVSource::path2luid(const std::string &path)
 {
-    if (boost::starts_with(path, m_calendar.m_path)) {
-        return Neon::URI::unescape(path.substr(m_calendar.m_path.size()));
+    // m_calendar.m_path is normalized, path is not.
+    // Before comparing, normalize it.
+    std::string res = Neon::URI::normalizePath(path, false);
+    if (boost::starts_with(res, m_calendar.m_path)) {
+        res = Neon::URI::unescape(res.substr(m_calendar.m_path.size()));
     } else {
-        return path;
+        // keep full, absolute path as LUID
     }
+    return res;
 }
 
 std::string WebDAVSource::luid2path(const std::string &luid)
@@ -1207,6 +1393,26 @@ std::string WebDAVSource::getLUID(Neon::Request &req)
     } else {
         return path2luid(Neon::URI::parse(location).m_path);
     }
+}
+
+bool WebDAVSource::ignoreCollection(const StringMap &props) const
+{
+    // CardDAV and CalDAV both promise to not contain anything
+    // unrelated to them
+    StringMap::const_iterator it = props.find("DAV::resourcetype");
+    if (it != props.end()) {
+        const std::string &type = it->second;
+        // allow parameters (no closing bracket)
+        // and allow also "carddavaddressbook" (caused by invalid Neon 
+        // string concatenation?!)
+        if (type.find("<urn:ietf:params:xml:ns:caldav:calendar") != type.npos ||
+            type.find("<urn:ietf:params:xml:ns:caldavcalendar") != type.npos ||
+            type.find("<urn:ietf:params:xml:ns:carddav:addressbook") != type.npos ||
+            type.find("<urn:ietf:params:xml:ns:carddavaddressbook") != type.npos) {
+            return true;
+        }
+    }
+    return false;
 }
 
 Timespec WebDAVSource::createDeadline() const

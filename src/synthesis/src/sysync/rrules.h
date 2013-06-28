@@ -1,7 +1,7 @@
 /*
  *  File:         rrules.h
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  Parser/Generator routines for vCalendar RRULES
  *
@@ -17,8 +17,11 @@
 // includes
 #ifndef FULLY_STANDALONE
 #include "itemfield.h"
-#endif
 #include "debuglogger.h"
+#else
+#include <string>
+#include "lineartime.h"
+#endif
 
 
 using namespace sysync;
@@ -27,6 +30,7 @@ namespace sysync {
 
 #ifdef FULLY_STANDALONE
 typedef sInt64 fieldinteger_t;
+class TDebugLogger;
 #endif
 
 #ifdef SYSYNC_TOOL
@@ -136,7 +140,7 @@ typedef struct {
   sInt16 startyear,startmonth,startday;
   lineartime_t starttime; // time part for re-adding after expansion
   // - current point of expansion
-	lineartime_t cursor;	
+  lineartime_t cursor;
   sInt16 cursorWDay; // weekday
   sInt16 cursorMLen; // length of month
   // - set if started (i.e. advanced cursor to first valid recurrence)
@@ -146,7 +150,7 @@ typedef struct {
 
 /// @brief initialize expansion of RRule
 PUBLIC_ENTRY void initRRuleExpansion(
-	TRRuleExpandStatus &es,
+  TRRuleExpandStatus &es,
   lineartime_t aDtstart,
   char aFreq, char aFreqmod,
   sInt16 aInterval,

@@ -40,11 +40,11 @@
 #else
   // Some fake definitions to make SQLite-only versions compile w/o having ODBC headers
 
-	#define HSTMT long
+  #define HSTMT long
   #define SQLHSTMT HSTMT
   #define SQL_NULL_HANDLE 0
   #define SQLRETURN long
-	#define SQL_NULL_DATA (-1)
+  #define SQL_NULL_DATA (-1)
   #define SQLLEN long
   #define SQL_SUCCESS 0
 

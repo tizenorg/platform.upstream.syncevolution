@@ -26,6 +26,7 @@
 #include <syncevo/SyncContext.h>
 #include <syncevo/SyncSource.h>
 #include <syncevo/util.h>
+#include <syncevo/SuspendFlags.h>
 
 #include <syncevo/SafeConfigNode.h>
 #include <syncevo/FileConfigNode.h>
@@ -70,69 +71,26 @@ using namespace std;
 #include <synthesis/SDK_util.h>
 #include <synthesis/san.h>
 
+#ifdef USE_KDE_KWALLET
+#include <QtCore/QCoreApplication>
+#include <QtCore/QString>
+#include <QtCore/QLatin1String>
+#include <QtCore/QDebug>
+#include <QtDBus/QDBusConnection>
+
+#include <KApplication>
+#include <KAboutData>
+#include <KCmdLineArgs>
+#endif
+
 #include "test.h"
 
 #include <syncevo/declarations.h>
 SE_BEGIN_CXX
 
 SyncContext *SyncContext::m_activeContext;
-SuspendFlags SyncContext::s_flags;
 
 static const char *LogfileBasename = "syncevolution-log";
-
-void SyncContext::handleSignal(int sig)
-{
-    switch (sig) {
-    case SIGTERM:
-        switch (s_flags.state) {
-        case SuspendFlags::CLIENT_ABORT:
-            s_flags.message = "Already aborting sync as requested earlier ...";
-            break;
-        default:
-            s_flags.state = SuspendFlags::CLIENT_ABORT;
-            s_flags.message = "Aborting sync immediately via SIGTERM ...";
-            break;
-        }
-        break;
-    case SIGINT: {
-        time_t current;
-        time (&current);
-        switch (s_flags.state) {
-        case SuspendFlags::CLIENT_NORMAL:
-            // first time suspend or already aborted
-            s_flags.state = SuspendFlags::CLIENT_SUSPEND;
-            s_flags.message = "Asking server to suspend...\nPress CTRL-C again quickly (within 2s) to stop sync immediately (can cause problems during next sync!)";
-            s_flags.last_suspend = current;
-            break;
-        case SuspendFlags::CLIENT_SUSPEND:
-            // turn into abort?
-            if (current - s_flags.last_suspend
-                < s_flags.ABORT_INTERVAL) {
-                s_flags.state = SuspendFlags::CLIENT_ABORT;
-                s_flags.message = "Aborting sync as requested via CTRL-C ...";
-            } else {
-                s_flags.last_suspend = current;
-                s_flags.message = "Suspend in progress...\nPress CTRL-C again quickly (within 2s) to stop sync immediately (can cause problems during next sync!)";
-            }
-            break;
-        case SuspendFlags::CLIENT_ABORT:
-            s_flags.message = "Already aborting sync as requested earlier ...";
-            break;
-        case SuspendFlags::CLIENT_ILLEGAL:
-            break;
-        break;
-        }
-    }
-    }
-}
-
-void SyncContext::printSignals()
-{
-    if (s_flags.message) {
-        SE_LOG_INFO(NULL, NULL, "%s", s_flags.message);
-        s_flags.message = NULL;
-    }
-}
 
 SyncContext::SyncContext()
 {
@@ -802,7 +760,8 @@ public:
         }
 
         if (m_report &&
-            level <= ERROR &&
+            (level <= ERROR /* ||
+                               (level == SHOW && isErrorString(format, args)) */) &&
             m_report->getError().empty()) {
             va_list argscopy;
             va_copy(argscopy, args);
@@ -820,6 +779,38 @@ public:
             va_end(argscopy);
         }
     }
+
+#if 0
+    /**
+     * A quick check for level = SHOW text dumps whether the text dump
+     * starts with the [ERROR] prefix; used to detect error messages
+     * from forked process which go through this instance but are not
+     * already tagged as error messages and thus would not show up as
+     * "first error" in sync reports.
+     *
+     * Example for the problem:
+     * [ERROR] onConnect not implemented                [from child process]
+     * [ERROR] child process quit with return code 1    [from parent]
+     * ...
+     * Changes applied during synchronization:
+     * ...
+     * First ERROR encountered: child process quit with return code 1
+     */
+    static bool isErrorString(const char *format,
+                              va_list args)
+    {
+        const char *text;
+        if (!strcmp(format, "%s")) {
+            va_list argscopy;
+            va_copy(argscopy, args);
+            text = va_arg(argscopy, const char *);
+            va_end(argscopy);
+        } else {
+            text = format;
+        }
+        return boost::starts_with(text, "[ERROR");
+    }
+#endif
 
     virtual bool isProcessSafe() const { return false; }
 
@@ -1500,6 +1491,30 @@ string SyncContext::getUsedSyncURL() {
     return "";
 }
 
+static void CancelTransport(TransportAgent *agent, SuspendFlags &flags)
+{
+    if (flags.getState() == SuspendFlags::ABORT) {
+        SE_LOG_DEBUG(NULL, NULL, "CancelTransport: cancelling because of SuspendFlags::ABORT");
+        agent->cancel();
+    }
+}
+
+/**
+ * common initialization for all kinds of transports, to be called
+ * before using them
+ */
+static void InitializeTransport(const boost::shared_ptr<TransportAgent> &agent,
+                                int timeout)
+{
+    agent->setTimeout(timeout);
+
+    // Automatically call cancel() when we an abort request
+    // is detected. Relies of automatic connection management
+    // to disconnect when agent is deconstructed.
+    SuspendFlags &flags(SuspendFlags::getSuspendFlags());
+    flags.m_stateChanged.connect(SuspendFlags::StateChanged_t::slot_type(CancelTransport, agent.get(), _1).track(agent));
+}
+
 boost::shared_ptr<TransportAgent> SyncContext::createTransportAgent(void *gmainloop)
 {
     string url = getUsedSyncURL();
@@ -1510,22 +1525,21 @@ boost::shared_ptr<TransportAgent> SyncContext::createTransportAgent(void *gmainl
     if (m_localSync) {
         string peer = url.substr(strlen("local://"));
         boost::shared_ptr<LocalTransportAgent> agent(new LocalTransportAgent(this, peer, gmainloop));
-        agent->setTimeout(timeout);
+        InitializeTransport(agent, timeout);
         agent->start();
         return agent;
     } else if (boost::starts_with(url, "http://") ||
         boost::starts_with(url, "https://")) {
 #ifdef ENABLE_LIBSOUP
-        
         boost::shared_ptr<SoupTransportAgent> agent(new SoupTransportAgent(static_cast<GMainLoop *>(gmainloop)));
         agent->setConfig(*this);
-        agent->setTimeout(timeout);
+        InitializeTransport(agent, timeout);
         return agent;
 #elif defined(ENABLE_LIBCURL)
         if (!gmainloop) {
             boost::shared_ptr<CurlTransportAgent> agent(new CurlTransportAgent());
             agent->setConfig(*this);
-            agent->setTimeout(timeout);
+            InitializeTransport(agent, timeout);
             return agent;
         }
 #endif
@@ -1535,7 +1549,8 @@ boost::shared_ptr<TransportAgent> SyncContext::createTransportAgent(void *gmainl
         boost::shared_ptr<ObexTransportAgent> agent(new ObexTransportAgent(ObexTransportAgent::OBEX_BLUETOOTH,
                                                                            static_cast<GMainLoop *>(gmainloop)));
         agent->setURL (btUrl);
-        agent->setTimeout(timeout);
+        InitializeTransport(agent, timeout);
+        // this will block already
         agent->connect();
         return agent;
 #endif
@@ -1593,8 +1608,9 @@ void SyncContext::displaySourceProgress(sysync::TProgressEventEnum type,
            extra2=1 for resumed session,
            extra3 0=twoway, 1=fromserver, 2=fromclient */
         // -1 is used for alerting a restore from backup. Synthesis won't use this
+        bool peerIsClient = getPeerIsClient();
         if (extra1 != -1) {
-            SE_LOG_INFO(NULL, NULL, "%s: %s %s sync%s",
+            SE_LOG_INFO(NULL, NULL, "%s: %s %s sync%s (%s)",
                         source.getDisplayName().c_str(),
                         extra2 ? "resuming" : "starting",
                         extra1 == 0 ? "normal" :
@@ -1604,31 +1620,34 @@ void SyncContext::displaySourceProgress(sysync::TProgressEventEnum type,
                         extra3 == 0 ? ", two-way" :
                         extra3 == 1 ? " from server" :
                         extra3 == 2 ? " from client" :
-                        ", unknown direction");
+                        ", unknown direction",
+                        peerIsClient ? "peer is client" : "peer is server");
          
-            SyncMode mode = SYNC_NONE;
+            SimpleSyncMode mode = SIMPLE_SYNC_NONE;
+            std::string sync = source.getSync();
             switch (extra1) {
             case 0:
                 switch (extra3) {
                 case 0:
-                    mode = SYNC_TWO_WAY;
+                    mode = SIMPLE_SYNC_TWO_WAY;
                     if (m_serverMode &&
                         m_serverAlerted &&
-                        source.getSync() == "one-way-from-server") {
+                        (sync == "one-way-from-server" ||
+                         sync == "one-way-from-local")) {
                         // As in the slow/refresh-from-server case below,
                         // pretending to do a two-way incremental sync
                         // is a correct way of executing the requested
                         // one-way sync, as long as the client doesn't
                         // send any of its own changes. The Synthesis
                         // engine does that.
-                        mode = SYNC_ONE_WAY_FROM_SERVER;
+                        mode = SIMPLE_SYNC_ONE_WAY_FROM_LOCAL;
                     }
                     break;
                 case 1:
-                    mode = SYNC_ONE_WAY_FROM_SERVER;
+                    mode = peerIsClient ? SIMPLE_SYNC_ONE_WAY_FROM_LOCAL : SIMPLE_SYNC_ONE_WAY_FROM_REMOTE;
                     break;
                 case 2:
-                    mode = SYNC_ONE_WAY_FROM_CLIENT;
+                    mode = peerIsClient ? SIMPLE_SYNC_ONE_WAY_FROM_REMOTE : SIMPLE_SYNC_ONE_WAY_FROM_LOCAL;
                     break;
                 }
                 break;
@@ -1636,28 +1655,29 @@ void SyncContext::displaySourceProgress(sysync::TProgressEventEnum type,
             case 2:
                 switch (extra3) {
                 case 0:
-                    mode = SYNC_SLOW;
+                    mode = SIMPLE_SYNC_SLOW;
                     if (m_serverMode &&
                         m_serverAlerted &&
-                        source.getSync() == "refresh-from-server") {
+                        (sync == "refresh-from-server" ||
+                         sync == "refresh-from-local")) {
                         // We run as server and told the client to refresh
                         // its data. A slow sync is how some clients (the
                         // Synthesis engine included) execute that sync mode;
                         // let's be optimistic and assume that the client
                         // did as it was told and deleted its data.
-                        mode = SYNC_REFRESH_FROM_SERVER;
+                        mode = SIMPLE_SYNC_REFRESH_FROM_LOCAL;
                     }
                     break;
                 case 1:
-                    mode = SYNC_REFRESH_FROM_SERVER;
+                    mode = peerIsClient ? SIMPLE_SYNC_REFRESH_FROM_LOCAL : SIMPLE_SYNC_REFRESH_FROM_REMOTE;
                     break;
                 case 2:
-                    mode = SYNC_REFRESH_FROM_CLIENT;
+                    mode = peerIsClient ? SIMPLE_SYNC_REFRESH_FROM_REMOTE : SIMPLE_SYNC_REFRESH_FROM_LOCAL;
                     break;
                 }
                 break;
             }
-            source.recordFinalSyncMode(mode);
+            source.recordFinalSyncMode(SyncMode(mode));
             source.recordFirstSync(extra1 == 2);
             source.recordResumeSync(extra2 == 1);
         } else {
@@ -1775,7 +1795,8 @@ void SyncContext::displaySourceProgress(sysync::TProgressEventEnum type,
                            // refresh-from-server/client. That's a matter of
                            // taste. In SyncEvolution we'd like these
                            // items to show up, so add it here.
-                           source.getFinalSyncMode() == (m_serverMode ? SYNC_REFRESH_FROM_CLIENT : SYNC_REFRESH_FROM_SERVER) ? 
+                           (source.getFinalSyncMode() == (m_serverMode ? SYNC_REFRESH_FROM_CLIENT : SYNC_REFRESH_FROM_SERVER) ||
+                            source.getFinalSyncMode() == SYNC_REFRESH_FROM_REMOTE) ?
                            source.getNumDeleted() :
                            extra3);
         break;
@@ -1849,6 +1870,20 @@ void SyncContext::displaySourceProgress(sysync::TProgressEventEnum type,
                      source.getDisplayName().c_str(),
                      type, extra1, extra2, extra3);
     }
+}
+
+bool SyncContext::checkForAbort()
+{
+    SuspendFlags &flags(SuspendFlags::getSuspendFlags());
+    flags.printSignals();
+    return flags.getState() == SuspendFlags::ABORT;
+}
+
+bool SyncContext::checkForSuspend()
+{
+    SuspendFlags &flags(SuspendFlags::getSuspendFlags());
+    flags.printSignals();
+    return flags.getState() == SuspendFlags::SUSPEND;
 }
 
 void SyncContext::throwError(const string &error)
@@ -1974,10 +2009,8 @@ void SyncContext::initSources(SourceList &sourceList)
     BOOST_FOREACH(const string &name, configuredSources) {
         boost::shared_ptr<PersistentSyncSourceConfig> sc(getSyncSourceConfig(name));
         SyncSourceNodes source = getSyncSourceNodes (name);
-        // is the source enabled?
-        string sync = sc->getSync();
-        bool enabled = sync != "disabled";
-        if (enabled) {
+        std::string sync = sc->getSync();
+        if (sync != "disabled") {
             SourceType sourceType = SyncSource::getSourceType(source);
             if (sourceType.m_backend == "virtual") {
                 //This is a virtual sync source, check and enable the referenced
@@ -2019,11 +2052,7 @@ void SyncContext::initSources(SourceList &sourceList)
         boost::shared_ptr<PersistentSyncSourceConfig> sc(getSyncSourceConfig(name));
 
         SyncSourceNodes source = getSyncSourceNodes (name);
-
-        // is the source enabled?
-        string sync = sc->getSync();
-        bool enabled = sync != "disabled";
-        if (enabled) {
+        if (!sc->isDisabled()) {
             SourceType sourceType = SyncSource::getSourceType(source);
             if (sourceType.m_backend != "virtual") {
                 SyncSourceParams params(name,
@@ -2454,9 +2483,13 @@ void SyncContext::getConfigXML(string &xml, string &configname)
                 // we *want* a slow sync, but couldn't tell the client -> force it server-side
                 datastores << "      <alertscript> FORCESLOWSYNC(); </alertscript>\n";
             } else if (mode != "slow" &&
-                       mode != "refresh-from-server" && // is implemented as "delete local data" + "slow sync",
-                                                        // so a slow sync is acceptable in this case
+                       // slow-sync detection not implemented when running as server,
+                       // not even when initiating the sync (direct sync with phone)
                        !m_serverMode &&
+                       // is implemented as "delete local data" + "slow sync",
+                       // so a slow sync is acceptable in this case
+                       mode != "refresh-from-server" &&
+                       mode != "refresh-from-remote" &&
                        // The forceSlow should be disabled if the sync session is
                        // initiated by a remote peer (eg. Server Alerted Sync)
                        !m_remoteInitiated &&
@@ -2586,8 +2619,8 @@ void SyncContext::getConfigXML(string &xml, string &configname)
     // abuse (?) the firmware version to store the SyncEvolution version number
     substTag(xml, "firmwareversion", getSwv());
     substTag(xml, "devicetype", getDevType());
-    substTag(xml, "maxmsgsize", std::max(getMaxMsgSize(), 10000ul));
-    substTag(xml, "maxobjsize", std::max(getMaxObjSize(), 1024u));
+    substTag(xml, "maxmsgsize", std::max(getMaxMsgSize().get(), 10000ul));
+    substTag(xml, "maxobjsize", std::max(getMaxObjSize().get(), 1024u));
     if (m_serverMode) {
         const string user = getSyncUsername();
         const string password = getSyncPassword();
@@ -2756,6 +2789,56 @@ void SyncContext::initMain(const char *appname)
     g_type_init();
     g_thread_init(NULL);
     g_set_prgname(appname);
+
+    // redirect glib logging into our own logging
+    g_log_set_default_handler(Logger::glogFunc, NULL);
+#endif
+
+#ifdef USE_KDE_KWALLET
+    //QCoreApplication *app;
+    int argc = 1;
+    static char *argv[] = { const_cast<char *>(appname), NULL };
+    KAboutData aboutData(// The program name used internally.
+                         "syncevolution",
+                         // The message catalog name
+                         // If null, program name is used instead.
+                         0,
+                         // A displayable program name string.
+                         ki18n("SyncEvolution"),
+                         // The program version string.
+                         "1.0",
+                         // Short description of what the app does.
+                         ki18n("Lets Akonadi synchronize with a SyncML Peer"),
+                         // The license this code is released under
+                         KAboutData::License_GPL,
+                         // Copyright Statement
+                         ki18n("(c) 2010-12"),
+                         // Optional text shown in the About box.
+                         // Can contain any information desired.
+                         ki18n(""),
+                         // The program homepage string.
+                         "http://www.syncevolution.org/",
+                         // The bug report email address
+                         "syncevolution@syncevolution.org");
+
+    KCmdLineArgs::init(argc, argv, &aboutData);
+    if (!kapp) {
+        // Don't allow KApplication to mess with SIGINT/SIGTERM.
+        // Restore current behavior after construction.
+        struct sigaction oldsigint, oldsigterm;
+        sigaction(SIGINT, NULL, &oldsigint);
+        sigaction(SIGTERM, NULL, &oldsigterm);
+
+        // Explicitly disable GUI mode in the KApplication.  Otherwise
+        // the whole binary will fail to run when there is no X11
+        // display.
+        new KApplication(false);
+        //To stop KApplication from spawning it's own DBus Service ... Will have to patch KApplication about this
+        QDBusConnection::sessionBus().unregisterService("org.syncevolution.syncevolution-"+QString::number(getpid()));
+
+        sigaction(SIGINT, &oldsigint, NULL);
+        sigaction(SIGTERM, &oldsigterm, NULL);
+    }
 #endif
 
     struct sigaction sa;
@@ -2975,7 +3058,7 @@ SyncMLStatus SyncContext::sync(SyncReport *report)
         // was already propagated to the parent via a TransportStatusException
         // in LocalTransportAgent::checkChildReport(). What we can do here
         // is updating the individual's sources status.
-        if (m_localSync && m_agent) {
+        if (m_localSync && m_agent && getPeerIsClient()) {
             boost::shared_ptr<LocalTransportAgent> agent = boost::static_pointer_cast<LocalTransportAgent>(m_agent);
             SyncReport childReport;
             agent->getClientSyncReport(childReport);
@@ -3041,11 +3124,11 @@ bool SyncContext::sendSAN(uint16_t version)
     BOOST_FOREACH (boost::shared_ptr<VirtualSyncSource> vSource, m_sourceListPtr->getVirtualSources()) {
             std::string evoSyncSource = vSource->getDatabaseID();
             std::string sync = vSource->getSync();
-            int mode = StringToSyncMode (sync, true);
+            SANSyncMode mode = AlertSyncMode(StringToSyncMode(sync, true), getPeerIsClient());
             std::vector<std::string> mappedSources = unescapeJoinedString (evoSyncSource, ',');
             BOOST_FOREACH (std::string source, mappedSources) {
                 dataSources.erase (source);
-                if (mode == SYNC_SLOW) {
+                if (mode == SA_SLOW) {
                     // We force a source which the client is not expected to use into slow mode.
                     // Shouldn't we rather reject attempts to synchronize it?
                     (*m_sourceListPtr)[source]->setForceSlowSync(true);
@@ -3054,19 +3137,19 @@ bool SyncContext::sendSAN(uint16_t version)
             dataSources.insert (vSource->getName());
     }
 
-    int syncMode = 0;
+    SANSyncMode syncMode = SA_INVALID;
     vector<pair <string, string> > alertedSources;
 
     /* For each source to be notified do the following: */
     BOOST_FOREACH (string name, dataSources) {
         boost::shared_ptr<PersistentSyncSourceConfig> sc(getSyncSourceConfig(name));
         string sync = sc->getSync();
-        int mode = StringToSyncMode (sync, true);
-        if (mode == SYNC_SLOW) {
+        SANSyncMode mode = AlertSyncMode(StringToSyncMode(sync, true), getPeerIsClient());
+        if (mode == SA_SLOW) {
             (*m_sourceListPtr)[name]->setForceSlowSync(true);
-            mode = SA_SYNC_TWO_WAY;
+            mode = SA_TWO_WAY;
         }
-        if (mode <SYNC_FIRST || mode >SYNC_LAST) {
+        if (mode < SA_FIRST || mode > SA_LAST) {
             SE_LOG_DEV (NULL, NULL, "Ignoring data source %s with an invalid sync mode", name.c_str());
             continue;
         }
@@ -3193,23 +3276,13 @@ static string Step2String(sysync::uInt16 stepcmd)
 
 SyncMLStatus SyncContext::doSync()
 {
-    // install signal handlers only if default behavior
-    // is currently active, restore when we return
-    struct sigaction new_action, old_action;
-    memset(&new_action, 0, sizeof(new_action));
-    new_action.sa_handler = handleSignal;
-    sigemptyset(&new_action.sa_mask);
-    sigaction(SIGINT, NULL, &old_action);
+    boost::shared_ptr<SuspendFlags::Guard> signalGuard;
+    // install signal handlers unless this was explicitly disabled
     bool catchSignals = getenv("SYNCEVOLUTION_NO_SYNC_SIGNALS") == NULL;
-    if (catchSignals && old_action.sa_handler == SIG_DFL) {
-        sigaction(SIGINT, &new_action, NULL);
+    if (catchSignals) {
+        SE_LOG_DEBUG(NULL, NULL, "sync is starting, catch signals");
+        signalGuard = SuspendFlags::getSuspendFlags().activate();
     }
-
-    struct sigaction old_term_action;
-    sigaction(SIGTERM, NULL, &old_term_action);
-    if (catchSignals && old_term_action.sa_handler == SIG_DFL) {
-        sigaction(SIGTERM, &new_action, NULL);
-    }   
 
     SyncMLStatus status = STATUS_OK;
     std::string s;
@@ -3303,27 +3376,30 @@ SyncMLStatus SyncContext::doSync()
                 m_engine.SetInt32Value(target, "enabled", 1);
                 int slow = 0;
                 int direction = 0;
-                string mode = source->getSync();
-                if (!strcasecmp(mode.c_str(), "slow")) {
+                string sync = source->getSync();
+                // this code only runs when we are the client,
+                // take that into account for the "from-local/remote" modes
+                SimpleSyncMode mode = SimplifySyncMode(StringToSyncMode(sync), false);
+                if (mode == SIMPLE_SYNC_SLOW) {
                     slow = 1;
                     direction = 0;
-                } else if (!strcasecmp(mode.c_str(), "two-way")) {
+                } else if (mode == SIMPLE_SYNC_TWO_WAY) {
                     slow = 0;
                     direction = 0;
-                } else if (!strcasecmp(mode.c_str(), "refresh-from-server")) {
+                } else if (mode == SIMPLE_SYNC_REFRESH_FROM_REMOTE) {
                     slow = 1;
                     direction = 1;
-                } else if (!strcasecmp(mode.c_str(), "refresh-from-client")) {
+                } else if (mode == SIMPLE_SYNC_REFRESH_FROM_LOCAL) {
                     slow = 1;
                     direction = 2;
-                } else if (!strcasecmp(mode.c_str(), "one-way-from-server")) {
+                } else if (mode == SIMPLE_SYNC_ONE_WAY_FROM_REMOTE) {
                     slow = 0;
                     direction = 1;
-                } else if (!strcasecmp(mode.c_str(), "one-way-from-client")) {
+                } else if (mode == SIMPLE_SYNC_ONE_WAY_FROM_LOCAL) {
                     slow = 0;
                     direction = 2;
                 } else {
-                    source->throwError(string("invalid sync mode: ") + mode);
+                    source->throwError(string("invalid sync mode: ") + sync);
                 }
                 m_engine.SetInt32Value(target, "forceslow", slow);
                 m_engine.SetInt32Value(target, "syncmode", direction);
@@ -3730,6 +3806,23 @@ SyncMLStatus SyncContext::doSync()
                     }
                     break;
                 }
+                case TransportAgent::CANCELED:
+                    // Send might have failed because of abort or
+                    // suspend request.
+                    if (checkForSuspend()) {
+                        SE_LOG_DEBUG(NULL, NULL, "suspending after TransportAgent::CANCELED as requested by user");
+                        stepCmd = sysync::STEPCMD_SUSPEND;
+                        break;
+                    } else if (checkForAbort()) {
+                        SE_LOG_DEBUG(NULL, NULL, "aborting after TransportAgent::CANCELED as requested by user");
+                        stepCmd = sysync::STEPCMD_ABORT;
+                        break;
+                    }
+                    // not sure exactly why it is canceled
+                    SE_THROW_EXCEPTION_STATUS(BadSynthesisResult,
+                                              "transport canceled",
+                                              sysync::LOCERR_USERABORT);
+                    break;
                 default:
                     stepCmd = sysync::STEPCMD_TRANSPFAIL; // communication with server failed
                     break;
@@ -3777,10 +3870,6 @@ SyncMLStatus SyncContext::doSync()
         }
     }
 
-    if (catchSignals) {
-        sigaction (SIGINT, &old_action, NULL);
-        sigaction (SIGTERM, &old_term_action, NULL);
-    }
     return status;
 }
 
@@ -4120,7 +4209,7 @@ public:
 private:
 
     string getLogData() { return "LogDirTest/data"; }
-    virtual std::string getLogDir() const { return "LogDirTest/cache/syncevolution"; }
+    virtual InitStateString getLogDir() const { return "LogDirTest/cache/syncevolution"; }
     int m_maxLogDirs;
 
     ostringstream m_out;

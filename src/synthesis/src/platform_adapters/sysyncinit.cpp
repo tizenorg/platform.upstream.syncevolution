@@ -3,7 +3,7 @@
  *
  *  Global variables instantiation
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  Copyright (c) 2004-2011 by Synthesis AG + plan44.ch
  *

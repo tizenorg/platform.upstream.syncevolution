@@ -1,7 +1,7 @@
 /*
  *  File:         stringutils.cpp
  *
- *  Authors:			Lukas Zeller (luz@plan44.ch)
+ *  Authors:      Lukas Zeller (luz@plan44.ch)
  *                Beat Forster (bfo@synthesis.ch)
  *
  *  C++ string utils
@@ -43,7 +43,7 @@ int vsnprintf(char *s, int sz, const char *formatStr, va_list arg)
 // own implementation (possibly unsafe, if vsnprintf is dummy)
 int snprintf(char *s, int sz, const char *formatStr, ...)
 {
-  va_list	args;
+  va_list args;
 
   va_start(args, formatStr);
   // now make the string
@@ -193,7 +193,7 @@ sInt16 strutrimcmp(const char *s1, const char *s2)
 // case insensitive strcmp which allow wildcards ? and * in s2, NULL allowed as empty string input
 sInt16 strwildcmp(const char *s1, const char *s2, size_t len1, size_t len2)
 {
-	// allow NULL as empty strings
+  // allow NULL as empty strings
   if (!s1) s1 = "";
   if (!s2) s2 = "";
   // s1>s2 : 1, s1==s2 : 0, s1<s2 : -1
@@ -288,7 +288,7 @@ sInt32 strupos(const char *s, const char *pat, size_t slen, size_t patlen)
 // case insensitive strcmp, NULL allowed as empty string input
 sInt16 strucmp(const char *s1, const char *s2, size_t len1, size_t len2)
 {
-	// allow NULL as empty strings
+  // allow NULL as empty strings
   if (!s1) s1 = "";
   if (!s2) s2 = "";
   // s1>s2 : 1, s1==s2 : 0, s1<s2 : -1
@@ -318,7 +318,7 @@ sInt16 strucmp(const char *s1, const char *s2, size_t len1, size_t len2)
 // Note: is compatible with standard strncmp if len2 is left unspecified
 sInt16 strnncmp(const char *s1, const char *s2, size_t len1, size_t len2)
 {
-	// allow NULL as empty strings
+  // allow NULL as empty strings
   if (!s1) s1 = "";
   if (!s2) s2 = "";
   // s1>s2 : 1, s1==s2 : 0, s1<s2 : -1
@@ -442,16 +442,16 @@ bool StrToBool(const char *aStr, bool &aBool)
 
 const char *tristateString(sInt8 aTristate)
 {
-	if (aTristate<0) return "default";
-	else if (aTristate>0) return "Yes";
-	else return "No";
+  if (aTristate<0) return "default";
+  else if (aTristate>0) return "Yes";
+  else return "No";
 }
 
 
 const char *boolString(bool aBool)
 {
-	if (aBool) return "Yes";
-	else return "No";
+  if (aBool) return "Yes";
+  else return "No";
 }
 
 
@@ -546,7 +546,7 @@ sInt16 HexStrToUIntPtr(const char *aStr, uIntPtr &aIntPtr, sInt16 aMaxDigits)
 #if __WORDSIZE == 64
   return HexStrToULongLong(aStr, aIntPtr, aMaxDigits);
 #else
-	uInt32 l;
+  uInt32 l;
   sInt16 n = HexStrToULong(aStr, l, aMaxDigits);
   aIntPtr = (uIntPtr)l;
   return n;
@@ -835,7 +835,7 @@ void vStringObjPrintf(string &aStringObj, const char *aFormat, bool aAppend, va_
 // old-style C-formatted output into string object
 void StringObjPrintf(string &aStringObj, const char *aFormat, ...)
 {
-  va_list	args;
+  va_list args;
 
   va_start(args, aFormat);
   // now make the string
@@ -847,7 +847,7 @@ void StringObjPrintf(string &aStringObj, const char *aFormat, ...)
 // old-style C-formatted output appending into string object
 void StringObjAppendPrintf(string &aStringObj, const char *aFormat, ...)
 {
-  va_list	args;
+  va_list args;
 
   va_start(args, aFormat);
   // now make the string

@@ -44,6 +44,10 @@
 #include <fstream>
 #include <iostream>
 
+#ifdef ENABLE_UNIT_TESTS
+#include "test.h"
+#endif
+
 #include <syncevo/declarations.h>
 SE_BEGIN_CXX
 
@@ -104,7 +108,12 @@ void SyncSourceBase::getDatastoreXML(string &xml, XMLConfigFragments &fragments)
     getSynthesisInfo(info, fragments);
 
     xmlstream <<
-        "      <plugin_module>SyncEvolution</plugin_module>\n"
+        "      <plugin_module>SyncEvolution</plugin_module>\n";
+    if (info.m_earlyStartDataRead) {
+        xmlstream <<
+            "      <plugin_earlystartdataread>yes</plugin_earlystartdataread>\n";
+    }
+    xmlstream <<
         "      <plugin_datastoreadmin>" <<
         (serverModeEnabled() ? "yes" : "no") <<
         "</plugin_datastoreadmin>\n"
@@ -349,15 +358,23 @@ SyncSource *SyncSource::createSource(const SyncSourceParams &params, bool error,
     }
 
     const SourceRegistry &registry(getSourceRegistry());
+    SyncSource *source = NULL;
     BOOST_FOREACH(const RegisterSyncSource *sourceInfos, registry) {
-        SyncSource *source = sourceInfos->m_create(params);
-        if (source) {
+        SyncSource *nextSource = sourceInfos->m_create(params);
+        if (nextSource) {
+            if (source) {
+                SyncContext::throwError(params.getDisplayName() + ": backend " + sourceType.m_backend +
+                                        " is ambiguous, avoid the alias and pick a specific backend instead directly");
+            }
             if (source == RegisterSyncSource::InactiveSource) {
                 SyncContext::throwError(params.getDisplayName() + ": access to " + sourceInfos->m_shortDescr +
                                         " not enabled");
             }
-            return source;
+            source = nextSource;
         }
+    }
+    if (source) {
+        return source;
     }
 
     if (error) {
@@ -368,13 +385,14 @@ SyncSource *SyncSource::createSource(const SyncSourceParams &params, bool error,
             backends += ") ";
         }
         string problem =
-            StringPrintf("%s: backend '%s' not supported %sor not correctly configured (databaseFormat '%s', syncFormat '%s')",
+            StringPrintf("%s%sbackend not supported %sor not correctly configured (backend=%s databaseFormat=%s syncFormat=%s)",
                          params.m_name.c_str(),
-                         sourceType.m_backend.c_str(),
+                         params.m_name.empty() ? "" : ": ",
                          backends.c_str(),
+                         sourceType.m_backend.c_str(),
                          sourceType.m_localFormat.c_str(),
                          sourceType.m_format.c_str());
-        SyncContext::throwError(problem);
+        SyncContext::throwError(SyncMLStatus(sysync::LOCERR_CFGPARSE), problem);
     }
 
     return NULL;
@@ -508,6 +526,9 @@ sysync::TSyError SyncSourceChanges::iterate(sysync::ItemID aID,
                                             sysync::sInt32 *aStatus,
                                             bool aFirst)
 {
+    aID->item = NULL;
+    aID->parent = NULL;
+
     if (m_first || aFirst) {
         m_it = m_items[ANY].begin();
         m_first = false;
@@ -1395,6 +1416,44 @@ void SyncSourceBlob::init(SyncSource::Operations &ops,
     ops.m_deleteBlob = boost::bind(&SyncSourceBlob::deleteBlob, this,
                                    _1, _2);
 }
+
+void TestingSyncSource::removeAllItems()
+{
+    // remove longest luids first:
+    // for luid=UID[+RECURRENCE-ID] that will
+    // remove children from a merged event first,
+    // which is better supported by certain servers
+    Items_t items = getAllItems();
+    for (Items_t::reverse_iterator it = items.rbegin();
+         it != items.rend();
+         ++it) {
+        deleteItem(*it);
+    }
+}
+
+
+
+#ifdef ENABLE_UNIT_TESTS
+
+class SyncSourceTest : public CppUnit::TestFixture {
+    CPPUNIT_TEST_SUITE(SyncSourceTest);
+    CPPUNIT_TEST(backendsAvailable);
+    CPPUNIT_TEST_SUITE_END();
+
+    void backendsAvailable()
+    {
+        //We expect backendsInfo() to be empty if !ENABLE_MODULES
+        //Otherwise, there should be at least some backends.
+#ifdef ENABLE_MODULES
+        CPPUNIT_ASSERT( !SyncSource::backendsInfo().empty() );
+#endif
+    }
+};
+
+SYNCEVOLUTION_TEST_SUITE_REGISTRATION(SyncSourceTest);
+
+#endif // ENABLE_UNIT_TESTS
+
 
 SE_END_CXX
 

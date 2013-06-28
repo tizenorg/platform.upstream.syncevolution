@@ -276,8 +276,10 @@ private:
 
 
 
-  #ifdef SYSYNC_SERVER
 protected:
+  // - helper to merge database version of an item with the passed version of the same item
+  TMultiFieldItem *mergeWithDatabaseVersion(TSyncItem *aSyncItemP, bool &aChangedDBVersion, bool &aChangedNewVersion);
+  #ifdef SYSYNC_SERVER
   // - check if conflicting item already exist in list of items-to-be-sent-to-client
   virtual TSyncItem *getConflictingItemByRemoteID(TSyncItem *syncitemP);
   virtual TSyncItem *getConflictingItemByLocalID(TSyncItem *syncitemP);

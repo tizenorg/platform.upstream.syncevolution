@@ -1,7 +1,7 @@
 /*
  *  File:         MultiFieldItem.h
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TMultiFieldItem
  *    Item consisting of multiple data fields (TItemField objects)
@@ -152,8 +152,8 @@ protected:
 class TProfileHandler
 {
 public:
-	// constructor/destructor
-	TProfileHandler(TProfileConfig *aProfileCfgP, TMultiFieldItemType *aItemTypeP);
+  // constructor/destructor
+  TProfileHandler(TProfileConfig *aProfileCfgP, TMultiFieldItemType *aItemTypeP);
   virtual ~TProfileHandler();
   #ifdef OBJECT_FILTERING
   // filtering
@@ -162,7 +162,7 @@ public:
   // - add keywords and property names to filterCap
   virtual void addFilterCapPropsAndKeywords(SmlPcdataListPtr_t &aFilterKeywords, SmlPcdataListPtr_t &aFilterProps, TTypeVariantDescriptor aVariantDesc, TSyncItemType *aItemTypeP) = 0;
   #endif
-	// DevInf
+  // DevInf
   // - obtain property list for type, returns NULL if none available
   virtual SmlDevInfCTDataPropListPtr_t newCTDataPropList(TTypeVariantDescriptor aVariantDescriptor, TSyncItemType *aItemTypeP) { return NULL; };
   // - Analyze CTCap part of devInf
@@ -186,7 +186,7 @@ public:
   uInt32 getDbgMask(void);
   #endif
 protected:
-	TLocalEngineDS *fRelatedDatastoreP; // related datastore, can be NULL
+  TLocalEngineDS *fRelatedDatastoreP; // related datastore, can be NULL
   TMultiFieldItemType *fItemTypeP; // the item type using this handler
   // helpers
   // - get session pointer
@@ -281,7 +281,7 @@ public:
   // for array support, but is always there to simplify implementations
   TItemField *getArrayField(const char *aFieldName, sInt16 aIndex, bool aExistingOnly=false);
   TItemField *getArrayField(sInt16 aFid, sInt16 aIndex, bool aExistingOnly=false);
-	TItemField *getArrayFieldAdjusted(sInt16 aFid, sInt16 aIndex, bool aExistingOnly=false);
+  TItemField *getArrayFieldAdjusted(sInt16 aFid, sInt16 aIndex, bool aExistingOnly=false);
   // find index of field (returns FID_NOT_SUPPORTED if field is not a field of this item)
   sInt16 getIndexOfField(const TItemField *aFieldP);
   // adjust fid and repeat offset to access array element if
@@ -298,6 +298,8 @@ public:
   // get associated MultiFieldItemType
   TMultiFieldItemType *getItemType(void) { return fItemTypeP; };
   TMultiFieldItemType *getTargetItemType(void) { return fTargetItemTypeP; };
+  TMultiFieldItemType *getLocalItemType(void);
+  TMultiFieldItemType *getRemoteItemType(void);
   // field availability (combined source & target)
   bool isAvailable(sInt16 aFieldIndex);
   bool isAvailable(const char *aFieldName);
@@ -402,10 +404,10 @@ protected:
   bool fOwnsItem;
   // iterator
   sInt16 fIteratorFid;
-  
+
 private:
-	void forgetItem() { if (fOwnsItem && fItemP) { delete fItemP; } fItemP=NULL; };
-  
+  void forgetItem() { if (fOwnsItem && fItemP) { delete fItemP; } fItemP=NULL; };
+
 }; // TMultiFieldItemKey
 
 #endif // DBAPI_TUNNEL_SUPPORT
@@ -413,8 +415,8 @@ private:
 
 
 
-}	// namespace sysync
+} // namespace sysync
 
-#endif	// MultiFieldItem_H
+#endif  // MultiFieldItem_H
 
 // eof

@@ -1,7 +1,7 @@
 /*
  *  File:         debuglogger.h
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  Global debug mechanisms
  *
@@ -17,6 +17,7 @@
 #ifdef SYDEBUG
 
 #include "generic_types.h"
+#include "platform_mutex.h"
 #include "sysync.h"
 
 namespace sysync {
@@ -42,16 +43,16 @@ typedef enum {
 /// @brief Debug flush modes
 typedef enum {
   dbgflush_none,      ///< no flush, keep open as long as possible
-  dbgflush_flush,		  ///< flush every debug message
-  dbgflush_openclose,	///< open and close debug channel separately for every message (as in 2.x engine)
+  dbgflush_flush,     ///< flush every debug message
+  dbgflush_openclose, ///< open and close debug channel separately for every message (as in 2.x engine)
   numDbgFlushModes
 } TDbgFlushModes;
 
 /// @brief Debug subthread logging modes
 typedef enum {
   dbgsubthread_none,          ///< do not handle output from subthread specially
-  dbgsubthread_suppress,			///< suppress output from subthreads
-  dbgsubthread_separate,			///< create separate output stream (=file) for each subthread
+  dbgsubthread_suppress,      ///< suppress output from subthreads
+  dbgsubthread_separate,      ///< create separate output stream (=file) for each subthread
   dbgsubthread_linemix,       ///< mix output on a line by line basis (forcing output to slow openclose mode)
   dbgsubthread_bufferandmix,  ///< buffer thread's output and mix it into main stream when appropriate
   numDbgSubthreadModes
@@ -61,7 +62,7 @@ typedef enum {
 /// @brief HTML linking into source code
 typedef enum {
   dbgsource_none,     ///< do not include links into source code in HTML logs
-  dbgsource_hint,     ///< no links, but info about what file/line number the message comes from 
+  dbgsource_hint,     ///< no links, but info about what file/line number the message comes from
   dbgsource_doxygen,  ///< include link into doxygen prepared HTML version of source code
   dbgsource_txmt,     ///< include txmt:// link (understood by TextMate and BBEdit) into source code
   numDbgSourceModes
@@ -169,6 +170,7 @@ private:
   TDbgFlushModes fFlushMode;
   string fFileName;
   FILE * fFile;
+  MutexPtr_t mutex;
 }; // TStdFileDbgOut
 
 #endif
@@ -262,9 +264,9 @@ public:
   /// @param aDbgMask debug mask, bits set here must be set in the debuglogger's own mask in order to display the debug text
   /// @param aFormat[in] format text in printf style to be written out
   void DebugPrintf(TDBG_LOCATION_PROTO uInt32 aDbgMask, cAppCharP aFormat, ...)
-  	#ifdef __GNUC__
+    #ifdef __GNUC__
     __attribute__((format(printf, TDBG_LOCATION_ARG_NUM + 3, TDBG_LOCATION_ARG_NUM + 4)))
-		#endif
+    #endif
     ;
   /// @brief set debug mask to be used for next DebugPrintfLastMask() call
   /// @param aDbgMask debug mask, bits set here must be set in the debuglogger's own mask in order to display the debug text
@@ -272,9 +274,9 @@ public:
   /// @brief like DebugPrintf(), but using mask previously set by setNextMask()
   /// @param aFormat[in] format text in printf style to be written out
   void DebugPrintfLastMask(TDBG_LOCATION_PROTO cAppCharP aFormat, ...)
-		#ifdef __GNUC__
+    #ifdef __GNUC__
     __attribute__((format(printf, TDBG_LOCATION_ARG_NUM + 2, TDBG_LOCATION_ARG_NUM + 3)))
-		#endif
+    #endif
     ;
   // - Blocks
   /// @brief Open structure Block. Depending on the output format, this will generate indent, XML tags, HTML headers etc.
@@ -289,17 +291,17 @@ public:
   void DebugOpenBlock(TDBG_LOCATION_PROTO cAppCharP aBlockName, cAppCharP aBlockTitle, bool aCollapsed, cAppCharP aBlockFmt, ...)
     #ifdef __GNUC__
     __attribute__((format(printf, TDBG_LOCATION_ARG_NUM + 5, TDBG_LOCATION_ARG_NUM + 6)))
-		#endif
+    #endif
       ;
   void DebugOpenBlockExpanded(TDBG_LOCATION_PROTO cAppCharP aBlockName, cAppCharP aBlockTitle, cAppCharP aBlockFmt, ...)
     #ifdef __GNUC__
     __attribute__((format(printf, TDBG_LOCATION_ARG_NUM + 4, TDBG_LOCATION_ARG_NUM + 5)))
-		#endif
+    #endif
     ;
   void DebugOpenBlockCollapsed(TDBG_LOCATION_PROTO cAppCharP aBlockName, cAppCharP aBlockTitle, cAppCharP aBlockFmt, ...)
     #ifdef __GNUC__
     __attribute__((format(printf, TDBG_LOCATION_ARG_NUM + 4, TDBG_LOCATION_ARG_NUM + 5)))
-		#endif
+    #endif
     ;
   /// @brief Open structure Block, without any attributes
   virtual void DebugOpenBlock(TDBG_LOCATION_PROTO cAppCharP aBlockName, cAppCharP aBlockTitle=NULL, bool aCollapsed=false);
@@ -321,9 +323,9 @@ protected:
   /// @param aBlockName[in]   Name of Block to close. All Blocks including the first with given name will be closed. If NULL, all Blocks will be closed.
   /// @param aCloseComment[in]  Comment about closing Block. If NULL, no comment will be shown (unless implicit closes occur, which auto-creates a comment)
   void internalCloseBlocks(TDBG_LOCATION_PROTO cAppCharP aBlockName, cAppCharP aCloseComment);
-	#ifdef SYDEBUG_LOCATION
-	/// @brief turn text into link to source code
-	string dbg2Link(const TDbgLocation &aTDbgLoc, const string &aTxt);
+  #ifdef SYDEBUG_LOCATION
+  /// @brief turn text into link to source code
+  string dbg2Link(const TDbgLocation &aTDbgLoc, const string &aTxt);
   #endif // SYDEBUG_LOCATION
   // Variables
   TDbgOut *fDbgOutP; // the debug output
@@ -372,7 +374,7 @@ public:
   void DebugShowSubThreadOutput(void);
   /// @brief signals the calling thread that it is done with doing output for now.
   /// @param aRemoveIt[in] if set, do remove thread from the subthread logger list
-	/// Notes:
+  /// Notes:
   /// - If the main thread is doing this and we have bufferandmix mode, the next subthread will be allowed
   ///   to write into the output channel until a new main thread gains control via DebugDefineMainThread();
   void DebugThreadOutputDone(bool aRemoveIt=false);

@@ -178,7 +178,7 @@ TMimeDirItemType::TMimeDirItemType(
 
 TMimeDirItemType::~TMimeDirItemType()
 {
-	// release the profile handler
+  // release the profile handler
   delete fProfileHandlerP;
 } // TMimeDirItemType::~TMimeDirItemType
 
@@ -293,7 +293,7 @@ bool TMimeDirItemType::parseForProperty(SmlItemPtr_t aItemP, const char *aPropNa
 // scan Data item for specific property (used for quick type tests)
 bool TMimeDirItemType::parseForProperty(const char *aText, const char *aPropName, string &aString)
 {
-	return static_cast<TMimeDirProfileHandler *>(fProfileHandlerP)->parseForProperty(aText, aPropName, aString);
+  return static_cast<TMimeDirProfileHandler *>(fProfileHandlerP)->parseForProperty(aText, aPropName, aString);
 } // TMimeDirItemType::parseForProperty
 
 
@@ -301,8 +301,8 @@ bool TMimeDirItemType::parseForProperty(const char *aText, const char *aPropName
 // generates SyncML-Devinf property list for type
 SmlDevInfCTDataPropListPtr_t TMimeDirItemType::newCTDataPropList(TTypeVariantDescriptor aVariantDescriptor)
 {
-	// let profile handle that
-	return fProfileHandlerP->newCTDataPropList(aVariantDescriptor, this);
+  // let profile handle that
+  return fProfileHandlerP->newCTDataPropList(aVariantDescriptor, this);
 }
 
 
@@ -311,7 +311,7 @@ SmlDevInfCTDataPropListPtr_t TMimeDirItemType::newCTDataPropList(TTypeVariantDes
 // Filtering: add keywords and property names to filterCap
 void TMimeDirItemType::addFilterCapPropsAndKeywords(SmlPcdataListPtr_t &aFilterKeywords, SmlPcdataListPtr_t &aFilterProps, TTypeVariantDescriptor aVariantDescriptor)
 {
-	fProfileHandlerP->addFilterCapPropsAndKeywords(aFilterKeywords, aFilterProps, aVariantDescriptor, this);
+  fProfileHandlerP->addFilterCapPropsAndKeywords(aFilterKeywords, aFilterProps, aVariantDescriptor, this);
   // add basics
   inherited::addFilterCapPropsAndKeywords(aFilterKeywords,aFilterProps,aVariantDescriptor);
 } // TMimeDirItemType::addFilterCapPropsAndKeywords
@@ -323,7 +323,7 @@ void TMimeDirItemType::addFilterCapPropsAndKeywords(SmlPcdataListPtr_t &aFilterK
 bool TMimeDirItemType::analyzeCTCap(SmlDevInfCTCapPtr_t aCTCapP)
 {
   if (TMultiFieldItemType::analyzeCTCap(aCTCapP)) {
-  	// let profile check
+    // let profile check
     fProfileHandlerP->analyzeCTCap(aCTCapP, this);
   }
   #ifdef SYDEBUG

@@ -1,7 +1,7 @@
 /*
  *  File:         SimpleItem.h
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TSimpleItem
  *    Simple item, no internal structure but just a string
@@ -68,8 +68,8 @@ protected:
   string fContents;
 }; // TSimpleItem
 
-}	// namespace sysync
+} // namespace sysync
 
-#endif	// SimpleItem_H
+#endif  // SimpleItem_H
 
 // eof

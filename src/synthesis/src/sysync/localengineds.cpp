@@ -1592,7 +1592,7 @@ void TLocalEngineDS::adjustLocalIDforSize(string &aLocalID, sInt32 maxguidsize, 
   if (maxguidsize>0) {
     if (aLocalID.length()+prefixsize>(uInt32)maxguidsize) { //BCPPB needed unsigned cast
       // real GUID is too long, we need to create a temp
-
+      #if SYDEBUG>1
       // first check if there is already a mapping for it,
       // because on-disk storage can only hold one; also
       // saves space
@@ -1611,7 +1611,6 @@ void TLocalEngineDS::adjustLocalIDforSize(string &aLocalID, sInt32 maxguidsize, 
           return;
         }
       }
-
       string tempguid;
       long counter = fTempGUIDMap.size(); // as list only grows, we have unique tempuids for sure
       while (true) {
@@ -1626,6 +1625,11 @@ void TLocalEngineDS::adjustLocalIDforSize(string &aLocalID, sInt32 maxguidsize, 
           break;
         }
       }
+      #else
+      // rely on tempguid list only growing (which still holds true)
+      string tempguid;
+      StringObjPrintf(tempguid,"#%ld",(long)fTempGUIDMap.size()+1); // as list only grows, we have unique tempuids for sure
+      #endif
       fTempGUIDMap[tempguid]=aLocalID;
       PDEBUGPRINTFX(DBG_ADMIN+DBG_EXOTIC,(
         "fTempGUIDMap: translated realLocalID='%s' to tempLocalID='%s'",
@@ -4541,16 +4545,16 @@ void TLocalEngineDS::showStatistics(void)
     else {
       CONSOLEPRINTF(("                               on Client   on Server"));
     }
-    CONSOLEPRINTF(("  Added:                       %9ld   %9ld",fLocalItemsAdded,fRemoteItemsAdded));
-    CONSOLEPRINTF(("  Deleted:                     %9ld   %9ld",fLocalItemsDeleted,fRemoteItemsDeleted));
-    CONSOLEPRINTF(("  Updated:                     %9ld   %9ld",fLocalItemsUpdated,fRemoteItemsUpdated));
-    CONSOLEPRINTF(("  Rejected with error:         %9ld   %9ld",fLocalItemsError,fRemoteItemsError));
+    CONSOLEPRINTF(("  Added:                       %9ld   %9ld",(long)fLocalItemsAdded,(long)fRemoteItemsAdded));
+    CONSOLEPRINTF(("  Deleted:                     %9ld   %9ld",(long)fLocalItemsDeleted,(long)fRemoteItemsDeleted));
+    CONSOLEPRINTF(("  Updated:                     %9ld   %9ld",(long)fLocalItemsUpdated,(long)fRemoteItemsUpdated));
+    CONSOLEPRINTF(("  Rejected with error:         %9ld   %9ld",(long)fLocalItemsError,(long)fRemoteItemsError));
     #ifdef SYSYNC_SERVER
     if (IS_SERVER) {
-      CONSOLEPRINTF(("  SlowSync Matches:            %9ld",fSlowSyncMatches));
-      CONSOLEPRINTF(("  Server won Conflicts:        %9ld",fConflictsServerWins));
-      CONSOLEPRINTF(("  Client won Conflicts:        %9ld",fConflictsClientWins));
-      CONSOLEPRINTF(("  Conflicts with Duplication:  %9ld",fConflictsDuplicated));
+      CONSOLEPRINTF(("  SlowSync Matches:            %9ld",(long)fSlowSyncMatches));
+      CONSOLEPRINTF(("  Server won Conflicts:        %9ld",(long)fConflictsServerWins));
+      CONSOLEPRINTF(("  Client won Conflicts:        %9ld",(long)fConflictsClientWins));
+      CONSOLEPRINTF(("  Conflicts with Duplication:  %9ld",(long)fConflictsDuplicated));
     }
     #endif
   }

@@ -179,14 +179,14 @@ public:
   bool showInCTCap;
   // conversion information
   TConversionDef convdef;
-	#ifndef NO_REMOTE_RULES
+  #ifndef NO_REMOTE_RULES
   // rule processing is simpler than with properties:
   // a parameter is expanded or parsed if no rule was set or the given
   // rule is active
   TRemoteRuleConfig *ruleDependency;
   // name of remote rule dependency (will be resolved to set ruleDependency)
   TCFG_STRING dependencyRuleName;
-	#endif
+  #endif
 }; // TParameterDefinition
 
 

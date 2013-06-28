@@ -74,9 +74,9 @@ TSyError TClientEngineInterface::OpenSessionInternal(SessionH &aNewSessionH, uIn
       aNewSessionH=(SessionH)clientBaseP->fClientSessionP;
     }
     else {
-    	// error: make sure it is deleted in case it was half-constructed
-    	if (clientBaseP->fClientSessionP) {
-      	delete clientBaseP->fClientSessionP;
+      // error: make sure it is deleted in case it was half-constructed
+      if (clientBaseP->fClientSessionP) {
+        delete clientBaseP->fClientSessionP;
         clientBaseP->fClientSessionP = NULL;
       }
     }

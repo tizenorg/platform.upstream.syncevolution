@@ -46,7 +46,7 @@ cAppCharP const DbgFoldingModeNames[numDbgFoldingModes] = {
 
 cAppCharP const DbgSourceModeNames[numDbgSourceModes] = {
   "none",       // do not include links into source code in HTML logs
-  "hint",       // no links, but info about what file/line number the message comes from 
+  "hint",       // no links, but info about what file/line number the message comes from
   "doxygen",    // include link into doxygen prepared HTML version of source code
   "txmt",       // include txmt:// link (understood by TextMate and BBEdit) into source code
 };
@@ -287,12 +287,14 @@ TStdFileDbgOut::TStdFileDbgOut()
   // init
   fFileName.erase();
   fFile=NULL;
+  mutex=newMutex();
 } // TStdFileDbgOut::TStdFileDbgOut
 
 
 TStdFileDbgOut::~TStdFileDbgOut()
 {
   destruct();
+  freeMutex(mutex);
 } // TStdFileDbgOut::~TStdFileDbgOut
 
 
@@ -364,6 +366,7 @@ void TStdFileDbgOut::putLine(cAppCharP aLine, bool aForceFlush)
   if (fIsOpen) {
     if (fFlushMode==dbgflush_openclose) {
       // we need to open the file for append first
+      lockMutex(mutex);
       fFile=fopen(fFileName.c_str(),"a");
     }
     if (fFile) {
@@ -376,6 +379,7 @@ void TStdFileDbgOut::putLine(cAppCharP aLine, bool aForceFlush)
         // we need to close the file after every line of output
         fclose(fFile);
         fFile=NULL;
+        unlockMutex(mutex);
       }
       else if (aForceFlush || fFlushMode==dbgflush_flush) {
         // simply flush
@@ -392,6 +396,7 @@ void TStdFileDbgOut::putRawData(cAppPointer aData, memSize aSize)
   if (fIsOpen) {
     if (fFlushMode==dbgflush_openclose) {
       // we need to open the file for append first
+      lockMutex(mutex);
       fFile=fopen(fFileName.c_str(),"a");
     }
     if (fFile) {
@@ -404,6 +409,7 @@ void TStdFileDbgOut::putRawData(cAppPointer aData, memSize aSize)
       // we need to close the file after every line of output
       fclose(fFile);
       fFile=NULL;
+      unlockMutex(mutex);
     }
     else if (fFlushMode==dbgflush_flush) {
       // simply flush
@@ -515,7 +521,7 @@ void TDebugLoggerBase::installOutput(TDbgOut *aDbgOutP)
 /// @param aDebugLoggerP[in] another logger, that must be alive as long as this logger is alive
 void TDebugLoggerBase::outputVia(TDebugLoggerBase *aDebugLoggerP)
 {
-	// save logger and prefix
+  // save logger and prefix
   fOutputLoggerP = aDebugLoggerP;
 } // TDebugLoggerBase::outputVia
 
@@ -637,20 +643,20 @@ string TDebugLoggerBase::dbg2Link(const TDbgLocation &aTDbgLoc, const string &aT
 {
   if (!aTDbgLoc.fFile || !fDbgOptionsP || fDbgOptionsP->fSourceLinkMode==dbgsource_none || fDbgOptionsP->fOutputFormat!=dbgfmt_html)
     return aTxt; // disabled, non-html or no information to create source link
-	// create link or hint to source code
+  // create link or hint to source code
   string line;
 
-	switch(fDbgOptionsP->fSourceLinkMode) {
-		case dbgsource_hint: {
-    	// only add name/line number/function as title hint (in a otherwise inactive link)
+  switch(fDbgOptionsP->fSourceLinkMode) {
+    case dbgsource_hint: {
+      // only add name/line number/function as title hint (in a otherwise inactive link)
       line = "<a href=\"#\" title=";
       StringObjPrintf(line,"<a href=\"#\" title=\"%s:%d",aTDbgLoc.fFile,aTDbgLoc.fLine);
       StringObjAppendPrintf(line," in %s",aTDbgLoc.fFunction);
-      line += '"';  
+      line += '"';
       goto closelink;
     }
-		case dbgsource_doxygen: {
-    	// create link into doxygen
+    case dbgsource_doxygen: {
+      // create link into doxygen
       line = "<a href=\"";
       // replace path with path to Doxygen HTML pages,
       // mangle base name like Doxygen does
@@ -682,8 +688,8 @@ string TDebugLoggerBase::dbg2Link(const TDbgLocation &aTDbgLoc, const string &aT
       }
       goto closelink;
     }
-		case dbgsource_txmt: {
-    	// create txmt:// URL scheme link, which opens TextMate or BBEdit at the correct line in MacOS X
+    case dbgsource_txmt: {
+      // create txmt:// URL scheme link, which opens TextMate or BBEdit at the correct line in MacOS X
       line = "<a href=\"txmt://open/?url=file://";
       // - create path
       string path = fDbgOptionsP->fSourceRootPath;
@@ -692,7 +698,7 @@ string TDebugLoggerBase::dbg2Link(const TDbgLocation &aTDbgLoc, const string &aT
       line += encodeForCGI(path.c_str());
       // - add line number
       if (aTDbgLoc.fLine>0)
-	      StringObjAppendPrintf(line,"&line=%d",aTDbgLoc.fLine);  
+        StringObjAppendPrintf(line,"&line=%d",aTDbgLoc.fLine);
       line+="\"";
       if (aTDbgLoc.fFunction) {
         line+=" title=\"";
@@ -706,10 +712,10 @@ string TDebugLoggerBase::dbg2Link(const TDbgLocation &aTDbgLoc, const string &aT
       line+="</a>";
       break;
     }
-  	default:
-    	line = aTxt;
+    default:
+      line = aTxt;
   } // switch
-  // return 
+  // return
   return line;
 } // TDebugLoggerBase::dbg2Link
 
@@ -770,8 +776,8 @@ void TDebugLoggerBase::DebugPuts(TDBG_LOCATION_PROTO uInt32 aDbgMask, cAppCharP 
             line="<li>";
             // add timestamp if needed for every line
             if (
-            	fDbgOptionsP->fTimestampForAll
-            	|| fDbgOptionsP->fThreadIDForAll
+              fDbgOptionsP->fTimestampForAll
+              || fDbgOptionsP->fThreadIDForAll
               #ifdef SYDEBUG_LOCATION
               || fDbgOptionsP->fSourceLinkMode!=dbgsource_none
               #endif
@@ -790,7 +796,7 @@ void TDebugLoggerBase::DebugPuts(TDBG_LOCATION_PROTO uInt32 aDbgMask, cAppCharP 
               }
               #ifdef SYDEBUG_LOCATION
               else if (!fDbgOptionsP->fThreadIDForAll) {
-              	// neither threadID nor timestamp, but source requested -> put small text here
+                // neither threadID nor timestamp, but source requested -> put small text here
                 prefix += "src";
               }
               #endif
@@ -1050,7 +1056,7 @@ void TDebugLoggerBase::DebugVOpenBlock(TDBG_LOCATION_PROTO cAppCharP aBlockName,
         }
         #ifdef SYDEBUG_LOCATION
         else if (fDbgOptionsP->fSourceLinkMode!=dbgsource_none) {
-        	bl += MAKEDBGLINK(string("[src] "));
+          bl += MAKEDBGLINK(string("[src] "));
         }
         #endif
         bl+="'";
@@ -1315,8 +1321,8 @@ void TDebugLoggerBase::internalCloseBlocks(TDBG_LOCATION_PROTO cAppCharP aBlockN
 // start debugging output if needed and sets fOutStarted
 bool TDebugLoggerBase::DebugStartOutput(void)
 {
-	if (!fOutStarted) {
-  	if (fOutputLoggerP) {
+  if (!fOutStarted) {
+    if (fOutputLoggerP) {
       // using another logger, call it to start output
       fOutStarted = fOutputLoggerP->DebugStartOutput();
       if (fOutStarted) {
@@ -1359,8 +1365,8 @@ bool TDebugLoggerBase::DebugStartOutput(void)
 void TDebugLoggerBase::DebugFinalizeOutput(void)
 {
   if (fOutputLoggerP) {
-  	// just close my own blocks
-    internalCloseBlocks(TDBG_LOCATION_NONE NULL,"closed because sub-log ends here");    
+    // just close my own blocks
+    internalCloseBlocks(TDBG_LOCATION_NONE NULL,"closed because sub-log ends here");
   }
   if (fOutStarted && fDbgOptionsP && fDbgOutP) {
     // close all left-open open Blocks
@@ -1410,12 +1416,12 @@ void TDebugLoggerBase::DebugPutLine(TDBG_LOCATION_PROTO cAppCharP aText, stringS
       msg.append(aText);
     // now output
     if (fOutputLoggerP) {
-    	// use parent's output
-	    fOutputLoggerP->fDbgOutP->putLine(msg.c_str(),false); // %%% no forceflush for now
+      // use parent's output
+      fOutputLoggerP->fDbgOutP->putLine(msg.c_str(),false); // %%% no forceflush for now
     }
     else {
-    	// use my own output channel
-	    fDbgOutP->putLine(msg.c_str(),false); // %%% no forceflush for now
+      // use my own output channel
+      fDbgOutP->putLine(msg.c_str(),false); // %%% no forceflush for now
     }
   }
 } // TDebugLoggerBase::DebugPutLine

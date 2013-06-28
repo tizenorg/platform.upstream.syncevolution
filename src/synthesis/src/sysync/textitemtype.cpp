@@ -153,8 +153,8 @@ TTextItemType::TTextItemType(
 
 TTextItemType::~TTextItemType()
 {
-	if (fProfileHandlerP)
-  	delete fProfileHandlerP;
+  if (fProfileHandlerP)
+    delete fProfileHandlerP;
 } // TTextItemType::~TTextItemType
 
 
@@ -288,7 +288,7 @@ void TTextItemType::addFilterCapPropsAndKeywords(SmlPcdataListPtr_t &aFilterKeyw
   #ifdef OBJECT_FILTERING
   // let profile add the keywords
   if (fProfileHandlerP) {
-	  fProfileHandlerP->addFilterCapPropsAndKeywords(aFilterKeywords, aFilterProps, aVariantDescriptor, this);
+    fProfileHandlerP->addFilterCapPropsAndKeywords(aFilterKeywords, aFilterProps, aVariantDescriptor, this);
   }
   // let base class add own keywords/props
   inherited::addFilterCapPropsAndKeywords(aFilterKeywords, aFilterProps, aVariantDescriptor);

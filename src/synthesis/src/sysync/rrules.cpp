@@ -483,7 +483,7 @@ bool internalToRRULE2(
 )
 {
   LOGDEBUGPRINTFX(aLogP,DBG_EXOTIC+DBG_GEN,(
-  	"InternalToRRULE2(): expanding freq=%c, freqmod=%c, interval=%hd, firstmask=%llX, lastmask=%llX",
+    "InternalToRRULE2(): expanding freq=%c, freqmod=%c, interval=%hd, firstmask=%llX, lastmask=%llX",
     freq, freqmod, interval, (long long)firstmask, (long long)lastmask
   ));
 
@@ -868,7 +868,7 @@ bool endDateFromCount(
   sInt16 ivrep = (cnt-1)*interval;
   // check if daily
   if (freq == 'D') {
-  	// Daily recurrence is same for occurrence and interval counts
+    // Daily recurrence is same for occurrence and interval counts
     LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("endDateFromCount: daily calc - same in all cases"));
     until = dtstart+(ivrep*linearDateToTimeFactor);
     return true;
@@ -911,10 +911,10 @@ bool endDateFromCount(
     {
       case 'W':
         LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("endDateFromCount: full expansion weekly calc"));
-      	// - make sure we have a mask
-      	if (firstmask==0 && lastmask==0)
-        	firstmask = 1<<startwday; // set start day in mask
-				// now calculate      	
+        // - make sure we have a mask
+        if (firstmask==0 && lastmask==0)
+          firstmask = 1<<startwday; // set start day in mask
+        // now calculate
         while (firstmask) {
           if (firstmask & ((uInt64)1<<startwday)) {
             // found an occurrence
@@ -938,7 +938,7 @@ bool endDateFromCount(
           LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("endDateFromCount: full expansion of monthly by weekday"));
           // - make sure we have a mask
           if (firstmask==0 && lastmask==0)
-						firstmask = (uInt64)1<<(startwday+7*((startday-1)/7)); // set start day in mask
+            firstmask = (uInt64)1<<(startwday+7*((startday-1)/7)); // set start day in mask
           // - now calculate
           while (firstmask || lastmask) {
             // calculate which weeks we are in
@@ -977,7 +977,7 @@ bool endDateFromCount(
           LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("endDateFromCount: full expansion of monthly by monthday"));
           // - make sure we have a mask
           if (firstmask==0 && lastmask==0)
-						firstmask = (uInt64)1<<(startday-1); // set start day in mask
+            firstmask = (uInt64)1<<(startday-1); // set start day in mask
           // - now calculate
           while (firstmask || lastmask) {
             if (
@@ -1007,11 +1007,11 @@ bool endDateFromCount(
         return true;
       case 'Y':
         if (freqmod=='M') {
-        	// Yearly by month
+          // Yearly by month
           LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("endDateFromCount: full expansion of yearly by month"));
           // - make sure we have a mask
           if (firstmask==0 && lastmask==0)
-						firstmask = (uInt64)1<<(startmonth-1); // set start month in mask
+            firstmask = (uInt64)1<<(startmonth-1); // set start month in mask
           // - do entire calculation on 1st of month such that we can be sure that day exists (unlike a Feb 30th or April 31th)
           until -= (startday-1)*linearDateToTimeFactor;
           // - now calculate
@@ -1050,7 +1050,7 @@ bool endDateFromCount(
         else {
           // everything else, including no modifier, is treated as yearly on the same date (multiple occurrences per year not supported)
           LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("endDateFromCount: full expansion of yearly by yearday - NOT SUPPORTED with more than one day"));
-	        until = (date2lineardate(startyear+ivrep,startmonth,startday))*linearDateToTimeFactor+starttime;
+          until = (date2lineardate(startyear+ivrep,startmonth,startday))*linearDateToTimeFactor+starttime;
         }
         return true;
     } // switch
@@ -1064,7 +1064,7 @@ bool endDateFromCount(
 #ifdef DEBUG
 /*
 // %%%% hack debug
-#define SYNTHESIS_UNIT_TEST 1 
+#define SYNTHESIS_UNIT_TEST 1
 #define UNIT_TEST_TITLE(a)
 #define UNIT_TEST_CALL(x,p,t,v)
 */
@@ -1075,8 +1075,8 @@ bool endDateFromCount(
 // helper to create lineartime parameters
 static lineartime_t t(char *aTime)
 {
-	if (!aTime || *aTime==0)
-  	return noLinearTime;
+  if (!aTime || *aTime==0)
+    return noLinearTime;
   timecontext_t tctx;
   lineartime_t res;
   ISO8601StrToTimestamp(aTime, res, tctx);
@@ -1088,7 +1088,7 @@ static char buf[100];
 char *s(lineartime_t aTime)
 {
   if (aTime==noLinearTime)
-  	return "<none>";
+    return "<none>";
   string str;
   TimestampToISO8601Str(str, aTime, TCTX_UNKNOWN, true, false);
   strcpy(buf,str.c_str());
@@ -1103,7 +1103,7 @@ bool test_expand_rrule(void)
   lineartime_t lt;
   TRRuleExpandStatus es;
 
-	{
+  {
     UNIT_TEST_TITLE("Birthday 1");
     UNIT_TEST_CALL(initRRuleExpansion(es,t("2008-03-31T00:00:00"),'Y','M',1,0x4,0x0,t("2009-03-31T00:00:00"),t("2009-04-01T00:00:00")),("-none-"),true,ok);
     UNIT_TEST_CALL(lt = getNextOccurrence(es),("lt = %s",s(lt)),lt==t("2009-03-31T00:00:00"),ok);
@@ -1163,7 +1163,7 @@ bool test_expand_rrule(void)
     UNIT_TEST_CALL(lt = getNextOccurrence(es),("lt = %s",s(lt)),lt==t("2012-02-29T14:00:00"),ok);
     UNIT_TEST_CALL(lt = getNextOccurrence(es),("lt = %s",s(lt)),lt==t("2016-02-29T14:00:00"),ok);
     UNIT_TEST_CALL(lt = getNextOccurrence(es),("lt = %s",s(lt)),lt==t(""),ok);
-    
+
     UNIT_TEST_TITLE("February and March 29th every year");
     UNIT_TEST_CALL(initRRuleExpansion(es,t("2008-02-29T14:00:00"),'Y','M',1,0x6,0x0,t("2009-04-01T00:00:00"),t("2016-04-04T00:00:00")),("-none-"),true,ok);
     UNIT_TEST_CALL(lt = getNextOccurrence(es),("lt = %s",s(lt)),lt==t("2010-03-29T14:00:00"),ok);
@@ -1176,13 +1176,13 @@ bool test_expand_rrule(void)
     UNIT_TEST_CALL(lt = getNextOccurrence(es),("lt = %s",s(lt)),lt==t("2016-02-29T14:00:00"),ok); // leap year
     UNIT_TEST_CALL(lt = getNextOccurrence(es),("lt = %s",s(lt)),lt==t("2016-03-29T14:00:00"),ok);
     UNIT_TEST_CALL(lt = getNextOccurrence(es),("lt = %s",s(lt)),lt==t(""),ok);
-    
+
     UNIT_TEST_TITLE("suddenly expanding from start problem");
     UNIT_TEST_CALL(initRRuleExpansion(es,t("2007-08-17"),'W','W',2,0x20,0x0,t("2009-07-04"),t("2009-08-08")),("-none-"),true,ok);
     UNIT_TEST_CALL(lt = getNextOccurrence(es),("lt = %s",s(lt)),lt==t("2009-07-17"),ok);
     UNIT_TEST_CALL(lt = getNextOccurrence(es),("lt = %s",s(lt)),lt==t("2009-07-31"),ok);
     UNIT_TEST_CALL(lt = getNextOccurrence(es),("lt = %s",s(lt)),lt==t(""),ok);
-    
+
   }
   return ok;
 }
@@ -1193,7 +1193,7 @@ bool test_expand_rrule(void)
 
 /// @brief initialize expansion of RRule
 void initRRuleExpansion(
-	TRRuleExpandStatus &es,
+  TRRuleExpandStatus &es,
   lineartime_t aDtstart,
   char aFreq, char aFreqmod,
   sInt16 aInterval,
@@ -1202,7 +1202,7 @@ void initRRuleExpansion(
   lineartime_t aExpansionEnd
 )
 {
-	// %%% hardcoded for now
+  // %%% hardcoded for now
   es.weekstart = 0; // starts on sunday for now
   // save recurrence parameters
   es.freq = aFreq;
@@ -1213,9 +1213,9 @@ void initRRuleExpansion(
   // analyze bits
   es.singleFMaskBit = -1;
   if (es.lastmask==0 && es.firstmask) {
-  	fieldinteger_t m = es.firstmask;
+    fieldinteger_t m = es.firstmask;
     es.singleFMaskBit = 0;
-  	while((m & 1)==0) { m>>=1; es.singleFMaskBit++; } // calculate bit number of next set bit
+    while((m & 1)==0) { m>>=1; es.singleFMaskBit++; } // calculate bit number of next set bit
     if (m & ~1) es.singleFMaskBit = -1; // more bits to come - reset again
   }
   // init expansion parameters
@@ -1232,10 +1232,10 @@ void initRRuleExpansion(
   es.expansionEnd = aExpansionEnd; // can be noLinearTime if no end is set
   es.expansionStartDayOffset = 0;
   if (aExpansionStart!=noLinearTime) {
-  	// specified start of expansion period, apply if later than beginning of recurrence
-  	es.expansionStartDayOffset = (lineartime2dateonly(aExpansionStart)-lineartime2dateonly(es.cursor));
+    // specified start of expansion period, apply if later than beginning of recurrence
+    es.expansionStartDayOffset = (lineartime2dateonly(aExpansionStart)-lineartime2dateonly(es.cursor));
     if (es.expansionStartDayOffset<0)
-    	es.expansionStartDayOffset = 0;
+      es.expansionStartDayOffset = 0;
   }
   #ifdef SYNTHESIS_UNIT_TEST
   sInt16 y,m,d,h,mi,s,ms;
@@ -1254,7 +1254,7 @@ static void adjustCursor(TRRuleExpandStatus &es, lineardate_t aDays)
   // adjust weekday
   es.cursorWDay += aDays % DaysPerWk;
   if (es.cursorWDay<0) es.cursorWDay += DaysPerWk;
-  else if (es.cursorWDay>=DaysPerWk) es.cursorWDay -= DaysPerWk;    
+  else if (es.cursorWDay>=DaysPerWk) es.cursorWDay -= DaysPerWk;
   #ifdef SYNTHESIS_UNIT_TEST
   sInt16 y,m,d,h,mi,s,ms;
   lineartime2date(es.cursor, &y, &m, &d);
@@ -1270,11 +1270,11 @@ static lineardate_t makeMultiple(lineardate_t d, sInt16 aMultiple, sInt16 aMaxRe
     // we need to make sure remainder is 0 and advance extra
     lineardate_t r = d % aMultiple; // remainder
     if (r>aMaxRemainder) {
-			// round up to next multiple
-    	d += aMultiple - r;
+      // round up to next multiple
+      d += aMultiple - r;
     }
   }
-	return d;	
+  return d;
 }
 
 
@@ -1283,15 +1283,15 @@ static void incCursor(TRRuleExpandStatus &es)
 {
   es.cursor += linearDateToTimeFactor;
   es.cursorWDay += 1;
-  if (es.cursorWDay>=DaysPerWk) es.cursorWDay=0;	
+  if (es.cursorWDay>=DaysPerWk) es.cursorWDay=0;
 }
 
 
 static bool expansionEnd(TRRuleExpandStatus &es)
 {
-	if (es.expansionEnd && es.cursor>=es.expansionEnd) {
-  	// end of expansion, reset cursor
-  	es.cursor = noLinearTime;
+  if (es.expansionEnd && es.cursor>=es.expansionEnd) {
+    // end of expansion, reset cursor
+    es.cursor = noLinearTime;
     return true;
   }
   // not yet end of expansion
@@ -1304,15 +1304,15 @@ static bool expansionEnd(TRRuleExpandStatus &es)
 
 static sInt16 monthDiff(sInt16 y1, sInt16 m1, sInt16 y2, sInt16 m2)
 {
-	return (y1-y2)*12 + (m1-m2);
+  return (y1-y2)*12 + (m1-m2);
 }
 
 
 static void monthAdd(sInt16 &y, sInt16 &m, sInt16 a)
 {
-	m += a;
+  m += a;
   if (m>12) {
-  	sInt16 r = (m-1)/12; // years plus
+    sInt16 r = (m-1)/12; // years plus
     y += r; // add the years
     m -= (r*12); // remove from the months
   }
@@ -1331,21 +1331,21 @@ lineartime_t getNextOccurrence(TRRuleExpandStatus &es)
   bool advanceFirst = es.started;
   // now calculate
   if (es.freq=='D') {
-  	// Daily: can be calculated directly
+    // Daily: can be calculated directly
     if (!es.started) {
-    	// calculate first occurrence
-    	adjustCursor(es, makeMultiple(es.expansionStartDayOffset, es.interval)); // move cursor to first day
+      // calculate first occurrence
+      adjustCursor(es, makeMultiple(es.expansionStartDayOffset, es.interval)); // move cursor to first day
     }
     else {
       // calculate next occurrence
       adjustCursor(es, es.interval);
     }
-	} // D
+  } // D
   else if (es.freq=='W') {
-  	// Note: interval of weekly recurrences starts at sunday,
+    // Note: interval of weekly recurrences starts at sunday,
     // so recurrence starting at a Thu, scheduled for every two weeks on Mo and Thu will have:
     // 1st week: Thu, 2nd week: nothing, 3rd week: Mo,Thu, 4rd week: nothing, 5th week: Mo,Thu...
-  	if (!es.started) {
+    if (!es.started) {
       // make sure we have a mask
       if (es.firstmask==0)
         es.firstmask = 1<<es.cursorWDay; // set start day in mask
@@ -1356,15 +1356,15 @@ lineartime_t getNextOccurrence(TRRuleExpandStatus &es)
       adjustCursor(es, -woffs); // back to previous start of week (=start of first week covered by recurrence)
       lineardate_t d = es.expansionStartDayOffset+woffs; // days from beginning of first week to beginning day of expansion
       // if we exceed reach of mask in current interval, round up to beginning of next interval
-      d = makeMultiple(d,es.interval*DaysPerWk,DaysPerWk-1); // expand into next interval if needed 
-    	adjustCursor(es, d); // now advance cursor to 
-	    if (expansionEnd(es)) goto done; // could by beyond current expanding scope due to interval jump 
-		}
+      d = makeMultiple(d,es.interval*DaysPerWk,DaysPerWk-1); // expand into next interval if needed
+      adjustCursor(es, d); // now advance cursor to
+      if (expansionEnd(es)) goto done; // could by beyond current expanding scope due to interval jump
+    }
     // calculate first/next occurrence (if not first occurrence, do not check initially but advance first)
     while(advanceFirst || !(
-    	es.firstmask & ((uInt64)1<<es.cursorWDay)
+      es.firstmask & ((uInt64)1<<es.cursorWDay)
     )) {
-    	advanceFirst = false; // next time we need to check
+      advanceFirst = false; // next time we need to check
       // - next day is next candidate
       incCursor(es); // next day
       if (es.cursorWDay==es.weekstart) {
@@ -1375,10 +1375,10 @@ lineartime_t getNextOccurrence(TRRuleExpandStatus &es)
     // found occurrence
   } // W
   else if (es.freq=='M') {
-  	if (!es.started) {
+    if (!es.started) {
       // make sure we have a mask
       if (es.firstmask==0 && es.lastmask==0) {
-		  	if (es.freqmod=='W') {
+        if (es.freqmod=='W') {
           es.firstmask = (uInt64)1<<(es.cursorWDay+DaysPerWk*((es.startday-1)/DaysPerWk)); // set start weekday in mask
         }
         else {
@@ -1397,8 +1397,8 @@ lineartime_t getNextOccurrence(TRRuleExpandStatus &es)
         sInt16 numMonths = monthDiff(y,m,es.startyear,es.startmonth);
         sInt16 monthMod = numMonths % es.interval;
         if (monthMod>0) {
-        	// need to go into subsequent month
-        	numMonths += es.interval-monthMod; // months to next interval start
+          // need to go into subsequent month
+          numMonths += es.interval-monthMod; // months to next interval start
           // entire month is after expansion start, so begin with 1st
           es.startday = 1;
         }
@@ -1406,43 +1406,43 @@ lineartime_t getNextOccurrence(TRRuleExpandStatus &es)
         // startYear/month/day now on first candidate
         // - calculate linear start
         es.cursor = date2lineartime(es.startyear, es.startmonth, es.startday);
-		    if (expansionEnd(es)) goto done; // could by beyond current expanding scope due to interval jump
+        if (expansionEnd(es)) goto done; // could by beyond current expanding scope due to interval jump
         // - calculate last day in this month
         es.cursorMLen = getMonthDays(lineartime2dateonly(es.cursor));
         // - make sure cursor weekday is correct
         es.cursorWDay = lineartime2weekday(es.cursor);
       }
     }
-		// apply freqmod
-  	if (es.freqmod=='W') {
-    	// monthly by weekday
-    	// - calculate first/next occurrence (if not first occurrence, do not check initially but advance first)
+    // apply freqmod
+    if (es.freqmod=='W') {
+      // monthly by weekday
+      // - calculate first/next occurrence (if not first occurrence, do not check initially but advance first)
       while(true) {
         // calculate which weeks we are in
         sInt16 fwk=(es.startday-1) / DaysPerWk; // start is nth week of the month
         sInt16 lwk=(es.cursorMLen-es.startday) / DaysPerWk; // start is nth-last week of the month
         // check if we found an occurrence
-      	if (!advanceFirst) {
-        	if (
+        if (!advanceFirst) {
+          if (
             (es.firstmask & ((uInt64)1<<(es.cursorWDay+DaysPerWk*fwk))) || // nth occurrence of weekday in month
-            (es.lastmask & ((uInt64)1<<(es.cursorWDay+DaysPerWk*lwk))) // nth-last occurrence of weekday in month        
+            (es.lastmask & ((uInt64)1<<(es.cursorWDay+DaysPerWk*lwk))) // nth-last occurrence of weekday in month
           )
-          	break;
+            break;
         }
-	    	advanceFirst = false; // next time we need to check
+        advanceFirst = false; // next time we need to check
         // - next day-in-month is next candidate
         es.cursorWDay++; if (es.cursorWDay>=DaysPerWk) es.cursorWDay=0; // next day in the week
         es.startday++;
         if (es.startday>es.cursorMLen) {
-        	// end of month reached
+          // end of month reached
           // - goto next relevant month
-        	monthAdd(es.startyear,es.startmonth,es.interval);
-        	// - first day
+          monthAdd(es.startyear,es.startmonth,es.interval);
+          // - first day
           es.startday=1;
           // - advance cursor into new month
-        	es.cursor = date2lineartime(es.startyear, es.startmonth, es.startday);
+          es.cursor = date2lineartime(es.startyear, es.startmonth, es.startday);
           // - get length of this month
-	        es.cursorMLen = getMonthDays(lineartime2dateonly(es.cursor));
+          es.cursorMLen = getMonthDays(lineartime2dateonly(es.cursor));
           // - make sure cursor weekday is correct
           es.cursorWDay = lineartime2weekday(es.cursor);
         }
@@ -1451,34 +1451,34 @@ lineartime_t getNextOccurrence(TRRuleExpandStatus &es)
       es.cursor = date2lineartime(es.startyear, es.startmonth, es.startday)+es.starttime;
     } // MW
     else {
-    	// monthly by monthday list
-    	// - calculate first/next occurrence (if not first occurrence, do not check initially but advance first)
-	    while(advanceFirst || !(
+      // monthly by monthday list
+      // - calculate first/next occurrence (if not first occurrence, do not check initially but advance first)
+      while(advanceFirst || !(
         (es.firstmask & ((uInt64)1<<(es.startday-1))) || // nth day in month
         (es.lastmask & ((uInt64)1<<(es.cursorMLen-es.startday))) // nth-last day in month
       )) {
-	    	advanceFirst = false; // next time we need to check
+        advanceFirst = false; // next time we need to check
         if (es.singleFMaskBit>=0) {
           // - next candidate is indicated by single mask bit
           if (es.startday<es.singleFMaskBit+1)
-          	es.startday = es.singleFMaskBit+1; // jump to start day
+            es.startday = es.singleFMaskBit+1; // jump to start day
           else
-          	es.startday = es.cursorMLen+1; // jump to end of month
+            es.startday = es.cursorMLen+1; // jump to end of month
         }
-        else {        
+        else {
           // - next day-in-month is next candidate
           es.startday++;
         }
         if (es.startday>es.cursorMLen) {
-        	// end of month reached
+          // end of month reached
           // - goto next relevant month
-        	monthAdd(es.startyear,es.startmonth,es.interval);
-        	// - first day
+          monthAdd(es.startyear,es.startmonth,es.interval);
+          // - first day
           es.startday=1;
           // - advance cursor into new month
-        	es.cursor = date2lineartime(es.startyear, es.startmonth, es.startday);
+          es.cursor = date2lineartime(es.startyear, es.startmonth, es.startday);
           // - get length of this month
-	        es.cursorMLen = getMonthDays(lineartime2dateonly(es.cursor));
+          es.cursorMLen = getMonthDays(lineartime2dateonly(es.cursor));
         }
       }
       // found occurrence, update cursor
@@ -1486,14 +1486,14 @@ lineartime_t getNextOccurrence(TRRuleExpandStatus &es)
     } // MD
   } // M
   else if (es.freq=='Y') {
-  	if (!es.started) {
+    if (!es.started) {
       // Make sure we have a mask or cancel freqmod entirely
       if (es.firstmask==0 && es.lastmask==0) {
-      	// no mask at all, only startmonth counts anyway -> revert to simple direct calculation (cancel freqmod)
+        // no mask at all, only startmonth counts anyway -> revert to simple direct calculation (cancel freqmod)
         es.freqmod = 0;
       }
       else if (es.singleFMaskBit>=0 && es.singleFMaskBit+1==es.startmonth) {
-      	// mask with single bit on start date month -> can revert to simple diect calculation (cancel freqmod)
+        // mask with single bit on start date month -> can revert to simple diect calculation (cancel freqmod)
         es.freqmod = 0; // no month list parsing needed
       }
       // For all yearly repeats: find first year to apply freqmod to
@@ -1506,19 +1506,19 @@ lineartime_t getNextOccurrence(TRRuleExpandStatus &es)
         lineartime2date(es.cursor,&y,&m,&d); // year, month, day-in-month
         // - make sure cursor can be a candidate (i.e. is not before start)
         if (es.freqmod=='M') {
-	        if (d>es.startday)
-          	monthAdd(y, m, 1); // no occurrence possible in this month, next candidate is in next month
+          if (d>es.startday)
+            monthAdd(y, m, 1); // no occurrence possible in this month, next candidate is in next month
         }
         else {
-        	if (m>es.startmonth || (m==es.startmonth && d>es.startday))
-          	y++; // no occurrence possible this year, next candidate is in next year
+          if (m>es.startmonth || (m==es.startmonth && d>es.startday))
+            y++; // no occurrence possible this year, next candidate is in next year
         }
         // - make sure we are in a year at the beginning of the interval
         sInt16 numYears = y-es.startyear;
         sInt16 yearMod = numYears % es.interval;
         if (yearMod>0) {
-        	// need to go into subsequent year
-        	numYears += es.interval-yearMod; // months to next interval start
+          // need to go into subsequent year
+          numYears += es.interval-yearMod; // months to next interval start
           m = 1; // start with Jan again (only used below when checking monthlist i.e. freqmod==M)
         }
         es.startyear += numYears;
@@ -1531,14 +1531,14 @@ lineartime_t getNextOccurrence(TRRuleExpandStatus &es)
         es.cursor = date2lineartime(es.startyear, es.startmonth, 1)+es.starttime;
         es.cursorMLen = getMonthDays(lineartime2dateonly(es.cursor));
         adjustCursor(es, es.startday-1);
-		    if (expansionEnd(es)) goto done; // could by beyond current expanding scope due to interval jump 
+        if (expansionEnd(es)) goto done; // could by beyond current expanding scope due to interval jump
         // - calculate last day in this month
       }
     }
     // apply freqmod
     if (es.freqmod=='M') {
-    	// yearly by month list (and we really have a month list, not only a single month bit)
-    	// - calculate first/next occurrence (if not first occurrence, do not check initially but advance first)
+      // yearly by month list (and we really have a month list, not only a single month bit)
+      // - calculate first/next occurrence (if not first occurrence, do not check initially but advance first)
       int yearsscanned = 0;
       do {
         while(advanceFirst || !(
@@ -1563,42 +1563,42 @@ lineartime_t getNextOccurrence(TRRuleExpandStatus &es)
         adjustCursor(es, es.startday-1);
         // repeat until day actually exists
         if (es.startday>es.cursorMLen) {
-        	// disable checking for match again
-        	advanceFirst = true;
+          // disable checking for match again
+          advanceFirst = true;
         }
       } while(advanceFirst && yearsscanned<5);
       // found occurrence
-  	} // YM
+    } // YM
     else {
-    	// yearly on same date
-			while (advanceFirst || es.startday>es.cursorMLen ) {
+      // yearly on same date
+      while (advanceFirst || es.startday>es.cursorMLen ) {
         advanceFirst = false; // next time we need to check
-      	// just calculate next candiate
+        // just calculate next candiate
         es.startyear += es.interval;
-        // update cursor and calculate 
+        // update cursor and calculate
         es.cursor = date2lineartime(es.startyear, es.startmonth, 1)+es.starttime;
         es.cursorMLen = getMonthDays(lineartime2dateonly(es.cursor));
         adjustCursor(es, es.startday-1);
       }
       // found occurrence
     } // Yx
-  } // Y    
-	else {
-  	// unknown = nonexpandable recurrence
+  } // Y
+  else {
+    // unknown = nonexpandable recurrence
     // - return start date as first occurrence to make sure it does not get invisible
     if (es.started) {
-    	// subsequent occurrence requested: not available
+      // subsequent occurrence requested: not available
       es.cursor = noLinearTime;
     }
   }
-	// stop expansion if end of expansion period reached
+  // stop expansion if end of expansion period reached
   expansionEnd(es);
 done:
   // done
   es.started = true;
   return es.cursor;
 } // getNthNextOccurrence
-    
+
 
 
 
@@ -1728,7 +1728,7 @@ bool RRULE2toInternal(
 
   // init vars
   cnt = 0;
-  
+
   // set interval to 1
   interval = 1;
   freqmod = ' ';
@@ -1786,7 +1786,7 @@ bool RRULE2toInternal(
       bymonth = value;
     // ignore week start
     else if (key == "WKST") {
-    	// nop
+      // nop
     }
     else
       goto incompat; // unknown directive
@@ -1805,10 +1805,10 @@ bool RRULE2toInternal(
   LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- extracted until %s", abc.c_str()));
   #endif
 
-	// Generally, we only support one BYxxx, not combinations. However, FREQ=YEARLY + BYMONTH + BYDAY is common
+  // Generally, we only support one BYxxx, not combinations. However, FREQ=YEARLY + BYMONTH + BYDAY is common
   // to express start and end times of DST in VTIMEZONEs, so we convert these into equivalent FREQ=MONTHLY
-	if (freq=='Y' && !byday.empty() && !bymonth.empty() && bymonth.find(",")==string::npos) {
-  	// yearly by (single!) month and by day
+  if (freq=='Y' && !byday.empty() && !bymonth.empty() && bymonth.find(",")==string::npos) {
+    // yearly by (single!) month and by day
     // - get month as indicated by BYMONTH
     sInt16 newStartMonth = 0;
     if (StrToShort(bymonth.c_str(), newStartMonth)>0 && newStartMonth) {
@@ -1820,19 +1820,19 @@ bool RRULE2toInternal(
         // calculate the new start date
         startmonth = newStartMonth;
         dtstart = date2lineartime(startyear, startmonth, startday) + lineartime2timeonly(dtstart);
-			  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- moved recurrence origin to %04hd-%02hd-%02hd",startyear, startmonth, startday));
+        LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- moved recurrence origin to %04hd-%02hd-%02hd",startyear, startmonth, startday));
         // pass it back to caller
         calculateFirstOccurrence = true; // need to fine tune at the end
         *aNewStartP = dtstart;
       }
       if (convertToMonthly) {
-			  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- converted FREQ=YEARLY BYMONTH into MONTHLY"));
+        LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- converted FREQ=YEARLY BYMONTH into MONTHLY"));
         freq = 'M'; // convert from YEARLY to MONTHLY
         interval = 12*interval; // but with 12 months interval -> equivalent
         bymonth.erase(); // forget BYMONTH clause
       }
     }
-	} // if FREQ=YEARLY + BYMONTH + BYDAY
+  } // if FREQ=YEARLY + BYMONTH + BYDAY
   // check freq
   endIndex = 0;
   startIndex = 0;
@@ -1946,7 +1946,7 @@ bool RRULE2toInternal(
       break;
     case 'Y' :
       if (
-      	byday == "" ||
+        byday == "" ||
         (byday.length() == 2 && byday[0] == RRULE_weekdays[startwday][0] &&
         byday[1] == RRULE_weekdays[startwday][1])
       ) {
@@ -1988,13 +1988,13 @@ bool RRULE2toInternal(
   }
   // calculate exact date of first occurrence
   if (calculateFirstOccurrence && aNewStartP) {
-  	TRRuleExpandStatus es;
+    TRRuleExpandStatus es;
     initRRuleExpansion(es, dtstart, freq, freqmod, interval, firstmask, lastmask, dtstart, noLinearTime);
     dtstart = getNextOccurrence(es);
-		if (LOGDEBUGTEST(aLogP,DBG_PARSE+DBG_EXOTIC)) {
-    	sInt16 ny,nm,nd;
-		  lineartime2date(dtstart,&ny,&nm,&nd);
-		  LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- adjusted first occurrence date to %04hd-%02hd-%02hd",ny, nm, nd));
+    if (LOGDEBUGTEST(aLogP,DBG_PARSE+DBG_EXOTIC)) {
+      sInt16 ny,nm,nd;
+      lineartime2date(dtstart,&ny,&nm,&nd);
+      LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("- adjusted first occurrence date to %04hd-%02hd-%02hd",ny, nm, nd));
     }
     *aNewStartP = dtstart;
   }
@@ -2062,7 +2062,7 @@ bool getNextDirective(
   if (*aText == 0) {
     return false;
   }
-  
+
   char c;
   // check start
   if (aStart > 0) {

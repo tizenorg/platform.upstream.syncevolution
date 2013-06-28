@@ -1,7 +1,7 @@
 /*
  *  File:         RemoteDataStore.h
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TRemoteDataStore
  *    Abstraction of remote data store for SyncML Server
@@ -76,8 +76,8 @@ private:
   string fFullName;
 }; // TRemoteDataStore
 
-}	// namespace sysync
+} // namespace sysync
 
-#endif	// RemoteDataStore_H
+#endif  // RemoteDataStore_H
 
 // eof

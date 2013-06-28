@@ -1,7 +1,7 @@
 /*
  *  File:         textprofile.h
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TTextProfile
  *    utility class to parse line-by-line type text including RFC822 emails
@@ -190,8 +190,8 @@ private:
 }; // TTextProfileHandler
 
 
-}	// namespace sysync
+} // namespace sysync
 
-#endif	// TextProfile_H
+#endif  // TextProfile_H
 
 // eof

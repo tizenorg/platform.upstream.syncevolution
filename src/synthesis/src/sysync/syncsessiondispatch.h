@@ -1,6 +1,6 @@
 /*
  *  TSyncSessionDispatch
- *		Abstract baseclass for session manager controlling
+ *    Abstract baseclass for session manager controlling
  *    instantiation and removal of TSySyncSession objects and
  *    re-connecting requests to sessions.
  *

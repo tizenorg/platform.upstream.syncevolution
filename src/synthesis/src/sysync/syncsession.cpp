@@ -421,7 +421,7 @@ void TRemoteRuleConfig::clear(void)
   fRemoteDescName.erase();
   #endif
   fSubRulesList.clear(); // no included subrules
-	fSubRule = false; // normal rule by default
+  fSubRule = false; // normal rule by default
   // - rules are final by default
   fFinalRule = true;
   // no DevInf by default
@@ -512,22 +512,22 @@ bool TRemoteRuleConfig::localStartElement(const char *aElementName, const char *
     expectString(fOverrideDevInfXML);
   // inclusion of subrules
   else if (strucmp(aElementName,"include")==0) {
-		// <include rule=""/>  
+    // <include rule=""/>
     expectEmpty();
     const char* nam = getAttr(aAttributes,"rule");
     if (!nam)
-    	return fail("<include> must specify \"rule\"");
+      return fail("<include> must specify \"rule\"");
     else {
-    	// find rule
+      // find rule
       TRemoteRulesList::iterator pos;
       TSessionConfig *scfgP = static_cast<TSessionConfig *>(getParentElement());
       for(pos=scfgP->fRemoteRulesList.begin();pos!=scfgP->fRemoteRulesList.end();pos++) {
         if (strucmp(nam,(*pos)->getName())==0) {
-			    fSubRulesList.push_back(*pos);
+          fSubRulesList.push_back(*pos);
           return true; // done
         }
       }
-    	return fail("rule '%s' for <include> not found (must be defined before included)",nam);
+      return fail("rule '%s' for <include> not found (must be defined before included)",nam);
     }
   }
   // rule script. Note that this is special, as it is NOT resolved in the config, but
@@ -676,7 +676,7 @@ void TSessionConfig::clear(void)
   }
   else {
     fLogFileFormat.assign(DEFAULT_LOG_FORMAT_CLIENT);
-    fLogFileLabels.assign(DEFAULT_LOG_LABELS_CLIENT);  
+    fLogFileLabels.assign(DEFAULT_LOG_LABELS_CLIENT);
   }
   fLogEnabled=true;
   fDebugChunkMaxSize=0; // disabled
@@ -692,11 +692,11 @@ TLocalDSConfig *TSessionConfig::getLocalDS(const char *aName, uInt32 aDBTypeID)
 {
   TLocalDSList::iterator pos;
   for(pos=fDatastores.begin();pos!=fDatastores.end();pos++) {
-  	if (aName==NULL) {
-    	if ((*pos)->fLocalDBTypeID==aDBTypeID) return *pos; // found by DBTypeID
+    if (aName==NULL) {
+      if ((*pos)->fLocalDBTypeID==aDBTypeID) return *pos; // found by DBTypeID
     }
     else {
-    	if (strucmp((*pos)->getName(),aName)==0) return *pos; // found by name
+      if (strucmp((*pos)->getName(),aName)==0) return *pos; // found by name
     }
   }
   return NULL; // not found
@@ -1003,7 +1003,7 @@ TSyncSession::TSyncSession(
   DEBUGPRINTFX(DBG_EXOTIC,("TSyncSession::TSyncSession: Profiling initialized"));
   // set fields
   fEncoding = SML_UNDEF;
-  fLocalAbortReason = true; // unless set otherwise 
+  fLocalAbortReason = true; // unless set otherwise
   fAbortReasonStatus = 0;
   fSessionIsBusy = false; // not busy by default
   fSmlWorkspaceID = 0; // no SyncML toolkit workspace ID yet
@@ -1026,7 +1026,7 @@ TSyncSession::TSyncSession(
   fRemoteGotDevinf=false;
   fRemoteMustSeeDevinf=false;
   fCustomGetPutSent=false;
-  // assume normal, full-featured session. Profile config or session progress might set this flag later 
+  // assume normal, full-featured session. Profile config or session progress might set this flag later
   fLegacyMode = false;
   fLenientMode = false;
 
@@ -1041,13 +1041,13 @@ TSyncSession::TSyncSession(
   fSessionLogger.setMask(getRootConfig()->fDebugConfig.fDebug); // init from config
   fSessionLogger.setOptions(&(getRootConfig()->fDebugConfig.fSessionDbgLoggerOptions));
   if (getRootConfig()->fDebugConfig.fLogSessionsToGlobal) {
-		// pass session output to app global logger
+    // pass session output to app global logger
     fSessionLogger.outputVia(getSyncAppBase()->getDbgLogger());
     // show start of log
     PDEBUGPRINTFX(DBG_HOT,("--------- START of embedded log for session ID '%s' ---------", fLocalSessionID.c_str()));
-	}
+  }
   else {
-  	// use separate output for session logs  
+    // use separate output for session logs
     fSessionLogger.installOutput(getSyncAppBase()->newDbgOutputter(false)); // install the output object (and pass ownership!)
     fSessionLogger.setDebugPath(getRootConfig()->fDebugConfig.fDebugInfoPath.c_str()); // base path
     const string &name = getRootConfig()->fDebugConfig.fSessionDbgLoggerOptions.fBasename;
@@ -1207,7 +1207,7 @@ TSyncSession::~TSyncSession()
   if (getRootConfig()->fDebugConfig.fLogSessionsToGlobal) {
     // show end of embedded log
     PDEBUGPRINTFX(DBG_HOT,("--------- END of embedded log for session ID '%s' ---------", fLocalSessionID.c_str()));
-	}
+  }
   fSessionLogger.DebugThreadOutputDone();
   #endif
 } // TSyncSession::~TSyncSession
@@ -1226,10 +1226,10 @@ void TSyncSession::TerminateSession(void)
     DEBUGPRINTFX(DBG_EXOTIC,("TSyncSession::TerminateSession: calling InternalResetSession"));
     InternalResetSessionEx(true);
     DEBUGPRINTFX(DBG_EXOTIC,("TSyncSession::TerminateSession: InternalResetSession called"));
-	  #ifdef SCRIPT_SUPPORT
+    #ifdef SCRIPT_SUPPORT
     // remove the session script context
     if (fSessionScriptContextP) {
-    	delete fSessionScriptContextP;
+      delete fSessionScriptContextP;
       fSessionScriptContextP = NULL;
     }
     #endif
@@ -1650,7 +1650,7 @@ bool TSyncSession::NotifySessionProgressEvent(
       info.targetID = (sInt32)(aDatastoreID->fLocalDBTypeID);
     else
       info.targetID = 0;
-		// - extras
+    // - extras
     info.extra1 = aExtra1;
     info.extra2 = aExtra2;
     info.extra3 = aExtra3;
@@ -1659,7 +1659,7 @@ bool TSyncSession::NotifySessionProgressEvent(
   }
   #else
   // old monolithic build, pass to appbase which dispatches them to the app via callback
-  return getSyncAppBase()->NotifyAppProgressEvent(aEventType,aDatastoreID,aExtra1,aExtra2,aExtra3);  
+  return getSyncAppBase()->NotifyAppProgressEvent(aEventType,aDatastoreID,aExtra1,aExtra2,aExtra3);
   #endif
 } // TSyncAppBase::NotifySessionProgressEvent
 
@@ -1754,10 +1754,10 @@ void TSyncSession::MarkSuspendAlertSent(bool aSent)
 // abort session (that is: flag abortion)
 void TSyncSession::AbortSession(TSyError aStatusCode, bool aLocalProblem, TSyError aReason)
 {
-	// Catch the case that some inner routine, e.g. a plugin, detects a user suspend. It can
+  // Catch the case that some inner routine, e.g. a plugin, detects a user suspend. It can
   // return LOCERR_USERSUSPEND then and will cause the engine instead of aborting.
   if (aStatusCode==LOCERR_USERSUSPEND) {
-  	SuspendSession(LOCERR_USERSUSPEND);
+    SuspendSession(LOCERR_USERSUSPEND);
     return;
   }
   // make sure session gets aborted
@@ -2407,7 +2407,7 @@ void TSyncSession::issueHeader(bool aNoResp)
   XMLTranslationOutgoingStart();
   #endif
   if (IS_CLIENT) {
-	  #ifdef SYDEBUG
+    #ifdef SYDEBUG
     // for client, document exchange starts with outgoing message
     // but for server, SyncML_Outgoing is started before SyncML_Incoming, as SyncML_Incoming ends first
     PDEBUGBLOCKDESC("SyncML_Outgoing","start of new outgoing message");
@@ -2634,7 +2634,7 @@ Ret_t TSyncSession::processHeader(TSyncHeader *aSyncHdrP)
               PDEBUGPRINTFX(DBG_HOT,("- Response to be sent to URI='%s'",fRespondURI.empty() ? "[none specified, back to source]" : fRespondURI.c_str()));
               PDEBUGPRINTFX(DBG_HOT,("- Target (Local party) : URI='%s' DisplayName='%s'",fLocalURI.c_str(),fLocalName.c_str()));
               #endif
-              CONSOLEPRINTF(("> SyncML message #%ld received from '%s'",fIncomingMsgID,fRemoteURI.c_str()));
+              CONSOLEPRINTF(("> SyncML message #%ld received from '%s'",(long)fIncomingMsgID,fRemoteURI.c_str()));
               // - UTC support is implied for SyncML 1.0 (as most devices support it, and
               //   there is was no way to signal it in 1.0).
               if (!fRemoteDevInfKnown && fSyncMLVersion==syncml_vers_1_0) fRemoteCanHandleUTC=true;
@@ -3218,7 +3218,7 @@ void TSyncSession::setEncoding(SmlEncoding_t aEncoding)
 {
   Ret_t err=smlSetEncoding(fSmlWorkspaceID,aEncoding);
   if (err==SML_ERR_OK) {
-  	fEncoding = aEncoding;
+    fEncoding = aEncoding;
   }
 } // TSyncSession::setEncoding
 
@@ -4449,11 +4449,11 @@ localstatus TSyncSession::checkRemoteSpecifics(SmlDevInfDevInfPtr_t aDevInfP, Sm
     }
     else {
       if (restrid.size()==1) {
-      	// there is a restriction
+        // there is a restriction
         if (!aDevInfP) {
           // we cannot check these restrictions without having a devInf
           sta = LOCERR_BADREG;
-		      PDEBUGPRINTFX(DBG_ERROR,("License restriction needs devInf from remote but none found -> block sync"));
+          PDEBUGPRINTFX(DBG_ERROR,("License restriction needs devInf from remote but none found -> block sync"));
           break;
         }
         // we have devinf, we can check it
@@ -4486,7 +4486,7 @@ localstatus TSyncSession::checkRemoteSpecifics(SmlDevInfDevInfPtr_t aDevInfP, Sm
     TRemoteRuleConfig *ruleP = *pos;
     // compare with devinf (or test for default-rule if aDevInfP is NULL
     if (
-    	!ruleP->fSubRule && // subrules never apply directly
+      !ruleP->fSubRule && // subrules never apply directly
       (ruleP->fManufacturer.empty() || (aDevInfP && strwildcmp(smlPCDataToCharP(aDevInfP->man),ruleP->fManufacturer.c_str())==0)) &&
       (ruleP->fModel.empty() || (aDevInfP && strwildcmp(smlPCDataToCharP(aDevInfP->mod),ruleP->fModel.c_str())==0)) &&
       (ruleP->fOem.empty() || (aDevInfP && strwildcmp(smlPCDataToCharP(aDevInfP->oem),ruleP->fOem.c_str())==0)) &&
@@ -4501,17 +4501,17 @@ localstatus TSyncSession::checkRemoteSpecifics(SmlDevInfDevInfPtr_t aDevInfP, Sm
       // remember it
       fActiveRemoteRules.push_back(ruleP);
       // add included subrules
-		  TRemoteRulesList::iterator spos;
-  		for(spos=ruleP->fSubRulesList.begin();spos!=ruleP->fSubRulesList.end();spos++) {
-	      fActiveRemoteRules.push_back(*spos);
-	      PDEBUGPRINTFX(DBG_HOT,("- rule also activates sub-rule '%s'",(*spos)->getName()));
-			}
+      TRemoteRulesList::iterator spos;
+      for(spos=ruleP->fSubRulesList.begin();spos!=ruleP->fSubRulesList.end();spos++) {
+        fActiveRemoteRules.push_back(*spos);
+        PDEBUGPRINTFX(DBG_HOT,("- rule also activates sub-rule '%s'",(*spos)->getName()));
+      }
       // if this rule is final, don't check for further matches
       if (ruleP->fFinalRule) break;
-    }  
+    }
   }
   // process activated rules and subrules
-  for(pos=fActiveRemoteRules.begin();pos!=fActiveRemoteRules.end();pos++) {      
+  for(pos=fActiveRemoteRules.begin();pos!=fActiveRemoteRules.end();pos++) {
     // activate this rule
     TRemoteRuleConfig *ruleP = *pos;
     if (ruleP->fOverrideDevInfP && aOverrideDevInfP) {
@@ -4561,8 +4561,8 @@ localstatus TSyncSession::checkRemoteSpecifics(SmlDevInfDevInfPtr_t aDevInfP, Sm
     // - execute rule script
     #ifdef SCRIPT_SUPPORT
     if (!ruleP->fRuleScriptTemplate.empty()) {
-    	// copy from template
-    	string ruleScript = ruleP->fRuleScriptTemplate;
+      // copy from template
+      string ruleScript = ruleP->fRuleScriptTemplate;
       // resolve variable references
       TScriptContext::linkIntoContext(ruleScript,fSessionScriptContextP,this);
       // execute now
@@ -4586,11 +4586,11 @@ localstatus TSyncSession::checkRemoteSpecifics(SmlDevInfDevInfPtr_t aDevInfP, Sm
   if (fActiveRemoteRules.empty())
   #endif
   {
-  	// no remote rule (none found or mechanism excluded by NO_REMOTE_RULES)
+    // no remote rule (none found or mechanism excluded by NO_REMOTE_RULES)
     if (!aDevInfP) {
-    	// no devinf -> blind sync attempt: apply best-guess workaround settings
+      // no devinf -> blind sync attempt: apply best-guess workaround settings
       // Note that a blind sync attempt means that the remote party is at least partly non-compliant, as we always request a devInf!
-		  PDEBUGPRINTFX(DBG_ERROR,("No remote information available -> applying best-guess workaround behaviour options"));
+      PDEBUGPRINTFX(DBG_ERROR,("No remote information available -> applying best-guess workaround behaviour options"));
       #ifndef MINIMAL_CODE
       // set device description
       fRemoteDescName = fRemoteName.empty() ? "[unknown remote]" : fRemoteName.c_str();
@@ -4650,11 +4650,11 @@ bool TSyncSession::isActiveRule(cAppCharP aRuleName, TRemoteRuleConfig *aRuleP)
 {
   TRemoteRulesList::iterator pos;
   for(pos=fActiveRemoteRules.begin();pos!=fActiveRemoteRules.end();pos++) {
-  	if (
-    	(aRuleName==NULL && (*pos)==aRuleP) || // match by pointer...
+    if (
+      (aRuleName==NULL && (*pos)==aRuleP) || // match by pointer...
       (strucmp(aRuleName,(*pos)->getName())==0) // ...or name
     )
-    	return true;
+      return true;
   }
   // no match
   return false;
@@ -5200,7 +5200,7 @@ void TSyncSession::DumpSyncMLBuffer(MemPtr_t aBuffer, MemSize_t aBufSize, bool a
     if (dbgOutP) {
       // create base file name
       string dumpfilename;
-      // regular message, 
+      // regular message,
       StringObjPrintf(dumpfilename,
         "%s_msg%03ld_%03ld_%sing",
         getDbgLogger()->getDebugPath(), // path + session log base name
@@ -5257,7 +5257,7 @@ void TSyncSession::DumpSyncMLMessage(bool aOutgoing)
     // peek into buffer
     MemPtr_t data;
     MemSize_t datasize;
-    if (smlPeekMessageBuffer(getSmlWorkspaceID(), aOutgoing, &data, &datasize)==SML_ERR_OK) {    	
+    if (smlPeekMessageBuffer(getSmlWorkspaceID(), aOutgoing, &data, &datasize)==SML_ERR_OK) {
       DumpSyncMLBuffer(data,datasize,aOutgoing,SML_ERR_OK);
     }
   }
@@ -5372,10 +5372,10 @@ Ret_t TSyncSession::EndMessage(Boolean_t final)
   // Note: this should NOT happen, as EVERY message from the remote should contain a SyncHdr status which
   //       should have started the message already
   if (!fOutgoingStarted) {
-  	PDEBUGPRINTFX(DBG_ERROR,("Warning: incoming message #%ld did not contain a SyncHdr status (protocol violation)",(long)fIncomingMsgID));
-    // try to continue by simply ignoring - might not always work out (e.g. when authorisation is not yet complete, this will fail) 
+    PDEBUGPRINTFX(DBG_ERROR,("Warning: incoming message #%ld did not contain a SyncHdr status (protocol violation)",(long)fIncomingMsgID));
+    // try to continue by simply ignoring - might not always work out (e.g. when authorisation is not yet complete, this will fail)
     issueHeader(false);
-	}  
+  }
   // forget pending continue requests
   if (final)
     fNextMessageRequests=0; // no pending next message requests when a message is final

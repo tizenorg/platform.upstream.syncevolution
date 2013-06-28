@@ -50,14 +50,14 @@ int wbxmlConv(int argc, const char *argv[]);
 // progress event posting macros
 // Note: engine libraries only have session level progress events
 #ifdef PROGRESS_EVENTS
-	#ifndef ENGINE_LIBRARY
-  	#define APP_PROGRESS_EVENT(a,e,d,x,y,z) a->NotifyAppProgressEvent(e,d,x,y,z)
+  #ifndef ENGINE_LIBRARY
+    #define APP_PROGRESS_EVENT(a,e,d,x,y,z) a->NotifyAppProgressEvent(e,d,x,y,z)
   #endif
   #define SESSION_PROGRESS_EVENT(s,e,d,x,y,z) s->NotifySessionProgressEvent(e,d,x,y,z)
   #define DB_PROGRESS_EVENT(d,e,x,y,z) d->getSession()->NotifySessionProgressEvent(e,d->getDSConfig(),x,y,z)
 #else
-	#ifndef ENGINE_LIBRARY
-	  #define APP_PROGRESS_EVENT(a,e,d,x,y,z) true
+  #ifndef ENGINE_LIBRARY
+    #define APP_PROGRESS_EVENT(a,e,d,x,y,z) true
   #endif
   #define SESSION_PROGRESS_EVENT(s,e,d,x,y,z) true
   #define DB_PROGRESS_EVENT(s,e,x,y,z) true
@@ -497,10 +497,10 @@ public:
   Ret_t getSmlInstanceUserData(InstanceID_t aInstanceID, void **aUserDataPP);
   Ret_t setSmlInstanceUserData(InstanceID_t aInstanceID, void *aUserDataP);
   void freeSmlInstance(InstanceID_t aInstance);
-	// determine encoding from beginning of SyncML message data
-	static SmlEncoding_t encodingFromData(cAppPointer aData, memSize aDataSize);
-	// determine encoding from Content-Type: header value
-	static SmlEncoding_t encodingFromContentType(cAppCharP aTypeString);
+  // determine encoding from beginning of SyncML message data
+  static SmlEncoding_t encodingFromData(cAppPointer aData, memSize aDataSize);
+  // determine encoding from Content-Type: header value
+  static SmlEncoding_t encodingFromContentType(cAppCharP aTypeString);
   // virtual handlers for SyncML toolkit callbacks, must be separately derived for server/client cases
   // - Start/End Message: derived method in server case actually creates session
   virtual Ret_t StartMessage(
@@ -548,7 +548,7 @@ public:
   // convenience version for getting time
   lineartime_t getSystemNowAs(timecontext_t aContext) { return sysync::getSystemNowAs(aContext,getAppZones()); };
 protected:
-	// Server or client
+  // Server or client
   bool fIsServer;
   // Application custom time zones
   GZones fAppZones;
@@ -563,7 +563,7 @@ protected:
   // request count
   sInt32 fRequestCount; // count of requests
 public:
-	// this is called to control behaviour for builds that can be client OR server
+  // this is called to control behaviour for builds that can be client OR server
   bool isServer(void) { return fIsServer; };
   #ifdef SYSER_REGISTRATION
   // somewhat scattered within object to make reverse engineering harder
@@ -638,7 +638,7 @@ public:
   #if defined(EXPIRES_AFTER_DAYS) && defined(ENGINEINTERFACE_SUPPORT)
   lineardate_t fFirstUseDate;
   uInt32 fFirstUseVers;
-	#endif
+  #endif
   // checks if registered (must be implemented in base class)
   // returns LOCERR_EXPIRED, LOCERR_TOONEW or LOCERR_BADREG if not registered correctly
   virtual localstatus isRegistered(void);

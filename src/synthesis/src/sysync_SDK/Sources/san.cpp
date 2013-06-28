@@ -1,7 +1,7 @@
 /*
  *  File:         san.cpp
  *
- *  Author:			  Beat Forster (bfo@synthesis.ch)
+ *  Author:       Beat Forster (bfo@synthesis.ch)
  *
  *  Server Alerted Notification
  *    for OMA DS 1.2
@@ -696,7 +696,7 @@ void SanPackage::ReleasePackage() {
 
 #ifndef WITHOUT_SAN_1_1
 
-const char * const SyncMLVerProtoNames[] = 
+const char * const SyncMLVerProtoNames[] =
 {
     "undefined",
     "SyncML/1.0",
@@ -769,7 +769,7 @@ TSyError SanPackage::GetPackageLegacy( void* &san,
       //create SyncMessage
       err = smlStartMessageExt (id, headerP, SmlVersionCodes[version]); if (err) break;
       //create Alert Commands
-      //internal Alert element 
+      //internal Alert element
       alertP = SML_NEW (SmlAlert_t);
       alertP->elementType = SML_PE_ALERT;
       alertP->cmdID = newPCDataLong(1);

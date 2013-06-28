@@ -1,7 +1,7 @@
 /*
  *  File:         syncagent.cpp
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TSyncAgent:   Provides functionality to run client or server
  *                sessions.
@@ -64,7 +64,7 @@ int testLogin(int argc, const char *argv[])
   // check for argument
   if (argc<2) {
     // no user/password, test anonymous login
-  	if (argc>0) deviceid = argv[0];
+    if (argc>0) deviceid = argv[0];
   }
   else {
     // login with user/password
@@ -75,13 +75,13 @@ int testLogin(int argc, const char *argv[])
       deviceid = argv[2];
     }
   }
-    
+
   // get session to work with
   sessionP =
     static_cast<TSyncSessionDispatch *>(getSyncAppBase())->getSySyToolSession();
 
   bool authok = false;
-  
+
   // try login
   if (username) {
     // real login with user and password
@@ -91,14 +91,14 @@ int testLogin(int argc, const char *argv[])
     // anonymous - do a "login" with empty credentials
     authok = sessionP->SessionLogin("anonymous", NULL, sectyp_anonymous, deviceid);
   }
-  
+
   if (authok) {
     CONSOLEPRINTF(("+++++ Successfully authorized"));
   }
   else {
     CONSOLEPRINTF(("----- Authorisation failed"));
   }
-  
+
   return authok;
 } // testLogin
 
@@ -121,8 +121,8 @@ int convertData(int argc, const char *argv[])
 
   // check for argument
   if (argc<2) {
-  	CONSOLEPRINTF(("required datatype name and raw file name arguments"));
-  	return EXIT_FAILURE;
+    CONSOLEPRINTF(("required datatype name and raw file name arguments"));
+    return EXIT_FAILURE;
   }
   datastore = argv[0];
   rawfilename = argv[1];
@@ -135,24 +135,24 @@ int convertData(int argc, const char *argv[])
     // fourth arg is explicit output type
     outputtype=argv[3];
   }
-  
+
   // get session to work with
   sessionP =
     static_cast<TSyncSessionDispatch *>(getSyncAppBase())->getSySyToolSession();
   // configure session
   sessionP->fRemoteCanHandleUTC = true; // run generator and parser in UTC enabled mode
-  
-  
+
+
   // switch mimimal debugging on
   sessionP->getDbgLogger()->setMask(sessionP->getDbgLogger()->getMask() | (DBG_PARSE+DBG_GEN));
-    
+
   // find datastore
   TLocalEngineDS *datastoreP = sessionP->findLocalDataStore(datastore);
   TSyncItemType *inputtypeP = NULL;
   TSyncItemType *outputtypeP = NULL;
   if (!datastoreP) {
-  	CONSOLEPRINTF(("datastore type '%s' not found",datastore));
-  	return EXIT_FAILURE;
+    CONSOLEPRINTF(("datastore type '%s' not found",datastore));
+    return EXIT_FAILURE;
   }
 
   // find input type
@@ -165,8 +165,8 @@ int convertData(int argc, const char *argv[])
     inputtypeP=datastoreP->getPreferredRxItemType();
   }
   if (!inputtypeP) {
-  	CONSOLEPRINTF(("input type not found"));
-  	return EXIT_FAILURE;
+    CONSOLEPRINTF(("input type not found"));
+    return EXIT_FAILURE;
   }
   // find output type
   if (outputtype) {
@@ -178,8 +178,8 @@ int convertData(int argc, const char *argv[])
     outputtypeP=datastoreP->getPreferredTxItemType();
   }
   if (!outputtypeP) {
-  	CONSOLEPRINTF(("output type not found"));
-  	return EXIT_FAILURE;
+    CONSOLEPRINTF(("output type not found"));
+    return EXIT_FAILURE;
   }
   // prepare type usage
   if (inputtypeP==outputtypeP)
@@ -187,17 +187,17 @@ int convertData(int argc, const char *argv[])
   else {
     inputtypeP->initDataTypeUse(datastoreP, false, true);
     outputtypeP->initDataTypeUse(datastoreP, true, false);
-  }    
+  }
 
   // now open file and read data item
   FILE *infile;
   size_t insize=0;
   uInt8 *databuffer;
-  
+
   infile = fopen(rawfilename,"rb");
   if (!infile) {
-  	CONSOLEPRINTF(("Cannot open input file '%s' (%d)",rawfilename,errno));
-  	return EXIT_FAILURE;    
+    CONSOLEPRINTF(("Cannot open input file '%s' (%d)",rawfilename,errno));
+    return EXIT_FAILURE;
   }
   // - get size of file
   fseek(infile,0,SEEK_END);
@@ -206,13 +206,13 @@ int convertData(int argc, const char *argv[])
   // - create buffer of appropriate size
   databuffer = new uInt8[insize];
   if (!databuffer) {
-  	CONSOLEPRINTF(("Not enough memory to read input file '%s' (%d)",rawfilename,errno));
-  	return EXIT_FAILURE;    
-  }  
+    CONSOLEPRINTF(("Not enough memory to read input file '%s' (%d)",rawfilename,errno));
+    return EXIT_FAILURE;
+  }
   // - read data
   if (fread(databuffer,1,insize,infile)<insize) {
-  	CONSOLEPRINTF(("Error reading input file '%s' (%d)",rawfilename,errno));
-  	return EXIT_FAILURE;    
+    CONSOLEPRINTF(("Error reading input file '%s' (%d)",rawfilename,errno));
+    return EXIT_FAILURE;
   }
   CONSOLEPRINTF(("\nNow converting into internal field representation\n"));
   // create a sml item
@@ -232,8 +232,8 @@ int convertData(int argc, const char *argv[])
   // forget SyncML version
   smlFreeItemPtr(smlitemP);
   if (!syncitemP) {
-  	CONSOLEPRINTF(("Error converting input file to internal format (SyncML status code=%hd)",statusCmd.getStatusCode()));
-  	return EXIT_FAILURE;
+    CONSOLEPRINTF(("Error converting input file to internal format (SyncML status code=%hd)",statusCmd.getStatusCode()));
+    return EXIT_FAILURE;
   }
 
   CONSOLEPRINTF(("\nNow copying item and convert back to transport format\n"));
@@ -252,13 +252,13 @@ int convertData(int argc, const char *argv[])
     datastoreP // local datastore
   );
   if (!syncitemP) {
-  	CONSOLEPRINTF(("Could not convert back item data"));
-  	return EXIT_FAILURE;
+    CONSOLEPRINTF(("Could not convert back item data"));
+    return EXIT_FAILURE;
   }
-  
+
   // forget converted back item
   smlFreeItemPtr(smlitemP);
-  
+
   return EXIT_SUCCESS;
 } // convertData
 
@@ -392,10 +392,10 @@ TAgentConfig::~TAgentConfig()
 // init defaults
 void TAgentConfig::clear(void)
 {
-  // clear inherited  
+  // clear inherited
   inherited::clear();
-	// Note: we always clear both client and server fields - even if we'll only use one set later
-	#ifdef SYSYNC_CLIENT
+  // Note: we always clear both client and server fields - even if we'll only use one set later
+  #ifdef SYSYNC_CLIENT
   // init client auth defaults (note that these MUST correspond with the defaults set by loadRemoteParams() !!!
   fAssumedServerAuth=auth_none; // start with no auth
   fAssumedServerAuthEnc=fmt_chr; // start with char encoding
@@ -463,8 +463,8 @@ void TAgentConfig::clear(void)
 bool TAgentConfig::localStartElement(const char *aElementName, const char **aAttributes, sInt32 aLine)
 {
   if (IS_CLIENT) {
-	  // check the client elements
-  	#ifdef SYSYNC_CLIENT
+    // check the client elements
+    #ifdef SYSYNC_CLIENT
     // - defaults for starting a session
     if (strucmp(aElementName,"defaultsyncmlversion")==0)
       expectEnum(sizeof(fAssumedServerVersion),&fAssumedServerVersion,SyncMLVersionNames,numSyncMLVersions);
@@ -540,12 +540,12 @@ bool TAgentConfig::localStartElement(const char *aElementName, const char **aAtt
     }
     else
     #endif
-    	// - none known here
+      // - none known here
       return inherited::localStartElement(aElementName,aAttributes,aLine);
     #endif // SYSYNC_CLIENT
   }
   else {
-  	#ifdef SYSYNC_SERVER
+    #ifdef SYSYNC_SERVER
     // check the server elements
     if (strucmp(aElementName,"requestedauth")==0)
       expectEnum(sizeof(fRequestedAuth),&fRequestedAuth,authTypeNames,numAuthTypes);
@@ -569,7 +569,7 @@ bool TAgentConfig::localStartElement(const char *aElementName, const char **aAtt
     // - none known here
     else
       return inherited::localStartElement(aElementName,aAttributes,aLine);
-  	#endif // SYSYNC_SERVER
+    #endif // SYSYNC_SERVER
   }
   // ok
   return true;
@@ -582,7 +582,7 @@ bool TAgentConfig::localStartElement(const char *aElementName, const char **aAtt
 void TAgentConfig::localResolve(bool aLastPass)
 {
   if (aLastPass) {
-  	if (IS_CLIENT) {
+    if (IS_CLIENT) {
       #ifdef SYSYNC_CLIENT
       #ifdef PRECONFIGURED_SYNCREQUESTS
       // - resolve requests
@@ -615,14 +615,14 @@ TSyncAgent::TSyncAgent(
   TSyncSessionHandle *aSessionHandleP,
   const char *aSessionID // a session ID
 ) :
-  TSyncSession(aAppBaseP,aSessionID)  
+  TSyncSession(aAppBaseP,aSessionID)
 {
-	// General
-	#ifdef ENGINE_LIBRARY  
+  // General
+  #ifdef ENGINE_LIBRARY
   // init the flags which are set by STEPCMD_SUSPEND, STEPCMD_ABORT and STEPCMD_TRANSPFAIL
   fAbortRequested = false;
   fSuspendRequested = false;
-	fEngineSessionStatus = LOCERR_WRONGUSAGE;
+  fEngineSessionStatus = LOCERR_WRONGUSAGE;
   #ifdef NON_FULLY_GRANULAR_ENGINE
   // - erase the list of queued progress events
   fProgressInfoList.clear();
@@ -638,27 +638,27 @@ TSyncAgent::TSyncAgent(
   #endif
 
   // Specific for Client or Server
-	if (IS_CLIENT) {
-		#ifdef SYSYNC_CLIENT
+  if (IS_CLIENT) {
+    #ifdef SYSYNC_CLIENT
     #ifdef HARD_CODED_SERVER_URI
     fNoCRCPrefixLen = 0;
     #endif
-	  #ifdef ENGINE_LIBRARY
-		// engine
-  	fClientEngineState = ces_idle;
+    #ifdef ENGINE_LIBRARY
+    // engine
+    fClientEngineState = ces_idle;
     #endif
     // reset session now to get correct initial state
     InternalResetSession();
     // restart with session numbering at 1 (incremented before use)
-    fClientSessionNo = 0;  
-		#endif // SYSYNC_CLIENT
+    fClientSessionNo = 0;
+    #endif // SYSYNC_CLIENT
   }
   else {
-		#ifdef SYSYNC_SERVER
+    #ifdef SYSYNC_SERVER
     // init answer buffer
     fBufferedAnswer = NULL;
     fBufferedAnswerSize = 0;
-	  #ifdef ENGINE_LIBRARY
+    #ifdef ENGINE_LIBRARY
     // engine
     fServerEngineState = ses_needdata;
     fRequestSize = 0;
@@ -684,12 +684,12 @@ TSyncAgent::TSyncAgent(
 // destructor
 TSyncAgent::~TSyncAgent()
 {
-	if (IS_CLIENT) {
+  if (IS_CLIENT) {
     // make sure everything is terminated BEFORE destruction of hierarchy begins
     TerminateSession();
   }
   else {
-  	#ifdef SYSYNC_SERVER
+    #ifdef SYSYNC_SERVER
     // forget any buffered answers
     bufferAnswer(NULL,0);
     // reset session
@@ -708,7 +708,7 @@ TSyncAgent::~TSyncAgent()
       "TSyncAgent::~TSyncAgent: Deleted SyncML session (local session id=%s)",
       getLocalSessionID()
     ));
-		#endif // SYSYNC_SERVER
+    #endif // SYSYNC_SERVER
   }
 } // TSyncAgent::~TSyncAgent
 
@@ -733,8 +733,8 @@ void TSyncAgent::TerminateSession()
 
 void TSyncAgent::InternalResetSession(void)
 {
-	if (IS_CLIENT) {
-  	#ifdef SYSYNC_CLIENT
+  if (IS_CLIENT) {
+    #ifdef SYSYNC_CLIENT
     // use remote URI as specified to start a session
     fRespondURI = fRemoteURI;
     #ifdef HARD_CODED_SERVER_URI
@@ -760,10 +760,10 @@ void TSyncAgent::InternalResetSession(void)
     #endif
   }
   else {
-		#ifdef SYSYNC_SERVER
+    #ifdef SYSYNC_SERVER
     // %%% remove this as soon as Server is 1.1 compliant
     //fSyncMLVersion=syncml_vers_1_0; // only accepts 1.0 for now %%%%
-    #endif  
+    #endif
   }
 } // TSyncAgent::InternalResetSession
 
@@ -780,10 +780,10 @@ void TSyncAgent::ResetSession(void)
 
 bool TSyncAgent::MessageStarted(SmlSyncHdrPtr_t aContentP, TStatusCommand &aStatusCommand, bool aBad)
 {
-	if (IS_CLIENT) {
-		#ifdef SYSYNC_CLIENT
+  if (IS_CLIENT) {
+    #ifdef SYSYNC_CLIENT
     return ClientMessageStarted(aContentP,aStatusCommand,aBad);
-		#endif // SYSYNC_CLIENT
+    #endif // SYSYNC_CLIENT
   }
   else {
     #ifdef SYSYNC_SERVER
@@ -794,10 +794,10 @@ bool TSyncAgent::MessageStarted(SmlSyncHdrPtr_t aContentP, TStatusCommand &aStat
 
 void TSyncAgent::MessageEnded(bool aIncomingFinal)
 {
-	if (IS_CLIENT) {
-		#ifdef SYSYNC_CLIENT
+  if (IS_CLIENT) {
+    #ifdef SYSYNC_CLIENT
     ClientMessageEnded(aIncomingFinal);
-		#endif // SYSYNC_CLIENT
+    #endif // SYSYNC_CLIENT
   }
   else {
     #ifdef SYSYNC_SERVER
@@ -812,10 +812,10 @@ void TSyncAgent::MessageEnded(bool aIncomingFinal)
 string TSyncAgent::getDeviceID(void)
 {
   if (fLocalURI.empty()) {
-  	if (IS_SERVER)
-	    return SYSYNC_SERVER_DEVID; // return default ID
-  	else  	
-	    return SYSYNC_CLIENT_DEVID; // return default ID
+    if (IS_SERVER)
+      return SYSYNC_SERVER_DEVID; // return default ID
+    else
+      return SYSYNC_CLIENT_DEVID; // return default ID
   }
   else
     return fLocalURI;
@@ -938,7 +938,7 @@ localstatus TSyncAgent::processAnswer(void)
   MemPtr_t data = NULL;
   MemSize_t datasize;
   smlPeekMessageBuffer(getSmlWorkspaceID(), false, &data, &datasize);
-  #endif  
+  #endif
   fIgnoreMsgErrs=false;
   err=smlProcessData(
     myInstance,
@@ -948,8 +948,8 @@ localstatus TSyncAgent::processAnswer(void)
     // dump the message that failed to process
     #ifdef SYDEBUG
     if (data) DumpSyncMLBuffer(data,datasize,false,err);
-    #endif    
-  	if (!fIgnoreMsgErrs) {
+    #endif
+    if (!fIgnoreMsgErrs) {
       PDEBUGPRINTFX(DBG_ERROR,("===> smlProcessData failed, returned 0x%hX",(sInt16)err));
       // other problem or already using SyncML 1.0 --> error
       return LOCERR_PROCESSMSG;
@@ -1078,8 +1078,8 @@ localstatus TSyncAgent::NextMessage(bool &aDone)
   else {
     // check for proper end of session (caused by MessageEnded analysis)
     if (!fInProgress) {
-      // give an opportunity to let make outgoing message end and flush xml end message 
-      FinishMessage(true, false);  
+      // give an opportunity to let make outgoing message end and flush xml end message
+      FinishMessage(true, false);
       // end sync in all datastores (save anchors etc.)
       PDEBUGPRINTFX(DBG_PROTO,("Successful end of session -> calling engFinishDataStoreSync() for datastores now"));
       for (pos=fLocalDataStores.begin(); pos!=fLocalDataStores.end(); ++pos)
@@ -1121,7 +1121,7 @@ localstatus TSyncAgent::NextMessage(bool &aDone)
     // - any datastore is doing first time sync
     // - fPutDevInfAtSlowSync is true and any datastore is doing slow sync
     if (
-    	mustSendDevInf() ||
+      mustSendDevInf() ||
       anyfirstsyncs ||
       (anyslowsyncs && static_cast<TAgentConfig *>(getRootConfig()->fAgentConfigP)->fPutDevInfAtSlowSync)
     ) {
@@ -1179,7 +1179,7 @@ localstatus TSyncAgent::NextMessage(bool &aDone)
         for (pos=fLocalDataStores.begin(); pos!=fLocalDataStores.end(); ++pos) {
           // Note: some datastores might be aborted due to unsuccessful alert.
           if ((*pos)->isActive()) {
-          	// prepare engine for sync (%%% new routine in 3.2.0.3, summarizing engInitForSyncOps() and
+            // prepare engine for sync (%%% new routine in 3.2.0.3, summarizing engInitForSyncOps() and
             // switching to dssta_dataaccessstarted, i.e. loading sync set), but do in only once
             if (!((*pos)->testState(dssta_syncsetready))) {
               // not yet started
@@ -1189,7 +1189,7 @@ localstatus TSyncAgent::NextMessage(bool &aDone)
                 if (status!=LOCERR_DATASTORE_ABORT) {
                   AbortSession(status,true);
                   return getAbortReasonStatus();
-                } 
+                }
               }
             }
             // start or continue (which is largely nop, as continuing works via unfinished sync command)
@@ -1221,7 +1221,7 @@ localstatus TSyncAgent::NextMessage(bool &aDone)
       }
     }
     else if (fOutgoingState==psta_supplement) {
-    	// we are waiting for the server to complete a pending phase altough we are already done
+      // we are waiting for the server to complete a pending phase altough we are already done
       // with everything we want to send.
       // -> just generate a Alert 222 and wait for server to complete
       PDEBUGPRINTFX(DBG_PROTO+DBG_HOT,("Client finished so far, but needs to wait in supplement outgoing state until server finishes phase"));
@@ -1311,7 +1311,7 @@ localstatus TSyncAgent::NextMessage(bool &aDone)
       if (!fNeedToAnswer) {
         dummyAlert = true;
         if (fOutgoingAlert222Count++ == 0) {
-        	// start of 222 loop detection time
+          // start of 222 loop detection time
           fLastOutgoingAlert222 = getSystemNowAs(TCTX_UTC);
         } else if (fOutgoingAlert222Count > 5) {
           lineartime_t curTime = getSystemNowAs(TCTX_UTC);
@@ -1639,17 +1639,17 @@ void TSyncAgent::retryClientSessionStart(bool aOldMessageInBuffer)
   PDEBUGPRINTFX(DBG_HOT,("=================> Retrying Client Session Start"));
   bool newSessionForAuthRetry = configP->fNewSessionForAuthRetry;
   bool noRespURIForAuthRetry = configP->fNoRespURIForAuthRetry;
-	// check if we should use modified behaviour (smart retries)
+  // check if we should use modified behaviour (smart retries)
   if (configP->fSmartAuthRetry && fAuthRetries>MAX_NORMAL_AUTH_RETRIES) {
-  	if (newSessionForAuthRetry) {
-    	// if we had new session for retry, switch to in-session retry now
+    if (newSessionForAuthRetry) {
+      // if we had new session for retry, switch to in-session retry now
       newSessionForAuthRetry = false;
       noRespURIForAuthRetry = false;
     }
     else {
-    	// if we had in-session retry, try new session retry now
+      // if we had in-session retry, try new session retry now
       newSessionForAuthRetry = true;
-      noRespURIForAuthRetry = true;    
+      noRespURIForAuthRetry = true;
     }
     PDEBUGPRINTFX(DBG_PROTO,("Smart retry with modified behaviour: newSessionForAuthRetry=%d, noRespURIForAuthRetry=%d",newSessionForAuthRetry,noRespURIForAuthRetry));
   }
@@ -1716,7 +1716,7 @@ SmlPcdataPtr_t TSyncAgent::newResponseURIForRemote(void)
   }
   // do it in a transport-independent way, therefore let dispatcher do it
   string respURI; // empty string
-  if (fUseRespURI) {  
+  if (fUseRespURI) {
     getSyncAppBase()->generateRespURI(
       respURI,  // remains unaffected if no RespURI could be calculated
       fInitialLocalURI.c_str(), // initial URI used by remote to send first message
@@ -1744,7 +1744,7 @@ bool TSyncAgent::ServerMessageStarted(SmlSyncHdrPtr_t aContentP, TStatusCommand 
 {
   // message not authorized by default
   fMessageAuthorized=false;
-  
+
   // Get information from SyncHdr which is needed for answers
   // - session ID to be used for responses
   fSynchdrSessionID=smlPCDataToCharP(aContentP->sessionID);
@@ -1794,26 +1794,26 @@ bool TSyncAgent::ServerMessageStarted(SmlSyncHdrPtr_t aContentP, TStatusCommand 
     if (!fMsgNoResp)
       issueHeader(false); // issue header, do not prevent responses
   }
-  else {  
+  else {
     // check busy (or expired) case
     if (serverBusy()) {
       #ifdef APP_CAN_EXPIRE
-    	if (getSyncAppBase()->fAppExpiryStatus!=LOCERR_OK) {
-    		aStatusCommand.setStatusCode(511); // server failure (expired)
-    		aStatusCommand.addItemString("License expired or invalid");
+      if (getSyncAppBase()->fAppExpiryStatus!=LOCERR_OK) {
+        aStatusCommand.setStatusCode(511); // server failure (expired)
+        aStatusCommand.addItemString("License expired or invalid");
         PDEBUGPRINTFX(DBG_ERROR,("License expired or invalid - Please contact Synthesis AG to obtain license"));
       }
-    	else
-    	#endif
-    	{
-      	aStatusCommand.setStatusCode(101); // busy
+      else
+      #endif
+      {
+        aStatusCommand.setStatusCode(101); // busy
       }
       issueHeader(false); // issue header, do not prevent responses
       AbortSession(0,true); // silently discard rest of commands
       return false; // header not ok
-    }  
+    }
     // now check what state we are in
-    if (fIncomingState==psta_idle) {  
+    if (fIncomingState==psta_idle) {
       // Initialize
       // - session-wide authorization not yet there
       fSessionAuthorized=false;
@@ -1828,7 +1828,7 @@ bool TSyncAgent::ServerMessageStarted(SmlSyncHdrPtr_t aContentP, TStatusCommand 
     // authorization check
     if (fIncomingState>=psta_init) {
       // now check authorization
-      if (!fSessionAuthorized) {    
+      if (!fSessionAuthorized) {
         // started, but not yet permanently authorized
         fMessageAuthorized=checkCredentials(
           smlSrcTargLocNameToCharP(aContentP->source), // user name in clear text according to SyncML 1.0.1
@@ -1838,7 +1838,7 @@ bool TSyncAgent::ServerMessageStarted(SmlSyncHdrPtr_t aContentP, TStatusCommand 
         // NOTE: aStatusCommand has now the appropriate status and chal (set by checkCredentials())
         // if credentials do not match, stop processing commands (but stay with the session)
         if (!fMessageAuthorized) {
-          AbortCommandProcessing(aStatusCommand.getStatusCode());  
+          AbortCommandProcessing(aStatusCommand.getStatusCode());
           PDEBUGPRINTFX(DBG_PROTO,("Authorization failed with status %hd, stop command processing",aStatusCommand.getStatusCode()));
         }
         // now determine if authorization is permanent or not
@@ -1856,7 +1856,7 @@ bool TSyncAgent::ServerMessageStarted(SmlSyncHdrPtr_t aContentP, TStatusCommand 
           else {
             // entire session is authorized
             fSessionAuthorized=true; // permanent authorization
-            // - 212 authentication accepted (or 200 if none is reqired at all)          
+            // - 212 authentication accepted (or 200 if none is reqired at all)
             aStatusCommand.setStatusCode(requestedAuthType()==auth_none ? 200 : 212);
             // - add challenge for next auth (in next session, but as we support carry
             //   forward via using sessionID, we need to send one here as well)
@@ -1888,7 +1888,7 @@ bool TSyncAgent::ServerMessageStarted(SmlSyncHdrPtr_t aContentP, TStatusCommand 
       PackageStateNames[fIncomingState],
       PackageStateNames[fOutgoingState]
     ));
-  	TLocalDataStorePContainer::iterator pos;
+    TLocalDataStorePContainer::iterator pos;
     for (pos=fLocalDataStores.begin(); pos!=fLocalDataStores.end(); ++pos) {
       // Show state of local datastores
       PDEBUGPRINTFX(DBG_SESSION,(
@@ -1922,8 +1922,8 @@ bool TSyncAgent::ServerMessageStarted(SmlSyncHdrPtr_t aContentP, TStatusCommand 
       PDEBUGPRINTFX(DBG_ERROR,("Too many (>=%d) failures, aborting session",MAX_AUTH_ATTEMPTS));
       AbortSession(400,true);
     }
-    #endif        
-  }  
+    #endif
+  }
   // returns false on BAD header (but true on wrong/bad/missing cred)
   return true;
 } // TSyncAgent::ServerMessageStarted
@@ -1935,7 +1935,7 @@ void TSyncAgent::ServerMessageEnded(bool aIncomingFinal)
   TPackageStates newoutgoingstate,newincomingstate;
   TLocalDataStorePContainer::iterator pos;
   bool allFromClientOnly=false;
-  
+
   // Incoming message ends here - what is following are commands initiated by the server
   // not directly related to a incoming command.
   PDEBUGENDBLOCK("SyncML_Incoming");
@@ -1944,7 +1944,7 @@ void TSyncAgent::ServerMessageEnded(bool aIncomingFinal)
   // new incoming state depends on whether this message is final or not
   if ((aIncomingFinal || (fIncomingState==psta_supplement)) && fMessageAuthorized) {
     // Note: in supplement state, incoming final is not relevant (may or may not be present, there is
-    //       no next phase anyway 
+    //       no next phase anyway
     // find out if this is a shortened session (no map phase) due to
     // from-client-only in all datastores
     if (!fCompleteFromClientOnly) {
@@ -2016,16 +2016,16 @@ void TSyncAgent::ServerMessageEnded(bool aIncomingFinal)
     // so outgoing will NEVER be final on non-authorized messages
     // %%% before 1.0.4.9, this was fInProgress=true
     //  DEBUGPRINTFX(DBG_ERROR,("***** Message not authorized, ignore and DONT end package, session continues"));
-    //  fInProgress=true; 
+    //  fInProgress=true;
     PDEBUGPRINTFX(DBG_ERROR,("***** Message not authorized, ignore msg and terminate session"));
-    fInProgress=false; 
+    fInProgress=false;
   }
   else {
     // determine if session continues living or not
     // - if in other than idle state, session will continue
     fInProgress =
       (newincomingstate!=psta_idle) || // if not idle, we'll continue
-      !fMessageAuthorized; // if not authorized, we'll continue as well (retrying auth)   
+      !fMessageAuthorized; // if not authorized, we'll continue as well (retrying auth)
     // Check if we need to send an Alert 222 to get more messages of this package
     if (!aIncomingFinal) {
       // not end of incoming package
@@ -2036,7 +2036,7 @@ void TSyncAgent::ServerMessageEnded(bool aIncomingFinal)
         #ifdef COMBINE_SYNCANDMAP
         // %%% make sure session gets to an end in case combined sync/map was used
         if (fMapSeen && fIncomingState==psta_map && fOutgoingState==psta_map) {
-          DEBUGPRINTFX(DBG_HOT,("********** Incoming, non-final message in (combined)map state needs no answer -> force end of outgoing package"));          
+          DEBUGPRINTFX(DBG_HOT,("********** Incoming, non-final message in (combined)map state needs no answer -> force end of outgoing package"));
           newoutgoingstate=psta_idle;
         }
         else
@@ -2055,7 +2055,7 @@ void TSyncAgent::ServerMessageEnded(bool aIncomingFinal)
             TAlertCommand *alertCmdP = new TAlertCommand(this,NULL,(uInt16)222);
             // %%% not clear from spec what has to be in item for 222 alert code
             //     but there MUST be an Item for the Alert command according to SyncML TK
-            // - we just put local and remote URIs here 
+            // - we just put local and remote URIs here
             SmlItemPtr_t itemP = newItem();
             itemP->target = newLocation(fRemoteURI.c_str());
             itemP->source = newLocation(fLocalURI.c_str());
@@ -2071,7 +2071,7 @@ void TSyncAgent::ServerMessageEnded(bool aIncomingFinal)
         // - try to load devinf from cache (only if we don't have both datastores and type info already)
         if (!fRemoteDataStoresKnown || !fRemoteDataTypesKnown) {
           SmlDevInfDevInfPtr_t devinfP;
-          TStatusCommand dummystatus(this);  
+          TStatusCommand dummystatus(this);
           if (loadRemoteDevInf(getRemoteURI(),devinfP)) {
             // we have cached devinf, analyze it now
             localstatus sta = analyzeRemoteDevInf(devinfP);
@@ -2106,7 +2106,7 @@ void TSyncAgent::ServerMessageEnded(bool aIncomingFinal)
       //       not yet the time to start <sync> commands. Instead, when all
       //       queued SyncEnd commands are executed later, engEndOfSyncFromRemote()
       //       will be called with the endOfAllSyncCommands flag true instead
-      //       of now. 
+      //       of now.
       for (pos=fLocalDataStores.begin(); pos!=fLocalDataStores.end(); ++pos) {
         (*pos)->engEndOfSyncFromRemote(aIncomingFinal && !delayedSyncEndsPending());
       }
@@ -2137,7 +2137,7 @@ void TSyncAgent::ServerMessageEnded(bool aIncomingFinal)
         PDEBUGPRINTFX(DBG_HOT,("All datastores are done with generating <Sync>"));
         newoutgoingstate=psta_map;
         #ifdef COMBINE_SYNCANDMAP
-        // %%% it seems as if 9210 needs combined Sync/Map package and 
+        // %%% it seems as if 9210 needs combined Sync/Map package and
         if (fMapSeen) {
           // prevent FINAL to be sent at end of message
           DEBUGPRINTFX(DBG_HOT,("********** Combining outgoing sync and map-response packages into one"));
@@ -2169,7 +2169,7 @@ void TSyncAgent::ServerMessageEnded(bool aIncomingFinal)
     // - if no need to answer (e.g. nothing to send back except OK status for SyncHdr),
     //   session is over now (as well)
     if (!fNeedToAnswer) fInProgress=false;
-  } // else 
+  } // else
   // Now finish outgoing message
   #ifdef DONT_FINAL_BAD_AUTH_ATTEMPTS
   // - PREVENT final flag after failed auth attempts
@@ -2182,7 +2182,7 @@ void TSyncAgent::ServerMessageEnded(bool aIncomingFinal)
   if(FinishMessage(
     !fMessageAuthorized || fOutgoingState!=newoutgoingstate || fOutgoingState==psta_idle, // final when state changed or idle
     serverBusy() // busy prevents final flag at any rate
-  ))  
+  ))
   #endif
   {
     // outgoing state HAS changed
@@ -2225,14 +2225,14 @@ void TSyncAgent::ServerMessageEnded(bool aIncomingFinal)
 void TSyncAgent::RequestEnded(bool &aHasData)
 {
   // to make sure, finish any unfinished message
-  FinishMessage(true); // final allowed, as this is an out-of-normal-order case anyway  
+  FinishMessage(true); // final allowed, as this is an out-of-normal-order case anyway
   // if we need to answer, we have data
   // - SyncML specs 1.0.1 says that server must always respond, even if message
-  //   contains of a Status for the SyncHdr only 
+  //   contains of a Status for the SyncHdr only
   aHasData=true;
   // %%% first drafts of 1.0.1 said that SyncHdr Status only messages must not be sent...
   // aHasData=fNeedToAnswer; // %%%
-  
+
   // now let all datastores know that request processing ends here (so they might
   // prepare for a thread switch)
   // terminate sync with all datastores
@@ -2255,31 +2255,31 @@ bool TSyncAgent::EndRequest(bool &aHasData, string &aRespURI, uInt32 aReqBytes)
   if (fMessageRetried) {
     // Message processing cancelled
     CancelMessageProcessing();
-    // Nothing happened 
-	  // - but count bytes 
+    // Nothing happened
+    // - but count bytes
     fOutgoingBytes+=fBufferedAnswerSize;
     PDEBUGPRINTFX(DBG_HOT,(
-	    "========= Finished retried request with re-sending buffered answer (session %sin progress), incoming bytes=%ld, outgoing bytes=%ld",
-	    fInProgress ? "" : "NOT ",
-	    (long)aReqBytes,
-	    (long)fBufferedAnswerSize
-	  ));
-	  aHasData=false; // we do not have data in the sml instance (but we have/had some in the retry re-send buffer)
+      "========= Finished retried request with re-sending buffered answer (session %sin progress), incoming bytes=%ld, outgoing bytes=%ld",
+      fInProgress ? "" : "NOT ",
+      (long)aReqBytes,
+      (long)fBufferedAnswerSize
+    ));
+    aHasData=false; // we do not have data in the sml instance (but we have/had some in the retry re-send buffer)
   }
   else {
     // end request
-	  RequestEnded(aHasData);
-	  // count bytes
+    RequestEnded(aHasData);
+    // count bytes
     fOutgoingBytes+=getOutgoingMessageSize();
-	  PDEBUGPRINTFX(DBG_HOT,(
-	    "========= Finished request (session %sin progress), processing time=%ld msec, incoming bytes=%ld, outgoing bytes=%ld",
-	    fInProgress ? "" : "NOT ",
-	    (long)((getSystemNowAs(TCTX_UTC)-getLastRequestStarted()) * nanosecondsPerLinearTime / 1000000),
-	    (long)aReqBytes,
+    PDEBUGPRINTFX(DBG_HOT,(
+      "========= Finished request (session %sin progress), processing time=%ld msec, incoming bytes=%ld, outgoing bytes=%ld",
+      fInProgress ? "" : "NOT ",
+      (long)((getSystemNowAs(TCTX_UTC)-getLastRequestStarted()) * nanosecondsPerLinearTime / 1000000),
+      (long)aReqBytes,
       (long)getOutgoingMessageSize()
-	  ));	  
-	  // return RespURI (is empty if none specified or equal to message source URI)
-	  aRespURI = fRespondURI;
+    ));
+    // return RespURI (is empty if none specified or equal to message source URI)
+    aRespURI = fRespondURI;
   }
   if (!fInProgress) {
     // terminate datastores here already in case we are not in progress any more
@@ -2290,7 +2290,7 @@ bool TSyncAgent::EndRequest(bool &aHasData, string &aRespURI, uInt32 aReqBytes)
     //       problem.
     TerminateDatastores(400);
   }
-  //%%% moved to happen before end of SyncML_Outgoing 
+  //%%% moved to happen before end of SyncML_Outgoing
   //PDEBUGENDBLOCK("SyncML_Incoming");
   if (fRequestMinTime>0) {
     // make sure we spent enough time with this request, if not, artificially extend time
@@ -2299,14 +2299,14 @@ bool TSyncAgent::EndRequest(bool &aHasData, string &aRespURI, uInt32 aReqBytes)
       (sInt32)((getSystemNowAs(TCTX_UTC)-getLastRequestStarted()) / (lineartime_t)secondToLinearTimeFactor);
     // - delay if needed
     if (t<fRequestMinTime) {
-  	  PDEBUGPRINTFX(DBG_HOT,(
-  	    "requestmintime is set to %ld seconds, we have spent only %ld seconds so far -> sleeping %ld seconds",
-  	    (long)fRequestMinTime,
-  	    (long)t,
-  	    (long)fRequestMinTime-t
-  	  ));
-      CONSOLEPRINTF(("  ...delaying response by %ld seconds because requestmintime is set to %ld",fRequestMinTime,fRequestMinTime-t));
-  	  sleepLineartime((lineartime_t)(fRequestMinTime-t)*secondToLinearTimeFactor);
+      PDEBUGPRINTFX(DBG_HOT,(
+        "requestmintime is set to %ld seconds, we have spent only %ld seconds so far -> sleeping %ld seconds",
+        (long)fRequestMinTime,
+        (long)t,
+        (long)fRequestMinTime-t
+      ));
+      CONSOLEPRINTF(("  ...delaying response by %ld seconds because requestmintime is set to %ld",(long)fRequestMinTime,(long)(fRequestMinTime-t)));
+      sleepLineartime((lineartime_t)(fRequestMinTime-t)*secondToLinearTimeFactor);
     }
   }
   // thread might end here, so stop profiling
@@ -2346,7 +2346,7 @@ Ret_t TSyncAgent::bufferAnswer(MemPtr_t aAnswer, MemSize_t aAnswerSize)
 void TSyncAgent::getBufferedAnswer(MemPtr_t &aAnswer, MemSize_t &aAnswerSize)
 {
   aAnswer=fBufferedAnswer;
-  aAnswerSize=fBufferedAnswerSize;  
+  aAnswerSize=fBufferedAnswerSize;
   PDEBUGPRINTFX(DBG_HOT,(
     "Buffered answer read from session: %ld bytes",
     fBufferedAnswerSize
@@ -2357,9 +2357,9 @@ void TSyncAgent::getBufferedAnswer(MemPtr_t &aAnswer, MemSize_t &aAnswerSize)
 // returns remaining time for request processing [seconds]
 sInt32 TSyncAgent::RemainingRequestTime(void)
 {
-	if (IS_CLIENT) {
-  	// clients don't process requests, so there's no limit
-  	return 0x7FFFFFFF; // "infinite"
+  if (IS_CLIENT) {
+    // clients don't process requests, so there's no limit
+    return 0x7FFFFFFF; // "infinite"
   }
   else {
     // if no request timeout specified, use session timeout
@@ -2413,7 +2413,7 @@ bool TSyncAgent::processMapCommand(
     // local datastore found
     // - maps can be processed when we are at least ready for early (chached by client from previous session) maps
     if (datastoreP->testState(dssta_syncmodestable)) {
-      // datastore is ready 
+      // datastore is ready
       PDEBUGBLOCKFMT(("ProcessMap", "Processing items from Map command", "datastore=%s", targetdburi));
       allok=true; // assume all ok
       SmlMapItemListPtr_t nextnode = aMapCommandP->mapItemList;
@@ -2427,7 +2427,7 @@ bool TSyncAgent::processMapCommand(
         sta = datastoreP->engProcessMap(
           #ifdef DONT_STRIP_PATHPREFIX_FROM_REMOTEIDS
           smlSrcTargLocURIToCharP(nextnode->mapItem->source),
-          #else 
+          #else
           relativeURI(smlSrcTargLocURIToCharP(nextnode->mapItem->source)),
           #endif
           relativeURI(smlSrcTargLocURIToCharP(nextnode->mapItem->target))
@@ -2453,7 +2453,7 @@ bool TSyncAgent::processMapCommand(
   } // database found
   return allok;
 } // TSyncAgent::processMapCommand
-    
+
 
 // get next nonce string top be sent to remote party for subsequent MD5 auth
 void TSyncAgent::getNextNonce(const char *aDeviceID, string &aNextNonce)
@@ -2461,12 +2461,12 @@ void TSyncAgent::getNextNonce(const char *aDeviceID, string &aNextNonce)
   fLastNonce.erase();
   if (getServerConfig()->fAutoNonce) {
     // generate nonce out of source ref and session ID
-    // This scheme can provide nonce carrying forward between 
+    // This scheme can provide nonce carrying forward between
     // sessions by initializing lastNonce with the srcRef/sessionid-1
     // assuming client to use nonce from last session.
     sInt32 sid;
     // use current day as nonce varying number
-    sid = time(NULL) / 3600 / 24; 
+    sid = time(NULL) / 3600 / 24;
     generateNonce(fLastNonce,aDeviceID,sid);
   }
   else {
@@ -2495,7 +2495,7 @@ void TSyncAgent::getAuthNonce(const char *aDeviceID, string &aAuthNonce)
         // none available, produce new one
         sInt32 sid;
         // use current day as nonce varying number
-        sid = time(NULL) / 3600 / 24; 
+        sid = time(NULL) / 3600 / 24;
         generateNonce(fLastNonce,aDeviceID,sid);
       }
     }
@@ -2513,14 +2513,14 @@ void TSyncAgent::getAuthNonce(const char *aDeviceID, string &aAuthNonce)
 // info about server status
 bool TSyncAgent::serverBusy(void)
 {
-	// return flag (which might have been set by some connection
-	// limit code in sessiondispatch).
-	// When app is expired, all server sessions are busy anyway
-	#ifdef APP_CAN_EXPIRE
-	return fSessionIsBusy || (getSyncAppBase()->fAppExpiryStatus!=LOCERR_OK);
-	#else
-	return fSessionIsBusy;
-	#endif
+  // return flag (which might have been set by some connection
+  // limit code in sessiondispatch).
+  // When app is expired, all server sessions are busy anyway
+  #ifdef APP_CAN_EXPIRE
+  return fSessionIsBusy || (getSyncAppBase()->fAppExpiryStatus!=LOCERR_OK);
+  #else
+  return fSessionIsBusy;
+  #endif
 } // TSyncAgent::serverBusy
 
 
@@ -2539,13 +2539,13 @@ TAgentConfig *TSyncAgent::getServerConfig(void)
 // info about requested auth type
 TAuthTypes TSyncAgent::requestedAuthType(void)
 {
-	if (IS_SERVER) {
-  	#ifdef SYSYNC_SERVER
-	  return getServerConfig()->fRequestedAuth;
+  if (IS_SERVER) {
+    #ifdef SYSYNC_SERVER
+    return getServerConfig()->fRequestedAuth;
     #endif
   }
   else {
-  	return auth_none; // client does not require auth
+    return auth_none; // client does not require auth
   }
 } // TSyncAgent::requestedAuthType
 
@@ -2553,13 +2553,13 @@ TAuthTypes TSyncAgent::requestedAuthType(void)
 // check if auth type is allowed
 bool TSyncAgent::isAuthTypeAllowed(TAuthTypes aAuthType)
 {
-	if (IS_SERVER) {
-  	#ifdef SYSYNC_SERVER
-	  return aAuthType>=getServerConfig()->fRequiredAuth;
+  if (IS_SERVER) {
+    #ifdef SYSYNC_SERVER
+    return aAuthType>=getServerConfig()->fRequiredAuth;
     #endif
   }
   else {
-  	return true; // client accepts any auth
+    return true; // client accepts any auth
   }
 } // TSyncAgent::isAuthTypeAllowed
 
@@ -2567,13 +2567,13 @@ bool TSyncAgent::isAuthTypeAllowed(TAuthTypes aAuthType)
 // called when incoming SyncHdr fails to execute
 bool TSyncAgent::syncHdrFailure(bool aTryAgain)
 {
-	if (IS_CLIENT) {
+  if (IS_CLIENT) {
     // do not try to re-execute the header, just let message processing fail;
     // this will cause the client's main loop to try using an older protocol
     return false;
   }
   else {
-  	#ifdef SYSYNC_SERVER
+    #ifdef SYSYNC_SERVER
     if (!aTryAgain) {
       // not already retried executing
       // special case: header failed to execute, this means that session must be reset
@@ -2590,7 +2590,7 @@ bool TSyncAgent::syncHdrFailure(bool aTryAgain)
       aTryAgain=false; // just to make sure
       SYSYNC_THROW(TSyncException("SyncHdr fatal execution problem"));
     }
-    return aTryAgain;    
+    return aTryAgain;
     #endif
   }
 } // TSyncAgent::syncHdrFailure
@@ -2599,8 +2599,8 @@ bool TSyncAgent::syncHdrFailure(bool aTryAgain)
 // handle status received for SyncHdr, returns false if not handled
 bool TSyncAgent::handleHeaderStatus(TStatusCommand *aStatusCmdP)
 {
-	if (IS_CLIENT) {
-  	#ifdef SYSYNC_CLIENT
+  if (IS_CLIENT) {
+    #ifdef SYSYNC_CLIENT
     TAgentConfig *configP = static_cast<TAgentConfig *>(getRootConfig()->fAgentConfigP);
     bool handled=true;
     const char *txt;
@@ -2755,7 +2755,7 @@ bool TSyncAgent::handleHeaderStatus(TStatusCommand *aStatusCmdP)
     #endif // SYSYNC_SERVER
   }
   else {
-  	// nothing special
+    // nothing special
     return inherited::handleHeaderStatus(aStatusCmdP);
   }
 } // TSyncAgent::handleHeaderStatus
@@ -2768,8 +2768,8 @@ bool TSyncAgent::processSyncStart(
   bool &aQueueForLater // will be set if command must be queued for later (re-)execution
 )
 {
-	if (IS_CLIENT) {
-  	#ifdef SYSYNC_CLIENT
+  if (IS_CLIENT) {
+    #ifdef SYSYNC_CLIENT
     if (fIncomingState!=psta_sync && fIncomingState!=psta_initsync) {
       aStatusCommand.setStatusCode(403); // forbidden in this context
       PDEBUGPRINTFX(DBG_ERROR,("Sync command not allowed outside of sync phase (-> 403)"));
@@ -2792,7 +2792,7 @@ bool TSyncAgent::processSyncStart(
       return fLocalSyncDatastoreP->engProcessSyncCmd(aSyncP,aStatusCommand,aQueueForLater);
     }
     return true;
-		#endif // SYSYNC_CLIENT
+    #endif // SYSYNC_CLIENT
   }
   else {
     #ifdef SYSYNC_SERVER
@@ -2835,7 +2835,7 @@ bool TSyncAgent::processSyncStart(
         ok=false;
       }
       else {
-        // - show sync start    
+        // - show sync start
         DEBUGPRINTFX(DBG_HOT,(
           "<Sync> started, cmd-incoming state='%s', incoming state='%s', outgoing state='%s'",
           PackageStateNames[fCmdIncomingState],
@@ -2861,7 +2861,7 @@ bool TSyncAgent::processSyncStart(
 /// @brief Get new session key to access details of this session
 appPointer TSyncAgent::newSessionKey(TEngineInterface *aEngineInterfaceP)
 {
-	return new TAgentParamsKey(aEngineInterfaceP,this);
+  return new TAgentParamsKey(aEngineInterfaceP,this);
 } // TSyncAgent::newSessionKey
 
 
@@ -2921,11 +2921,11 @@ TSyError TSyncAgent::SessionStep(uInt16 &aStepCmd, TEngineProgressInfo *aInfoP)
     // all progress events are delivered, now we can do the real work
   }
   #endif // NON_FULLY_GRANULAR_ENGINE
-	// Now perform the actual step
-	if (IS_CLIENT) {
-		#ifdef SYSYNC_CLIENT
+  // Now perform the actual step
+  if (IS_CLIENT) {
+    #ifdef SYSYNC_CLIENT
     fEngineSessionStatus = ClientSessionStep(aStepCmd,aInfoP);
-		#endif // SYSYNC_CLIENT
+    #endif // SYSYNC_CLIENT
   }
   else {
     #ifdef SYSYNC_SERVER
@@ -2960,12 +2960,12 @@ bool TSyncAgent::HandleSessionProgressEvent(TEngineProgressInfo aProgressInfo)
     // engine progress record that needs to be queued
     // - check for message
     if (aProgressInfo.eventtype==pev_display100) {
-    	// this is a pointer to a string, save it separately
+      // this is a pointer to a string, save it separately
       // extra1 is a pointer to the message text
       // - save it for retrieval via SessionKey
       fAlertMessage = (cAppCharP)(aProgressInfo.extra1);
       // - don't pass pointer
-      aProgressInfo.extra1 = 0; 
+      aProgressInfo.extra1 = 0;
     }
     // queue progress event
     fProgressInfoList.push_back(aProgressInfo);
@@ -3007,7 +3007,7 @@ TSyncAppBase *TDummyServerEngineInterface::newSyncAppBase(void)
   // a global routine (for real engine targets, it is a true virtual of
   // the engineInterface, implemented in the target's leaf engineInterface derivate.
   // - for now, use the global appBase creator routine
-  return sysync::newSyncAppBase(); // use global factory function 
+  return sysync::newSyncAppBase(); // use global factory function
 } // TDummyServerEngineInterface::newSyncAppBase
 
 #else // old style
@@ -3037,7 +3037,7 @@ TSyError TSyncAgent::ServerSessionStep(uInt16 &aStepCmd, TEngineProgressInfo *aI
 
   // if session is already aborted, no more steps are required
   if (isAborted()) {
-  	fServerEngineState = ses_done; // we are done
+    fServerEngineState = ses_done; // we are done
   }
 
   // handle pre-processed step command according to current engine state
@@ -3054,34 +3054,34 @@ TSyError TSyncAgent::ServerSessionStep(uInt16 &aStepCmd, TEngineProgressInfo *aI
     case ses_needdata:
       switch (stepCmdIn) {
         case STEPCMD_GOTDATA : {
-        	// got data, check content type
+          // got data, check content type
           MemPtr_t data = NULL;
-          smlPeekMessageBuffer(getSmlWorkspaceID(), false, &data, &fRequestSize); // get request size      
+          smlPeekMessageBuffer(getSmlWorkspaceID(), false, &data, &fRequestSize); // get request size
           SmlEncoding_t enc = TSyncAppBase::encodingFromData(data, fRequestSize);
-					if (getEncoding()==SML_UNDEF) {
-          	// no encoding known so far - use what we found from looking at data
+          if (getEncoding()==SML_UNDEF) {
+            // no encoding known so far - use what we found from looking at data
             PDEBUGPRINTFX(DBG_ERROR,(
-            	"Incoming data had no or invalid content type, Determined encoding by looking at data: %s",
+              "Incoming data had no or invalid content type, Determined encoding by looking at data: %s",
               SyncMLEncodingNames[enc]
             ));
             setEncoding(enc);
           }
           else if (getEncoding()!=enc) {
-          	// already known encoding does not match actual encoding
+            // already known encoding does not match actual encoding
             PDEBUGPRINTFX(DBG_ERROR,(
-            	"Warning: Incoming data encoding mismatch: expected=%s, found=%s",
+              "Warning: Incoming data encoding mismatch: expected=%s, found=%s",
               SyncMLEncodingNames[getEncoding()],
               SyncMLEncodingNames[enc]
             ));
           }
           if (getEncoding()==SML_UNDEF) {
-          	// if session encoding is still unknown at this point, reject data as non-SyncML
+            // if session encoding is still unknown at this point, reject data as non-SyncML
             PDEBUGPRINTFX(DBG_ERROR,("Incoming data is not SyncML"));
             sta = LOCERR_BADCONTENT; // bad content type
-				    aStepCmd = STEPCMD_ERROR;
+            aStepCmd = STEPCMD_ERROR;
             // Note: we do not abort the session here - app could have a retry strategy and re-enter
             //       this step with better data
-            break;            
+            break;
           }
           // content type ok - switch to processing mode
           fServerEngineState = ses_processing;
@@ -3150,7 +3150,7 @@ TSyError TSyncAgent::ServerProcessingStep(uInt16 &aStepCmd, TEngineProgressInfo 
   MemPtr_t data = NULL;
   MemSize_t datasize;
   smlPeekMessageBuffer(getSmlWorkspaceID(), false, &data, &datasize);
-  #endif  
+  #endif
   rc=smlProcessData(
     myInstance,
     SML_NEXT_COMMAND
@@ -3169,7 +3169,7 @@ TSyError TSyncAgent::ServerProcessingStep(uInt16 &aStepCmd, TEngineProgressInfo 
     sta = LOCERR_OK;
   }
   else if (rc==LOCERR_RETRYMSG) {
-		// server has detected that this message is a retry - report this to the app such that app can
+    // server has detected that this message is a retry - report this to the app such that app can
     // first discard the instance buffer (consume everything in it)
     if (smlLockReadBuffer(myInstance,&data,&datasize)==SML_ERR_OK)
       smlUnlockReadBuffer(myInstance,datasize);
@@ -3179,14 +3179,14 @@ TSyError TSyncAgent::ServerProcessingStep(uInt16 &aStepCmd, TEngineProgressInfo 
     ));
     aStepCmd = STEPCMD_RESENDDATA;
     fServerEngineState = ses_dataready;
-	}
-	else {
+  }
+  else {
     // processing failed
     PDEBUGPRINTFX(DBG_ERROR,("===> smlProcessData failed, returned 0x%hX",(sInt16)rc));
     // dump the message that failed to process
     #ifdef SYDEBUG
     if (data) DumpSyncMLBuffer(data,datasize,false,rc);
-    #endif    
+    #endif
     // abort the session (causing proper error events to be generated and reported back)
     AbortSession(LOCERR_PROCESSMSG, true);
     // session is now done
@@ -3207,24 +3207,24 @@ TSyError TSyncAgent::ServerGeneratingStep(uInt16 &aStepCmd, TEngineProgressInfo 
   bool done, hasdata;
   string respURI;
 
-	// finish request
-	done = EndRequest(hasdata, respURI, fRequestSize);
+  // finish request
+  done = EndRequest(hasdata, respURI, fRequestSize);
   // check different exit points
   if (hasdata) {
-  	// there is data to be sent
+    // there is data to be sent
     aStepCmd = STEPCMD_SENDDATA;
     fServerEngineState = ses_dataready;
   }
   else {
-  	// no more data to send
-  	aStepCmd = STEPCMD_OK; // need one more step to finish
+    // no more data to send
+    aStepCmd = STEPCMD_OK; // need one more step to finish
   }
   // in any case, if done, all susequent steps will return STEPCMD_DONE
   if (done) {
-  	// Session is done
-  	TerminateSession();
+    // Session is done
+    TerminateSession();
     // subsequent steps will all return STEPCMD_DONE
-  	fServerEngineState = ses_done;
+    fServerEngineState = ses_done;
   }
   // request reset
   fRequestSize = 0;
@@ -3278,7 +3278,7 @@ TSyError TSyncAgent::ClientSessionStep(uInt16 &aStepCmd, TEngineProgressInfo *aI
 
   // if session is already aborted, no more steps are required
   if (isAborted()) {
-  	fClientEngineState = ces_done; // we are done
+    fClientEngineState = ces_done; // we are done
   }
 
   // handle pre-processed step command according to current engine state
@@ -3338,7 +3338,17 @@ TSyError TSyncAgent::ClientSessionStep(uInt16 &aStepCmd, TEngineProgressInfo *aI
           // check content type now
           MemPtr_t data = NULL;
           MemSize_t datasize;
-          smlPeekMessageBuffer(getSmlWorkspaceID(), false, &data, &datasize);
+          if (smlPeekMessageBuffer(getSmlWorkspaceID(), false, &data, &datasize) != SML_ERR_OK) {
+            // SyncML TK has a problem when asked to store an empty message:
+            // it then returns SML_ERR_WRONG_USAGE in smlPeekMessageBuffer and
+            // leaves datasize unset. Happened after an application bug.
+            //
+            // Avoid undefined behavior and proceed without data (easier than
+            // introducing an additional, untested error path).
+            data = NULL;
+            datasize = 0;
+          }
+
           // check content type
           SmlEncoding_t enc = TSyncAppBase::encodingFromData(data, datasize);
           if (enc!=getEncoding()) {
@@ -3346,12 +3356,12 @@ TSyError TSyncAgent::ClientSessionStep(uInt16 &aStepCmd, TEngineProgressInfo *aI
             sta = LOCERR_BADCONTENT; // bad content type
             #ifdef SYDEBUG
             if (data) DumpSyncMLBuffer(data,datasize,false,SML_ERR_UNSPECIFIC);
-            #endif    
+            #endif
             // abort the session (causing proper error events to be generated and reported back)
             AbortSession(sta, true);
             // session is now done
             fClientEngineState = ces_done;
-				    aStepCmd = STEPCMD_ERROR;
+            aStepCmd = STEPCMD_ERROR;
             break;
           }
           // content type ok - switch to processing mode
@@ -3362,7 +3372,7 @@ TSyError TSyncAgent::ClientSessionStep(uInt16 &aStepCmd, TEngineProgressInfo *aI
           break;
         }
         case STEPCMD_RESENDDATA :
-        	// instead of having received new data, the network layer has found it needs to re-send the data.
+          // instead of having received new data, the network layer has found it needs to re-send the data.
           // performing the STEPCMD_RESENDDATA just generates a new send start event, but otherwise no engine action
           fClientEngineState = ces_resending;
           aStepCmd = STEPCMD_RESENDDATA; // return the same step command, to differentiate it from STEPCMD_SENDDATA
@@ -3378,7 +3388,7 @@ TSyError TSyncAgent::ClientSessionStep(uInt16 &aStepCmd, TEngineProgressInfo *aI
     case ces_resending: {
       switch (stepCmdIn) {
         case STEPCMD_SENTDATA :
-        	// allowed in dataready or resending state
+          // allowed in dataready or resending state
           // sent (or re-sent) data, now request answer data
           SESSION_PROGRESS_EVENT(this,pev_sendend,NULL,0,0,0);
           fClientEngineState = ces_needdata;
@@ -3389,7 +3399,7 @@ TSyError TSyncAgent::ClientSessionStep(uInt16 &aStepCmd, TEngineProgressInfo *aI
       break;
     }
 
-  	case numClientEngineStates: {
+    case numClientEngineStates: {
       // invalid
       break;
     }
@@ -3418,7 +3428,7 @@ TSyError TSyncAgent::ClientGeneratingStep(uInt16 &aStepCmd, TEngineProgressInfo 
     TerminateSession();
   }
   else if (sta==LOCERR_OK) {
-  	// finished generating outgoing message
+    // finished generating outgoing message
     // - make sure read pointer is set (advanced in case incoming
     //   message had trailing garbage) to beginning of generated
     //   answer. With incoming message being clean SyncML without
@@ -3451,7 +3461,7 @@ TSyError TSyncAgent::ClientProcessingStep(uInt16 &aStepCmd, TEngineProgressInfo 
   MemPtr_t data = NULL;
   MemSize_t datasize;
   smlPeekMessageBuffer(getSmlWorkspaceID(), false, &data, &datasize);
-  #endif  
+  #endif
   rc=smlProcessData(
     myInstance,
     SML_NEXT_COMMAND
@@ -3475,15 +3485,15 @@ TSyError TSyncAgent::ClientProcessingStep(uInt16 &aStepCmd, TEngineProgressInfo 
     // dump the message that failed to process
     #ifdef SYDEBUG
     if (data) DumpSyncMLBuffer(data,datasize,false,rc);
-    #endif    
+    #endif
     if (!fIgnoreMsgErrs) {
-	    // abort the session (causing proper error events to be generated and reported back)
-     	AbortSession(LOCERR_PROCESSMSG, true);
+      // abort the session (causing proper error events to be generated and reported back)
+      AbortSession(LOCERR_PROCESSMSG, true);
       // session is now done
       fClientEngineState = ces_done;
     }
     else {
-    	// we must ignore errors e.g. because of session restart and go back to generate next message
+      // we must ignore errors e.g. because of session restart and go back to generate next message
       fClientEngineState = ces_generating;
     }
     // anyway, step by itself is ok - let app continue stepping (to restart session or complete abort)
@@ -3555,7 +3565,7 @@ static TSyError readAbortStatus(
 {
   TAgentParamsKey *mykeyP = static_cast<TAgentParamsKey *>(aStructFieldsKeyP);
   return TStructFieldsKey::returnInt(
-  	mykeyP->fAgentP->getAbortReasonStatus(),
+    mykeyP->fAgentP->getAbortReasonStatus(),
     sizeof(TSyError),
     aBuffer,aBufSize,aValSize
   );
@@ -3572,7 +3582,7 @@ TSyError writeAbortStatus(
   TAgentParamsKey *mykeyP = static_cast<TAgentParamsKey *>(aStructFieldsKeyP);
   // abort the session
   TSyError sta = *((TSyError *)aBuffer);
-	mykeyP->fAgentP->AbortSession(sta, true);
+  mykeyP->fAgentP->AbortSession(sta, true);
   return LOCERR_OK;
 } // writeAbortStatus
 
@@ -3672,7 +3682,7 @@ static TSyError readTimedOut(
 )
 {
   TAgentParamsKey *mykeyP = static_cast<TAgentParamsKey *>(aStructFieldsKeyP);
-	// check if session has timed out
+  // check if session has timed out
   bool timedout = mykeyP->fAgentP->getSessionLastUsed()+mykeyP->fAgentP->getSessionConfig()->getSessionTimeout() < mykeyP->fAgentP->getSystemNowAs(TCTX_UTC);
   // return it
   return TStructFieldsKey::returnInt(timedout, sizeof(bool), aBuffer, aBufSize, aValSize);
@@ -3710,7 +3720,7 @@ static TSyError writeSendRespURI(
 )
 {
   TAgentParamsKey *mykeyP = static_cast<TAgentParamsKey *>(aStructFieldsKeyP);
-	mykeyP->fAgentP->fUseRespURI = *((uInt8P)aBuffer);
+  mykeyP->fAgentP->fUseRespURI = *((uInt8P)aBuffer);
   return LOCERR_OK;
 } // writeSendRespURI
 
@@ -3728,7 +3738,7 @@ TSyError writeSessionPassword(
 )
 {
   TAgentParamsKey *mykeyP = static_cast<TAgentParamsKey *>(aStructFieldsKeyP);
-	mykeyP->fAgentP->setServerPassword((cAppCharP)aBuffer, aValSize);
+  mykeyP->fAgentP->setServerPassword((cAppCharP)aBuffer, aValSize);
   return LOCERR_OK;
 } // writeSessionPassword
 
@@ -3753,7 +3763,7 @@ static TSyError readDisplayAlert(
 
 // accessor table for server session key
 static const TStructFieldInfo ServerParamFieldInfos[] =
-{  
+{
   // valName, valType, writable, fieldOffs, valSiz
   { "localSessionID", VALTYPE_TEXT, false, 0, 0, &readLocalSessionID, NULL },
   { "initialLocalURI", VALTYPE_TEXT, false, 0, 0, &readInitialLocalURI, NULL },

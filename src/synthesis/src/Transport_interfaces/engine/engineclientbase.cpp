@@ -19,7 +19,7 @@ namespace sysync {
 
 
 #ifndef SYSYNC_SERVER
-// if there is also a server in the system, it will define AppConsolePuts so we don't need it here 
+// if there is also a server in the system, it will define AppConsolePuts so we don't need it here
 
 // write to platform's "console", whatever that is
 void AppConsolePuts(const char *aText)

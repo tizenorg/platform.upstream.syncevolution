@@ -120,7 +120,7 @@ uInt32 TSmlCommand::getDbgMask(void)
 
 TSyncAppBase *TSmlCommand::getSyncAppBase(void)
 {
-	return fSessionP ? fSessionP->getSyncAppBase() : NULL;	
+  return fSessionP ? fSessionP->getSyncAppBase() : NULL;
 } // TSmlCommand::getSyncAppBase
 
 
@@ -1339,11 +1339,11 @@ bool TAlertCommand::issue(
 
 bool TAlertCommand::statusEssential(void)
 {
-	// Alert 222 status is not essential
+  // Alert 222 status is not essential
   return !(fAlertCode==222);
 } // TAlertCommand::statusEssential
 
- 
+
 // handle status received for previously issued command
 // returns true if done, false if command must be kept in the status queue
 bool TAlertCommand::handleStatus(TStatusCommand *aStatusCmdP)
@@ -3349,7 +3349,7 @@ bool TGetCommand::issue(
 
 bool TGetCommand::statusEssential(void)
 {
-	// get status is not essential in lenient mode
+  // get status is not essential in lenient mode
   return !(fSessionP->fLenientMode);
 } // TGetCommand::statusEssential
 

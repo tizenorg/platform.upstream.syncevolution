@@ -747,7 +747,7 @@ bool TOdbcAgentConfig::localStartElement(const char *aElementName, const char **
   else if (strucmp(aElementName,"transactionmode")==0)
     expectEnum(sizeof(fODBCTxnMode),&fODBCTxnMode,TxnIsolModeNames,numTxnIsolModes);
   // - preventing use of SQLSetConnectAttr()
-	else if (strucmp(aElementName,"preventconnectattrs")==0)
+  else if (strucmp(aElementName,"preventconnectattrs")==0)
     expectBool(fNoConnectAttrs);
   // - cursor library usage
   else if (strucmp(aElementName,"usecursorlib")==0)
@@ -858,7 +858,7 @@ void TOdbcAgentConfig::ResolveAPIScripts(void)
 TODBCApiAgent::TODBCApiAgent(TSyncAppBase *aAppBaseP, TSyncSessionHandle *aSessionHandleP, cAppCharP aSessionID) :
   TCustomImplAgent(aAppBaseP, aSessionHandleP, aSessionID)
 {
-	// init basics
+  // init basics
   #ifdef ODBCAPI_SUPPORT
   fODBCConnectionHandle = SQL_NULL_HANDLE;
   fODBCEnvironmentHandle = SQL_NULL_HANDLE;
@@ -990,7 +990,7 @@ HSTMT TODBCApiAgent::getScriptStatement(void)
 #if !defined(NO_AV_GUARDING) // && !__option(microsoft_exceptions)
 
 #ifndef _WIN32
-	#error "AV Guarding is only for Win32"
+  #error "AV Guarding is only for Win32"
 #endif
 
 // SEH-aware versions of ODBC calls (to avoid that crashing drivers blame our server)
@@ -1215,7 +1215,7 @@ SQLRETURN SafeSQLGetData(
   SQLSMALLINT   TargetType,
   SQLPOINTER    TargetValuePtr,
   SQLINTEGER    BufferLength,
-  SQLLEN *    	StrLen_or_IndPtr)
+  SQLLEN *      StrLen_or_IndPtr)
 {
   __try {
     return SQLGetData(StatementHandle,ColumnNumber,TargetType,TargetValuePtr,BufferLength,StrLen_or_IndPtr);
@@ -1297,7 +1297,7 @@ bool TODBCApiAgent::appendFieldValueLiteral(
         tctx = tsFldP->getTimeContext();
         if (factor>=0) {
           // offset requested
-	        if (tsFldP->isFloating()) goto nullfield; // floating -> no offset
+          if (tsFldP->isFloating()) goto nullfield; // floating -> no offset
           if (!TzResolveToOffset(tctx,moffs,tsFldP->getTimestampAs(TCTX_UNKNOWN),false,tsFldP->getGZones()))
             goto nullfield; // cannot calc offset -> no zone
           if (factor==0)
@@ -1308,7 +1308,7 @@ bool TODBCApiAgent::appendFieldValueLiteral(
         else {
           // name requested
           if (!TCTX_IS_DURATION(tctx) && !TCTX_IS_DATEONLY(tctx) && TCTX_IS_UNKNOWN(tctx))
-          	goto nullfield; // really floating (not duration or dateonly) -> no zone (and not "FLOATING" string we'd get from TimeZoneContextToName)
+            goto nullfield; // really floating (not duration or dateonly) -> no zone (and not "FLOATING" string we'd get from TimeZoneContextToName)
           TimeZoneContextToName(tctx, val, tsFldP->getGZones());
           goto asstring;
         }
@@ -1864,7 +1864,7 @@ SQLHDBC TODBCApiAgent::getODBCConnectionHandle(void)
     );
     checkODBCError(res,SQL_HANDLE_ENV,envhandle);
     try {
-    	// Some ODBC drivers (apparently MyODBC 3.51 on Mac OS X 10.5.2) crash when using SQLSetConnectAttr
+      // Some ODBC drivers (apparently MyODBC 3.51 on Mac OS X 10.5.2) crash when using SQLSetConnectAttr
       if (!fConfigP->fNoConnectAttrs) {
         // Set Connection attributes
         // - Make sure no dialog boxes are ever shown
@@ -1972,10 +1972,10 @@ SQLHDBC TODBCApiAgent::pullODBCConnectionHandle(void)
 {
   #ifdef SCRIPT_SUPPORT
   // make sure possible script statement gets disposed, as connection will be owned by datastore from now on
-	// Note: the script statement must be closed here already, because creating a new connection with getODBCConnectionHandle()
-	//   might trigger afterconnectscript, which in turn may use SQLEXECUTE() will ask for the current script statement.
-	//   If the script statement was not closed before that, SQLEXECUTE() would execute on the old statement and hence on
-	//   the old connection rather than on the new one.
+  // Note: the script statement must be closed here already, because creating a new connection with getODBCConnectionHandle()
+  //   might trigger afterconnectscript, which in turn may use SQLEXECUTE() will ask for the current script statement.
+  //   If the script statement was not closed before that, SQLEXECUTE() would execute on the old statement and hence on
+  //   the old connection rather than on the new one.
   commitAndCloseScriptStatement();
   #endif
   SQLHDBC connhandle = getODBCConnectionHandle();
@@ -2530,7 +2530,7 @@ bool TODBCApiAgent::getColumnValueAsField(
   // get pointer if assigning into timestamp field
   TTimestampField *tsfP = NULL;
   if (aFieldP->isBasedOn(fty_timestamp)) {
-  	tsfP = static_cast<TTimestampField *>(aFieldP);
+    tsfP = static_cast<TTimestampField *>(aFieldP);
   }
   // field available in multifielditem
   switch (aDbfty) {
@@ -2562,7 +2562,7 @@ bool TODBCApiAgent::getColumnValueAsField(
       // zone works only for timestamps
       // - move to new zone or assign zone if timestamp is still empty or floating
       if (tsfP) {
-      	// first move to original context (to compensate for possible move to
+        // first move to original context (to compensate for possible move to
         // fUserTimeContext done when reading timestamp with aMoveToUserContext)
         // Note: this is important for cases where the new zone is floating or dateonly
         // Note: if timestamp field had the "f" flag, it is still floating here, and will not be
@@ -2846,32 +2846,32 @@ void TODBCApiAgent::bindSQLParameters(
     // now actually bind to parameter
     POBJDEBUGPRINTFX(aSessionP,DBG_DBAPI+DBG_EXOTIC,(
       "SQLBind: sizeof(SQLLEN)=%d, sizeof(SQLINTEGER)=%d, paramNo=%hd, in=%d, out=%d, parammode=%hd, valuetype=%hd, paramtype=%hd, lenorind=%d, valptr=%X, bufsiz=%d, maxcol=%d, colsiz=%d",
-			sizeof(SQLLEN), sizeof(SQLINTEGER), // to debug, as there can be problematic 32bit/64bit mismatches between these
+      sizeof(SQLLEN), sizeof(SQLINTEGER), // to debug, as there can be problematic 32bit/64bit mismatches between these
       (uInt16)paramNo,
       (int)pos->inparam,
       (int)pos->outparam,
       (uInt16)(pos->outparam ? (pos->inparam ? SQL_PARAM_INPUT_OUTPUT : SQL_PARAM_OUTPUT ) : SQL_PARAM_INPUT), // type of param
       (uInt16)valueType,
       (uInt16)paramType,
-			(int)pos->StrLen_or_Ind,
+      (int)pos->StrLen_or_Ind,
       pos->ParameterValuePtr,
       (int)pos->BufferLength,
       (int)pos->maxSize,
       (int)colSiz
     ));
-		/*
-		SQLRETURN SQL_API SQLBindParameter(
-				SQLHSTMT           hstmt,
-				SQLUSMALLINT       ipar,
-				SQLSMALLINT        fParamType,
-				SQLSMALLINT        fCType,
-				SQLSMALLINT        fSqlType,
-				SQLULEN            cbColDef,
-				SQLSMALLINT        ibScale,
-				SQLPOINTER         rgbValue,
-				SQLLEN             cbValueMax,
-				SQLLEN 		      	 *pcbValue);
-		*/
+    /*
+    SQLRETURN SQL_API SQLBindParameter(
+        SQLHSTMT           hstmt,
+        SQLUSMALLINT       ipar,
+        SQLSMALLINT        fParamType,
+        SQLSMALLINT        fCType,
+        SQLSMALLINT        fSqlType,
+        SQLULEN            cbColDef,
+        SQLSMALLINT        ibScale,
+        SQLPOINTER         rgbValue,
+        SQLLEN             cbValueMax,
+        SQLLEN             *pcbValue);
+    */
     SQLRETURN res=SQLBindParameter(
       aStatement,
       paramNo, // parameter number
@@ -3114,7 +3114,7 @@ bool TODBCApiAgent::getSQLiteColValueAsField(
   // get pointer if assigning into timestamp field
   TTimestampField *tsfP = NULL;
   if (aFieldP->isBasedOn(fty_timestamp)) {
-  	tsfP = static_cast<TTimestampField *>(aFieldP);
+    tsfP = static_cast<TTimestampField *>(aFieldP);
   }
   // determine if NULL
   bool notnull=sqlite3_column_type(aStatement,aColIndex)!=SQLITE_NULL; // if column is not null
@@ -3147,7 +3147,7 @@ bool TODBCApiAgent::getSQLiteColValueAsField(
       // zone works only for timestamps
       // - move to new zone or assign zone if timestamp is still empty or floating
       if (tsfP) {
-      	// first move to original context (to compensate for possible move to
+        // first move to original context (to compensate for possible move to
         // fUserTimeContext done when reading timestamp with aMoveToUserContext)
         // Note: this is important for cases where the new zone is floating or dateonly
         // Note: if timestamp field had the "f" flag, it is still floating here, and will not be
@@ -3579,7 +3579,7 @@ void TODBCApiAgent::CheckDevice(const char *aDeviceID)
           }
           PDEBUGPRINTFX(DBG_ADMIN,("Unknown device '%.30s', creating new record",aDeviceID));
           if (IS_SERVER) {
-          	#ifdef SYSYNC_SERVER
+            #ifdef SYSYNC_SERVER
             // device does not exist yet
             fLastNonce.erase();
             #endif
@@ -3622,8 +3622,8 @@ void TODBCApiAgent::CheckDevice(const char *aDeviceID)
             getColumnValueAsString(statement,2,dummy,chs_ascii);
           }
           else {
-          	#ifdef SYSYNC_SERVER
-	          getColumnValueAsString(statement,2,fLastNonce,chs_ascii);
+            #ifdef SYSYNC_SERVER
+            getColumnValueAsString(statement,2,fLastNonce,chs_ascii);
             #endif
           }
           // - done for now
@@ -3631,8 +3631,8 @@ void TODBCApiAgent::CheckDevice(const char *aDeviceID)
           PDEBUGPRINTFX(DBG_ADMIN,("Device '%.30s' found, fDeviceKey='%.30s'",aDeviceID,fDeviceKey.c_str()));
           if (IS_SERVER) {
             #ifdef SYSYNC_SERVER
-	          DEBUGPRINTFX(DBG_ADMIN,("Last nonce saved for device='%.30s'",fLastNonce.c_str()));
-	          #endif
+            DEBUGPRINTFX(DBG_ADMIN,("Last nonce saved for device='%.30s'",fLastNonce.c_str()));
+            #endif
           }
           break;
         }

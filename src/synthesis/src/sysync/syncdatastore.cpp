@@ -132,7 +132,7 @@ uInt32 TSyncDataStore::getDbgMask(void)
 
 TSyncAppBase *TSyncDataStore::getSyncAppBase(void)
 {
-	return fSessionP ? fSessionP->getSyncAppBase() : NULL;	
+  return fSessionP ? fSessionP->getSyncAppBase() : NULL;
 } // TSyncDataStore::getSyncAppBase
 
 
@@ -325,7 +325,7 @@ void TSyncDataStore::registerTypes(
     if (aXmitTypeListP->data) {
       // register
       TSyncItemType *itemtypeP =
-        TSyncItemType::registerType(fSessionP,aXmitTypeListP->data,aLocalItemTypes,aNewItemTypes,aRelatedDatastoreP);
+        TSyncItemType::registerRemoteType(fSessionP,aXmitTypeListP->data,aLocalItemTypes,aNewItemTypes,aRelatedDatastoreP);
       // add to list
       aSupportedXmitTypes.push_back(itemtypeP);
     }

@@ -37,14 +37,14 @@
 #endif
 
 #if defined MACOSX
-	#define ENGINE_ENTRY ENTRY_C
-	#define ENGINE_ENTRY_CXX
-	
-	#ifdef __GNUC__
-	  #define ENTRY_ATTR __attribute__((visibility("default")))
-	#else
-	  #define ENTRY_ATTR
-	#endif
+  #define ENGINE_ENTRY ENTRY_C
+  #define ENGINE_ENTRY_CXX
+
+  #ifdef __GNUC__
+    #define ENTRY_ATTR __attribute__((visibility("default")))
+  #else
+    #define ENTRY_ATTR
+  #endif
 #elif defined _MSC_VER
   /* Visual Studio 2005 requires a specific entry point definition */
   /* This definition is empty for all other platforms */
@@ -52,9 +52,9 @@
   #define ENGINE_ENTRY_CXX ENGINE_ENTRY
   #define ENTRY_ATTR
 #else
-	#define ENGINE_ENTRY ENTRY_C
-	#define ENGINE_ENTRY_CXX
-	#define ENTRY_ATTR
+  #define ENGINE_ENTRY ENTRY_C
+  #define ENGINE_ENTRY_CXX
+  #define ENTRY_ATTR
 #endif
 
 /* compose name of external symbols with C binding:
@@ -122,12 +122,12 @@ enum Version {
   VP_Plugin_Info         = 0x01010000,
   /** V1.2.1.X : With additional password mode + JNI adaption    */
   VP_MD5_Nonce_IN        = 0x01020100,
-/*VP_061012                0x01020200   * V1.2.2.X : Released 12-Oct-06 */
-/*VP_061207                0x01030000   * V1.3.0.X : Released 07-Dec-06, Visual Studio support */
+/*VP_061012                0x01020200   * V1.2.2 : Released 12-Oct-06 */
+/*VP_061207                0x01030000   * V1.3.0 : Released 07-Dec-06, Visual Studio support */
   /** V1.3.1.X : With UI function support                        */
   VP_UI_Support          = 0x01030100,
-/*VP_070131                0x01030200   * V1.3.2.X : Released 31-Jan-07 */
-/*VP_070201                0x01030300   * V1.3.3.X : Released 01-Feb-07 */
+/*VP_070131                0x01030200   * V1.3.2 : Released 31-Jan-07 */
+/*VP_070201                0x01030300   * V1.3.3 : Released 01-Feb-07 */
   /** V1.3.4.X : Java Callback with <cContext>                   */
   VP_Call_cContext       = 0x01030400,
   /** V1.3.4.X : Callback version >= 7 supported: UI / thisCB    */
@@ -155,14 +155,16 @@ enum Version {
   VP_SetValue            = 0x01060100,
   /** V1.6.2.X : 64 bit Java BLOB signature                      */
   VP_BLOB_JSignature     = 0x01060200,
-/*VP_091221                0x01060200   * V1.6.2.X : Released 21-Dec-09 */
+/*VP_091221                0x01060200   * V1.6.2 : Released 21-Dec-09 */
   /** V1.7.0.X : First release of the Android client             */
   VP_Android_1st_Release = 0x01070000,
-/*VP_100429                0x01070000   * V1.7.0.X : Released 29-Apr-10 */
-/*                         0x01070200   * V1.7.2.X : never released as SDK */
+/*VP_100429                0x01070000   * V1.7.0 : Released 29-Apr-10 */
+/*                         0x01070200   * V1.7.2 : never released as SDK */
+  VP_ADMIN_AS_KEY        = 0x01080000,
+/*VP_110131              = 0x01090000   * V1.9.0 : Released 31-Jan-11 (Android) */
 
-  /** V1.8.0.X : Current version, use 'Plugin_Version()'         */
-  VP_CurrentVersion      = 0x01080000,
+  /** V1.9.1.X : Current version, use 'Plugin_Version()'         */
+  VP_CurrentVersion      = 0x01090100,
 
   /** -------- : Bad/undefined version                           */
   VP_BadVersion          = 0xffffffff,
@@ -235,8 +237,8 @@ enum Version {
 #define Da_UIK               "UpdateItemAsKey"
 #define Da_MvI               "MoveItem"
 #define Da_DeI               "DeleteItem"
-#define Da_FLI               "FinalizeLocalID"
 #define Da_DSS               "DeleteSyncSet"
+#define Da_FLI               "FinalizeLocalID"
 #define Da_WB                "WriteBlob"
 #define Da_DB                "DeleteBlob"
 #define Da_EW                "EndDataWrite"
@@ -386,7 +388,7 @@ enum DebugFlags {
   DBG_PLUGIN_DB    = 0x0002,
   /** DB access calls, exotic calls as well */
   DBG_PLUGIN_EXOT  = 0x0004,
-  /** direct printf calls for test */ 
+  /** direct printf calls for test */
   DBG_PLUGIN_DIRECT= 0x0008,
   /** GetValue/SetValue debugging */
   DBG_GET_SET_VALUE= 0x0010,
@@ -439,7 +441,7 @@ typedef TSyError (*OpenSubkey_Func)       ( void* aCB, KeyH *aKeyH,
                                                        KeyH  aParentKeyH, sInt32    aID,   uInt16 aMode );
 typedef TSyError (*DeleteSubkey_Func)     ( void* aCB, KeyH  aParentKeyH, sInt32    aID );
 typedef TSyError (*GetKeyID_Func)         ( void* aCB, KeyH  aKeyH,       sInt32   *aID );
-typedef TSyError (*SetTextMode_Func)      ( void* aCB, KeyH  aKeyH,       uInt16 aCharSet, 
+typedef TSyError (*SetTextMode_Func)      ( void* aCB, KeyH  aKeyH,       uInt16 aCharSet,
                                                                           uInt16 aLineEndMode, bool aBigEndian );
 typedef TSyError (*SetTimeMode_Func)      ( void* aCB, KeyH  aKeyH,       uInt16 aTimeMode );
 typedef TSyError (*CloseKey_Func)         ( void* aCB, KeyH  aKeyH );
@@ -648,7 +650,7 @@ typedef TSyError (*ConnectEngineS_Func)   ( UI_Call_In  aCI,
                                             CVersion    aPrgVersion,
                                             uInt16      aDebugFlags );
 
-typedef TSyError (*DisconnectEngine_Func)	( UI_Call_In  aCI );
+typedef TSyError (*DisconnectEngine_Func) ( UI_Call_In  aCI );
 
 
 

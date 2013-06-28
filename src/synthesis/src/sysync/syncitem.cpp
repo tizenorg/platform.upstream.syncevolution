@@ -1,7 +1,7 @@
 /*
  *  File:         SyncItem.cpp
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TSyncItem
  *    Abstract Base class of all data containing items.
@@ -30,7 +30,7 @@ using namespace sysync;
 // equality mode names
 const char * const sysync::compareRelevanceNames[numEQmodes] = {
   "never",    // irrelevant, only for fields with really unimportant data (such as REV) - note that this also prevents inclusion in CRC change detection
-  "scripted", // relevant, but actual comparison is done in a script - standard compare loop must not check it
+  "scripted", // relevant, but actual comparison is done in a script - standard compare loop must not check it (but it is automatically included in CRC change detection)
   "conflict", // for conflict, all fields that have user data should use at least this
   "slowsync", // for slow sync, all fields that must match for identifying records in slow sync
   "always",   // always relevant, fields that must always match (first-time sync match set)
@@ -109,7 +109,7 @@ uInt32 TSyncItem::getDbgMask(void)
 
 TSyncAppBase *TSyncItem::getSyncAppBase(void)
 {
-	return getSession() ? getSession()->getSyncAppBase() : NULL;	
+  return getSession() ? getSession()->getSyncAppBase() : NULL;
 } // TSyncItem::getSyncAppBase
 
 

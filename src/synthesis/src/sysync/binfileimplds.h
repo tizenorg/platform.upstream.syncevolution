@@ -185,7 +185,7 @@ typedef struct {
   // - creation timestamp for the record
   uInt32 modcount_created;
 
-	// Version 5 fields start here
+  // Version 5 fields start here
   // ===========================
   // CRC of the record's data after the last modification
   uInt16 dataCRC;
@@ -525,7 +525,7 @@ typedef struct {
   // - transport related profile flags
   uInt32 transpFlags;
   // - general profile flags
-	uInt32 profileFlags;
+  uInt32 profileFlags;
   // - general profile ints
   uInt32 profileExtra1;
   uInt32 profileExtra2;
@@ -658,7 +658,7 @@ public:
   // properties
   // - activtion switch (for making it inactive e.g. in server case)
   bool fBinfileDSActive;
-	#ifdef CHANGEDETECTION_AVAILABLE
+  #ifdef CHANGEDETECTION_AVAILABLE
   // - we have change detection, but we can be set to enable change detection by CRC,
   //   or verifying DB reported changes by CRC to avoid pseudo-changes (only touched, but not modified records).
   bool fCRCChangeDetection;
@@ -671,7 +671,7 @@ public:
   // - if set, the compare reference time for changelog updates is set to end-of-session time
   //   Note: before 3.2.0.32, this was hardcoded via SYNCTIME_IS_ENDOFSESSION. Now SYNCTIME_IS_ENDOFSESSION
   //         only defines the default value for this setting
-  bool fCmpRefTimeStampAtEnd;  
+  bool fCmpRefTimeStampAtEnd;
   // public methods
   // - init a default target for this datastore
   virtual void initTarget(
@@ -941,7 +941,7 @@ private:
   /// private helper to prepare for apiSaveAdminData()
   localstatus SaveAdminData(bool aSessionFinished, bool aSuccessful);
   /// load target record for this datastore
-	localstatus loadTarget(bool aCreateIfMissing, cAppCharP aRemoteDBID=NULL);
+  localstatus loadTarget(bool aCreateIfMissing, cAppCharP aRemoteDBID=NULL);
   /* %%% seems obsolete - never called from anywhere
   // private utils
   #ifdef OBJECT_FILTERING

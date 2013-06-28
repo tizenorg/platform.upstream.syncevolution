@@ -746,13 +746,14 @@ void appendEncoded(
           if (c=='\r') continue;      // ignore them
           if (c=='\b') continue;      // ignore them (optional break indicators, not relevant for QP output)
           if (c=='\n') {              // - encode line ends
-            aString.append("=0D=0A"); // special string for Line Ends (CR LF plus soft line break)
-            processed=true; // c is processed now
-            softbreak=true;
+            aString.append("=0D=0A"); // special string for Line Ends (CR LF)
+            processed = true; // c is processed now
+            softbreak = true;
           } // if
         } // if
         // - handle soft line break (but only if really doing line breaking)
-        if (softbreak && aMaxLineSize) {
+        //   Also: avoid adding a soft break at the very end of the string
+        if (softbreak && aMaxLineSize && p+1<aBinary+aSize) {
           if (aSoftBreaksAsCR)
             aString.append("=\r");       // '\r' signals softbreak for finalizeproperty()
           else
@@ -1905,7 +1906,7 @@ void StringObjTimestamp(string &aStringObj, lineartime_t aTimer)
 {
   // format the time
   if (aTimer==noLinearTime) {
-  	aStringObj = "<no time>";
+    aStringObj = "<no time>";
     return;
   }
   sInt16 y,mo,d,h,mi,s,ms;
@@ -1934,7 +1935,7 @@ void StringObjHexString(string &aStringObj, const uInt8 *aBinary, uInt32 aBinSz)
 // add (already encoded!) CGI to existing URL string
 bool addCGItoString(string &aStringObj, cAppCharP aCGI, bool noduplicate)
 {
-	if (!noduplicate || aStringObj.find(aCGI)==string::npos) {
+  if (!noduplicate || aStringObj.find(aCGI)==string::npos) {
     // - Add CGI separator if and only if none exists already
     if (aStringObj.find("?")==string::npos)
       aStringObj += '?';
@@ -1948,19 +1949,19 @@ bool addCGItoString(string &aStringObj, cAppCharP aCGI, bool noduplicate)
 // encode string for being used as a CGI key/value element
 string encodeForCGI(cAppCharP aCGI)
 {
-	string cgi;
+  string cgi;
   cAppCharP p = aCGI;
   while (p && *p) {
-  	if (*p>0x7E || *p<=0x20 || *p=='%' || *p=='?' || *p=='&' || *p=='#') {
-    	// CGI encode these
-    	cgi += '%';
+    if (*p>0x7E || *p<=0x20 || *p=='%' || *p=='?' || *p=='&' || *p=='#') {
+      // CGI encode these
+      cgi += '%';
       AppendHexByte(cgi, *p);
     }
     else {
-    	// use as-is
-    	cgi += *p;
+      // use as-is
+      cgi += *p;
     }
-  	p++;
+    p++;
   }
   return cgi;
 } // encodeForCGI

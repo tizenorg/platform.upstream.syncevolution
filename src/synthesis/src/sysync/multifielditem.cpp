@@ -1,7 +1,7 @@
 /*
  *  File:         MultiFieldItem.cpp
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TMultiFieldItem
  *    Item consisting of multiple data fields (TItemField objects)
@@ -62,52 +62,52 @@ bool TFieldListConfig::localStartElement(const char *aElementName, const char **
   // - fieldlist entry
   //   <field name="REV" type="timestamp" compare="never" age="yes" merge="no"/>
   if (strucmp(aElementName,"field")==0) {
-  	// may not contain anything
-  	expectEmpty();
-  	// check attributes
-  	const char *nam = getAttr(aAttributes,"name");
-  	const char *type = getAttr(aAttributes,"type");
-  	const char *rel = getAttr(aAttributes,"compare");
-		if (!(nam && *nam && type && rel))
-		  return fail("'field' must have 'name', 'type' and 'compare' attributes");
-		// parse enums
-		sInt16 ty;
-		if (!StrToEnum(ItemFieldTypeNames,numFieldTypes,ty,type))
-	    return fail("Unknown 'type' attribute: '%s'",type);
-		sInt16 eqrel;
-		if (!StrToEnum(compareRelevanceNames,numEQmodes,eqrel,rel))
-	    return fail("Unknown 'compare' attribute: '%s'",rel);
-		// set defaults
-		bool agerelevant=false; // not age relevant by default
-		sInt16 mergemode=mem_none; // no merge   by default
-  	// get optional attributes
-  	if (!getAttrBool(aAttributes,"age",agerelevant,true))
-		  return fail("Bad boolean value");
+    // may not contain anything
+    expectEmpty();
+    // check attributes
+    const char *nam = getAttr(aAttributes,"name");
+    const char *type = getAttr(aAttributes,"type");
+    const char *rel = getAttr(aAttributes,"compare");
+    if (!(nam && *nam && type && rel))
+      return fail("'field' must have 'name', 'type' and 'compare' attributes");
+    // parse enums
+    sInt16 ty;
+    if (!StrToEnum(ItemFieldTypeNames,numFieldTypes,ty,type))
+      return fail("Unknown 'type' attribute: '%s'",type);
+    sInt16 eqrel;
+    if (!StrToEnum(compareRelevanceNames,numEQmodes,eqrel,rel))
+      return fail("Unknown 'compare' attribute: '%s'",rel);
+    // set defaults
+    bool agerelevant=false; // not age relevant by default
+    sInt16 mergemode=mem_none; // no merge   by default
+    // get optional attributes
+    if (!getAttrBool(aAttributes,"age",agerelevant,true))
+      return fail("Bad boolean value");
     #ifdef ARRAYFIELD_SUPPORT
-		bool array=false; // not an array
-  	if (!getAttrBool(aAttributes,"array",array,true))
-		  return fail("Bad boolean value");
+    bool array=false; // not an array
+    if (!getAttrBool(aAttributes,"array",array,true))
+      return fail("Bad boolean value");
     #endif
-  	const char *p = getAttr(aAttributes,"merge");
-  	if (p) {
-  		// sort out special cases
-  		if (strucmp(p,"no")==0)
-  		  mergemode=mem_none;
-  		else if (strucmp(p,"fillempty")==0)
-  		  mergemode=mem_fillempty;
-  		else if (strucmp(p,"addunassigned")==0)
-  		  mergemode=mem_addunassigned;
-  		else if (strucmp(p,"append")==0)
-  		  mergemode=mem_concat;
-  		else if (strucmp(p,"lines")==0)
-  		  mergemode='\n';
-  		else if (strlen(p)==1)
-  		  mergemode=*p; // single char is merge char
-  		else
-		    return fail("Invalid value '%s' for 'merge' attribute",p);
-  	}
-		// now add new field specification
-	  TFieldDefinition fielddef;
+    const char *p = getAttr(aAttributes,"merge");
+    if (p) {
+      // sort out special cases
+      if (strucmp(p,"no")==0)
+        mergemode=mem_none;
+      else if (strucmp(p,"fillempty")==0)
+        mergemode=mem_fillempty;
+      else if (strucmp(p,"addunassigned")==0)
+        mergemode=mem_addunassigned;
+      else if (strucmp(p,"append")==0)
+        mergemode=mem_concat;
+      else if (strucmp(p,"lines")==0)
+        mergemode='\n';
+      else if (strlen(p)==1)
+        mergemode=*p; // single char is merge char
+      else
+        return fail("Invalid value '%s' for 'merge' attribute",p);
+    }
+    // now add new field specification
+    TFieldDefinition fielddef;
     // prepare template element
     fielddef.type=(TItemFieldTypes)ty;
     #ifdef ARRAYFIELD_SUPPORT
@@ -178,13 +178,13 @@ TProfileHandler::~TProfileHandler()
 // - get session pointer
 TSyncSession *TProfileHandler::getSession(void)
 {
-	return fItemTypeP ? fItemTypeP->getSession() : NULL;
+  return fItemTypeP ? fItemTypeP->getSession() : NULL;
 } // TProfileHandler::getSession
 
 // - get session zones pointer
 GZones *TProfileHandler::getSessionZones(void)
 {
-	return fItemTypeP ? fItemTypeP->getSessionZones() : NULL;
+  return fItemTypeP ? fItemTypeP->getSessionZones() : NULL;
 } // TProfileHandler::getSessionZones
 
 
@@ -208,12 +208,12 @@ uInt32 TProfileHandler::getDbgMask(void)
 // - check availability (depends on item "supported" flags only in SyncML datastore context)
 bool TProfileHandler::isFieldAvailable(TMultiFieldItem &aItem, sInt16 aFieldIndex)
 {
-	if (fRelatedDatastoreP) {
-  	// in datastore/SyncML context, only fields supported on both sides are considered "available"
-  	return aItem.isAvailable(aFieldIndex);
+  if (fRelatedDatastoreP) {
+    // in datastore/SyncML context, only fields supported on both sides are considered "available"
+    return aItem.isAvailable(aFieldIndex);
   }
   else {
-  	// in non-datastore context, all fields are considered available, as long as
+    // in non-datastore context, all fields are considered available, as long as
     // the field index is in range
     TMultiFieldItemType *mfitP = aItem.getItemType();
     return mfitP && mfitP->isFieldIndexValid(aFieldIndex);
@@ -532,8 +532,8 @@ bool TMultiFieldItem::adjustFidAndIndex(sInt16 &aFid, sInt16 &aIndex)
     }
   }
   else {
-	  // Note: if field does not exist, do not apply offset, but don't report array field either!
-  	arrfield = false;
+    // Note: if field does not exist, do not apply offset, but don't report array field either!
+    arrfield = false;
   }
   #else
   // without array support, fid is always offset by rep offset
@@ -552,8 +552,8 @@ bool TMultiFieldItem::adjustFidAndIndex(sInt16 &aFid, sInt16 &aIndex)
 // (This is a shortcut method to access fields specified by a base fid and a repeat)
 TItemField *TMultiFieldItem::getArrayFieldAdjusted(sInt16 aFid, sInt16 aIndex, bool aExistingOnly)
 {
-	adjustFidAndIndex(aFid,aIndex);
-	return getArrayField(aFid, aIndex, aExistingOnly);
+  adjustFidAndIndex(aFid,aIndex);
+  return getArrayField(aFid, aIndex, aExistingOnly);
 } // TMultiFieldItem::getArrayFieldAdjusted
 
 
@@ -604,9 +604,9 @@ TItemField *TMultiFieldItem::getField(sInt16 aFieldIndex)
 sInt16 TMultiFieldItem::getIndexOfField(const TItemField *aFieldP)
 {
   for (sInt16 i=0; i<fFieldDefinitionsP->numFields(); i++) {
-  	if (fFieldsP[i]==aFieldP) {
-    	// found field, return it's index
-    	return i;
+    if (fFieldsP[i]==aFieldP) {
+      // found field, return it's index
+      return i;
     }
   }
   return FID_NOT_SUPPORTED; // not found
@@ -637,6 +637,19 @@ bool const TMultiFieldItem::isAssigned(const char *aFieldName)
 {
   return isAssigned(fItemTypeP->getFieldIndex(aFieldName));
 } // TMultiFieldItem::isAssigned
+
+
+TMultiFieldItemType *TMultiFieldItem::getLocalItemType(void)
+{
+  return fItemTypeP && fItemTypeP->isRemoteType() ? fTargetItemTypeP : fItemTypeP;
+} // TMultiFieldItem::getLocalItemType
+
+
+TMultiFieldItemType *TMultiFieldItem::getRemoteItemType(void)
+{
+  return fItemTypeP && fItemTypeP->isRemoteType() ? fItemTypeP : fTargetItemTypeP;
+} // TMultiFieldItem::getRemoteItemType
+
 
 
 // check if field is assigned (exists and has a value)
@@ -677,7 +690,7 @@ bool TMultiFieldItem::knowsRemoteFieldOptions(void)
   // knows them if either myself or the other side has received devInf
   // (depends: received item has it in its own type, to be sent one in the target type)
   return
-    (fItemTypeP &&	fItemTypeP->hasReceivedFieldOptions()) ||
+    (fItemTypeP &&  fItemTypeP->hasReceivedFieldOptions()) ||
     (fTargetItemTypeP && fTargetItemTypeP->hasReceivedFieldOptions());
 } // TMultiFieldItem::knowsRemoteFieldOptions
 
@@ -881,9 +894,9 @@ bool TMultiFieldItem::processFilter(bool aMakePass, const char *&aPos, const cha
       // this is SyncML-TAF Standard
       // it is also produced by DS 1.2 &LUID; pseudo-identifier
       if (IS_CLIENT)
-	      idfield.setAsString(getLocalID());
+        idfield.setAsString(getLocalID());
       else
-	      idfield.setAsString(getRemoteID());
+        idfield.setAsString(getRemoteID());
       fldP=&idfield;
     }
     else if (str=="LOCALID") {
@@ -957,13 +970,13 @@ bool TMultiFieldItem::processFilter(bool aMakePass, const char *&aPos, const cha
         TItemField *valfldP = newItemField(fldP->getElementType(),getSessionZones());
         // - assign value as string
         valfldP->setAsString(str.c_str());
-				result = fldP->contains(*valfldP,caseinsensitive);
+        result = fldP->contains(*valfldP,caseinsensitive);
         // assign to make pass if enabled
         if (!result && aMakePass && assignToMakeTrue) {
-        	if (fldP->isArray())
-          	fldP->append(*valfldP); // just append another element to make it contained
-        	else
-          	*fldP = *valfldP; // just overwrite value with to-be-contained value
+          if (fldP->isArray())
+            fldP->append(*valfldP); // just append another element to make it contained
+          else
+            *fldP = *valfldP; // just overwrite value with to-be-contained value
           result=true; // now passes
         }
         delete valfldP; // no longer needed
@@ -1668,7 +1681,7 @@ void TMultiFieldItemKey::setItem(TMultiFieldItem *aItemP, bool aPassOwner)
 // get FID for specified name
 sInt16 TMultiFieldItemKey::getFidFor(cAppCharP aName, stringSize aNameSz)
 {
-	if (!fItemP) return VARIDX_UNDEFINED; // no item, no field is accessible
+  if (!fItemP) return VARIDX_UNDEFINED; // no item, no field is accessible
 
   TFieldListConfig *flcP = fItemP->getFieldDefinitions();
 
@@ -1685,7 +1698,7 @@ sInt16 TMultiFieldItemKey::getFidFor(cAppCharP aName, stringSize aNameSz)
       return fIteratorFid;
   }
   else {
-  	return flcP->fieldIndex(aName,aNameSz);
+    return flcP->fieldIndex(aName,aNameSz);
   }
   // none found
   return VARIDX_UNDEFINED;
@@ -1695,18 +1708,18 @@ sInt16 TMultiFieldItemKey::getFidFor(cAppCharP aName, stringSize aNameSz)
 
 TItemField *TMultiFieldItemKey::getBaseFieldFromFid(sInt16 aFid)
 {
-	if (!fItemP) return false; // no item, no field is accessible
+  if (!fItemP) return NULL; // no item, no field is accessible
   return fItemP->getField(aFid);
 } // TMultiFieldItemKey::getBaseFieldFromFid
 
 
 bool TMultiFieldItemKey::getFieldNameFromFid(sInt16 aFid, string &aFieldName)
 {
-	if (!fItemP) return false; // no item, no field is accessible
+  if (!fItemP) return false; // no item, no field is accessible
   // name is field name
   TFieldListConfig *flcP = fItemP->getFieldDefinitions();
   if (aFid>=0 && aFid<flcP->numFields()) {
-  	aFieldName = flcP->fFields[aFid].fieldname;
+    aFieldName = flcP->fFields[aFid].fieldname;
     return true;
   }
   // none found

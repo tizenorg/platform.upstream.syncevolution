@@ -1,7 +1,7 @@
 /*
  *  File:         lineartime.h
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  conversion from/to linear time scale.
  *

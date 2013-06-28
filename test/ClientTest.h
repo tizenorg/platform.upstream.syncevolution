@@ -34,12 +34,16 @@
 #include <SyncSource.h>
 
 #include "test.h"
+#include "ClientTestAssert.h"
 
 #ifdef ENABLE_INTEGRATION_TESTS
 
 #include <cppunit/TestSuite.h>
 #include <cppunit/TestAssert.h>
 #include <cppunit/TestFixture.h>
+
+#include <syncevo/Logging.h>
+#include <syncevo/util.h>
 
 #include <syncevo/declarations.h>
 SE_BEGIN_CXX
@@ -298,11 +302,13 @@ class ClientTest {
     static void getItems(const std::string &file, std::list<std::string> &items, std::string &realfile);
 
     /**
-     * utility function for importing items with blank lines as separator
+     * utility function for importing items with blank lines as separator,
+     * for ClientTestConfig::m_import
      */
     static std::string import(ClientTest &client, TestingSyncSource &source,
                               const ClientTestConfig &config,
-                              const std::string &file, std::string &realfile);
+                              const std::string &file, std::string &realfile,
+                              std::list<std::string> *luids);
 
     /**
      * utility function for comparing vCard and iCal files with the external
@@ -526,6 +532,12 @@ public:
     virtual bool compareDatabases(const char *refFile, TestingSyncSource &copy, bool raiseAssert = true);
 
     /**
+     * compare data in source with set of items
+     */
+    void compareDatabasesRef(TestingSyncSource &copy,
+                             const std::list<std::string> &items);
+
+    /**
      * compare data in source with vararg list of std::string pointers, NULL terminated
      */
     void compareDatabases(TestingSyncSource &copy, ...);
@@ -577,6 +589,7 @@ public:
     virtual void testChanges();
     virtual void testImport();
     virtual void testImportDelete();
+    virtual void testRemoveProperties();
     virtual void testManyChanges();
     virtual void testLinkedItemsParent();
     virtual void testLinkedItemsChild();
@@ -591,14 +604,17 @@ public:
     virtual void testLinkedItemsUpdateChild();
     virtual void testLinkedItemsInsertBothUpdateChild();
     virtual void testLinkedItemsInsertBothUpdateParent();
+    virtual void testLinkedItemsInsertBothUpdateChildNoIDs();
+    virtual void testLinkedItemsUpdateChildNoIDs();
     virtual void testLinkedItemsSingle404();
     virtual void testLinkedItemsMany404();
+
+    virtual void testSubset();
 
     /** retrieve right set of items for running test */
     ClientTestConfig::LinkedItems_t getParentChildData();
 };
 
-int countItemsOfType(TestingSyncSource *source, int state);
 std::list<std::string> listItemsOfType(TestingSyncSource *source, int state);
 
 /**
@@ -688,52 +704,33 @@ protected:
 
     /* for more information on the different tests see their implementation */
 
-    // do a two-way sync without additional checks,
-    // may or may not actually be done in two-way mode
-    virtual void testTwoWaySync() {
-        doSync(SyncOptions(SYNC_TWO_WAY));
-    }
+    virtual void testTwoWaySync();
+    virtual void testSlowSync();
+    virtual void testRefreshFromServerSync();
+    virtual void testRefreshFromClientSync();
+    virtual void testRefreshFromRemoteSync();
+    virtual void testRefreshFromLocalSync();
 
-    // do a slow sync without additional checks
-    virtual void testSlowSync() {
-        doSync(SyncOptions(SYNC_SLOW,
-                           CheckSyncReport(-1,-1,-1, -1,-1,-1, true, SYNC_SLOW)));
-    }
-    // do a refresh from server sync without additional checks
-    virtual void testRefreshFromServerSync() {
-        doSync(SyncOptions(SYNC_REFRESH_FROM_SERVER,
-                           CheckSyncReport(-1,-1,-1, -1,-1,-1, true, SYNC_REFRESH_FROM_SERVER)));
-    }
-
-    // do a refresh from client sync without additional checks
-    virtual void testRefreshFromClientSync() {
-        doSync(SyncOptions(SYNC_REFRESH_FROM_CLIENT,
-                           CheckSyncReport(-1,-1,-1, -1,-1,-1, true, SYNC_REFRESH_FROM_CLIENT)));
-    }
-
-    // delete all items, locally and on server using two-way sync
-    virtual void testDeleteAllSync() {
-        deleteAll(DELETE_ALL_SYNC);
-    }
+    virtual void testDeleteAllSync();
 
     virtual void testDeleteAllRefresh();
     virtual void testRefreshFromClientSemantic();
     virtual void testRefreshFromServerSemantic();
     virtual void testRefreshStatus();
 
-    // test that a two-way sync copies an item from one address book into the other
-    void testCopy() {
-        doCopy();
-        compareDatabases();
-    }
+    void testCopy();
 
     virtual void testUpdate();
     virtual void testComplexUpdate();
     virtual void testDelete();
     virtual void testMerge();
     virtual void testTwinning();
-    virtual void testOneWayFromServer();
-    virtual void testOneWayFromClient();
+    void doOneWayFromRemote(SyncMode oneWayFromRemote);
+    void testOneWayFromServer();
+    void testOneWayFromRemote();
+    void doOneWayFromLocal(SyncMode oneWayFromLocal);
+    void testOneWayFromClient();
+    void testOneWayFromLocal();
     bool doConversionCallback(bool *success,
                               SyncContext &client,
                               SyncOptions &options);
@@ -743,14 +740,8 @@ protected:
     virtual void testExtensions();
     virtual void testAddUpdate();
 
-    // test copying with maxMsg and no large object support
-    void testMaxMsg() {
-        doVarSizes(true, false);
-    }
-    // test copying with maxMsg and large object support
-    void testLargeObject() {
-        doVarSizes(true, true);
-    }
+    void testMaxMsg();
+    void testLargeObject();
 
     virtual void testManyItems();
     virtual void testManyDeletes();
@@ -844,6 +835,15 @@ protected:
         SyncPrefix prefix(logPrefix, *this);
         doSync(options);
     }
+    void doSync(const char *file, int line,
+                const char *logPrefix,
+                const SyncOptions &options) {
+        CT_WRAP_ASSERT(file, line, doSync(logPrefix, options));
+    }
+    void doSync(const char *file, int line,
+                const SyncOptions &options) {
+        CT_WRAP_ASSERT(file, line, doSync(options));
+    }
     virtual void postSync(int res, const std::string &logname);
 };
 
@@ -899,40 +899,46 @@ public:
     virtual void setTimeout(int seconds) { m_wrappedAgent->setTimeout(seconds); }
 };
 
+/** write log message into *.log file of a test */
+#define CLIENT_TEST_LOG(_format, _args...) \
+    SE_LOG_DEBUG(NULL, NULL, "\n%s:%d *** " _format, \
+                 getBasename(__FILE__).c_str(), __LINE__, \
+                 ##_args)
+
 /** assert equality, include string in message if unequal */
 #define CLIENT_TEST_EQUAL( _prefix, \
                            _expected, \
                            _actual ) \
-    CPPUNIT_ASSERT_EQUAL_MESSAGE( std::string(_prefix) + ": " + #_expected + " == " + #_actual, \
-                                  _expected, \
-                                  _actual )
+    CT_ASSERT_EQUAL_MESSAGE( std::string(_prefix) + ": " + #_expected + " == " + #_actual, \
+                             _expected, \
+                             _actual )
 
 /** execute _x and then check the status of the _source pointer */
 #define SOURCE_ASSERT_NO_FAILURE(_source, _x) \
 { \
-    CPPUNIT_ASSERT_NO_THROW(_x); \
-    CPPUNIT_ASSERT((_source)); \
+    CT_ASSERT_NO_THROW(_x); \
+    CT_ASSERT((_source)); \
 }
 
 /** check _x for true and then the status of the _source pointer */
 #define SOURCE_ASSERT(_source, _x) \
 { \
-    CPPUNIT_ASSERT(_x); \
-    CPPUNIT_ASSERT((_source)); \
+    CT_ASSERT(_x); \
+    CT_ASSERT((_source)); \
 }
 
 /** check that _x evaluates to a specific value and then the status of the _source pointer */
 #define SOURCE_ASSERT_EQUAL(_source, _value, _x) \
 { \
-    CPPUNIT_ASSERT_EQUAL(_value, _x); \
-    CPPUNIT_ASSERT((_source)); \
+    CT_ASSERT_EQUAL(_value, _x); \
+    CT_ASSERT((_source)); \
 }
 
 /** same as SOURCE_ASSERT() with a specific failure message */
 #define SOURCE_ASSERT_MESSAGE(_message, _source, _x)     \
 { \
-    CPPUNIT_ASSERT_MESSAGE((_message), (_x)); \
-    CPPUNIT_ASSERT((_source)); \
+    CT_ASSERT_MESSAGE((_message), (_x)); \
+    CT_ASSERT((_source)); \
 }
 
 /**
@@ -947,6 +953,9 @@ public:
 
 #define ADD_TEST_TO_SUITE(_suite, _class, _function) \
     _suite->addTest(FilterTest(new CppUnit::TestCaller<_class>(_suite->getName() + "::" #_function, &_class::_function, *this)))
+
+#define ADD_TEST_TO_SUITE_SUFFIX(_suite, _class, _function, _suffix) \
+    _suite->addTest(FilterTest(new CppUnit::TestCaller<_class>(_suite->getName() + "::" #_function + _suffix, &_class::_function, *this)))
 
 SE_END_CXX
 

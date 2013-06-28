@@ -1,7 +1,7 @@
 /*
  *  File:         VCardItemType.cpp
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TVCardItemType
  *    vCard item type, based on MIME-DIR Item Type, uses
@@ -113,10 +113,10 @@ bool TVCardTypeConfig::localStartElement(const char *aElementName, const char **
 // private helper
 TVCardVersion TVCardItemType::getVCardVersionByMode(sInt32 aMode)
 {
-	if (aMode!=PROFILEMODE_DEFAULT) {
-  	for (int v=vcard_vers_2_1; v<numVCardVersions-1; v++) {
-    	if (VCardVersionInfo[v].profilemode==aMode)
-      	return (TVCardVersion)v;
+  if (aMode!=PROFILEMODE_DEFAULT) {
+    for (int v=vcard_vers_2_1; v<numVCardVersions-1; v++) {
+      if (VCardVersionInfo[v].profilemode==aMode)
+        return (TVCardVersion)v;
     }
   }
   // not found or default mode
@@ -129,9 +129,9 @@ cAppCharP TVCardItemType::getTypeName(sInt32 aMode)
 {
   TVCardVersion v = getVCardVersionByMode(aMode);
   if (v!=vcard_vers_none)
-  	return VCardVersionInfo[v].typetext;
+    return VCardVersionInfo[v].typetext;
   else
-  	return inherited::getTypeName(aMode);
+    return inherited::getTypeName(aMode);
 } // TVCardItemType::getTypeName
 
 
@@ -139,9 +139,9 @@ cAppCharP TVCardItemType::getTypeVers(sInt32 aMode)
 {
   TVCardVersion v = getVCardVersionByMode(aMode);
   if (v!=vcard_vers_none)
-  	return VCardVersionInfo[v].versiontext;
+    return VCardVersionInfo[v].versiontext;
   else
-  	return inherited::getTypeVers(aMode);
+    return inherited::getTypeVers(aMode);
 } // TVCardItemType::getTypeVers
 
 
@@ -149,11 +149,11 @@ cAppCharP TVCardItemType::getTypeVers(sInt32 aMode)
 // relaxed type comparison, taking into account common errors in real-world implementations
 bool TVCardItemType::supportsType(const char *aName, const char *aVers, bool aVersMustMatch)
 {
-	bool match = inherited::supportsType(aName,aVers,aVersMustMatch);
+  bool match = inherited::supportsType(aName,aVers,aVersMustMatch);
   if (!match) {
-  	// no exact match, but also check for unambiguos misstyped variants
+    // no exact match, but also check for unambiguos misstyped variants
     if (aVers && strstr(aName,"vcard")!=NULL) {
-    	// if "vcard" is in type name, version alone is sufficient to identify the vcard version,
+      // if "vcard" is in type name, version alone is sufficient to identify the vcard version,
       // even if the type string is wrong, like mixing "x-vcard" and "vcard"
       match = strucmp(getTypeVers(),aVers)==0;
       if (match) {
@@ -166,7 +166,7 @@ bool TVCardItemType::supportsType(const char *aName, const char *aVers, bool aVe
     }
   }
   // return result now
-	return match;
+  return match;
 } // TVCardItemType::supportsType
 
 
@@ -183,7 +183,7 @@ bool TVCardItemType::versionFromData(SmlItemPtr_t aItemP, string &aString)
 // try to extract a version string from actual item data, NULL if none
 sInt32 TVCardItemType::expiryFromData(SmlItemPtr_t aItemP, lineardate_t &aDat)
 {
-	string rev;
+  string rev;
   aDat=0; // default to no date
   // try to extract version
   if (!parseForProperty(aItemP,"REV",rev)) return 0; // no REV, is ok
@@ -197,10 +197,10 @@ sInt32 TVCardItemType::expiryFromData(SmlItemPtr_t aItemP, lineardate_t &aDat)
   // check if this is after expiry date
   long v=SCRAMBLED_EXPIRY_VALUE;
   v =
-		(y-1720)*12*42+
-		(mo-1)*42+
-		(d+7);
-	v=v-SCRAMBLED_EXPIRY_VALUE;	
+    (y-1720)*12*42+
+    (mo-1)*42+
+    (d+7);
+  v=v-SCRAMBLED_EXPIRY_VALUE;
   return (v>0 ? v : 0);
   #else
   return 0; // not expired

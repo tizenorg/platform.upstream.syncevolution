@@ -1,7 +1,7 @@
 /*
  *  File:         san.h
  *
- *  Author:			  Beat Forster (bfo@synthesis.ch)
+ *  Author:       Beat Forster (bfo@synthesis.ch)
  *
  *  Server Alerted Notification
  *    for OMA DS 1.2
@@ -284,6 +284,6 @@ class SanPackage {
 }; // SanPackage
 
 
-}	// namespace sysync
-#endif	// San_H
+} // namespace sysync
+#endif  // San_H
 // eof

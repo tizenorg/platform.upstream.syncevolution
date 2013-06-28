@@ -6,8 +6,8 @@
  *
  *  2009-02-06 : luz : Created
  *
- */  
- 
+ */
+
 #ifndef ENGINESESSIONDISPATCH_H
 #define ENGINESESSIONDISPATCH_H
 
@@ -48,7 +48,7 @@ public:
   /// @param aMode[in] the open mode
   /// @return LOCERR_OK on success, SyncML or LOCERR_xxx error code on failure
   virtual TSyError OpenSessionKey(SessionH aSessionH, KeyH &aNewKeyH, uInt16 aMode);
-          
+
   /// @brief Close a session
   /// @note  It depends on session type if this also destroys the session or if it may persist and can be re-opened.
   /// @param aSessionH[in] session handle obtained with OpenSession
@@ -61,7 +61,7 @@ public:
   ///        - tells caller to send or receive data or end the session etc.
   ///        - instructs engine to suspend or abort the session etc.
   /// @param aInfoP[in] pointer to a TEngineProgressInfo structure, NULL if no progress info needed
-  /// @return LOCERR_OK on success, SyncML or LOCERR_xxx error code on failure    
+  /// @return LOCERR_OK on success, SyncML or LOCERR_xxx error code on failure
   virtual TSyError SessionStep(SessionH aSessionH, uInt16 &aStepCmd,  TEngineProgressInfo *aInfoP = NULL);
 
 protected:
@@ -84,7 +84,7 @@ public:
   // Config parsing
   #ifndef HARDCODED_CONFIG
   virtual bool parseCommConfig(const char **aAttributes, sInt32 aLine);
-  #endif    
+  #endif
 }; // TEngineClientRootConfig
 
 
@@ -122,12 +122,12 @@ class TSyncSession;
 class TEngineServerSessionHandle
 {
 public:
-	TEngineServerSessionHandle(TServerEngineInterface *aServerEngineInterface);
+  TEngineServerSessionHandle(TServerEngineInterface *aServerEngineInterface);
   virtual ~TEngineServerSessionHandle();
   // the server engine interface
   TServerEngineInterface *fServerEngineInterface;
   // the session itself
-	TSyncAgent *fServerSessionP;
+  TSyncAgent *fServerSessionP;
   // the toolkit instance used by the session
   InstanceID_t fSmlInstanceID;
   // status of the session

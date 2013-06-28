@@ -220,7 +220,7 @@ typedef TSyError localstatus;
 // exceptions
 
 #ifndef TARGET_HAS_EXCEPTIONS
-	// define here depending on compiler
+  // define here depending on compiler
   // if not defined e.g. in target options
   #ifdef __EPOC_OS__
     // no exceptions in EPOC

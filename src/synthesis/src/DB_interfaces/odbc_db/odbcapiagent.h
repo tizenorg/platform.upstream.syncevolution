@@ -108,10 +108,10 @@ typedef struct {
 typedef std::list<TParameterMap> TParameterMapList;
 
 #ifdef WIN32
-	// windows, has SEH, leave it on (unless set by target options etc.)
+  // windows, has SEH, leave it on (unless set by target options etc.)
 #else
-	// non-windows, no SEH anyway
-	#define NO_AV_GUARDING
+  // non-windows, no SEH anyway
+  #define NO_AV_GUARDING
 #endif
 
 #ifdef ODBCAPI_SUPPORT
@@ -227,7 +227,7 @@ SQLRETURN SafeSQLGetData(
   SQLSMALLINT   TargetType,
   SQLPOINTER    TargetValuePtr,
   SQLINTEGER    BufferLength,
-  SQLLEN * 			StrLen_or_IndPtr);
+  SQLLEN *      StrLen_or_IndPtr);
 
 SQLRETURN SafeSQLCloseCursor(
   SQLHSTMT  StatementHandle);

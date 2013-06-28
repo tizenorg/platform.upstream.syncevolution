@@ -1,6 +1,6 @@
 /*
  *  sysync_crc16.h
- *		CRC 16 checksumming functions
+ *    CRC 16 checksumming functions
  *
  *  Copyright (c) 2002-2011 by Synthesis AG + plan44.ch
  *

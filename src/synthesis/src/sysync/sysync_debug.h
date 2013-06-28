@@ -1,7 +1,7 @@
 /*
  *  File:         sysync_debug.h
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  Global debug related definitions
  *
@@ -16,6 +16,9 @@
 
 #include "generic_types.h"
 
+#if defined(CONSOLEINFO) && defined(CONSOLEINFO_LIBC)
+# include <stdio.h>
+#endif
 
 #ifdef __cplusplus
 using namespace std;
@@ -101,8 +104,18 @@ TDebugLogger *getDbgLogger(void);
 
 // output to console macro
 #ifdef CONSOLEINFO
+# ifdef CONSOLEINFO_LIBC
+  // Short-circuit all of the intermediate layers and use libc directly;
+  // useful to avoid dependencies in libsmltk on libsynthesis.
+  // Because a lot of libs log to stderr, include a unique prefix.
+  // Assumes that all printf format strings are plain strings.
+  #define CONSOLEPUTS(m) CONSOLE_PRINTF_VARARGS("%s", (m))
+#define CONSOLE_PRINTF_VARARGS(_m, _args...) fprintf(stderr, "SYSYNC " _m, ##_args)
+  #define CONSOLEPRINTF(m) CONSOLE_PRINTF_VARARGS m
+# else // CONSOLEINFO_LIBC
   #define CONSOLEPUTS(m) ConsolePuts(m)
   #define CONSOLEPRINTF(m) ConsolePrintf m
+# endif // CONSOLEINFO_LIBC
 #else
   #define CONSOLEPUTS(m)
   #define CONSOLEPRINTF(m)
@@ -122,7 +135,7 @@ struct TDbgLocation {
   /// line number, 0 if unknown
   const int fLine;
 
-	#ifdef __cplusplus
+  #ifdef __cplusplus
   TDbgLocation(const char *aFunction = NULL,
                const char *aFile = NULL,
                const int aLine = 0) :
@@ -137,7 +150,7 @@ struct TDbgLocation {
 # define TDBG_LOCATION_ARG aTDbgLoc,
 # define TDBG_LOCATION_HERE TDbgLocation(__func__, __FILE__, __LINE__),
 # define TDBG_LOCATION_NONE TDbgLocation(),
-# define TDBG_LOCATION_ARGS(_func, _file, _line) TDbgLocation(_func, _file, _line), 
+# define TDBG_LOCATION_ARGS(_func, _file, _line) TDbgLocation(_func, _file, _line),
 # define TDBG_VARARGS(m...) (TDbgLocation(__PRETTY_FUNCTION__, __FILE__, __LINE__), ## m)
 # define TDBG_LOCATION_ARG_NUM 1
 
@@ -287,8 +300,8 @@ struct TDbgLocation {
   #define LOGDEBUGBLOCKFMTCOLL(lo,m) PLOGDEBUGBLOCKFMTCOLL(lo,m)
   #define LOGDEBUGBLOCKDESC(lo,n,d) PLOGDEBUGBLOCKDESC(lo,n,d)
   #define LOGDEBUGBLOCKDESCCOLL(lo,n,d) PLOGDEBUGBLOCKDESCCOLL(lo,n,d)
-  #define LOGDEBUGBLOCK(lo,n)	PLOGDEBUGBLOCK(lo,n)
-  #define LOGDEBUGBLOCKCOLL(lo,n)	PLOGDEBUGBLOCKCOLL(lo,n)
+  #define LOGDEBUGBLOCK(lo,n) PLOGDEBUGBLOCK(lo,n)
+  #define LOGDEBUGBLOCKCOLL(lo,n) PLOGDEBUGBLOCKCOLL(lo,n)
   #define LOGDEBUGENDBLOCK(lo,n) PLOGDEBUGENDBLOCK(lo,n)
   #define LOGDEBUGPUTSX(lo,lvl,m) PLOGDEBUGPUTSX(lo,lvl,m)
   #define LOGDEBUGPUTSXX(lo,lvl,m,s,p) PLOGDEBUGPUTSXX(lo,lvl,m,s,p)

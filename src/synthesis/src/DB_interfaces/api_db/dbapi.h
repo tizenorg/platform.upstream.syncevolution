@@ -68,7 +68,7 @@ class TDB_Api_Str
     // the string reference
     cAppCharP c_str() const { return (fStr==NULL) ? "":fStr; }
     bool empty(void)        { return *c_str()==0; }
-	  int  length() const     { return sizeof( c_str() ); };
+    int  length() const     { return sizeof( c_str() ); };
 
     // has the same effect as the destructor, but can be called earlier
     void DisposeStr();

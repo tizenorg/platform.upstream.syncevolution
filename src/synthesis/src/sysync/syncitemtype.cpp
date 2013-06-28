@@ -51,6 +51,8 @@ void TSyncItemType::init(
   if (aVerCT) fTypeVers=aVerCT;
   // set relation to a specific datastore (if any)
   fRelatedDatastoreP=aRelatedDatastoreP;
+  // assume local
+  fIsRemoteType = false;
 
   #if defined(ZIPPED_BINDATA_SUPPORT) && defined(SYDEBUG)
   // data compression accounting
@@ -275,7 +277,7 @@ TSyncItemType *TSyncItemType::findTypeInList(
 
 
 // - static function to add new or copied ItemType to passed list
-TSyncItemType *TSyncItemType::registerType(
+TSyncItemType *TSyncItemType::registerRemoteType(
   TSyncSession *aSessionP,
   SmlDevInfXmitPtr_t aXmitTypeP,              // name and version of type
   TSyncItemTypePContainer &aLocalItemTypes,   // list to look up local types (for reference)
@@ -284,7 +286,7 @@ TSyncItemType *TSyncItemType::registerType(
 )
 {
   return (
-    registerType(
+    registerRemoteType(
       aSessionP,
       smlPCDataToCharP(aXmitTypeP->cttype),
       smlPCDataToCharP(aXmitTypeP->verct),
@@ -293,12 +295,12 @@ TSyncItemType *TSyncItemType::registerType(
       aRelatedDatastoreP
     )
   );
-} // static TSyncItemType::registerType
+} // static TSyncItemType::registerRemoteType
 
 
 // - static function to add new or copied ItemType to passed list
 //   If type is already in aNewItemTypes, nothing will be added
-TSyncItemType *TSyncItemType::registerType(
+TSyncItemType *TSyncItemType::registerRemoteType(
   TSyncSession *aSessionP,
   const char *aName, const char *aVers,       // name and version of type
   TSyncItemTypePContainer &aLocalItemTypes,   // list to look up local types (for reference) - aRelatedDatastoreP does NOT relate to the types here, as these are local ones
@@ -346,6 +348,8 @@ TSyncItemType *TSyncItemType::registerType(
       //   (but without handling abilities)
       newitemtypeP = new TSyncItemType(aSessionP,NULL,aName,aVers,aRelatedDatastoreP);
     }
+    // this is a remote type!
+    newitemtypeP->defineAsRemoteType();
     // add item to list
     aNewItemTypes.push_back(newitemtypeP);
     POBJDEBUGPRINTFX(aSessionP,DBG_REMOTEINFO+DBG_HOT,(
@@ -365,7 +369,7 @@ TSyncItemType *TSyncItemType::registerType(
     }
   } // if not already in list
   return newitemtypeP;
-} // static TSyncItemType::registerType
+} // static TSyncItemType::registerRemoteType
 
 
 /// @brief static function to analyze CTCap and add entries to passed list
@@ -393,7 +397,7 @@ bool TSyncItemType::analyzeCTCapAndCreateItemTypes(
       #endif
       // valenum shows version supported
       TSyncItemType *newitemtypeP =
-        registerType(
+        registerRemoteType(
           aSessionP,
           name,vers,         // name and version of type
           aLocalItemTypes,   // list to look up local types (for reference)
@@ -425,7 +429,7 @@ bool TSyncItemType::analyzeCTCapAndCreateItemTypes(
               #endif
               // valenum shows version supported
               TSyncItemType *newitemtypeP =
-                registerType(
+                registerRemoteType(
                   aSessionP,
                   name,vers,         // name and version of type
                   aLocalItemTypes,   // list to look up local types (for reference)
@@ -452,7 +456,7 @@ bool TSyncItemType::analyzeCTCapAndCreateItemTypes(
       if (aSessionP) { PLOGDEBUGBLOCKFMT(aSessionP->getDbgLogger(),("RemoteCTCap", "Registering remote Type w/o version from CTCap", "type=%s|version=[none]", name)); }
       #endif
       TSyncItemType *newitemtypeP =
-        registerType(
+        registerRemoteType(
           aSessionP,
           name,NULL,         // name, but no version
           aLocalItemTypes,   // list to look up local types (for reference)

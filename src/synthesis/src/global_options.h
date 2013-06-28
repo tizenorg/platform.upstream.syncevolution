@@ -1,7 +1,7 @@
 /* SySync entirely global options (affects all targets)
  * ====================================================
  *
- * (c) 2001-2009 by Synthesis AG
+ * (c) 2001-2011 by Synthesis AG + plan44.ch
  *
  */
 
@@ -37,17 +37,17 @@
 #endif
 // global expiry date (usually applies for unregistered demos or regular products in trial mode)
 #ifndef EXPIRY_YEAR
-  #define EXPIRY_DATE_STRING "2011-09-30"
-  #define EXPIRY_YEAR 2011
-  #define EXPIRY_MONTH 9
-  #define EXPIRY_DAY 30
+  #define EXPIRY_DATE_STRING "2012-03-31"
+  #define EXPIRY_YEAR 2012
+  #define EXPIRY_MONTH 3
+  #define EXPIRY_DAY 31
 #endif
 
 // Release date (date relevant for licenses that are valid only up to a certain release date)
 #if !defined(RELEASE_YEAR) || !defined(RELEASE_MONTH)
   // define one globally in case target or product does not specify it's own date
-  #define RELEASE_YEAR        	2008
-  #define RELEASE_YEAR_TXT   		"2008"
+  #define RELEASE_YEAR        	2010
+  #define RELEASE_YEAR_TXT   		"2010"
   #define RELEASE_MONTH       	1
   #define RELEASE_MONTH_TXT  		"1"
 #endif
@@ -76,8 +76,8 @@
 #endif
 
 #ifndef SYSYNC_BUILDNUMBER
-#define SYSYNC_BUILDNUMBER          27
-#define SYSYNC_BUILDNUMBER_TXT     "27"
+#define SYSYNC_BUILDNUMBER          35
+#define SYSYNC_BUILDNUMBER_TXT     "35"
 #endif
 
 

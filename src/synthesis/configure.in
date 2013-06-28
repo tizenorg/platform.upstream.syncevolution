@@ -70,7 +70,7 @@ if test "$enable_regex" == "yes"; then
 else
     HAVE_PCRE=0
 fi
-AC_DEFINE_UNQUOTED(ONOFF_REGEX_SUPPORT, $HAVE_PCRE, "regular expressions in scripts")   
+AC_DEFINE_UNQUOTED(ONOFF_REGEX_SUPPORT, $HAVE_PCRE, "regular expressions in scripts")
 
 AC_CHECK_HEADER(zlib.h, , [AC_ERROR(zlib.h not found.)])
 AC_CHECK_HEADER(xmltok/xmlparse.h, have_system_xmltok="yes")

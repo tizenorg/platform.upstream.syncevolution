@@ -27,6 +27,8 @@
 #include <syncevo/util.h>
 #include "test.h"
 
+#include <synthesis/SDK_util.h>
+
 #include <unistd.h>
 #include <errno.h>
 
@@ -44,10 +46,13 @@ using namespace std;
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/tokenizer.hpp>
 #include <boost/foreach.hpp>
 #include <boost/range.hpp>
 #include <fstream>
+
 #include <syncevo/declarations.h>
+using namespace std;
 SE_BEGIN_CXX
 
 // synopsis and options char strings
@@ -191,6 +196,9 @@ bool Cmdline::parse(vector<string> &parsed)
                 m_dontrun = true;
                 m_template = temp.substr (1);
             }
+        } else if(boost::iequals(m_argv[opt], "--print-databases")) {
+            operations.push_back(m_argv[opt]);
+            m_printDatabases = true;
         } else if(boost::iequals(m_argv[opt], "--print-servers") ||
                   boost::iequals(m_argv[opt], "--print-peers") ||
                   boost::iequals(m_argv[opt], "--print-configs")) {
@@ -303,6 +311,12 @@ bool Cmdline::parse(vector<string> &parsed)
                 boost::iequals(m_argv[opt], "-m")) {
             operations.push_back(m_argv[opt]);
             m_monitor = true;
+        } else if (boost::iequals(m_argv[opt], "--luids")) {
+            // all following parameters are luids; can't be combined
+            // with setting config and source name
+            while (++opt < m_argc) {
+                m_luids.push_back(CmdlineLUID::toLUID(m_argv[opt]));
+            }
         } else {
             usage(false, string(m_argv[opt]) + ": unknown parameter");
             return false;
@@ -332,14 +346,6 @@ bool Cmdline::parse(vector<string> &parsed)
 
     // common sanity checking for item listing/import/export/update
     if (m_accessItems) {
-        if (m_server.empty()) {
-            usage(false, operations[0] + ": needs configuration name");
-            return false;
-        }
-        if (m_sources.size() == 0) {
-            usage(false, operations[0] + ": needs source name");
-            return false;
-        }
         if ((m_import || m_update) && m_dryrun) {
             usage(false, operations[0] + ": --dry-run not supported");
             return false;
@@ -394,6 +400,7 @@ bool Cmdline::isSync()
         m_printServers || boost::trim_copy(m_server) == "?" ||
         m_printTemplates || m_dontrun ||
         m_argc == 1 || (m_useDaemon.wasSet() && m_argc == 2) ||
+        m_printDatabases ||
         m_printConfig || m_remove ||
         (m_server == "" && m_argc > 1) ||
         m_configure || m_migrate ||
@@ -659,33 +666,73 @@ bool Cmdline::run() {
         }
     } else if (m_dontrun) {
         // user asked for information
-    } else if (m_argc == 1 || (m_useDaemon.wasSet() && m_argc == 2)) {
-        // no parameters: list databases and short usage
+    } else if (m_printDatabases) {
+        // list databases
         const SourceRegistry &registry(SyncSource::getSourceRegistry());
-        boost::shared_ptr<FilterConfigNode> sharedNode(new VolatileConfigNode());
-        boost::shared_ptr<FilterConfigNode> configNode(new VolatileConfigNode());
-        boost::shared_ptr<FilterConfigNode> hiddenNode(new VolatileConfigNode());
-        boost::shared_ptr<FilterConfigNode> trackingNode(new VolatileConfigNode());
-        boost::shared_ptr<FilterConfigNode> serverNode(new VolatileConfigNode());
-        SyncSourceNodes nodes(true, sharedNode, configNode, hiddenNode, trackingNode, serverNode, "");
-        SyncSourceParams params("list", nodes, boost::shared_ptr<SyncConfig>());
-        
-        BOOST_FOREACH(const RegisterSyncSource *source, registry) {
-            BOOST_FOREACH(const Values::value_type &alias, source->m_typeValues) {
-                if (!alias.empty() && source->m_enabled) {
-                    SourceType type(*alias.begin());
-                    sharedNode->setProperty("backend", type.m_backend);
-                    sharedNode->setProperty("databaseFormat", type.m_localFormat);
-                    auto_ptr<SyncSource> source(SyncSource::createSource(params, false));
-                    if (source.get() != NULL) {
-                        listSources(*source, boost::join(alias, " = "));
-                        m_out << "\n";
+        boost::shared_ptr<SyncSourceNodes> nodes;
+        std::string header;
+        boost::shared_ptr<SyncContext> context;
+        FilterConfigNode::ConfigFilter sourceFilter = m_props.createSourceFilter(m_server, "");
+        FilterConfigNode::ConfigFilter::const_iterator backend = sourceFilter.find("backend");
+
+        if (!m_server.empty()) {
+            // list for specific backend chosen via config
+            if (m_sources.size() != 1) {
+                SE_THROW(StringPrintf("must specify exactly one source after the config name '%s'",
+                                      m_server.c_str()));
+            }
+            context.reset(new SyncContext(m_server));
+            if (!context->exists()) {
+                SE_THROW(StringPrintf("config '%s' does not exist", m_server.c_str()));
+            }
+            nodes.reset(new SyncSourceNodes(context->getSyncSourceNodesNoTracking(*m_sources.begin())));
+            header = StringPrintf("%s/%s", m_server.c_str(), m_sources.begin()->c_str());
+            if (!nodes->dataConfigExists()) {
+                SE_THROW(StringPrintf("%s does not exist",
+                                      header.c_str()));
+            }
+        } else {
+            context.reset(new SyncContext);
+            boost::shared_ptr<FilterConfigNode> sharedNode(new VolatileConfigNode());
+            boost::shared_ptr<FilterConfigNode> configNode(new VolatileConfigNode());
+            boost::shared_ptr<FilterConfigNode> hiddenNode(new VolatileConfigNode());
+            boost::shared_ptr<FilterConfigNode> trackingNode(new VolatileConfigNode());
+            boost::shared_ptr<FilterConfigNode> serverNode(new VolatileConfigNode());
+            nodes.reset(new SyncSourceNodes(true, sharedNode, configNode, hiddenNode, trackingNode, serverNode, ""));
+            header = backend != sourceFilter.end() ?
+                backend->second :
+                "???";
+        }
+        nodes->getProperties()->setFilter(sourceFilter);
+        FilterConfigNode::ConfigFilter syncFilter = m_props.createSyncFilter(m_server);
+        context->setConfigFilter(true, "", syncFilter);
+
+        SyncSourceParams params("list", *nodes, context);
+        if (!m_server.empty() || backend != sourceFilter.end()) {
+            // list for specific backend
+            auto_ptr<SyncSource> source(SyncSource::createSource(params, false, NULL));
+            if (source.get() != NULL) {
+                listSources(*source, header);
+                m_out << "\n";
+            } else {
+                m_out << header << "\n   cannot list databases" << std::endl;
+            }
+        } else {
+            // list for all backends
+            BOOST_FOREACH(const RegisterSyncSource *source, registry) {
+                BOOST_FOREACH(const Values::value_type &alias, source->m_typeValues) {
+                    if (!alias.empty() && source->m_enabled) {
+                        SourceType type(*alias.begin());
+                        nodes->getProperties()->setProperty("backend", type.m_backend);
+                        auto_ptr<SyncSource> source(SyncSource::createSource(params, false));
+                        if (source.get() != NULL) {
+                            listSources(*source, boost::join(alias, " = "));
+                            m_out << "\n";
+                        }
                     }
                 }
             }
         }
-
-        usage(false);
     } else if (m_printConfig) {
         boost::shared_ptr<SyncConfig> config;
         ConfigProps syncFilter;
@@ -757,11 +804,10 @@ bool Cmdline::run() {
                                flags | ((name != *(--sources.end())) ? HIDE_LEGEND : DUMP_PROPS_NORMAL));
             }
         }
-    } else if (m_server == "" && m_argc > 1) {
-        // Options given, but no server - not sure what the user wanted?!
-        usage(true, "server name missing");
-        return false;
     } else if (m_configure || m_migrate) {
+        if (!needConfigName()) {
+            return false;
+        }
         if (m_dryrun) {
             SyncContext::throwError("--dry-run not supported for configuration changes");
         }
@@ -1126,6 +1172,9 @@ bool Cmdline::run() {
             }
         }
     } else if (m_remove) {
+        if (!needConfigName()) {
+            return false;
+        }
         if (m_dryrun) {
             SyncContext::throwError("--dry-run not supported for removing configurations");
         }
@@ -1151,8 +1200,12 @@ bool Cmdline::run() {
         context.reset(createSyncClient());
         context->setOutput(&m_out);
 
-        // operating on exactly one source
-        string sourceName = *m_sources.begin();
+        // operating on exactly one source (can be optional)
+        string sourceName;
+        bool haveSourceName = !m_sources.empty();
+        if (haveSourceName) {
+            sourceName = *m_sources.begin();
+        }
 
         // apply filters
         context->setConfigFilter(true, "", m_props.createSyncFilter(m_server));
@@ -1160,7 +1213,36 @@ bool Cmdline::run() {
 
         SyncSourceNodes sourceNodes = context->getSyncSourceNodesNoTracking(sourceName);
         SyncSourceParams params(sourceName, sourceNodes, context);
-        cxxptr<SyncSource> source(SyncSource::createSource(params, true));
+        cxxptr<SyncSource> source;
+
+        try {
+            source.set(SyncSource::createSource(params, true));
+        } catch (const StatusException &ex) {
+            // Creating the source failed. Detect some common reasons for this
+            // and log those instead. None of these situations are fatal by themselves,
+            // but in combination they are a problem.
+            if (ex.syncMLStatus() == SyncMLStatus(sysync::LOCERR_CFGPARSE)) {
+                std::list<std::string> explanation;
+
+                explanation.push_back(ex.what());
+                if (!m_server.empty() && !context->exists()) {
+                    explanation.push_back(StringPrintf("configuration '%s' does not exist", m_server.c_str()));
+                }
+                if (haveSourceName && !sourceNodes.exists()) {
+                    explanation.push_back(StringPrintf("source '%s' does not exist", sourceName.c_str()));
+                } else if (!haveSourceName) {
+                    explanation.push_back("no source selected");
+                }
+                SyncSourceConfig sourceConfig(sourceName, sourceNodes);
+                if (!sourceConfig.getBackend().wasSet()) {
+                    explanation.push_back("backend property not set");
+                }
+                SyncContext::throwError(SyncMLStatus(sysync::LOCERR_CFGPARSE),
+                                        boost::join(explanation, "\n"));
+            } else {
+                throw;
+            }
+        }
 
         sysync::TSyError err;
 #define CHECK_ERROR(_op) if (err) { SE_THROW_EXCEPTION_STATUS(StatusException, string(source->getName()) + ": " + (_op), SyncMLStatus(err)); }
@@ -1398,6 +1480,10 @@ bool Cmdline::run() {
         }
         source->close();
     } else {
+        if (!needConfigName()) {
+            return false;
+        }
+
         std::set<std::string> unmatchedSources;
         boost::shared_ptr<SyncContext> context;
         context.reset(createSyncClient());
@@ -1417,7 +1503,7 @@ bool Cmdline::run() {
                           context->getSyncSources()) {
                 boost::shared_ptr<PersistentSyncSourceConfig> source_config =
                     context->getSyncSourceConfig(source);
-                if (source_config->getSync() != "disabled") {
+                if (!source_config->isDisabled()) {
                     context->setConfigFilter(false, source, m_props.createSourceFilter(m_server, source));
                 }
             }
@@ -1524,6 +1610,8 @@ void Cmdline::readLUIDs(SyncSource *source, list<string> &luids)
     CHECK_ERROR("next item");
     while (status != sysync::ReadNextItem_EOF) {
         luids.push_back(id.item);
+        StrDispose(id.item);
+        StrDispose(id.parent);
         err = ops.m_readNextItem(&id, &status, false);
         CHECK_ERROR("next item");
     }
@@ -1861,12 +1949,11 @@ void Cmdline::dumpProperties(const ConfigNode &configuredProps,
                 dumpComment(m_out, "# ", comment);
             }
         }
-        bool isDefault;
-        prop->getProperty(configuredProps, &isDefault);
-        if (isDefault) {
+        InitStateString value = prop->getProperty(configuredProps);
+        if (!value.wasSet()) {
             m_out << "# ";
         }
-        m_out << prop->getMainName() << " = " << prop->getProperty(configuredProps) << endl;
+        m_out << prop->getMainName() << " = " << value.get() << endl;
 
         list<string> *type = NULL;
         switch (prop->getSharing()) {
@@ -1933,6 +2020,17 @@ void Cmdline::usage(bool full, const string &error, const string &param)
             "?' to get a list of valid parameters" << endl;
     }
 }
+
+bool Cmdline::needConfigName()
+{
+    if (m_server.empty()) {
+        usage(false, "no configuration name specified");
+        return false;
+    } else {
+        return true;
+    }
+}
+
 
 SyncContext* Cmdline::createSyncClient() {
     return new SyncContext(m_server, true);
@@ -2291,10 +2389,11 @@ class CmdlineTest : public CppUnit::TestFixture {
     CPPUNIT_TEST(testConfigureTemplates);
     CPPUNIT_TEST(testConfigureSources);
     CPPUNIT_TEST(testOldConfigure);
-    CPPUNIT_TEST(testListSources);
+    CPPUNIT_TEST(testPrintDatabases);
     CPPUNIT_TEST(testMigrate);
     CPPUNIT_TEST(testMigrateContext);
     CPPUNIT_TEST(testMigrateAutoSync);
+    CPPUNIT_TEST(testItemOperations);
     CPPUNIT_TEST_SUITE_END();
     
 public:
@@ -3112,7 +3211,7 @@ protected:
         TestCmdline failure2("--sync", "foo", NULL);
         CPPUNIT_ASSERT(!failure2.m_cmdline->parse());
         CPPUNIT_ASSERT_EQUAL_DIFF("", failure2.m_out.str());
-        CPPUNIT_ASSERT_EQUAL(string("ERROR: '--sync foo': not one of the valid values (two-way, slow, refresh-from-client = refresh-client, refresh-from-server = refresh-server = refresh, one-way-from-client = one-way-client, one-way-from-server = one-way-server = one-way, disabled = none)\n"), lastLine(failure2.m_err.str()));
+        CPPUNIT_ASSERT_EQUAL(string("ERROR: '--sync foo': not one of the valid values (two-way, slow, refresh-from-local, refresh-from-remote = refresh, one-way-from-local, one-way-from-remote = one-way, refresh-from-client = refresh-client, refresh-from-server = refresh-server, one-way-from-client = one-way-client, one-way-from-server = one-way-server, disabled = none)\n"), lastLine(failure2.m_err.str()));
 
         TestCmdline help("--sync", " ?", NULL);
         help.doit();
@@ -3123,19 +3222,23 @@ protected:
                                   "       only send/receive changes since last sync\n"
                                   "     slow\n"
                                   "       exchange all items\n"
-                                  "     refresh-from-client\n"
-                                  "       discard all remote items and replace with the items on the client\n"
-                                  "     refresh-from-server\n"
-                                  "       discard all local items and replace with the items on the server\n"
-                                  "     one-way-from-client\n"
-                                  "       transmit changes from client\n"
-                                  "     one-way-from-server\n"
-                                  "       transmit changes from server\n"
+                                  "     refresh-from-remote\n"
+                                  "       discard all local items and replace with\n"
+                                  "       the items on the peer\n"
+                                  "     refresh-from-local\n"
+                                  "       discard all items on the peer and replace\n"
+                                  "       with the local items\n"
+                                  "     one-way-from-remote\n"
+                                  "       transmit changes from peer\n"
+                                  "     one-way-from-local\n"
+                                  "       transmit local changes\n"
                                   "     disabled (or none)\n"
                                   "       synchronization disabled\n"
                                   "   \n"
-                                  "   **WARNING**: which side is `client` and which is `server` depends on\n"
-                                  "   the value of the ``peerIsClient`` property in the configuration.\n"
+                                  "   refresh/one-way-from-server/client are also supported. Their use is\n"
+                                  "   discouraged because the direction of the data transfer depends\n"
+                                  "   on the role of the local side (can be server or client), which is\n"
+                                  "   not always obvious.\n"
                                   "   \n"
                                   "   When accepting a sync session in a SyncML server (HTTP server), only\n"
                                   "   sources with sync != disabled are made available to the client,\n"
@@ -3330,8 +3433,6 @@ protected:
                               "enableWBXML (TRUE, unshared)\n"
                               "\n"
                               "maxMsgSize (150000, unshared), maxObjSize (4000000, unshared)\n"
-                              "\n"
-                              "enableCompression (FALSE, unshared)\n"
                               "\n"
                               "SSLServerCertificates (" SYNCEVOLUTION_SSL_SERVER_CERTIFICATES ", unshared)\n"
                               "\n"
@@ -3882,12 +3983,63 @@ protected:
         return expected;
     }
 
-    void testListSources() {
-        // pick the varargs constructor; NULL alone is ambiguous
-        TestCmdline cmdline(NULL, NULL);
-        cmdline.doit();
-        CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_err.str());
-        // exact output varies, do not test
+    void testPrintDatabases() {
+        {
+            // full output
+            TestCmdline cmdline("--print-databases", (char *)0);
+            cmdline.doit();
+            CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_err.str());
+            // exact output varies, do not test
+        }
+        bool haveEDS;
+        {
+            // limit output to one specific backend
+            TestCmdline cmdline("--print-databases", "backend=evolution-contacts", (char *)0);
+            cmdline.doit();
+            if (cmdline.m_err.str().find("not one of the valid values") != std::string::npos) {
+                // not enabled, only this error messages expected
+                CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_out.str());
+            } else {
+                // enabled, no error, one entry
+                haveEDS = true;
+                CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_err.str());
+                CPPUNIT_ASSERT(boost::starts_with(cmdline.m_out.str(), "evolution-contacts:\n"));
+                int entries = 0;
+		std::string out = cmdline.m_out.str();
+                BOOST_FOREACH(const std::string &line,
+                              boost::tokenizer< boost::char_separator<char> >(out,
+                                                                              boost::char_separator<char>("\n"))) {
+                    if (!boost::starts_with(line, " ")) {
+                        entries++;
+                    }
+                }
+                CPPUNIT_ASSERT_EQUAL(1, entries);
+            }
+        }
+        if (haveEDS) {
+            // limit output to one specific backend, chosen via config
+            {
+                TestCmdline cmdline("--configure", "backend=evolution-contacts", "@foo-config", "bar-source", (char *)0);
+                cmdline.doit();
+                CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_out.str());
+            }
+            {
+                TestCmdline cmdline("--print-databases", "@foo-config", "bar-source", (char *)0);
+                cmdline.doit();
+                CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_err.str());
+                CPPUNIT_ASSERT(boost::starts_with(cmdline.m_out.str(), "@foo-config/bar-source:\n"));
+                int entries = 0;
+		std::string out = cmdline.m_out.str();
+                BOOST_FOREACH(const std::string &line,
+                              boost::tokenizer< boost::char_separator<char> >(out,
+                                                                              boost::char_separator<char>("\n"))) {
+                    if (!boost::starts_with(line, " ")) {
+                        entries++;
+                    }
+                }
+                CPPUNIT_ASSERT_EQUAL(1, entries);
+            }
+        }
     }
 
     void testMigrate() {
@@ -4266,6 +4418,210 @@ protected:
         }
     }
 
+    void testItemOperations() {
+        ScopedEnvChange templates("SYNCEVOLUTION_TEMPLATE_DIR", "templates");
+        ScopedEnvChange xdg("XDG_CONFIG_HOME", m_testDir);
+        ScopedEnvChange home("HOME", m_testDir);
+
+        {
+            // "foo" not configured
+            TestCmdline cmdline("--print-items",
+                                "foo",
+                                "bar",
+                                NULL);
+            cmdline.doit(false);
+            CPPUNIT_ASSERT_EQUAL_DIFF("[ERROR] bar: backend not supported or not correctly configured (backend=select backend databaseFormat= syncFormat=)\nconfiguration 'foo' does not exist\nsource 'bar' does not exist\nbackend property not set", cmdline.m_err.str());
+            CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_out.str());
+        }
+
+        {
+            // "foo" not configured, no source named
+            TestCmdline cmdline("--print-items",
+                                "foo",
+                                NULL);
+            cmdline.doit(false);
+            CPPUNIT_ASSERT_EQUAL_DIFF("[ERROR] backend not supported or not correctly configured (backend=select backend databaseFormat= syncFormat=)\nconfiguration 'foo' does not exist\nno source selected\nbackend property not set", cmdline.m_err.str());
+            CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_out.str());
+        }
+
+        {
+            // nothing known about source
+            TestCmdline cmdline("--print-items",
+                                NULL);
+            cmdline.doit(false);
+            CPPUNIT_ASSERT_EQUAL_DIFF("[ERROR] backend not supported or not correctly configured (backend=select backend databaseFormat= syncFormat=)\nno source selected\nbackend property not set", cmdline.m_err.str());
+            CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_out.str());
+        }
+
+        {
+            // now create foo
+            TestCmdline cmdline("--configure",
+                                "--template",
+                                "default",
+                                "foo",
+                                NULL);
+            cmdline.doit();
+            CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_err.str());
+            CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_out.str());
+        }
+
+        {
+            // "foo" now configured, still no source
+            TestCmdline cmdline("--print-items",
+                                "foo",
+                                NULL);
+            cmdline.doit(false);
+            CPPUNIT_ASSERT_EQUAL_DIFF("[ERROR] backend not supported or not correctly configured (backend=select backend databaseFormat= syncFormat=)\nno source selected\nbackend property not set", cmdline.m_err.str());
+            CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_out.str());
+        }
+
+        {
+            // foo configured, but "bar" is not
+            TestCmdline cmdline("--print-items",
+                                "foo",
+                                "bar",
+                                NULL);
+            cmdline.doit(false);
+            CPPUNIT_ASSERT_EQUAL_DIFF("[ERROR] bar: backend not supported or not correctly configured (backend=select backend databaseFormat= syncFormat=)\nsource 'bar' does not exist\nbackend property not set", cmdline.m_err.str());
+            CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_out.str());
+        }
+
+        {
+            // add "bar" source, using file backend
+            TestCmdline cmdline("--configure",
+                                "backend=file",
+                                ("database=file://" + m_testDir + "/addressbook").c_str(),
+                                "databaseFormat=text/vcard",
+                                "foo",
+                                "bar",
+                                NULL);
+            cmdline.doit();
+            CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_err.str());
+            CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_out.str());
+        }
+
+        {
+            // no items yet
+            TestCmdline cmdline("--print-items",
+                                "foo",
+                                "bar",
+                                NULL);
+            cmdline.doit();
+            CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_err.str());
+            CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_out.str());
+        }
+
+        static const std::string john =
+            "BEGIN:VCARD\n"
+            "VERSION:3.0\n"
+            "FN:John Doe\n"
+            "N:Doe;John;;;\n"
+            "END:VCARD\n",
+            joan =
+            "BEGIN:VCARD\n"
+            "VERSION:3.0\n"
+            "FN:Joan Doe\n"
+            "N:Doe;Joan;;;\n"
+            "END:VCARD\n";
+
+        {
+            // create one file
+            std::string file1 = "1:" + john, file2 = "2:" + joan;
+            boost::replace_all(file1, "\n", "\n1:");
+            file1.resize(file1.size() - 2);
+            boost::replace_all(file2, "\n", "\n2:");
+            file2.resize(file2.size() - 2);
+            createFiles(m_testDir + "/addressbook", file1 + file2);
+
+            TestCmdline cmdline("--print-items",
+                                "foo",
+                                "bar",
+                                NULL);
+            cmdline.doit();
+            CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_err.str());
+            CPPUNIT_ASSERT_EQUAL_DIFF("1\n2\n", cmdline.m_out.str());
+        }
+
+        {
+            // alternatively just specify enough parameters,
+            // without the foo bar config part
+            TestCmdline cmdline("--print-items",
+                                "backend=file",
+                                ("database=file://" + m_testDir + "/addressbook").c_str(),
+                                "databaseFormat=text/vcard",
+                                NULL);
+            cmdline.doit();
+            CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_err.str());
+            CPPUNIT_ASSERT_EQUAL_DIFF("1\n2\n", cmdline.m_out.str());
+        }
+
+        {
+            // export all
+            TestCmdline cmdline("--export", "-",
+                                "backend=file",
+                                ("database=file://" + m_testDir + "/addressbook").c_str(),
+                                "databaseFormat=text/vcard",
+                                NULL);
+            cmdline.doit();
+            CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_err.str());
+            CPPUNIT_ASSERT_EQUAL_DIFF(john + "\n" + joan, cmdline.m_out.str());
+        }
+
+        {
+            // export all via config
+            TestCmdline cmdline("--export", "-",
+                                "foo", "bar",
+                                NULL);
+            cmdline.doit();
+            CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_err.str());
+            CPPUNIT_ASSERT_EQUAL_DIFF(john + "\n" + joan, cmdline.m_out.str());
+        }
+
+        {
+            // export one
+            TestCmdline cmdline("--export", "-",
+                                "backend=file",
+                                ("database=file://" + m_testDir + "/addressbook").c_str(),
+                                "databaseFormat=text/vcard",
+                                "--luids", "1",
+                                NULL);
+            cmdline.doit();
+            CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_err.str());
+            CPPUNIT_ASSERT_EQUAL_DIFF(john, cmdline.m_out.str());
+        }
+
+        {
+            // export one via config
+            TestCmdline cmdline("--export", "-",
+                                "foo", "bar", "1",
+                                NULL);
+            cmdline.doit();
+            CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_err.str());
+            CPPUNIT_ASSERT_EQUAL_DIFF(john, cmdline.m_out.str());
+        }
+
+        // TODO: check configuration of just the source as @foo bar without peer
+
+        {
+            // check error message for missing config name
+            TestCmdline cmdline((const char *)NULL);
+            cmdline.doit(false);
+            CPPUNIT_ASSERT_EQUAL_DIFF("ERROR: no configuration name specified\n",
+                                      lastLine(cmdline.m_err.str()));
+            CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_out.str());
+        }
+
+        {
+            // check error message for missing config name, version II
+            TestCmdline cmdline("--run",
+                                NULL);
+            cmdline.doit(false);
+            CPPUNIT_ASSERT_EQUAL_DIFF("ERROR: no configuration name specified\n",
+                                      lastLine(cmdline.m_err.str()));
+            CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_out.str());
+        }
+    }
+
     const string m_testDir;        
 
 private:
@@ -4308,14 +4664,23 @@ private:
             init();
         }
 
-        void doit() {
-            bool success;
-            success = m_cmdline->parse() &&
-                m_cmdline->run();
-            if (m_err.str().size()) {
+        void doit(bool expectSuccess = true) {
+            bool success = false;
+            // emulates syncevolution.cpp exception handling
+            try {
+                success = m_cmdline->parse() &&
+                    m_cmdline->run();
+            } catch (const std::exception &ex) {
+                m_err << "[ERROR] " << ex.what();
+            } catch (...) {
+                std::string explanation;
+                Exception::handle(explanation);
+                m_err << "[ERROR] " << explanation;
+            }
+            if (expectSuccess && m_err.str().size()) {
                 m_out << endl << m_err.str();
             }
-            CPPUNIT_ASSERT_MESSAGE(m_out.str(), success);
+            CPPUNIT_ASSERT_MESSAGE(m_out.str(), success == expectSuccess);
         }
 
         ostringstream m_out, m_err;
@@ -4388,7 +4753,6 @@ private:
                          "peers/scheduleworld/config.ini:# enableWBXML = 1\n"
                          "peers/scheduleworld/config.ini:# maxMsgSize = 150000\n"
                          "peers/scheduleworld/config.ini:# maxObjSize = 4000000\n"
-                         "peers/scheduleworld/config.ini:# enableCompression = 0\n"
                          "peers/scheduleworld/config.ini:# SSLServerCertificates = \n"
                          "peers/scheduleworld/config.ini:# SSLVerifyServer = 1\n"
                          "peers/scheduleworld/config.ini:# SSLVerifyHost = 1\n"
@@ -4503,7 +4867,6 @@ private:
             "spds/syncml/config.txt:# enableWBXML = 1\n"
             "spds/syncml/config.txt:# maxMsgSize = 150000\n"
             "spds/syncml/config.txt:# maxObjSize = 4000000\n"
-            "spds/syncml/config.txt:# enableCompression = 0\n"
 #ifdef ENABLE_LIBSOUP
             // path to SSL certificates is only set for libsoup
             "spds/syncml/config.txt:# SSLServerCertificates = /etc/ssl/certs/ca-certificates.crt:/etc/pki/tls/certs/ca-bundle.crt:/usr/share/ssl/certs/ca-bundle.crt\n"

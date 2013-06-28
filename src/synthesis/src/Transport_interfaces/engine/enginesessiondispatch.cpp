@@ -6,8 +6,8 @@
  *
  *  2009-02-06 : luz : Created
  *
- */  
- 
+ */
+
 
 #include "prefix_file.h"
 #include "engine_server.h"
@@ -51,7 +51,7 @@ void TEngineServerCommConfig::clear(void)
   fSessionIDCGIPrefix = "sessionid=";
   fSessionIDCGI = true;
   fBuffersRetryAnswer = false; // we don't know if the app driving the engine implements this, so default is off
-  // clear inherited  
+  // clear inherited
   inherited::clear();
 } // TEngineServerCommConfig::clear
 
@@ -84,7 +84,7 @@ void TEngineServerCommConfig::localResolve(bool aLastPass)
     // check for required settings
     // NOP for now
   }
-  // resolve inherited  
+  // resolve inherited
   inherited::localResolve(aLastPass);
 } // TEngineServerCommConfig::localResolve
 
@@ -153,7 +153,7 @@ void TEngineSessionDispatch::generateRespURI(
 {
   TEngineServerCommConfig *commCfgP = static_cast<TEngineServerCommConfig *>(getRootConfig()->fCommConfigP);
   if (aLocalURI && aSessionID && commCfgP && commCfgP->fSessionIDCGI) {
-  	// include session ID as CGI into RespURI
+    // include session ID as CGI into RespURI
     aRespURI=aLocalURI;
     // see if there is already a sessionid in this localURI
     string::size_type n=aRespURI.find(commCfgP->fSessionIDCGIPrefix);
@@ -167,7 +167,7 @@ void TEngineSessionDispatch::generateRespURI(
         aRespURI.replace(n,m-n,aSessionID);
     }
     else {
-      // no sessionID yet    
+      // no sessionID yet
       if (strchr(aLocalURI,'?')) {
         // already has CGI param
         aRespURI+="&amp;";
@@ -272,7 +272,7 @@ bool TEngineServerRootConfig::parseCommConfig(const char **aAttributes, sInt32 a
   return false;
 } // TEngineServerRootConfig::parseCommConfig
 
-#endif  
+#endif
 
 
 
@@ -285,7 +285,7 @@ bool TEngineServerRootConfig::parseCommConfig(const char **aAttributes, sInt32 a
 
 TEngineServerSessionHandle::TEngineServerSessionHandle(TServerEngineInterface *aServerEngineInterface)
 {
-	fServerSessionP = NULL;
+  fServerSessionP = NULL;
   fSmlInstanceID = 0;
   fServerSessionStatus = LOCERR_WRONGUSAGE;
   fServerEngineInterface = aServerEngineInterface;
@@ -293,12 +293,12 @@ TEngineServerSessionHandle::TEngineServerSessionHandle(TServerEngineInterface *a
 
 TEngineServerSessionHandle::~TEngineServerSessionHandle()
 {
-	// remove the session if still existing
-	if (fServerSessionP) delete fServerSessionP;
+  // remove the session if still existing
+  if (fServerSessionP) delete fServerSessionP;
   fServerSessionP = NULL;
   // also release the toolkit instance
   fServerEngineInterface->getSyncAppBase()->freeSmlInstance(fSmlInstanceID);
-  fSmlInstanceID=NULL;  
+  fSmlInstanceID=NULL;
 }
 
 
@@ -317,7 +317,7 @@ TSyError TServerEngineInterface::OpenSessionInternal(SessionH &aNewSessionH, uIn
   // check type of session
   if (aSelector == SESSIONSEL_DBAPI_TUNNEL) {
     // initiate a DBAPI tunnel session.
-    /* 
+    /*
     #ifdef DBAPI_TUNNEL_SUPPORT
     #error "%%% tbi"
     // Create a new session, sessionName selects datastore
@@ -334,9 +334,9 @@ TSyError TServerEngineInterface::OpenSessionInternal(SessionH &aNewSessionH, uIn
     return LOCERR_NOTIMP; // tunnel not implemented
   }
   else {
-		// create a new server session
-		TEngineServerSessionHandle *sessionHandleP = NULL;
-  	TSyncAgent *sessionP=NULL;
+    // create a new server session
+    TEngineServerSessionHandle *sessionHandleP = NULL;
+    TSyncAgent *sessionP=NULL;
     SYSYNC_TRY {
       // - create a handle
       sessionHandleP = new TEngineServerSessionHandle(this);
@@ -364,7 +364,7 @@ TSyError TServerEngineInterface::OpenSessionInternal(SessionH &aNewSessionH, uIn
         static_cast<TAgentConfig *>(sessionDispatchP->getRootConfig()->fAgentConfigP)
           ->CreateServerSession(NULL,SessionIDString.c_str());
       if (sessionP) {
-      	// assign to handle
+        // assign to handle
         sessionHandleP->fServerSessionP = sessionP;
         sessionHandleP->fServerSessionStatus = LOCERR_OK;
         // also create a toolkit instance for the session (so we can start receiving data)
@@ -373,20 +373,20 @@ TSyError TServerEngineInterface::OpenSessionInternal(SessionH &aNewSessionH, uIn
           sessionDispatchP->getRootConfig()->fLocalMaxMsgSize * 2, // twice the message size
           sessionHandleP->fSmlInstanceID
         )) {
-        	// failed creating instance (must be memory problem)
+          // failed creating instance (must be memory problem)
           delete sessionP;
           return LOCERR_OUTOFMEM;
         }
         // link session with toolkit instance back and forth
-      	getSyncAppBase()->setSmlInstanceUserData(sessionHandleP->fSmlInstanceID,sessionP); // toolkit must know session (as userData)
-      	sessionP->setSmlWorkspaceID(sessionHandleP->fSmlInstanceID); // session must know toolkit workspace
+        getSyncAppBase()->setSmlInstanceUserData(sessionHandleP->fSmlInstanceID,sessionP); // toolkit must know session (as userData)
+        sessionP->setSmlWorkspaceID(sessionHandleP->fSmlInstanceID); // session must know toolkit workspace
         // created session ok
-        aNewSessionH = (SessionH)sessionHandleP;        
+        aNewSessionH = (SessionH)sessionHandleP;
         return LOCERR_OK;
       }
     }
     SYSYNC_CATCH (...)
-    	// error creating session
+      // error creating session
       if (sessionHandleP) delete sessionHandleP;
       return LOCERR_EXCEPTION;
     SYSYNC_ENDCATCH
@@ -403,7 +403,7 @@ TSyError TServerEngineInterface::OpenSessionInternal(SessionH &aNewSessionH, uIn
 /// @return LOCERR_OK on success, SyncML or LOCERR_xxx error code on failure
 TSyError TServerEngineInterface::OpenSessionKey(SessionH aSessionH, KeyH &aNewKeyH, uInt16 aMode)
 {
-	if (!aSessionH) return LOCERR_WRONGUSAGE;
+  if (!aSessionH) return LOCERR_WRONGUSAGE;
   TEngineServerSessionHandle *sessionHandleP = reinterpret_cast<TEngineServerSessionHandle *>(aSessionH);
   // create settings key for the session
   aNewKeyH = (KeyH)sessionHandleP->fServerSessionP->newSessionKey(this);
@@ -411,22 +411,22 @@ TSyError TServerEngineInterface::OpenSessionKey(SessionH aSessionH, KeyH &aNewKe
   return LOCERR_OK;
 }
 
-        
+
 /// @brief Close a session
 /// @note  terminates and destroys the session (if not already terminated)
 /// @param aSessionH[in] session handle obtained with OpenSession
 /// @return LOCERR_OK on success, SyncML or LOCERR_xxx error code on failure
 TSyError TServerEngineInterface::CloseSession(SessionH aSessionH)
 {
-	if (!aSessionH) return LOCERR_WRONGUSAGE;
+  if (!aSessionH) return LOCERR_WRONGUSAGE;
   TSyError sta = LOCERR_OK;
   TEngineServerSessionHandle *sessionHandleP = reinterpret_cast<TEngineServerSessionHandle *>(aSessionH);
   TSyncAgent *serverSessionP = sessionHandleP->fServerSessionP;
   if (serverSessionP) {
-  	// session still exists
+    // session still exists
     if (!serverSessionP->isAborted()) {
-    	// if not already aborted otherwise (e.g. by writing "abortstatus" in session key), let it be "timeout"
-    	serverSessionP->AbortSession(408, true);
+      // if not already aborted otherwise (e.g. by writing "abortstatus" in session key), let it be "timeout"
+      serverSessionP->AbortSession(408, true);
     }
     SYSYNC_TRY {
       // - terminate (might hang a while until subthreads properly terminate)
@@ -439,13 +439,13 @@ TSyError TServerEngineInterface::CloseSession(SessionH aSessionH)
       sessionHandleP->fServerSessionP = NULL; // consider deleted, even if failed
       sta = LOCERR_EXCEPTION;
     SYSYNC_ENDCATCH
-  }  
+  }
   // forget session handle (and toolkit instance)
   delete sessionHandleP;
   // done
   return LOCERR_OK;
 }
-	
+
 
 /// @brief Executes sync session or other sync related activity step by step
 /// @param aSessionH[in] session handle obtained with OpenSession
@@ -453,10 +453,10 @@ TSyError TServerEngineInterface::CloseSession(SessionH aSessionH)
 ///        - tells caller to send or receive data or end the session etc.
 ///        - instructs engine to suspend or abort the session etc.
 /// @param aInfoP[in] pointer to a TEngineProgressInfo structure, NULL if no progress info needed
-/// @return LOCERR_OK on success, SyncML or LOCERR_xxx error code on failure    
+/// @return LOCERR_OK on success, SyncML or LOCERR_xxx error code on failure
 TSyError TServerEngineInterface::SessionStep(SessionH aSessionH, uInt16 &aStepCmd,  TEngineProgressInfo *aInfoP)
 {
-	if (!aSessionH) return LOCERR_WRONGUSAGE;
+  if (!aSessionH) return LOCERR_WRONGUSAGE;
   TEngineServerSessionHandle *sessionHandleP = reinterpret_cast<TEngineServerSessionHandle *>(aSessionH);
   TSyncAgent *serverSessionP = sessionHandleP->fServerSessionP;
 
@@ -484,7 +484,7 @@ TSyError TServerEngineInterface::SessionStep(SessionH aSessionH, uInt16 &aStepCm
 ///   (internal helper to allow TEngineInterface to provide the access to the SyncML buffer)
 InstanceID_t TServerEngineInterface::getSmlInstanceOfSession(SessionH aSessionH)
 {
-	if (!aSessionH) return 0; // something wrong with session handle -> no SML instance
+  if (!aSessionH) return 0; // something wrong with session handle -> no SML instance
   TEngineServerSessionHandle *sessionHandleP = reinterpret_cast<TEngineServerSessionHandle *>(aSessionH);
   TSyncAgent *serverSessionP = sessionHandleP->fServerSessionP;
   if (!serverSessionP) return 0; // something wrong with session handle -> no SML instance

@@ -45,7 +45,9 @@ void CardDAVSource::readItem(const std::string &luid, std::string &item, bool ra
     // HTML enties until none are left. Obviously that means that
     // it is impossible to put HTML entities into a contact value.
     // TODO: better detection of this server bug.
-    replaceHTMLEntities(item);
+    if (false) {
+        replaceHTMLEntities(item);
+    }
 }
 
 bool CardDAVSource::typeMatches(const StringMap &props) const
@@ -78,7 +80,7 @@ const std::string *CardDAVSource::createResourceName(const std::string &item, st
         size_t start = buffer.find(END_VCARD);
         if (start != buffer.npos) {
             start++;
-            buffer.insert(start, StringPrintf("UID:%s\n", luid.c_str()));
+            buffer.insert(start, StringPrintf("UID:%s\r\n", luid.c_str()));
         }
         luid += SUFFIX;
         return &buffer;

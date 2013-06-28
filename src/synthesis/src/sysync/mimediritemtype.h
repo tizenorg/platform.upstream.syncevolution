@@ -126,9 +126,9 @@ private:
 
 
 
-}	// namespace sysync
+} // namespace sysync
 
-#endif	// MimeDirItemType_H
+#endif  // MimeDirItemType_H
 
 // eof
 

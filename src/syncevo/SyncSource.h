@@ -324,7 +324,14 @@ struct ClientTestConfig {
      * One example for main and subordinate items are a recurring
      * iCalendar 2.0 event and a detached recurrence.
      */
-    typedef std::vector<std::string> LinkedItems_t;
+    typedef class LinkedItems : public std::vector<std::string> {
+    public:
+        std::string m_name; /**< used as Client::Source::LinkedItems<m_name> */
+        StringMap m_options; /**< used to pass additional parameters to the test */
+        /** for testLinkedItemsSubset: create the additional VEVENT that is added when talking to Exchange;
+            parameters are start, skip, index and total number of items in that test */
+        boost::function<std::string (int, int, int, int)> m_testLinkedItemsSubsetAdditional;
+    } LinkedItems_t;
 
     /**
      * The linked items may exist in different variations (outer vector).
@@ -332,6 +339,11 @@ struct ClientTestConfig {
     typedef std::vector<LinkedItems_t> MultipleLinkedItems_t;
 
     MultipleLinkedItems_t m_linkedItems;
+
+    /**
+     * Another set of linked items for the LinkedItems*::testItemsAll/Second/Third/... tests.
+     */
+    MultipleLinkedItems_t m_linkedItemsSubset;
 
     /**
      * Backends atomic modification tests
@@ -362,6 +374,13 @@ struct ClientTestConfig {
     Bool m_sourceLUIDsAreVolatile;
 
     /**
+     * Set this to true if the backend supports
+     * X-SYNCEVOLUTION-EXDATE-DETACHED, see CalDAVSource.cpp
+     * CalDAVSource::readSubItem().
+     */
+    Bool m_supportsReccurenceEXDates;
+
+    /**
      * called to dump all items into a file, required by tests which need
      * to compare items
      *
@@ -386,10 +405,12 @@ struct ClientTestConfig {
      * @param file       the name of the file to import
      * @retval realfile  the name of the file that was really imported;
      *                   this may depend on the current server that is being tested
+     * @param luids      optional; if empty, then fill with luids (empty string for failed items);
+     *                   if not empty, then update instead of adding the items
      * @return error string, empty for success
      */
     boost::function<std::string (ClientTest &, TestingSyncSource &, const ClientTestConfig &,
-                                 const std::string &, std::string &)> m_import;
+                                 const std::string &, std::string &, std::list<std::string> *)> m_import;
 
     /**
      * a function which compares two files with items in the format used by "dump"
@@ -438,6 +459,13 @@ struct ClientTestConfig {
     Bool m_retrySync;
     Bool m_suspendSync;
     Bool m_resendSync;
+
+    /**
+     * Set this to a list of properties which must *not* be removed
+     * from the test items. Leave empty to disable the testRemoveProperties
+     * test. Test items must be in vCard 3.0/iCalendar 2.0 format.
+     */
+    std::set<std::string> m_essentialProperties;
 
     /**
      * Set this to test if the source supports preserving local data extensions.
@@ -1024,6 +1052,15 @@ class SyncSourceBase : public Logger {
          * vCard 3.0 strings) from the engine.
          */
         std::string m_datastoreOptions;
+
+        /**
+         * If true, then the StartDataRead call (aka SyncSourceSession::beginSync)
+         * is invoked before the first message exchange with the peer. Otherwise
+         * it is invoked only if the peer could be reached and accepts the credentials.
+         *
+         * See SyncSourceSession::beginSync for further comments.
+         */
+        Bool m_earlyStartDataRead;
     };
 
     /**
@@ -1203,6 +1240,7 @@ class SyncSource : virtual public SyncSourceBase, public SyncSourceConfig, publi
     /* implementation of SyncSourceBase */
     virtual std::string getName() const { return SyncSourceConfig::getName(); }
     virtual std::string getDisplayName() const { return m_name.c_str(); }
+    virtual void setDisplayName(const std::string &name) { m_name = name; }
     virtual long getNumDeleted() const { return m_numDeleted; }
     virtual void setNumDeleted(long num) { m_numDeleted = num; }
     virtual void incrementNumDeleted() { m_numDeleted++; }
@@ -1324,7 +1362,21 @@ class SyncSourceSession : virtual public SyncSourceBase {
     /**
      * called before Synthesis engine starts to ask for changes and item data
      *
-     * See BeingDataRead for details.
+     * If SynthesisInfo::m_earlyStartDataRead is true, then this call is
+     * invoked before the first message exchange with a peer and it
+     * may throw a STATUS_SLOW_SYNC_508 StatusException if an
+     * incremental sync is not possible. In that case, preparations
+     * for a slow sync must have completed successfully inside the
+     * beginSync() call. It is not going to get called again.
+     *
+     * If SynthesisInfo::m_earlyStartDataRead is false (the default),
+     * then this is called only if the peer was reachable and accepted
+     * the credentials. This mode of operation is preferred if a fallback
+     * to slow sync is not needed, because it allows deferring expensive
+     * operations until really needed. For example, the engine does
+     * database dumps at the time when StartDataRead is called.
+     *
+     * See StartDataRead for details.
      *
      * @param lastToken     identifies the last completed sync
      * @param resumeToken   identifies a more recent sync which needs to be resumed;
@@ -1559,7 +1611,7 @@ class SyncSourceSerialize : virtual public SyncSourceBase, virtual public SyncSo
     /**
      * returns the backend selection and configuration
      */
-    virtual SourceType getSourceType() const = 0;
+    virtual InitStateClass<SourceType> getSourceType() const = 0;
 
     /**
      * Create or modify an item.
@@ -2081,13 +2133,9 @@ class TestingSyncSource : public SyncSource,
     }
     ~TestingSyncSource() {}
 
-    virtual SourceType getSourceType() const { return SyncSourceConfig::getSourceType(); }
+    virtual InitStateClass<SourceType> getSourceType() const { return SyncSourceConfig::getSourceType(); }
 
-    void removeAllItems() {
-        BOOST_FOREACH(const string &luid, getAllItems()) {
-            deleteItem(luid);
-        }
-    }
+    virtual void removeAllItems();
 };
 
 

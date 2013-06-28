@@ -27,9 +27,9 @@
 TStdLogicAgent::TStdLogicAgent(TSyncAppBase *aAppBaseP, TSyncSessionHandle *aSessionHandleP, cAppCharP aSessionID) :
   inherited(aAppBaseP, aSessionHandleP, aSessionID)
 {
-	if (IS_SERVER) {
-		#ifdef SYSYNC_SERVER
-	  InternalResetSession();
+  if (IS_SERVER) {
+    #ifdef SYSYNC_SERVER
+    InternalResetSession();
     #endif
   }
 } // TStdLogicAgent::TStdLogicAgent

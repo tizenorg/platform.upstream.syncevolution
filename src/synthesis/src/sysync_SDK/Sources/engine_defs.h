@@ -6,7 +6,7 @@
  *
  *  @brief Definitions needed for the common engine interface
  *
- *    Copyright (c) 2007-2011 by Synthesis AG + plan44.ch
+ *  Copyright (c) 2007-2011 by Synthesis AG + plan44.ch
  *
  */
 
@@ -106,7 +106,7 @@ enum TKeyValEnum {
   /** special ID for values that cannot be accessed by ID AT ALL */
   KEYVAL_NO_ID = -7,
   /** special ID to specify entire contents of a container */
-  KEYVAL_ID_ALL	= -8
+  KEYVAL_ID_ALL = -8
 };
 
 /* ---- special value names ---- */
@@ -211,14 +211,18 @@ enum TProfileFlagsEnum {
   /** run session in lenient mode */
   PROFILEFLAG_LENIENTMODE = 0x00000004,
   /** we should keep msg logs of the next session (not handled in engine!) */
-  PROFILEFLAG_MSGNEXTSYNC = 0x00000008
+  PROFILEFLAG_MSGNEXTSYNC = 0x00000008,
+  /** we should use this profile in global syncs (not handled in engine!) */
+  PROFILEFLAG_USEINGLOBSYNC = 0x00000008
 };
 
 
 /* ---- bit definitons for "transpFlags" profile field --- */
 enum TTranspFlagsEnum {
   /** SSL certificate verification/expiration errors should be ignored (not handled in engine!) */
-  TRANSPFLAG_SSLIGNORECERTFAIL = 0x00000001
+  TRANSPFLAG_SSLIGNORECERTFAIL = 0x00000001,
+  /** use http auth for server connection (not handled in engine!) */
+  TRANSPFLAG_USEHTTPAUTH = 0x00000002
 };
 
 
@@ -259,7 +263,7 @@ enum TStepCmdEnum {
   STEPCMD_AUTOSYNC_CHECK = 41,
 /* - output from engine */
   /** engine returns to caller w/o progress info, and should be called
-      again ASAP with STEPCMD_STEP or, if the previous call was 
+      again ASAP with STEPCMD_STEP or, if the previous call was
       STEPCMD_SUSPEND, with the step command that was pending before
       doing the suspend (for example STEPCMD_GOTDATA, STEPCMD_SENTDATA, STEPCMD_STEP) */
   STEPCMD_OK = 100,
@@ -336,7 +340,7 @@ enum TProgressEventEnum {
   PEV_DEBUG = 5,
 
   /* transport-related */
-  
+
   PEV_SENDSTART = 6,
   PEV_SENDEND = 7,
   PEV_RECVSTART = 8,
@@ -357,7 +361,7 @@ enum TProgressEventEnum {
   PEV_DISPLAY100 = 14,
 
   /* session-related */
-  
+
   PEV_SESSIONSTART = 15,
   /** session ended, probably with error in extra */
   PEV_SESSIONEND = 16,

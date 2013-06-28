@@ -1,7 +1,7 @@
 /*
  *  File:         SyncAgent.h
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TSyncAgent:   Provides functionality to run client or server
  *                sessions.
@@ -60,7 +60,7 @@ typedef enum {
   ses_needdata,     ///< need SyncML request data, waiting for STEPCMD_GOTDATA
   ses_processing,   ///< ready to perform next STEPCMD_STEP to process SyncML messages
   ses_generating,   ///< ready to perform next STEPCMD_STEP to generate SyncML messages
-  ses_dataready,    ///< data is ready to be sent, waiting for STEPCMD_SENTDATA  
+  ses_dataready,    ///< data is ready to be sent, waiting for STEPCMD_SENTDATA
   ses_done,         ///< session done
   numServerEngineStates
 } TServerEngineState;
@@ -71,7 +71,7 @@ typedef enum {
   ces_idle,         ///< client engine is idle and can be initialized with STEPCMD_CLIENTSTART
   ces_generating,   ///< ready to perform next STEPCMD_STEP to generate SyncML messages
   ces_dataready,    ///< data is ready to be sent, waiting for STEPCMD_SENTDATA
-	ces_resending,		///< data already sent, but app indicates with STEPCMD_RESENDDATA that it needed to resend the data
+  ces_resending,    ///< data already sent, but app indicates with STEPCMD_RESENDDATA that it needed to resend the data
   ces_needdata,     ///< need response data, waiting for STEPCMD_GOTDATA
   ces_processing,   ///< ready to perform next STEPCMD_STEP to process SyncML messages
   ces_done,         ///< session done
@@ -203,7 +203,7 @@ public:
   uInt16 fMaxGUIDSizeSent;
   // - respURI
   bool fUseRespURI;
-  bool fRespURIOnlyWhenDifferent;  
+  bool fRespURIOnlyWhenDifferent;
   #endif // SYSYNC_SERVER
   // check config elements
   #ifndef HARDCODED_CONFIG
@@ -211,7 +211,7 @@ public:
   #endif
   virtual void clear();
   virtual void localResolve(bool aLastPass);
-	#ifdef SYSYNC_SERVER
+  #ifdef SYSYNC_SERVER
   // create appropriate session (=agent) for this server
   virtual TSyncAgent *CreateServerSession(TSyncSessionHandle *aSessionHandle, const char *aSessionID)=0;
   #endif
@@ -234,7 +234,7 @@ public:
     TSyncAppBase *aAppBaseP,
     TSyncSessionHandle *aSessionHandleP,
     cAppCharP aSessionID // a session ID
-  );  
+  );
   virtual ~TSyncAgent();
   virtual void TerminateSession(void); // Terminate session, like destructor, but without actually destructing object itself
   virtual void ResetSession(void); // Resets session (but unlike TerminateSession, session might be re-used)
@@ -250,17 +250,17 @@ public:
   /// @param aInfoP[in] pointer to a TEngineProgressInfo structure, NULL if no progress info needed
   /// @return LOCERR_OK on success, SyncML or LOCERR_xxx error code on failure
   TSyError SessionStep(uInt16 &aStepCmd, TEngineProgressInfo *aInfoP);
-	#ifdef PROGRESS_EVENTS
-  // Handle (or dispatch) Session level progress event  
-	virtual bool HandleSessionProgressEvent(TEngineProgressInfo aProgressInfo);
-	#endif // PROGRESS_EVENTS
+  #ifdef PROGRESS_EVENTS
+  // Handle (or dispatch) Session level progress event
+  virtual bool HandleSessionProgressEvent(TEngineProgressInfo aProgressInfo);
+  #endif // PROGRESS_EVENTS
   #endif // ENGINE_LIBRARY
   /// @brief Get new session key to access details of this session
   virtual appPointer newSessionKey(TEngineInterface *aEngineInterfaceP);
   #endif // ENGINEINTERFACE_SUPPORT
 
-	// Server & Client common:
-	// - message start and end
+  // Server & Client common:
+  // - message start and end
   virtual bool MessageStarted(SmlSyncHdrPtr_t aContentP, TStatusCommand &aStatusCommand, bool aBad=false);
   virtual void MessageEnded(bool aIncomingFinal);
   // - handle status received for SyncHdr, returns false if not handled
@@ -281,7 +281,7 @@ public:
   virtual string getDeviceID(void);
 
 
-	#ifdef SYSYNC_CLIENT
+  #ifdef SYSYNC_CLIENT
   #ifdef ENGINE_LIBRARY
   // set profileID to client session before doing first SessionStep
   virtual void SetProfileSelector(uInt32 aProfileSelector) { fProfileSelectorInternal = aProfileSelector; /* default is just passing it on */ };
@@ -355,8 +355,8 @@ public:
   // info about server status
   virtual bool serverBusy(void); // return busy status (set by connection limit or app expiry)
   #endif // SYSYNC_SERVER
-    
-	#ifdef SYSYNC_CLIENT
+
+  #ifdef SYSYNC_CLIENT
   // variables
 protected:
   // - socks and proxy hosts if any
@@ -411,7 +411,7 @@ protected:
   uInt32 fOutgoingAlert222Count;
   // Loop detecting time frame to avoid wrong detection of "keep-alive" message
   lineartime_t fLastOutgoingAlert222;
-	// - called when essential status was received resets clien side Alert 222 loop detector
+  // - called when essential status was received resets clien side Alert 222 loop detector
   //   because receiving essential status means real session progress
   virtual void essentialStatusReceived(void) { fOutgoingAlert222Count = 0; };
 public:
@@ -471,7 +471,7 @@ protected:
   uInt32 fIncomingBytes;
   uInt32 fOutgoingBytes;
   // server session handle
-  TSyncSessionHandle *fSessionHandleP; // the session "handle" (wrapper, containing server specific locking etc.)  
+  TSyncSessionHandle *fSessionHandleP; // the session "handle" (wrapper, containing server specific locking etc.)
   #endif // SYSYNC_SERVER
 
   #ifdef ENGINE_LIBRARY
@@ -492,7 +492,7 @@ protected:
   bool fSuspendRequested;
   bool fAbortRequested;
   #endif // ENGINE_LIBRARY
-	
+
 }; // TSyncAgent
 
 
@@ -552,8 +552,8 @@ public:
 
 #endif // ENGINEINTERFACE_SUPPORT
 
-}	// namespace sysync
+} // namespace sysync
 
-#endif	// SYNC_AGENT_H
+#endif  // SYNC_AGENT_H
 
 // eof

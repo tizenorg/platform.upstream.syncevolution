@@ -1,7 +1,7 @@
 /*
  *  File:         iso8601.h
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  conversion from/to linear time scale.
  *

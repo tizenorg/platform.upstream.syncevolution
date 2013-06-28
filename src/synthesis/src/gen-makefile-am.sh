@@ -54,13 +54,17 @@ enginesessiondispatch.cpp
 syncserver.cpp
 EOF
 
-# files not needed anywhere at the moment
+# files not needed anywhere at the moment:
+# - some files are simply not used
+# - because Mac OS X has its own build system,
+#   compiling on it with autotools is not supported
 cat > EXTRA_FILES <<EOF
 clientprovisioning_inc.cpp
 .*_tables_inc.cpp
 syncsessiondispatch.cpp
 platform_thread.cpp
 enginestubs.c
+platform_adapters/macosx
 EOF
 
 # files to be included in libsynthesis

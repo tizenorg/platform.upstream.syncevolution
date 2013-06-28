@@ -1,7 +1,7 @@
 /*
  *  File:         VCalendarItemType.cpp
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TVCalendarItemType
  *    vCalendar item type, based on MIME-DIR Item Type, uses
@@ -117,10 +117,10 @@ bool TVCalendarTypeConfig::localStartElement(const char *aElementName, const cha
 // private helper
 TVCalendarVersion TVCalendarItemType::getVCalenderVersionByMode(sInt32 aMode)
 {
-	if (aMode!=PROFILEMODE_DEFAULT) {
-  	for (int v=vcalendar_vers_1_0; v<numVCalendarVersions-1; v++) {
-    	if (VCalendarVersionInfo[v].profilemode==aMode)
-      	return (TVCalendarVersion)v;
+  if (aMode!=PROFILEMODE_DEFAULT) {
+    for (int v=vcalendar_vers_1_0; v<numVCalendarVersions-1; v++) {
+      if (VCalendarVersionInfo[v].profilemode==aMode)
+        return (TVCalendarVersion)v;
     }
   }
   // not found or default mode
@@ -133,9 +133,9 @@ cAppCharP TVCalendarItemType::getTypeName(sInt32 aMode)
 {
   TVCalendarVersion v = getVCalenderVersionByMode(aMode);
   if (v!=vcalendar_vers_none)
-  	return VCalendarVersionInfo[v].typetext;
+    return VCalendarVersionInfo[v].typetext;
   else
-  	return inherited::getTypeName(aMode);
+    return inherited::getTypeName(aMode);
 } // TVCalendarItemType::getTypeName
 
 
@@ -143,20 +143,20 @@ cAppCharP TVCalendarItemType::getTypeVers(sInt32 aMode)
 {
   TVCalendarVersion v = getVCalenderVersionByMode(aMode);
   if (v!=vcalendar_vers_none)
-  	return VCalendarVersionInfo[v].versiontext;
+    return VCalendarVersionInfo[v].versiontext;
   else
-  	return inherited::getTypeVers(aMode);
+    return inherited::getTypeVers(aMode);
 } // TVCalendarItemType::getTypeVers
 
 
 // relaxed type comparison, taking into account common errors in real-world implementations
 bool TVCalendarItemType::supportsType(const char *aName, const char *aVers, bool aVersMustMatch)
 {
-	bool match = inherited::supportsType(aName,aVers,aVersMustMatch);
+  bool match = inherited::supportsType(aName,aVers,aVersMustMatch);
   if (!match) {
-  	// no exact match, but also check for unambiguos misstyped variants
+    // no exact match, but also check for unambiguos misstyped variants
     if (aVers && strstr(aName,"calendar")!=NULL) {
-    	// if "calendar" is in type name, version alone is sufficient to identify the vCalendar version,
+      // if "calendar" is in type name, version alone is sufficient to identify the vCalendar version,
       // even if the type string is wrong, like mixing "x-vcalendar" and "calendar"
       match = strucmp(getTypeVers(),aVers)==0;
       if (match) {
@@ -169,7 +169,7 @@ bool TVCalendarItemType::supportsType(const char *aName, const char *aVers, bool
     }
   }
   // return result now
-	return match;
+  return match;
 } // TVCalendarItemType::supportsType
 
 
@@ -186,7 +186,7 @@ bool TVCalendarItemType::versionFromData(SmlItemPtr_t aItemP, string &aString)
 // try to extract a version string from actual item data, NULL if none
 sInt32 TVCalendarItemType::expiryFromData(SmlItemPtr_t aItemP, lineardate_t &aDat)
 {
-	string rev;
+  string rev;
   aDat=0; // default to no date
   // try to extract version
   if (!parseForProperty(aItemP,"LAST-MODIFIED",rev)) return 0; // no date, is ok
@@ -200,10 +200,10 @@ sInt32 TVCalendarItemType::expiryFromData(SmlItemPtr_t aItemP, lineardate_t &aDa
   // check if this is after expiry date
   long v=SCRAMBLED_EXPIRY_VALUE;
   v =
-		(y-1720)*12*42+
-		(mo-1)*42+
-		(d+7);
-	v=v-SCRAMBLED_EXPIRY_VALUE;	
+    (y-1720)*12*42+
+    (mo-1)*42+
+    (d+7);
+  v=v-SCRAMBLED_EXPIRY_VALUE;
   return (v>0 ? v : 0);
   #else
   return 0; // not expired

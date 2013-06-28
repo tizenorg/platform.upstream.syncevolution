@@ -30,7 +30,6 @@
 #include <set>
 #include <map>
 #include <stdint.h>
-using namespace std;
 
 #include <boost/smart_ptr.hpp>
 
@@ -40,32 +39,6 @@ SE_BEGIN_CXX
 class TransportAgent;
 class SourceList;
 class SyncSource;
-
-struct SuspendFlags
-{
-    /** SIGINT twice within this amount of seconds aborts the sync */
-    static const time_t ABORT_INTERVAL = 2; 
-    enum CLIENT_STATE
-    {
-        CLIENT_NORMAL,
-        CLIENT_SUSPEND,
-        CLIENT_ABORT,
-        CLIENT_ILLEGAL
-    }state;
-    time_t last_suspend;
-
-    /**
-     * Simple string to print in SyncContext::printSignals().
-     * Set by SyncContext::handleSignal() when updating the
-     * global state. There's a slight race condition: if
-     * messages are set more quickly than they are printed,
-     * only the last message is printed.
-     */
-    const char *message;
-
-SuspendFlags():state(CLIENT_NORMAL),last_suspend(0),message(NULL)
-    {}
-};
 
 /**
  * This is the main class inside SyncEvolution which
@@ -103,10 +76,6 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
     FullProps m_configFilters;
     
     boost::shared_ptr<TransportAgent> m_agent;
-    /**
-     * flags for suspend and abort
-     */
-    static SuspendFlags s_flags;
 
     /**
      * a pointer to the active SourceList instance for this context if one exists;
@@ -265,9 +234,6 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
     /** only for server: device ID of peer */
     void setSyncDeviceID(const std::string &deviceID) { m_syncDeviceID = deviceID; }
     std::string getSyncDeviceID() const { return m_syncDeviceID; }
-
-    /** read-only access to suspend and abort state */
-    static const SuspendFlags &getSuspendFlags() { return s_flags; }
 
     /*
      * Use sendSAN as the first step is sync() if this is a server alerted sync.
@@ -486,33 +452,6 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
      */
     SharedSession getSession() { return m_session; }
 
-    /**
-     * sync() installs signal handlers for SIGINT and SIGTERM if no
-     * handler was installed already. SIGINT will try to suspend.
-     * Sending the signal again quickly (typically done by pressing
-     * CTRL-C twice) will abort. SIGTERM will abort the running sync
-     * immediately.
-     *
-     * If a handler was installed already, the caller is responsible
-     * for calling this function if this kind of SIGINT/SIGTERM
-     * handling is desired.
-     */
-    static void handleSignal(int signal);
-
-    /**
-     * Once a signal was received, all future calls to sync() will
-     * react to it unless this function is called first.
-     */
-    static void resetSignals() { s_flags = SuspendFlags(); }
-
-    /**
-     * handleSignals() is called in a signal handler,
-     * which can only call reentrant functions. Our
-     * logging code is not reentrant and thus has
-     * to be called outside of the signal handler.
-     */
-    static void printSignals();
-
     bool getRemoteInitiated() {return m_remoteInitiated;}
     void setRemoteInitiated(bool remote) {m_remoteInitiated = remote;}
 
@@ -523,6 +462,32 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
      * D-Bus server implementation must ask client.
      */
     virtual void readStdin(string &content);
+
+    /**
+     * A helper function which interactively asks the user for
+     * a certain password. May throw errors.
+     *
+     * The default implementation uses stdin/stdout to communicate
+     * with the user.
+     *
+     * @param passwordName the name of the password in the config file
+     * @param descr        A simple string explaining what the password is needed for,
+     *                     e.g. "SyncML server". Has to be unique and understandable
+     *                     by the user.
+     * @param key          the key used to retrieve password
+     * @return entered password
+     */
+    virtual string askPassword(const string &passwordName, const string &descr, const ConfigPasswordKey &key);
+
+    /**
+     * A helper function which is used for user interface to save
+     * a certain password with a specific mechanism. 
+     * Currently possibly syncml server. May throw errors.
+     * The default implementation do nothing.
+     */
+    virtual bool savePassword(const string &passwordName, const string &password, const ConfigPasswordKey &key) { 
+        return false; 
+    }
 
   protected:
     /** exchange active Synthesis engine */
@@ -645,32 +610,6 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
     virtual void getConfigXML(string &xml, string &configname);
 
     /**
-     * A helper function which interactively asks the user for
-     * a certain password. May throw errors.
-     *
-     * The default implementation uses stdin/stdout to communicate
-     * with the user.
-     *
-     * @param passwordName the name of the password in the config file
-     * @param descr        A simple string explaining what the password is needed for,
-     *                     e.g. "SyncML server". Has to be unique and understandable
-     *                     by the user.
-     * @param key          the key used to retrieve password
-     * @return entered password
-     */
-    virtual string askPassword(const string &passwordName, const string &descr, const ConfigPasswordKey &key);
-
-    /**
-     * A helper function which is used for user interface to save
-     * a certain password with a specific mechanism. 
-     * Currently possibly syncml server. May throw errors.
-     * The default implementation do nothing.
-     */
-    virtual bool savePassword(const string &passwordName, const string &password, const ConfigPasswordKey &key) { 
-        return false; 
-    }
-
-    /**
      * Callback for derived classes: called after initializing the
      * client, but before doing anything with its configuration.
      * Can be used to override the client configuration.
@@ -759,10 +698,7 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
      *
      * @return true if user wants to abort
      */
-    virtual bool checkForAbort() {
-        printSignals();
-        return (s_flags.state == SuspendFlags::CLIENT_ABORT);
-    }
+    virtual bool checkForAbort();
 
     /**
      * Called to find out whether user wants to suspend sync.
@@ -770,10 +706,7 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
      * Same as checkForAbort(), but the session is finished
      * gracefully so that it can be resumed.
      */
-    virtual bool checkForSuspend() {
-        printSignals();
-        return (s_flags.state == SuspendFlags::CLIENT_SUSPEND);
-    }
+    virtual bool checkForSuspend();
 
  private:
     /** initialize members as part of constructors */

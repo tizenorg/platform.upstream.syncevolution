@@ -24,8 +24,8 @@
 #ifdef BASED_ON_BINFILE_CLIENT
   #include "binfileimplds.h"
 #else
-	#ifdef BINFILE_ALWAYS_ACTIVE
-  	#error "BINFILE_ALWAYS_ACTIVE is only possible when BASED_ON_BINFILE_CLIENT"
+  #ifdef BINFILE_ALWAYS_ACTIVE
+    #error "BINFILE_ALWAYS_ACTIVE is only possible when BASED_ON_BINFILE_CLIENT"
   #endif
 #endif
 
@@ -538,8 +538,8 @@ public:
 
   virtual TSettingsKeyImpl *newTunnelKey(TEngineInterface *aEngineInterfaceP);
 
-	// helpers
-	void setupTunnelTypes(TSyncItemType *aItemTypeP=NULL);
+  // helpers
+  void setupTunnelTypes(TSyncItemType *aItemTypeP=NULL);
 
   /// @}
   #endif
@@ -664,7 +664,7 @@ protected:
   bool implNeedSyncSetToRetrieve(void) { return false; }; // non-binfiles don't need the syncset to retrieve
   virtual bool implTracksSyncopChanges(void) { return true; }; // non-binfile custimpls are capable of this
   #endif
-  
+
 
   #ifndef BINFILE_ALWAYS_ACTIVE
   /// get item from DB
@@ -673,12 +673,12 @@ protected:
     bool &aChanged,
     TSyncItem* &aSyncItemP
   );
-	/// review reported entry (allows post-processing such as map deleting)
-	/// MUST be called after implStartDataWrite, before any actual writing,
-	/// for each item obtained in implGetItem
-	virtual localstatus implReviewReadItem(
-	  TSyncItem &aItem         // the item
-	);
+  /// review reported entry (allows post-processing such as map deleting)
+  /// MUST be called after implStartDataWrite, before any actual writing,
+  /// for each item obtained in implGetItem
+  virtual localstatus implReviewReadItem(
+    TSyncItem &aItem         // the item
+  );
   /// called to set maps.
   /// @note aLocalID or aRemoteID can be NULL - which signifies deletion of a map entry
   /// @note that this might be needed for clients accessing a server-style database as well
@@ -710,7 +710,7 @@ protected:
 
   /// @}
   #endif // not BINFILE_ALWAYS_ACTIVE
-  
+
   #ifdef BASED_ON_BINFILE_CLIENT
   /// @name methods used when based on BinfileImplDS
   /// @{
@@ -774,8 +774,6 @@ protected:
   // - Queue the data needed for finalisation (usually - relational link updates)
   //   as a item copy with only finalisation-required fields
   void queueForFinalisation(TMultiFieldItem *aItemP);
-  /// helper to merge database version of an item with the passed version of the same item
-  TMultiFieldItem *mergeWithDatabaseVersion(TSyncItem *aSyncItemP, bool &aChangedDBVersion, bool &aChangedNewVersion);
 public:
   // - get last to-remote sync time
   lineartime_t getPreviousToRemoteSyncCmpRef(void) { return fPreviousToRemoteSyncCmpRef; };
@@ -821,7 +819,7 @@ protected:
   bool fSyncSetLoaded; // set if sync set is currently loaded
   localstatus makeSyncSetLoaded(bool aNeedAll);
   #endif // BASED_ON_BINFILE_CLIENT
-	localstatus getItemFromSyncSetItem(TSyncSetItem *aSyncSetItemP, TSyncItem *&aItemP);
+  localstatus getItemFromSyncSetItem(TSyncSetItem *aSyncSetItemP, TSyncItem *&aItemP);
   bool fNoSingleItemRead; // if set, syncset list will also contain items
   bool fMultiFolderDB; // if set, we need the syncset list for finding container IDs later
   #ifdef SCRIPT_SUPPORT
@@ -829,17 +827,17 @@ protected:
   bool fOptionFilterWorksOnDBLevel; // set if option filters can be executed by DB
   #endif // SCRIPT_SUPPORT
 
-	#ifdef DBAPI_TUNNEL_SUPPORT
+  #ifdef DBAPI_TUNNEL_SUPPORT
   // Tunnel DB access support
   bool fTunnelReadStarted;
   bool generateTunnelItemData(bool aAssignedOnly, TMultiFieldItem *aItemP, string &aDataFields);
   bool parseTunnelItemData(TMultiFieldItem &aItem, const char *aItemData);
-	TSyError TunnelReadNextItemInternal(ItemID aID, TSyncItem *&aItemP, sInt32 *aStatus, bool aFirst);
-	TSyError TunnelInsertItemInternal(TMultiFieldItem *aItemP, ItemID aNewID);
-	TSyError TunnelUpdateItemInternal(TMultiFieldItem *aItemP, cItemID aID, ItemID aUpdID);
+  TSyError TunnelReadNextItemInternal(ItemID aID, TSyncItem *&aItemP, sInt32 *aStatus, bool aFirst);
+  TSyError TunnelInsertItemInternal(TMultiFieldItem *aItemP, ItemID aNewID);
+  TSyError TunnelUpdateItemInternal(TMultiFieldItem *aItemP, cItemID aID, ItemID aUpdID);
   #endif // DBAPI_TUNNEL_SUPPORT
 
-	#ifdef DBAPI_TEXTITEMS
+  #ifdef DBAPI_TEXTITEMS
   // Text item handling
   // - store itemdata field into named TItemField (derived DBApi store will override this with DB-mapped version)
   virtual bool storeField(
@@ -856,16 +854,16 @@ protected:
     const char *aItemData,
     uInt16 aSetNo
   );
-	// - generate text data for one field (common for Tunnel and DB API)
+  // - generate text data for one field (common for Tunnel and DB API)
   bool generateItemFieldData(
-  	bool aAssignedOnly, TCharSets aDataCharSet, TLineEndModes aDataLineEndMode, timecontext_t aTimeContext,
-  	TItemField *aBasefieldP, cAppCharP aBaseFieldName, string &aDataFields
+    bool aAssignedOnly, TCharSets aDataCharSet, TLineEndModes aDataLineEndMode, timecontext_t aTimeContext,
+    TItemField *aBasefieldP, cAppCharP aBaseFieldName, string &aDataFields
   );
-	#endif // DBAPI_TEXTITEMS
+  #endif // DBAPI_TEXTITEMS
 
-	#if (defined(DBAPI_ASKEYITEMS) || defined(DBAPI_TUNNEL_SUPPORT)) && defined(ENGINEINTERFACE_SUPPORT)
+  #if (defined(DBAPI_ASKEYITEMS) || defined(DBAPI_TUNNEL_SUPPORT)) && defined(ENGINEINTERFACE_SUPPORT)
   TDBItemKey *newDBItemKey(TMultiFieldItem *aItemP, bool aOwnsItem=false);
-	#endif // (DBAPI_ASKEYITEMS or DBAPI_TUNNEL_SUPPORT) and ENGINEINTERFACE_SUPPORT
+  #endif // (DBAPI_ASKEYITEMS or DBAPI_TUNNEL_SUPPORT) and ENGINEINTERFACE_SUPPORT
 
 }; // TCustomImplDS
 
@@ -912,10 +910,10 @@ protected:
   bool fOwnsItem;
   // iterator
   TFieldMapList::iterator fIterator;
-  
+
 private:
-	void forgetItem() { if (fOwnsItem && fItemP) { delete fItemP; } fItemP=NULL; };
-  
+  void forgetItem() { if (fOwnsItem && fItemP) { delete fItemP; } fItemP=NULL; };
+
 
 }; // TDBItemKey
 
@@ -945,7 +943,7 @@ protected:
   );
   // field access
   const TStructFieldInfo *getFieldsTable(void);
-	sInt32 numFields(void);
+  sInt32 numFields(void);
   // fields
   TCustomImplDS *fCustomImplDsP;
 }; // TCustomDSTunnelKey
@@ -956,6 +954,6 @@ protected:
 
 } // namespace sysync
 
-#endif	// CUSTOMIMPLDS_H
+#endif  // CUSTOMIMPLDS_H
 
 // eof

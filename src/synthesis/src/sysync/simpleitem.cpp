@@ -1,7 +1,7 @@
 /*
  *  File:         SimpleItem.cpp
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TSimpleItem
  *    Simple item, no internal structure but just a string

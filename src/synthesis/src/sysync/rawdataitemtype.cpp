@@ -4,7 +4,7 @@
  *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TRawDataItemType
- *    Item type for 1:1 raw items (SyncML payload is exchanged 1:1 with database backend) 
+ *    Item type for 1:1 raw items (SyncML payload is exchanged 1:1 with database backend)
  *
  *  Copyright (c) 2010 by Synthesis AG (www.synthesis.ch)
  *
@@ -46,7 +46,7 @@ TRawDataTypeConfig::~TRawDataTypeConfig()
 // init defaults
 void TRawDataTypeConfig::clear(void)
 {
-	// clear FIDs
+  // clear FIDs
   fFidItemData = FID_NOT_SUPPORTED;
   // clear inherited
   inherited::clear();
@@ -57,7 +57,7 @@ void TRawDataTypeConfig::clear(void)
 void TRawDataTypeConfig::localResolve(bool aLastPass)
 {
   if (aLastPass) {
-  	// get FIDs of the fields we directly use
+    // get FIDs of the fields we directly use
     // - the "ITEMDATA" field containing the raw item data
     fFidItemData = getFieldIndex("ITEMDATA",fFieldListP);
     if (fFidItemData==FID_NOT_SUPPORTED) goto missingfield;
@@ -67,7 +67,7 @@ void TRawDataTypeConfig::localResolve(bool aLastPass)
   inherited::localResolve(aLastPass);
   return;
 missingfield:
-	SYSYNC_THROW(TConfigParseException("fieldlist for RawDataItem must contain certain predefined fields (like ITEMDATA)!"));	
+  SYSYNC_THROW(TConfigParseException("fieldlist for RawDataItem must contain certain predefined fields (like ITEMDATA)!"));
 } // TRawDataTypeConfig::localResolve
 
 
@@ -118,7 +118,7 @@ TRawDataItemType::TRawDataItemType(
 ) :
   TMultiFieldItemType(aSessionP,aTypeConfigP,aCTType,aVerCT,aRelatedDatastoreP,aFieldDefinitions)
 {
-	fCfgP = static_cast<TRawDataTypeConfig *>(aTypeConfigP);
+  fCfgP = static_cast<TRawDataTypeConfig *>(aTypeConfigP);
 } // TRawDataItemType::TRawDataItemType
 
 
@@ -150,15 +150,15 @@ bool TRawDataItemType::internalFillInData(
   GET_CASTED_PTR(itemP,TMultiFieldItem,aSyncItemP,DEBUGTEXT("TRawDataItemType::internalFillInData: incompatible item class","mdit7"));
   // store data, if any, in predefined ITEMDATA field
   if (aItemP->data) {
-  	// read data into predefined raw data field
+    // read data into predefined raw data field
     TItemField *fldP = itemP->getField(fCfgP->fFidItemData);
     if (fldP) {
       // get raw data
       stringSize sz;
       cAppCharP data = smlPCDataToCharP(aItemP->data,&sz);
       // put it into ITEMDATA field
-    	fldP->setAsString(data, sz);
-		}
+      fldP->setAsString(data, sz);
+    }
   }
   else {
     // no data
@@ -186,17 +186,17 @@ bool TRawDataItemType::internalSetItemData(
   // generate data item from predefined ITEMDATA field
   TItemField *fldP = itemP->getField(fCfgP->fFidItemData);
   if (fldP) {
-	  string dataitem;
-  	if (fldP->isBasedOn(fty_blob)) {
-    	// is a BLOB, don't use getAsString as BLOB only returns pseudo-data indicating length of BLOB
-    	((TBlobField *)fldP)->getBlobAsString(dataitem);
+    string dataitem;
+    if (fldP->isBasedOn(fty_blob)) {
+      // is a BLOB, don't use getAsString as BLOB only returns pseudo-data indicating length of BLOB
+      ((TBlobField *)fldP)->getBlobAsString(dataitem);
     }
     else {
-    	// for all other types, just get it as string
-    	fldP->getAsString(dataitem);
+      // for all other types, just get it as string
+      fldP->getAsString(dataitem);
     }
-	  // put data item into opaque/cdata PCData
-  	aItem->data=newPCDataStringX((const uInt8 *)dataitem.c_str(),true,dataitem.size());
+    // put data item into opaque/cdata PCData
+    aItem->data=newPCDataStringX((const uInt8 *)dataitem.c_str(),true,dataitem.size());
   }
   // can't go wrong
   return true;
@@ -207,18 +207,18 @@ bool TRawDataItemType::internalSetItemData(
 // generates SyncML-Devinf property list for type
 SmlDevInfCTDataPropListPtr_t TRawDataItemType::newCTDataPropList(TTypeVariantDescriptor aVariantDescriptor)
 {
-	// return supported properties
+  // return supported properties
   //#warning "TODO create this list from some configuration data"
-	return NULL; // %%% for now: none
+  return NULL; // %%% for now: none
 }
 
 
 // Analyze CTCap part of devInf
 bool TRawDataItemType::analyzeCTCap(SmlDevInfCTCapPtr_t aCTCapP)
 {
-	// no analysis so far
+  // no analysis so far
   // TODO: maybe add mechanism to capture CTCap here and pass it to the DB backend in a predefined field for analysis
-	return inherited::analyzeCTCap(aCTCapP);
+  return inherited::analyzeCTCap(aCTCapP);
 }
 
 

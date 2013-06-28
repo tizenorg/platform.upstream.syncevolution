@@ -1,7 +1,7 @@
 /*
  *  File:         DataObjType.h
  *
- *  Author:			  Beat Forster (bfo@synthesis.ch)
+ *  Author:       Beat Forster (bfo@synthesis.ch)
  *
  *  TDataObjType
  *    base class for data object based items (EMAILOBJ, FILEOBJ, FOLDEROBJ)
@@ -176,8 +176,8 @@ private:
 }; // TDataObjType
 
 
-}	// namespace sysync
+} // namespace sysync
 
-#endif	// DataObjType_H
+#endif  // DataObjType_H
 
 // eof

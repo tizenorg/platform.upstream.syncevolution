@@ -24,6 +24,7 @@ import logging.config
 
 import twisted.web
 import twisted.python.log
+import twisted.web.error
 from twisted.web import server, resource, http
 from twisted.internet import ssl, reactor
 from OpenSSL import SSL
@@ -148,6 +149,7 @@ class SyncMLSession:
     def reply(self, data, type, meta, final, session):
         '''sent reply to HTTP client and/or close down normally'''
         logger.debug("reply session %s final %s data len %d %s", session, final, len(data), meta)
+        self.logMessage("outgoing", self.request, data, type)
         # When the D-Bus server sends an empty array, Python binding
         # puts the four chars in 'None' into the data array?!
         if data and len(data) > 0 and data != 'None':
@@ -182,6 +184,9 @@ class SyncMLSession:
 
     def start(self, request, config, url):
         '''start a new session based on the incoming message'''
+        data = request.content.read()
+        type = request.getHeader('content-type')
+        self.logMessage("incoming", request, data, type)
         logger.debug("requesting new session")
         self.object = Context.getDBusServer()
         self.request = request
@@ -215,12 +220,13 @@ class SyncMLSession:
 
         # feed new data into SyncEvolution and wait for reply
         request.content.seek(0, 0)
-        self.connection.Process(request.content.read(),
-                                request.getHeader('content-type'))
+        self.connection.Process(data, type)
         SyncMLSession.sessions.append(self)
 
     def process(self, request, data):
         '''process next message by client in running session'''
+        type = request.getHeader('content-type')
+        self.logMessage("incoming", request, data, type)
         if self.request:
             # message resend?! Ignore old request.
             logger.debug("message resend?!")
@@ -230,8 +236,13 @@ class SyncMLSession:
         deferred.addCallback(self.done)
         deferred.addErrback(self.done)
         self.request = request
-        self.connection.Process(data,
-                                request.getHeader('content-type'))
+        self.connection.Process(data, type)
+
+    def logMessage(self, direction, request, data, type):
+        if 'plain' in type or "+xml" in type:
+            logger.debug("processing %s message of type %s and length %d:\n%s" % (direction, type, len(data), data))
+        else:
+            logger.debug("processing %s message of type %s and length %d, binary data" % (direction, type, len(data)))
 
 class SyncMLPost(resource.Resource):
     isLeaf = True
@@ -288,11 +299,10 @@ class SyncMLPost(resource.Resource):
                 if session.sessionid == sessionid:
                     session.process(request, data)
                     return server.NOT_DONE_YET
+            # fallback when session not found
             logger.error("unknown session %s => 404 error", sessionid)
-            request.setResponseCode(http.NOT_FOUND)
-            request.write("<html><body><h1>session not found</h1></body></html>")
-            request.finish()
-
+            page = twisted.web.error.NoResource(message="The session %s was not found" % sessionid)
+            return page.render(request)
 
 class TwistedLogging(object):
     "same as Twisted's PythonLoggingObserver, except that it uses loglevels debug and error"
@@ -506,6 +516,7 @@ syncevo-http-server itself is installed""")
         os.environ["PATH"] = ":".join((os.path.join(path, "libexec/"),
                                        os.path.join(path, "bin"),
                                        os.environ.get("PATH", "")))
+        os.environ["SYNCEVOLUTION_DATA_DIR"] = os.path.join(path, "share/syncevolution")
         os.environ["SYNCEVOLUTION_XML_CONFIG_DIR"] = os.path.join(path, "share/syncevolution/xml")
         os.environ["SYNCEVOLUTION_TEMPLATE_DIR"] = os.path.join(path, "share/syncevolution/templates")
         # try whether it can be started

@@ -1,33 +1,7 @@
 /* precompiled headers source file
  * ===============================
  *
- *  CVS:
- *    $Author: bfo $
- *    $Date: 2009/01/08 19:00:27 $
- *    $Revision: 1.1 $
- *    $Source: /usr/local/cvsroot/sysync/Source/Targets/ReleasedProducts/clientEngine_opensource_linux/clientengine_demo.pch,v $
- *    $State: Exp $
- *    $Name:  $ (Tag)
- *    $Locker:  $ (who has reserved checkout)
- *  Log:
- *    $Log: clientengine_demo.pch,v $
- *    Revision 1.1  2009/01/08 19:00:27  bfo
- *    Required files added
- *
- *    Revision 1.1  2007/11/08 15:58:02  bfo
- *    project files added
- *
- *    Revision 1.1  2007/10/02 10:12:57  luz
- *    Added clientEngine_DEMO target to xcode
- *
- *    Revision 1.1  2007/09/13 18:55:30  luz
- *    New DEMO client engine (SQLite, TextDB but no ODBC nor DBPlugins) release target
- *
- *    Revision 1.1  2007/09/05 14:03:05  luz
- *    client engine with custom datastores (SQL, ODBC, SQLite and PluginAPI)
- *
- *
- */
+ */ 
 
 // C-version for SyncML toolkit files
 #pragma cplusplus off

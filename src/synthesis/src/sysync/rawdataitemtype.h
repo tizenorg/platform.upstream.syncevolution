@@ -4,7 +4,7 @@
  *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TRawDataItemType
- *    Item type for 1:1 raw items (SyncML payload is exchanged 1:1 with database backend) 
+ *    Item type for 1:1 raw items (SyncML payload is exchanged 1:1 with database backend)
  *
  *  Copyright (c) 2010 by Synthesis AG (www.synthesis.ch)
  *
@@ -44,7 +44,7 @@ protected:
 public:
   // FIDs of the predefined fields we need to access
   sInt16 fFidItemData; // BLOB or string field that will contain item <data>
-	// %%% add more FID vars here
+  // %%% add more FID vars here
 }; // TRawDataTypeConfig
 
 
@@ -102,15 +102,15 @@ protected:
     TLocalEngineDS *aLocalDatastoreP // local datastore
   );
 private:
-	// convenience casted pointer to my config
-	TRawDataTypeConfig *fCfgP;
+  // convenience casted pointer to my config
+  TRawDataTypeConfig *fCfgP;
 }; // TRawDataItemType
 
 
 
-}	// namespace sysync
+} // namespace sysync
 
-#endif	// RawDataItemType_H
+#endif  // RawDataItemType_H
 
 // eof
 

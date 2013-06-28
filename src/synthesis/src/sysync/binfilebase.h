@@ -88,8 +88,8 @@ public:
   uInt32 getFoundVersion(void) { return fFoundVersion; };
   // - check if open
   bool isOpen(void) { return platformFileIsOpen(); };
-	// - create a copy
-	bferr createAsCopyFrom(TBinFileBase &aSourceBinFile, bool aOverwrite=false);
+  // - create a copy
+  bferr createAsCopyFrom(TBinFileBase &aSourceBinFile, bool aOverwrite=false);
   // - try to open existing DB file according to params set with setFileInfo
   bferr open(uInt32 aExtraHeadersize=0, void *aExtraHeaderP=NULL, TUpdateFunc aUpdateFunc=NULL);
   // - create existing DB file according to params set with setFileInfo
@@ -159,4 +159,4 @@ private:
 
 } // namespace sysync
 
-#endif	// BINFILEBASE_H
+#endif  // BINFILEBASE_H

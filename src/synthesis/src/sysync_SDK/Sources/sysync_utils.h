@@ -1,5 +1,5 @@
 /*
- *  File:         sysync_utils.cpp
+ *  File:         sysync_utils.h
  *
  *  Author:       Lukas Zeller (luz@plan44.ch)
  *

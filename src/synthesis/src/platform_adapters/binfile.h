@@ -57,4 +57,4 @@ private:
 
 } // namespace sysync
 
-#endif	// BINFILE_H
+#endif  // BINFILE_H

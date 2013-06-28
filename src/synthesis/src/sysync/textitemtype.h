@@ -1,7 +1,7 @@
 /*
  *  File:         TextItemType.h
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TTextItemType
  *    base class for plain text based items (notes, emails...)
@@ -108,8 +108,8 @@ private:
 }; // TTextItemType
 
 
-}	// namespace sysync
+} // namespace sysync
 
-#endif	// TextItemType_H
+#endif  // TextItemType_H
 
 // eof

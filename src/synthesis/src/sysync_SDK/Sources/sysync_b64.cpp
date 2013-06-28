@@ -25,8 +25,8 @@ static const char table [64] = {
 // free memory allocated with encode or decode above
 void b64::free(void *mem)
 {
-	// we use normal malloc below, so use normal free as well
-	::free(mem);
+  // we use normal malloc below, so use normal free as well
+  ::free(mem);
 }
 
 
@@ -122,7 +122,7 @@ char *b64::encode (const uInt8 *instr, uInt32 len, uInt32 *outlenP, sInt16 maxLi
     if (inover < 3 ) {
       outstr[o_off+3] = '=';
       if (inover < 2 ) {
-      	outstr[o_off+2] = '=';
+        outstr[o_off+2] = '=';
       }
     }
   }
@@ -177,15 +177,15 @@ uInt8 *b64::decode(const char *instr, uInt32 len, uInt32 *outlenP)
       n++;
       // process char
       if ((c >= 'A') && (c <= 'Z'))
-      	c = c - 'A';
+        c = c - 'A';
       else if ((c >= 'a') && (c <= 'z'))
-      	c = c - 'a' + 26;
+        c = c - 'a' + 26;
       else if ((c >= '0') && (c <= '9'))
-      	c = c - '0' + 52;
+        c = c - '0' + 52;
       else if (c == '+')
-      	c = 62;
+        c = 62;
       else if (c == '/')
-      	c = 63;
+        c = 63;
       else if (c == '=') {
         // reaching a "=" is like end of data
         done=true;
@@ -258,22 +258,22 @@ uInt8 *b64::decode(const char *instr, uInt32 len, uInt32 *outlenP)
       ch = instr[i_off+cnt];
 
       if ((ch >= 'A') && (ch <= 'Z'))
-      	ch = ch - 'A';
+        ch = ch - 'A';
 
       else if ((ch >= 'a') && (ch <= 'z'))
-      	ch = ch - 'a' + 26;
+        ch = ch - 'a' + 26;
 
       else if ((ch >= '0') && (ch <= '9'))
-      	ch = ch - '0' + 52;
+        ch = ch - '0' + 52;
 
       else if (ch == '+')
-      	ch = 62;
+        ch = 62;
 
       else if (ch == '=') //no op -- can't ignore this one*
-      	ch = 0;
+        ch = 0;
 
       else if (ch == '/')
-      	ch = 63;
+        ch = 63;
 
       inbuf[cnt] = ch;
 
@@ -296,22 +296,22 @@ uInt8 *b64::decode(const char *instr, uInt32 len, uInt32 *outlenP)
       ch = instr[i_off+cnt];
 
       if ((ch >= 'A') && (ch <= 'Z'))
-	      ch = ch - 'A';
+        ch = ch - 'A';
 
       else if ((ch >= 'a') && (ch <= 'z'))
-      	ch = ch - 'a' + 26;
+        ch = ch - 'a' + 26;
 
       else if ((ch >= '0') && (ch <= '9'))
-      	ch = ch - '0' + 52;
+        ch = ch - '0' + 52;
 
       else if (ch == '+')
-      	ch = 62;
+        ch = 62;
 
       else if (ch == '=') //no op -- can't ignore this one*
-      	ch = 0;
+        ch = 0;
 
       else if (ch == '/')
-      	ch = 63;
+        ch = 63;
 
       inbuf[cnt] = ch;
     }

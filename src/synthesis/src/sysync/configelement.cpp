@@ -1,7 +1,7 @@
 /*
  *  File:         ConfigElement.cpp
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TConfigElement
  *    Element of hierarchical configuration
@@ -37,7 +37,7 @@ const char * const ParseModeNames[numParseModes] = {
   "nested",   // like pamo_element, but scanning nested elements in same TConfigElement
   "delegated", // I have delegated parsing of a single sub-element of mine to another element (without XML nesting)
   "end",   // expecting end of element
-	"endnested", // expecting end of nested element (i.e. will call nestedElementEnd())
+  "endnested", // expecting end of nested element (i.e. will call nestedElementEnd())
   "all",   // read over all content
   "string",   // string, but with all WSP converted to space and removed at beginning an end
   "rawstring", // string without any changes
@@ -322,7 +322,7 @@ bool TConfigElement::startElement(const char *aElementName, const char **aAttrib
     ));
     if (fParseMode==pamo_all) {
       // read over contents, no matter what is inside
-    	fNest++;
+      fNest++;
       return true;
     }
     #ifdef SYSER_REGISTRATION
@@ -478,7 +478,7 @@ bool TConfigElement::startElement(const char *aElementName, const char **aAttrib
     fCfgVarExp=0; // default to automatic (i.e. certain content such as paths or macrostrings will be expanded without "expand" attr)
     cAppCharP cm=getAttr(aAttributes,"expand");
     if (cm) {
-    	// explicit expand directive for this tag (includes expandable attributes of this tag,
+      // explicit expand directive for this tag (includes expandable attributes of this tag,
       // but only attributes queried with getAttrExpanded() can expand at all)
       bool b;
       if (strucmp(cm,"single")==0) fCfgVarExp=1;
@@ -675,32 +675,32 @@ bool TConfigElement::endElement(const char *aElementName, bool aIsDelegated)
         if (fNest>0) {
           // Note: normal empty elements are NOT considered nested elements by default, only if
           //       they request endnested mode explicitly
-        	if (fParseMode==pamo_endnested)
-	          nestedElementEnd(); // inform possible parser of nested element that a nested element ends here
+          if (fParseMode==pamo_endnested)
+            nestedElementEnd(); // inform possible parser of nested element that a nested element ends here
           // back to nested
-        	fParseMode=pamo_nested;
+          fParseMode=pamo_nested;
         }
         else
-        	fParseMode=pamo_element; // back to normal element parsing
+          fParseMode=pamo_element; // back to normal element parsing
         return false; // do not exit
       case pamo_all:
       case pamo_nested:
         if (fNest>0) {
-        	// not yet finished with startlevel, continue with pamo_all/pamo_nested
+          // not yet finished with startlevel, continue with pamo_all/pamo_nested
           fNest--;
           if (fExpectAllNestStart>0) {
-          	// we are in expectAll mode within pamo_nested
+            // we are in expectAll mode within pamo_nested
             if(fNest==fExpectAllNestStart) {
               // reached level where we started ignoring contents before
               fExpectAllNestStart = -1; // processed now
               fParseMode = pamo_nested; // back to nested (but active) parsing, like in Mime-Dir profile
-          	}
+            }
             else {
-            	// NOP here - do NOT call nestedElementEnd()
+              // NOP here - do NOT call nestedElementEnd()
             }
           }
           else {
-          	// end of active nested element
+            // end of active nested element
             nestedElementEnd(); // inform possible parser of nested element
             if (fNest==0) {
               // if back on nest level 0, switch to pamo_element
@@ -836,11 +836,11 @@ bool TConfigElement::endElement(const char *aElementName, bool aIsDelegated)
           ReportError(false,"bad integer (32bit) value");
         break;
       case pamo_char:
-      	if (fTempString.size()>1)
+        if (fTempString.size()>1)
           ReportError(false,"single char or nothing (=NUL char) expected");
-      	if (fTempString.size()==0)
-	      *(fResultPtr.fCharP) = 0;
-        else	
+        if (fTempString.size()==0)
+        *(fResultPtr.fCharP) = 0;
+        else
           *(fResultPtr.fCharP) = fTempString[0];
         break;
       case pamo_idCode:

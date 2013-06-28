@@ -1,6 +1,6 @@
 /*
  *  TSyncSession
- *		Represents an entire Synchronisation Session, possibly consisting
+ *    Represents an entire Synchronisation Session, possibly consisting
  *    of multiple SyncML-Toolkit "Sessions" (Message composition/de-
  *    composition) as well as multiple database synchronisations.
  *
@@ -148,7 +148,7 @@ public:
   TCharSets fDefaultInCharset; // default charset for input interpretation
   TSyError fRejectStatusCode; // if >=0, attempt to connect will always be rejected with given status code
   sInt8 fForceUTC; // force sending time in UTC (overrides SyncML 1.1 <utc/> devInf flag)
-  sInt8 fForceLocaltime; // force sending time in localtime (overrides SyncML 1.1 <utc/> devInf flag)    
+  sInt8 fForceLocaltime; // force sending time in localtime (overrides SyncML 1.1 <utc/> devInf flag)
   #ifndef MINIMAL_CODE
   string fRemoteDescName; // descriptive name of remote
   #endif
@@ -234,7 +234,7 @@ public:
   //   Note that this is a tristate: 0=no, 1=yes, -1=auto (=yes for <SyncML 1.2, no for >=SyncML 1.2,
   //   thus making it work for Nokia 7610 (1.1) as well as E-Series like E90)
   sInt8 fEnumDefaultPropParams;
-	// decides whether multi-threading for the datastores will be used
+  // decides whether multi-threading for the datastores will be used
   bool fMultiThread;
   // defines if the engine waits with continuing interrupted commands until previous part received status
   bool fWaitForStatusOfInterrupted;
@@ -320,7 +320,7 @@ public:
   virtual localstatus InitializeTunnelSession(cAppCharP aDatastoreName) { return LOCERR_NOTIMP; }; // is usually implemented in customimplagent, as it depends on DBApi architecture
   virtual TLocalEngineDS *getTunnelDS() { return NULL; }; // is usually implemented in customimplagent
   #endif // DBAPI_TUNNEL_SUPPORT
-	#ifdef PROGRESS_EVENTS
+  #ifdef PROGRESS_EVENTS
   // Create Session level progress event
   bool NotifySessionProgressEvent(
     TProgressEventType aEventType,
@@ -329,8 +329,8 @@ public:
     sInt32 aExtra2,
     sInt32 aExtra3
   );
-  // Handle (or dispatch) Session level progress event  
-	virtual bool HandleSessionProgressEvent(TEngineProgressInfo aProgressInfo) { return true; }; // no handling by default
+  // Handle (or dispatch) Session level progress event
+  virtual bool HandleSessionProgressEvent(TEngineProgressInfo aProgressInfo) { return true; }; // no handling by default
   #endif // PROGRESS_EVENTS
   // called when incoming SyncHdr fails to execute
   virtual bool syncHdrFailure(bool aTryAgain) = 0;
@@ -413,7 +413,7 @@ public:
   TLocalEngineDS *addLocalDataStore(TLocalDSConfig *aLocalDSConfigP);
   // - add local type
   void addLocalItemType(TSyncItemType *aItemTypeP)
-  	{ fLocalItemTypes.push_back(aItemTypeP); };
+    { fLocalItemTypes.push_back(aItemTypeP); };
   // - find local datatype by config pointer (used to avoid duplicating types
   //   in session if used by more than a single datastore)
   TSyncItemType *findLocalType(TDataTypeConfig *aDataTypeConfigP);

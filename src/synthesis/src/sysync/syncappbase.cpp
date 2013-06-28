@@ -290,9 +290,9 @@ void TRootConfig::clear(void)
   fSystemTimeContext=TCTX_SYSTEM; // default to automatic detection
   #ifdef ENGINEINTERFACE_SUPPORT
   // - default identification
-	fMan.clear();
+  fMan.clear();
   fMod.clear();
-	#endif
+  #endif
   // - init device limit
   #ifdef CUSTOMIZABLE_DEVICES_LIMIT
   fConcurrentDeviceLimit=CONCURRENT_DEVICES_LIMIT;
@@ -384,7 +384,7 @@ bool TRootConfig::localStartElement(const char *aElementName, const char **aAttr
   else if (strucmp(aElementName,"DeviceType")==0)
     expectMacroString(fDevTyp);
   else
-	#endif
+  #endif
   // config variables
   if (strucmp(aElementName,"configvar")==0) {
     const char *nam = getAttr(aAttributes,"name");
@@ -439,8 +439,8 @@ bool TRootConfig::localStartElement(const char *aElementName, const char **aAttr
   else
   // Agent: Server or client
   if (
-  	(IS_CLIENT && strucmp(aElementName,"client")==0) ||
-		(IS_SERVER && strucmp(aElementName,"server")==0)
+    (IS_CLIENT && strucmp(aElementName,"client")==0) ||
+    (IS_SERVER && strucmp(aElementName,"server")==0)
   ) {
     // Agent config
     if (!fAgentConfigP) return false;
@@ -517,7 +517,7 @@ void TRootConfig::localResolve(bool aLastPass)
   #endif
   // try to resolve variable config here, but without forcing new one
   if (aLastPass) {
-  	loadVarConfig(false);
+    loadVarConfig(false);
   }
 } // TRootConfig::localResolve
 
@@ -736,7 +736,7 @@ void TDebugConfig::localResolve(bool aLastPass)
         fGlobalDbgLoggerOptions.fSubThreadMode=dbgsubthread_separate; // separate per thread
         fGlobalDbgLoggerOptions.fTimestampForAll=true; // timestamp for every message
       #else
-      	if (IS_SERVER) {
+        if (IS_SERVER) {
           // - global log for ISAPI/XPT *Servers* is always in openclose mode (possibly multiple processes accessing it)
           fGlobalDbgLoggerOptions.fFlushMode=dbgflush_openclose; // open and close for every log line
         }
@@ -1229,7 +1229,7 @@ TSyncAppBase::TSyncAppBase() :
   #if defined(EXPIRES_AFTER_DAYS) && defined(ENGINE_LIBRARY)
   fFirstUseDate = 0;
   fFirstUseVers = 0;
-	#endif
+  #endif
   #endif
 
   // TODO: put this somewhere where the return code can be checked and reported to the user of TSyncAppBase
@@ -1302,11 +1302,11 @@ bool TSyncAppBase::getConfigVar(cAppCharP aVarName, string &aValue)
     return true;
   }
   if (strucmp(aVarName,"manufacturer")==0) {
-  	aValue = getManufacturer();
+    aValue = getManufacturer();
     return true;
   }
   if (strucmp(aVarName,"model")==0) {
-  	aValue = getModel();
+    aValue = getModel();
     return true;
   }
   if (strucmp(aVarName,"variant")==0) {
@@ -1371,7 +1371,7 @@ bool TSyncAppBase::unsetConfigVar(cAppCharP aVarName)
 {
   TStringToStringMap::iterator pos = fConfigVars.find(aVarName);
   if (pos!=fConfigVars.end()) {
-  	// exist, remove from map
+    // exist, remove from map
     fConfigVars.erase(pos);
     return true;
   }
@@ -2535,9 +2535,9 @@ void TSyncAppBase::freeSmlInstance(InstanceID_t aInstance)
 // determine encoding from beginning of SyncML message data
 SmlEncoding_t TSyncAppBase::encodingFromData(cAppPointer aData, memSize aDataSize)
 {
-	SmlEncoding_t enc = SML_UNDEF;
+  SmlEncoding_t enc = SML_UNDEF;
   if (aData && aDataSize>=5) {
-  	// check for WBXML intro sequences
+    // check for WBXML intro sequences
     // Only SyncML 2.0 (OMA-TS-DS_Syntax-V2_0-20090212-C.doc, Paragraph 5.4, WBXML Usage) specifies it explicitly:
     //   For the purposes of OMA-DS, WBXML 1.1, WBXML 1.2 and WBXML 1.3 are functionally equivalent, and
     //   all MUST be accepted in implementations that support WBXML. Effectively, this merely requires the
@@ -2548,11 +2548,11 @@ SmlEncoding_t TSyncAppBase::encodingFromData(cAppPointer aData, memSize aDataSiz
     // Now check for valid WBXML versions: First byte is vvvvmmmm where v=major version-1, m=minor version
     uInt8 wbxmlvers = *((cUInt8P)aData);
     if (
-    	wbxmlvers=='\x01' || // WBXML 1.1
-    	wbxmlvers=='\x02' || // WBXML 1.2
+      wbxmlvers=='\x01' || // WBXML 1.1
+      wbxmlvers=='\x02' || // WBXML 1.2
       wbxmlvers=='\x03'    // WBXML 1.3
     ) {
-    	// WBXML version ok, check FPI
+      // WBXML version ok, check FPI
       // - a WBXML integer defines the FPI (multi-byte, MSByte first, Bit 7 is continuation flag, Bit 6..0 are data. LSByte has Bit7=0)
       cAppCharP fpi = ((cAppCharP)aData)+1;
       if (
@@ -2566,16 +2566,16 @@ SmlEncoding_t TSyncAppBase::encodingFromData(cAppPointer aData, memSize aDataSiz
     }
     // check XML now if not detected WBXML.
     if (enc==SML_UNDEF) {
-    	// could be XML
+      // could be XML
       // - skip UTF-8 BOM if there is one
       cUInt8P p = (cUInt8P)aData;
       if (p[0]==0xEF && p[1]==0xBB && p[2]==0xBF)
-      	p+=3; // skip the BOM
+        p+=3; // skip the BOM
       // now check for XML
-	    if (strnncmp((cAppCharP)p,"<?xml",5)==0 ||
+      if (strnncmp((cAppCharP)p,"<?xml",5)==0 ||
                 strnncmp((cAppCharP)p,"<SyncML",7)==0)
                 enc=SML_XML;
-  	}
+    }
   }
   return enc;
 } // TSyncAppBase::encodingFromData
@@ -2584,7 +2584,7 @@ SmlEncoding_t TSyncAppBase::encodingFromData(cAppPointer aData, memSize aDataSiz
 // determine encoding from Content-Type: header value
 SmlEncoding_t TSyncAppBase::encodingFromContentType(cAppCharP aTypeString)
 {
-	sInt16 enc = SML_UNDEF;
+  sInt16 enc = SML_UNDEF;
   if (aTypeString) {
     stringSize l=strlen(SYNCML_MIME_TYPE SYNCML_ENCODING_SEPARATOR);
     if (strucmp(aTypeString,SYNCML_MIME_TYPE SYNCML_ENCODING_SEPARATOR,l)==0) {
@@ -2610,32 +2610,32 @@ void TSyncAppBase::saveAppState(void)
 // manufacturer of overall solution (can be configured, while OEM is fixed to Synthesis)
 string TSyncAppBase::getManufacturer(void)
 {
-	#ifdef ENGINEINTERFACE_SUPPORT
+  #ifdef ENGINEINTERFACE_SUPPORT
   if (fConfigP && !(fConfigP->fMan.empty()))
-  	return fConfigP->fMan;
+    return fConfigP->fMan;
   string s;
   if (getConfigVar("custommanufacturer", s)) {
-  	return s;
+    return s;
   }
   #endif
   // if no string configured, return default
-	return CUST_SYNC_MAN;
+  return CUST_SYNC_MAN;
 } // TSyncAppBase::getManufacturer
 
 
 // model (application name) of overall solution
 string TSyncAppBase::getModel(void)
 {
-	#ifdef ENGINEINTERFACE_SUPPORT
+  #ifdef ENGINEINTERFACE_SUPPORT
   if (fConfigP && !(fConfigP->fMod.empty()))
-  	return fConfigP->fMod;
+    return fConfigP->fMod;
   string s;
   if (getConfigVar("custommodel", s)) {
-  	return s;
+    return s;
   }
   #endif
   // if no string configured, return default
-	return CUST_SYNC_MODEL;
+  return CUST_SYNC_MODEL;
 } // TSyncAppBase::getModel
 
 
@@ -2648,7 +2648,7 @@ string TSyncAppBase::getHardwareVersion(void)
     return fConfigP->fHwV;
   }
   if (getConfigVar("customhardwareversion", s)) {
-  	return s;
+    return s;
   }
   #endif
   // if no string configured, return default
@@ -2666,7 +2666,7 @@ string TSyncAppBase::getFirmwareVersion(void)
     return fConfigP->fFwV;
   }
   if (getConfigVar("customfirmwareversion", s)) {
-  	return s;
+    return s;
   }
   #endif
   // if no string configured, return default
@@ -2684,12 +2684,12 @@ string TSyncAppBase::getDevTyp()
     return fConfigP->fDevTyp;
   }
   if (getConfigVar("customdevicetype", s)) {
-  	return s;
+    return s;
   }
   #endif
   // if no string configured, return default
   if (isServer())
-  	return SYNCML_SERVER_DEVTYP;
+    return SYNCML_SERVER_DEVTYP;
   else
     return SYNCML_CLIENT_DEVTYP;
 } // TSyncAppBase::getDevTyp
@@ -2701,10 +2701,10 @@ bool TSyncAppBase::getMyDeviceID(string &devid)
 {
   #ifdef ENGINEINTERFACE_SUPPORT
   if (getConfigVar("customdeviceid", devid)) {
-  	return true; // custom device ID is assumed to be guaranteed unique
+    return true; // custom device ID is assumed to be guaranteed unique
   }
   #endif
-	// use device ID as determined by platform adapters
+  // use device ID as determined by platform adapters
   return getLocalDeviceID(devid);
 } // TSyncAppBase::getMyDeviceID
 
@@ -2814,7 +2814,7 @@ localstatus TSyncAppBase::appEnableStatus(void)
     // we don't need a valid license code until hard expiry date hits
     // so if we have a failure now, let the hard expiry decide
     if (regsta!=LOCERR_OK) {
-		  #ifdef SYSER_REGISTRATION
+      #ifdef SYSER_REGISTRATION
       fDaysLeft=1; // simulate expiring tomorrow
       #endif
       sta = LOCERR_OK; // ok if we find no hard expiry later
@@ -2831,7 +2831,7 @@ localstatus TSyncAppBase::appEnableStatus(void)
       #ifdef EXPIRES_AFTER_DATE
       // check hard expiry first
       if (fScrambledNow>SCRAMBLED_EXPIRY_VALUE) {
-			  #ifdef SYSER_REGISTRATION
+        #ifdef SYSER_REGISTRATION
         fDaysLeft=0; // hard-expired
         #endif
         sta = LOCERR_EXPIRED;
@@ -2953,7 +2953,7 @@ localstatus TSyncAppBase::getAppEnableInfo(sInt16 &aDaysLeft, string *aRegnameP,
 /// @brief get time and version of first use. Version is included to allow re-evaluating after version changes significantly
 void TSyncAppBase::getFirstUseInfo(uInt8 aVariant, lineardate_t &aFirstUseDate, uInt32 &aFirstUseVers)
 {
-	#ifndef ENGINEINTERFACE_SUPPORT
+  #ifndef ENGINEINTERFACE_SUPPORT
   // no first use date in base class, is overridden in derived platform-specific appBase classes.
   aFirstUseDate=0;
   aFirstUseVers=0;
@@ -3195,7 +3195,7 @@ localstatus TSyncAppBase::checkLicenseActivation(lineardate_t &aLastcheck, uInt3
   }
   // show it to user
   if (!ok) {
-  	#ifndef ENGINE_LIBRARY
+    #ifndef ENGINE_LIBRARY
     APP_PROGRESS_EVENT(this,pev_error,NULL,LOCERR_BADREG,0,0);
     #endif
   }

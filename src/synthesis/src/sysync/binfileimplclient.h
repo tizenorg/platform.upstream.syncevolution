@@ -83,14 +83,14 @@ public:
     sInt32 aTargetIndex,
     TBinfileDBSyncTarget *aTargetP,
     TBinfileClientConfig *aBinfileClientConfigP,
-	  TBinfileDSConfig *aBinfileDSConfigP
+    TBinfileDSConfig *aBinfileDSConfigP
   );
   virtual ~TBinfileTargetKey();
 
   TBinfileDSConfig *getBinfileDSConfig(void) { return fBinfileDSConfigP; };
   TBinfileDBSyncTarget *getTarget(void) { return fTargetP; };
   TBinfileClientConfig *getBinfileClientConfig(void) { return fBinfileClientConfigP; };
-	sInt32 getProfileID() { return fTargetP ? fTargetP->remotepartyID : KEYVAL_ID_UNKNOWN; };
+  sInt32 getProfileID() { return fTargetP ? fTargetP->remotepartyID : KEYVAL_ID_UNKNOWN; };
 
 protected:
   // return ID of this key
@@ -301,7 +301,7 @@ protected:
   virtual uInt8P getStructAddr(void);
 
 private:
-	TLogFileEntry *fLogEntryP;
+  TLogFileEntry *fLogEntryP;
   TBinfileClientConfig *fBinfileClientConfigP;
 }; // TBinfileLogKey
 
@@ -415,7 +415,7 @@ public:
   bool getProfileLastSyncTime(uInt32 aProfileID, lineartime_t &aLastSync, bool &aZapsServer, bool &aZapsClient);
   // - get last sync of target, 0=never. Returns false if target not enabled
   bool getTargetLastSyncTime(sInt32 aTargetIndex, lineartime_t &aLastSync, bool &aZapsServer, bool &aZapsClient, uInt32 &aDBID);
-	bool getTargetLastSyncTime(TBinfileDBSyncTarget &aTarget, lineartime_t &aLastSync, bool &aZapsServer, bool &aZapsClient, uInt32 &aDBID);
+  bool getTargetLastSyncTime(TBinfileDBSyncTarget &aTarget, lineartime_t &aLastSync, bool &aZapsServer, bool &aZapsClient, uInt32 &aDBID);
   // - check if datastore of specified target is available in the given profile
   bool isTargetAvailable(TBinfileDBSyncProfile *aProfileP, uInt32 aLocalDBTypeID);
   // - find available target for profile by DB ID/name. Returns target index or -1 if
@@ -471,11 +471,11 @@ public:
   // Binary Files
   TBinFile fProfileBinFile;
   TBinFile fTargetsBinFile;
-	// -  cleanup changelog, pendingmap, pendingitem
+  // -  cleanup changelog, pendingmap, pendingitem
   string relatedDBNameBase(cAppCharP aDBName, sInt32 aProfileID);
-	void cleanChangeLogForTarget(sInt32 aTargetIndex, sInt32 aProfileID);
-	void cleanChangeLogForDBname(cAppCharP aDBName, sInt32 aProfileID);
-	void separateChangeLogsAndRelated(cAppCharP aDBName);
+  void cleanChangeLogForTarget(sInt32 aTargetIndex, sInt32 aProfileID);
+  void cleanChangeLogForDBname(cAppCharP aDBName, sInt32 aProfileID);
+  void separateChangeLogsAndRelated(cAppCharP aDBName);
   // - called when app should save its persistent state
   virtual void saveAppState(void);
   // - MUST be called after creating config to load (or pre-load) variable parts of config
@@ -487,8 +487,8 @@ public:
   localstatus openSettingsDatabases(bool aDoLoose);
   void closeSettingsDatabases(void);
 private:
-	// helper for migrating to separated changelogs/pendingmaps/pendingitem
-	void separateDBFile(cAppCharP aDBName, cAppCharP aDBSuffix, sInt32 aProfileID);
+  // helper for migrating to separated changelogs/pendingmaps/pendingitem
+  void separateDBFile(cAppCharP aDBName, cAppCharP aDBSuffix, sInt32 aProfileID);
 protected:
   // check config elements
   #ifndef HARDCODED_CONFIG

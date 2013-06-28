@@ -56,24 +56,24 @@ static bool YearFit( const tz_entry &t, const tz_entry &tzi, GZones* g );
 //     We should avoid this and create that object in the app level GZones, and let further GZone objects
 //     allow using it (without copying!) - similar mechanism as the old CopyCustomTZFrom() had
 //     (see 8742d15b65fecf02db54ce9b7447cee09f913ad0 commit which removed it)
- 
+
 const class tzdata : public std::vector<tz_entry>
 {
  public:
   tzdata() {
-		#ifndef NO_BUILTIN_TZ
+    #ifndef NO_BUILTIN_TZ
     // add the global entries
     reserve(tctx_numtimezones);
     for (int i=0; i<tctx_numtimezones; i++) {
-    	const tbl_tz_entry &t = tbl_tz[i];
+      const tbl_tz_entry &t = tbl_tz[i];
       if (i > 0 && back().name == t.name) {
         // the previous entry wasn't really the last of its group,
         // fix that
         back().groupEnd = false;
       }
       // add new entry, assuming that it terminates its group
-    	push_back(tz_entry(
-      	t.name, t.bias, t.biasDST, t.ident, t.dynYear, 
+      push_back(tz_entry(
+        t.name, t.bias, t.biasDST, t.ident, t.dynYear,
         tChange(t.dst.wMonth, t.dst.wDayOfWeek, t.dst.wNth, t.dst.wHour, t.dst.wMinute),
         tChange(t.std.wMonth, t.std.wDayOfWeek, t.std.wNth, t.std.wHour, t.std.wMinute),
         true // groupEnd
@@ -98,12 +98,12 @@ bool GZones::initialize()
   bool ok = true;
   // load system wide definitions.
   bool nobuiltin = loadSystemZoneDefinitions(this);
-	// %%%% later, we'll load system zones not into each GZones, but only once into
+  // %%%% later, we'll load system zones not into each GZones, but only once into
   //      a global list. Then, the return value of loadSystemZoneDefinitions() will
   //      determine if zones from the built-in list should be added or not
   // %%%% for now, we can't do that yet, built-in zones are always active
   if (!nobuiltin) {
-  	//%%% add entries from tz_table
+    //%%% add entries from tz_table
   }
   return ok;
 }
@@ -169,7 +169,7 @@ bool GZones::matchTZ(const tz_entry &aTZ, TDebugLogger *aLogP, timecontext_t &aC
 
       bool rule_match = tzcmp(fTZ, aTZ) && YearFit(fTZ, aTZ, fG);
 
-			// start of a group is an entry that has a dynYear empty or set to "CUR" (for dynamically created entries)
+      // start of a group is an entry that has a dynYear empty or set to "CUR" (for dynamically created entries)
       if (aTZ.dynYear.empty() || aTZ.dynYear == "CUR")
         fLeadContext = aContext;
 
@@ -848,16 +848,16 @@ bool TimeZoneContextToName( timecontext_t aContext, string &aName, GZones* g,
     aPrefIdent= "o";
   //__android_log_print( ANDROID_LOG_DEBUG, "ContextToName", "pref='%s' / aContext=%d\n", aPrefIdent, aContext );
   #endif
-  
-	// if aPrefIndent contains "o", this means we'd like to see olson name, if possible
+
+  // if aPrefIndent contains "o", this means we'd like to see olson name, if possible
   // %%% for now, we can return olson for the built-ins only
   if (TCTX_IS_BUILTIN(aContext) && aPrefIdent && strchr(aPrefIdent, 'o')!=NULL) {
-		#ifndef NO_BUILTIN_TZ
-  	// look up in hardcoded table
+    #ifndef NO_BUILTIN_TZ
+    // look up in hardcoded table
     cAppCharP oname = tbl_tz[TCTX_TZENUM(aContext)].olsonName;
     if (oname) {
-    	// we have an olson name for this entry, return it
-    	aName = oname;
+      // we have an olson name for this entry, return it
+      aName = oname;
       return true;
     }
     #endif
@@ -1107,14 +1107,12 @@ static bool MyContext( timecontext_t &aContext, GZones* g )
             ))    { aContext= curSysTZ; return true; }
   } // if
 
-	// there is no system time zone cached, we need to determine it from the operating system
+  // there is no system time zone cached, we need to determine it from the operating system
   // - call platform specific routine
   bool ok = getSystemTimeZoneContext( aContext, g );
-  
   if (isDbg) {
     PNCDEBUGPRINTFX( DBG_SESSION, ( "MyContext: %08X ok=%d", aContext, ok ));
   }
-  
   // update cached system context
   if (g && ok) g->sysTZ= aContext; // assign the system context
   return   ok;
@@ -1126,19 +1124,19 @@ static bool MyContext( timecontext_t &aContext, GZones* g )
    the debug output */
 timecontext_t SystemTZ( GZones *g, bool isDbg )
 {
-	timecontext_t tctx;
+  timecontext_t tctx;
   if (MyContext(tctx, g))
-  	return tctx;
+    return tctx;
   else
-  	return TCTX_UNKNOWN;
+    return TCTX_UNKNOWN;
 }
 
 
 
 bool ContextForEntry( timecontext_t &aContext, tz_entry &t, bool chkNameFirst, GZones* g )
 {
-	string s;
-	string sName = t.name;
+  string s;
+  string sName = t.name;
   bool ok = true;
   do {
     if (chkNameFirst &&       !sName.empty() &&

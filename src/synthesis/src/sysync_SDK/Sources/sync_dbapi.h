@@ -521,7 +521,7 @@ _ENTRY_ TSyError Session_DeleteContext( CContext sContext );
  *  NOTE:   The SyncML engine treats \<aContext> simply as a key. The only condition
  *          is uniqueness for all datastore contexts. Even \<aContext> = 0 can be used.
  *
- *  @param  <aContext>	   Returns a value, which allows to identify this datastore context.
+ *  @param  <aContext>     Returns a value, which allows to identify this datastore context.
  *  @param  <aContextName> Allows to identify the context, if more than one must be
  *                         handled. \<contextName> is defined at the XML configuration.
  *  @param  <aCB>          DB_Callback structure for datatstore logging.

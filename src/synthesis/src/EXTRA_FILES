@@ -3,3 +3,4 @@ clientprovisioning_inc.cpp
 syncsessiondispatch.cpp
 platform_thread.cpp
 enginestubs.c
+platform_adapters/macosx

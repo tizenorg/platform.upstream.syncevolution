@@ -16,9 +16,6 @@
 #ifndef TZ_TABLE_H
 #define TZ_TABLE_H
 
-#include <string>
-#include <vector>
-
 typedef enum {
   // special time zones
   tctx_tz_unknown,                  //   0

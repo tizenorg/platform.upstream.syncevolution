@@ -1,7 +1,7 @@
 /*
  *  File:         MultiFieldItemType.h
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TMultiFieldItemType
  *    Type consisting of multiple data fields (TItemField objects)
@@ -31,7 +31,7 @@ namespace sysync {
 // special field IDs
 #define FID_NOT_SUPPORTED -128 // no field-ID
 #if defined(VARIDX_UNDEFINED) && FID_NOT_SUPPORTED!=VARIDX_UNDEFINED
-	#error "FID_NOT_SUPPORTED must be the same as VARIDX_UNDEFINED"
+  #error "FID_NOT_SUPPORTED must be the same as VARIDX_UNDEFINED"
 #endif
 
 // special field offsets
@@ -215,8 +215,8 @@ private:
   TFieldOptions *fFieldOptionsP;
 }; // TMultiFieldItemType
 
-}	// namespace sysync
+} // namespace sysync
 
-#endif	// MultiFieldItemType_H
+#endif  // MultiFieldItemType_H
 
 // eof

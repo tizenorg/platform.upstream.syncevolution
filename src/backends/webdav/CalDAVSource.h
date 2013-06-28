@@ -42,8 +42,13 @@ class CalDAVSource : public WebDAVSource,
                                         const std::string &item);
     virtual void readSubItem(const std::string &uid, const std::string &subid, std::string &item);
     virtual std::string removeSubItem(const string &uid, const std::string &subid);
+    virtual void removeMergedItem(const std::string &luid);
     virtual void flushItem(const string &uid);
     virtual std::string getSubDescription(const string &uid, const string &subid);
+    virtual void updateSynthesisInfo(SynthesisInfo &info,
+                                     XMLConfigFragments &fragments) {
+        info.m_backendRule = "HAVE-SYNCEVOLUTION-EXDATE-DETACHED";
+    }
 
     // implementation of SyncSourceLogging callback
     virtual std::string getDescription(const string &luid);
@@ -72,6 +77,8 @@ class CalDAVSource : public WebDAVSource,
     virtual std::string serviceType() const { return "caldav"; }
     virtual bool typeMatches(const StringMap &props) const;
     virtual std::string homeSetProp() const { return "urn:ietf:params:xml:ns:caldav:calendar-home-set"; }
+    virtual std::string wellKnownURL() const { return "/.well-known/caldav"; }
+
     virtual std::string contentType() const { return "text/calendar; charset=utf-8"; }
     virtual std::string suffix() const { return ".ics"; }
 
@@ -169,6 +176,14 @@ class CalDAVSource : public WebDAVSource,
     Event &loadItem(Event &event);
 
     std::string getSubDescription(Event &event, const string &subid);
+
+    /** calback for multiget: same as appendItem, but also records luid of all responses */
+    int appendMultigetResult(SubRevisionMap_t &revisions,
+                             std::set<std::string> &luids,
+                             const std::string &href,
+                             const std::string &etag,
+                             std::string &data);
+
 
     /** callback for listAllSubItems: parse and add new item */
     int appendItem(SubRevisionMap_t &revisions,

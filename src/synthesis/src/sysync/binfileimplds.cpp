@@ -1906,6 +1906,8 @@ bool TBinfileImplDS::implProcessItem(
   localstatus sta;
   bool ok;
   bool receiveOnly=false; // default to normal two-way
+  bool reportAsChangedInNextSync=false;
+  TMultiFieldItem *augmentedItemP = NULL;
 
   SYSYNC_TRY {
     // - get op
@@ -1921,8 +1923,36 @@ bool TBinfileImplDS::implProcessItem(
         // add record
         if ((sta=createItem(aItemP,newid,receiveOnly))!=LOCERR_OK) {
           PDEBUGPRINTFX(DBG_ERROR,("cannot create record in database (sta=%hd)",sta));
-          statuscode=sta;
-          goto error; // check errors
+          // check special "needs merge" case
+          if (sta==DB_Conflict) {
+            // DB has detected item conflicts with data already stored in the database and
+            // request merging current data from the backend with new data before storing.
+            // - get the ID of the record to merge with
+            localid = LOCALID_OUT_TO_IN(newid);
+            ASSIGN_LOCALID_TO_ITEM(*aItemP,localid);
+            // - merge with database contents
+            bool changedDBVersion, changedNewVersion;
+            augmentedItemP = mergeWithDatabaseVersion(aItemP, changedDBVersion, changedNewVersion);
+            if (augmentedItemP==NULL)
+              sta = DB_Error; // no item found, DB error
+            else {
+              // if merged version differs from what was received, we'll need to
+              // sync it back in next session
+              if (changedNewVersion) reportAsChangedInNextSync = true;
+              // store augmented version back to DB only if modified
+              if (changedDBVersion) {
+                STR_TO_LOCALID(augmentedItemP->getLocalID(),localid);
+                sta = updateItemByID(localid,augmentedItemP);
+              }
+              else {
+                sta = LOCERR_OK;
+              }
+            }
+          }
+          else {
+            statuscode=sta;
+            goto error; // check errors
+          }
         }
         // set status
         statuscode=201; // added
@@ -2011,7 +2041,15 @@ bool TBinfileImplDS::implProcessItem(
     // now affectedentryP points to where we need to apply the changed crc and modcount
     // if logindex<0 we need to add the entry to the dbfile afterwards
     affectedentryP->dataCRC=crc;
-    affectedentryP->modcount=fCurrentModCount;
+    if (reportAsChangedInNextSync) {
+      // make sure NEXT sync will catch this again, as stored version is different
+      // from what we received (merged with pre-existing duplicate)
+      affectedentryP->modcount=fCurrentModCount+1;
+    }
+    else {
+      // just current mod count
+      affectedentryP->modcount=fCurrentModCount;
+    }
     if (sop==sop_delete)
       affectedentryP->flags |= chgl_deleted;
     // set receiveOnly flag if needed. Note that this flag, once set, is never deleted (so item stays write only)

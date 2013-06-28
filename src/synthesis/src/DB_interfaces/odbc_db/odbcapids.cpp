@@ -58,8 +58,8 @@ public:
   // ADDBYUPDATING(string idtoupdate)
   static void func_AddByUpdating(TItemField *&aTermP, TScriptContext *aFuncContextP)
   {
-  	TODBCApiDS *dsP = static_cast<TODBCApiDS *>(aFuncContextP->getCallerContext());
-  	// only if inserting, convert to updating an existing record
+    TODBCApiDS *dsP = static_cast<TODBCApiDS *>(aFuncContextP->getCallerContext());
+    // only if inserting, convert to updating an existing record
     if (dsP->fInserting) {
       string localid;
       aFuncContextP->getLocalVar(0)->getAsString(localid);
@@ -75,17 +75,17 @@ public:
   // get ROWID created by last insert
   static void func_SQLGetLastID(TItemField *&aTermP, TScriptContext *aFuncContextP)
   {
-  	TODBCApiDS *dsP = static_cast<TODBCApiDS *>(aFuncContextP->getCallerContext());
+    TODBCApiDS *dsP = static_cast<TODBCApiDS *>(aFuncContextP->getCallerContext());
     if (dsP->fUseSQLite && dsP->fSQLiteP) {
       aTermP->setAsInteger(
         sqlite3_last_insert_rowid(dsP->fSQLiteP)
       );
     }
     else {
-    	aTermP->unAssign();
+      aTermP->unAssign();
     }
   }; // func_SQLGetLastID
-	#endif // SQLITE_SUPPORT
+  #endif // SQLITE_SUPPORT
 
 }; // TODBCDSfuncs
 
@@ -604,7 +604,7 @@ TLocalEngineDS *TOdbcDSConfig::newLocalDataStore(TSyncSession *aSessionP)
 {
   // Synccap defaults to normal set supported by the engine by default
   TLocalEngineDS *ldsP;
-	if (IS_CLIENT) {
+  if (IS_CLIENT) {
     ldsP = new TODBCApiDS(this,aSessionP,getName(),aSessionP->getSyncCapMask() & ~(isOneWayFromRemoteSupported() ? 0 : SCAP_MASK_ONEWAY_SERVER));
   }
   else {
@@ -685,7 +685,7 @@ bool TODBCFieldMapArrayItem::localStartElement(const char *aElementName, const c
   else if (strucmp(aElementName,"insertelementsql")==0)
     expectString(fInsertElementSQL);
   else if (strucmp(aElementName,"alwaysclean")==0)
-  	expectBool(fAlwaysCleanArray);
+    expectBool(fAlwaysCleanArray);
   // - none known here
   else
     return inherited::localStartElement(aElementName,aAttributes,aLine);
@@ -803,7 +803,7 @@ void TODBCApiDS::InternalResetDataStore(void)
     }
     else {
       PDEBUGPRINTFX(DBG_DBAPI,("Closed SQLite data file"));
-  	}
+    }
     fSQLiteP=NULL;
   }
   #endif
@@ -858,9 +858,9 @@ SQLHDBC TODBCApiDS::getODBCConnectionHandle(void)
 void TODBCApiDS::checkConnectionError(SQLRETURN aResult)
 {
   if (!fAgentP) return;
-	if (fODBCConnectionHandle!=SQL_NULL_HANDLE) {
-  	// check on local connection
-  	fAgentP->checkODBCError(aResult,SQL_HANDLE_DBC,fODBCConnectionHandle);
+  if (fODBCConnectionHandle!=SQL_NULL_HANDLE) {
+    // check on local connection
+    fAgentP->checkODBCError(aResult,SQL_HANDLE_DBC,fODBCConnectionHandle);
   }
   // check on session level
   fAgentP->checkConnectionError(aResult);
@@ -1187,7 +1187,7 @@ void TODBCApiDS::readArray(SQLHSTMT aStatement, TMultiFieldItem &aItem, TFieldMa
     // - fetch result(s) now, at most fMaxRepeat
     while (fmaiP->fMaxRepeat==0 || fArrIdx<fmaiP->fMaxRepeat) {
       colindex=1; // ODBC style, fillFieldsFromSQLResult will adjust for SQLite if needed
-			if (!fetchNextRow(aStatement,true)) break; // all available rows fetched
+      if (!fetchNextRow(aStatement,true)) break; // all available rows fetched
       // now fill data into array's mapped fields (array fields or field blocks)
       fillFieldsFromSQLResult(aStatement,colindex,aItem,fmaiP->fArrayFieldMapList,setno,fArrIdx*fmaiP->fRepeatInc);
       #ifdef SCRIPT_SUPPORT
@@ -1770,17 +1770,17 @@ void TODBCApiDS::DoLogSubstitutions(string &aLog,bool aPlaintext)
   if (!aPlaintext) {
     // only for SQL text
     // Note: we need to do free form strings here to ensure correct DB string escaping
-    // %rD	Datastore remote path
+    // %rD  Datastore remote path
     StringSubst(aLog,"%rD",getRemoteDBPath(),3,chs_ascii,lem_cstr,fConfigP->fQuotingMode);
-    // %nR	Remote name: [Manufacturer ]Model")
+    // %nR  Remote name: [Manufacturer ]Model")
     StringSubst(aLog,"%nR",fSessionP->getRemoteDescName(),3,chs_ascii,lem_cstr,fConfigP->fQuotingMode);
-    // %vR	Remote Device Version Info ("Type (HWV, FWV, SWV) Oem")
+    // %vR  Remote Device Version Info ("Type (HWV, FWV, SWV) Oem")
     StringSubst(aLog,"%vR",fSessionP->getRemoteInfoString(),3,chs_ascii,lem_cstr,fConfigP->fQuotingMode);
-    // %U	User Name
+    // %U User Name
     StringSubst(aLog,"%U",fSessionP->getSyncUserName(),2,chs_ascii,lem_cstr,fConfigP->fQuotingMode);
-    // %lD	Datastore local path (complete with all CGI)
+    // %lD  Datastore local path (complete with all CGI)
     StringSubst(aLog,"%lD",getRemoteViewOfLocalURI(),3,chs_ascii,lem_cstr,fConfigP->fQuotingMode);
-    // %iR	Remote Device ID (URI)
+    // %iR  Remote Device ID (URI)
     StringSubst(aLog,"%iR",fSessionP->getRemoteURI(),3,chs_ascii,lem_cstr,fConfigP->fQuotingMode);
     // %dT  Sync date
     i=0; while((i=aLog.find("%dT",i))!=string::npos) {
@@ -1970,7 +1970,7 @@ void TODBCApiDS::DoDataSubstitutions(
         TDBFieldType dbfty=dbft_numeric;
         sInt16 ty,idx;
         sInt32 sz=0;
-			  sInt16 arrindex=0;
+        sInt16 arrindex=0;
         TItemField *fldP;
         int substCode = DataSubstHandlers[handlerid].substCode;
         //DEBUGPRINTFX(DBG_DBAPI+DBG_EXOTIC,("- found %%%s (%ld chars)",DataSubstHandlers[substCode].substTag,(long)n));
@@ -3145,8 +3145,8 @@ localstatus TODBCApiDS::apiZapSyncSet(void)
       sInt16 i=0;
       uInt16 setno;
       while (getNextSQLStatement(fConfigP->fDataZapSQL,i,sql,setno)) {
-	      DoDataSubstitutions(sql,fConfigP->fFieldMappings.fFieldMapList,0,false,false);
-	      // - issue
+        DoDataSubstitutions(sql,fConfigP->fFieldMappings.fFieldMapList,0,false,false);
+        // - issue
         prepareSQLStatement(fODBCWriteStatement, sql.c_str(), true, "slow-refresh from remote: deleting all records in sync set first");
         execSQLStatement(fODBCWriteStatement, sql, true, NULL, true);
         finalizeSQLStatement(fODBCWriteStatement, true);
@@ -3600,9 +3600,9 @@ localstatus TODBCApiDS::apiAddItem(TMultiFieldItem &aItem, string &aLocalID)
         if (!TScriptContext::execute(fScriptContextP,fConfigP->fFieldMappings.fBeforeWriteScript,fConfigP->getDSFuncTableP(),fAgentP,&aItem,true))
           throw TSyncException("<beforewritescript> failed");
         if (!fInserting) {
-        	// inserting was turned off by beforewritescript, in particular by ADDBYUPDATING()
+          // inserting was turned off by beforewritescript, in particular by ADDBYUPDATING()
           // -> perform an update using the localid set by ADDBYUPDATING()
-	        PDEBUGPRINTFX(DBG_DATA+DBG_DBAPI,("Updating existing DB row '%s' instead of inserting (ADDBYUPDATING)",aItem.getLocalID()));
+          PDEBUGPRINTFX(DBG_DATA+DBG_DBAPI,("Updating existing DB row '%s' instead of inserting (ADDBYUPDATING)",aItem.getLocalID()));
           // - return localID to caller (for caller, this looks like a regular add)
           aLocalID = aItem.getLocalID();
           // - perform update instead of insert
@@ -3616,16 +3616,16 @@ localstatus TODBCApiDS::apiAddItem(TMultiFieldItem &aItem, string &aLocalID)
           )) {
             // not found in data table - do a normal add (even if ADDBYUPDATING() wanted an update)
             fInserting = true; // revert back to inserting
-		        PDEBUGPRINTFX(DBG_ERROR,("Updating existing not possible -> reverting to insert"));
+            PDEBUGPRINTFX(DBG_ERROR,("Updating existing not possible -> reverting to insert"));
           }
         }
         // check if we still need to insert
         if (fInserting)
         #endif
         {
-        	// Normal insert
+          // Normal insert
           // - issue statement(s)
-			    #ifdef ODBCAPI_SUPPORT
+          #ifdef ODBCAPI_SUPPORT
           bool hasdata=
           #endif
           IssueDataWriteSQL(
@@ -3717,7 +3717,7 @@ localstatus TODBCApiDS::apiAddItem(TMultiFieldItem &aItem, string &aLocalID)
         fODBCWriteStatement,
         aItem,
         fml,
-		    #ifdef SCRIPT_SUPPORT
+        #ifdef SCRIPT_SUPPORT
         fInserting // if really performed insert (i.e. not ADDBYUPDATING()), child record cleaning is not necessary (but can be forced by fAlwaysCleanArray)
         #else
         true // is an insert, so child record cleaning not necessary (but can be forced by fAlwaysCleanArray)
@@ -4155,14 +4155,14 @@ localstatus TODBCApiDS::apiLoadAdminData(
             switch (entry.entrytype) {
               #ifdef SYSYNC_SERVER
               case mapentry_tempidmap:
-              	if (IS_SERVER)
-	                fTempGUIDMap[entry.remoteid]=entry.localid; // tempGUIDs are accessed by remoteID=tempID
+                if (IS_SERVER)
+                  fTempGUIDMap[entry.remoteid]=entry.localid; // tempGUIDs are accessed by remoteID=tempID
                 break;
               #endif
               #ifdef SYSYNC_CLIENT
               case mapentry_pendingmap:
-              	if (IS_CLIENT)
-	                fPendingAddMaps[entry.localid]=entry.remoteid;
+                if (IS_CLIENT)
+                  fPendingAddMaps[entry.localid]=entry.remoteid;
                 break;
               #endif
             }

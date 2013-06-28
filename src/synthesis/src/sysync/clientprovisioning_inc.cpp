@@ -4,7 +4,7 @@
  *  Include file for binfileagent.cpp and palmdbagent.cpp to provide
  *  string-command based client provisioning.
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  Copyright (c) 2003-2011 by Synthesis AG + plan44.ch
  *
@@ -108,7 +108,7 @@ static bool configProfile(CLIENTAGENTCONFIG *aCfgP, const char *aParm, bool aMay
       #else
       // - URI can be set, except if config specifies a fixed URI
       if (aCfgP->fServerURI.empty())
-      	AssignCString(profile.serverURI,value.c_str(),maxurisiz);
+        AssignCString(profile.serverURI,value.c_str(),maxurisiz);
       #endif
       // setting URI resets the device to unknown SyncML version
       profile.lastSyncMLVersion=syncml_vers_unknown;
@@ -270,7 +270,7 @@ static bool configProfile(CLIENTAGENTCONFIG *aCfgP, const char *aParm, bool aMay
         // remote DB path
         AssignCString(target.remoteDBpath,value.c_str(),remoteDBpathMaxLen);
       }
-		  #if TARGETS_DB_VERSION>5
+      #if TARGETS_DB_VERSION>5
       else if (tag=="remoteFilters") {
         // remote DB path
         AssignCString(target.remoteFilters,value.c_str(),filterExprMaxLen);

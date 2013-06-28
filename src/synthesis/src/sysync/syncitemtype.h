@@ -83,6 +83,9 @@ public:
   virtual bool isBasedOn(uInt16 aItemTypeID) const { return aItemTypeID==ity_syncitem; };
   // differentiation between implemented and just descriptive TSyncTypeItems
   virtual bool isImplemented(void) { return false; }; // base class is descriptive only
+  // differentiation between type describing local and remote items
+  bool isRemoteType(void) { return fIsRemoteType; };
+  void defineAsRemoteType(void) { fIsRemoteType = true; };
   // compatibility (=assignment compatibility between items based on these types)
   virtual bool isCompatibleWith(TSyncItemType *aReferenceType) { return this==aReferenceType; } // compatible if same type
   // get session pointer
@@ -177,14 +180,14 @@ public:
     TSyncItemTypePContainer &aNewItemTypes      // list to add analyzed types if not already there
   );
   // - static function to add new or copied ItemType to passed list
-  static TSyncItemType *registerType(
+  static TSyncItemType *registerRemoteType(
     TSyncSession *aSessionP,
     const char *aName, const char *aVers,       // name and version of type
     TSyncItemTypePContainer &aLocalItemTypes,   // list to look up local types (for reference)
     TSyncItemTypePContainer &aNewItemTypes,     // list to add analyzed types if not already there
     TSyncDataStore *aRelatedDatastoreP
   );
-  static TSyncItemType *registerType(
+  static TSyncItemType *registerRemoteType(
     TSyncSession *aSessionP,
     SmlDevInfXmitPtr_t aXmitTypeP,              // name and version of type
     TSyncItemTypePContainer &aLocalItemTypes,   // list to look up local types (for reference)
@@ -252,6 +255,8 @@ private:
   sInt32 fRawDataBytes;
   sInt32 fZippedDataBytes;
   #endif
+  // flag if this is a remote type
+  bool fIsRemoteType;
 }; // TSyncItemType
 
 

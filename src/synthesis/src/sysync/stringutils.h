@@ -1,7 +1,7 @@
 /*
  *  File:         stringutils.h
  *
- *  Authors:			Lukas Zeller (luz@plan44.ch)
+ *  Authors:      Lukas Zeller (luz@plan44.ch)
  *                Beat Forster (bfo@synthesis.ch)
  *
  *  C++ string utils

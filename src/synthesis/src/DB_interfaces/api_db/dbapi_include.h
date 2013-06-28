@@ -147,7 +147,7 @@ static TSyError AssignMethods( appPointer aMod, appPointer aField, memSize aFiel
   */
 
   #ifndef   DISABLE_PLUGIN_DATASTOREADMIN
-  	#ifndef DISABLE_PLUGIN_DATASTOREADMIN_STR
+    #ifndef DISABLE_PLUGIN_DATASTOREADMIN_STR
       if (strcmp( aKey,Plugin_DS_Admin_Str )==0) {
         return ConnectFunctions( aMod, aField,aFieldSize, false,
                 // ---- aItemData functions ----
@@ -157,7 +157,7 @@ static TSyError AssignMethods( appPointer aMod, appPointer aField, memSize aFiel
       } // if
     #endif
 
-  	#ifndef DISABLE_PLUGIN_DATASTOREADMIN_KEY
+    #ifndef DISABLE_PLUGIN_DATASTOREADMIN_KEY
       if (strcmp( aKey,Plugin_DS_Admin_Key )==0) {
         return ConnectFunctions( aMod, aField,aFieldSize, false,
                 // ---- aItemKey functions ----
@@ -218,7 +218,7 @@ static TSyError AssignMethods( appPointer aMod, appPointer aField, memSize aFiel
                       NULL );
     } // if
 
-	  #ifndef DISABLE_PLUGIN_DATASTOREDATA_STR
+    #ifndef DISABLE_PLUGIN_DATASTOREDATA_STR
     if (strcmp( aKey,Plugin_DS_Data_Str )==0) {
       return ConnectFunctions( aMod, aField,aFieldSize, false,
               // ---- aItemData routines ----
@@ -230,7 +230,7 @@ static TSyError AssignMethods( appPointer aMod, appPointer aField, memSize aFiel
     } // if
     #endif
 
-	  #ifndef DISABLE_PLUGIN_DATASTOREDATA_KEY
+    #ifndef DISABLE_PLUGIN_DATASTOREDATA_KEY
     if (strcmp( aKey,Plugin_DS_Data_Key )==0) {
       return ConnectFunctions( aMod, aField,aFieldSize, false,
               // ---- aItemKey  routines ----

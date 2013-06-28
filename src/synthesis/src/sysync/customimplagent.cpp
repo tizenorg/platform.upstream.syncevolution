@@ -80,7 +80,7 @@ lineartime_t dbIntToLineartime(sInt64 aDBInt, TDBFieldType aDbfty)
       return secondToLinearTimeFactor*aDBInt+UnixToLineartimeOffset;
     case dbft_nsdate_s:
       // integer value representing NSDate in seconds
-      return secondToLinearTimeFactor*aDBInt+NSDateToLineartimeOffset;    
+      return secondToLinearTimeFactor*aDBInt+NSDateToLineartimeOffset;
     case dbft_unixtime_ms:
     case dbft_unixdate_ms:
       // integer value representing UNIX epoch date in milliseconds
@@ -546,9 +546,9 @@ bool TCustomAgentConfig::localStartElement(const char *aElementName, const char 
     expectTimezone(fCurrentDateTimeZone);
   // - session level charset and line ends
   else if (strucmp(aElementName,"datacharset")==0)
-		expectEnum(sizeof(fDataCharSet),&fDataCharSet,DBCharSetNames,numCharSets);
+    expectEnum(sizeof(fDataCharSet),&fDataCharSet,DBCharSetNames,numCharSets);
   else if (strucmp(aElementName,"datalineends")==0)
-		expectEnum(sizeof(fDataLineEndMode),&fDataLineEndMode,lineEndModeNames,numLineEndModes);
+    expectEnum(sizeof(fDataLineEndMode),&fDataLineEndMode,lineEndModeNames,numLineEndModes);
   // - none known here
   else
     return inherited::localStartElement(aElementName,aAttributes,aLine);
@@ -674,7 +674,7 @@ localstatus TCustomImplAgent::InitializeTunnelSession(cAppCharP aDatastoreName)
 {
   localstatus sta = LOCERR_OK;
 
-	// do the minimum of profile selection needed to make DBs work
+  // do the minimum of profile selection needed to make DBs work
   sta = SelectProfile(TUNNEL_PROFILE_ID, false);
   if (sta==LOCERR_OK) {
     // find datastore to work with
@@ -698,7 +698,7 @@ localstatus TCustomImplAgent::InitializeTunnelSession(cAppCharP aDatastoreName)
 // return the datastore initialized for tunnel access
 TLocalEngineDS *TCustomImplAgent::getTunnelDS()
 {
-	return fTunnelDatastoreP; 
+  return fTunnelDatastoreP;
 } // TCustomImplAgent::getTunnelDS
 
 
@@ -715,13 +715,13 @@ TLocalEngineDS *TCustomImplAgent::getTunnelDS()
 //       DB accesses.
 bool TCustomImplAgent::SessionLogin(const char *aUserName, const char *aAuthString, TAuthSecretTypes aAuthStringType, const char *aDeviceID)
 {
-	#ifdef BASED_ON_BINFILE_CLIENT
-	// let binfile handle it if it is active
+  #ifdef BASED_ON_BINFILE_CLIENT
+  // let binfile handle it if it is active
   if (binfilesActive()) {
-  	return inherited::SessionLogin(aUserName, aAuthString, aAuthStringType, aDeviceID);
+    return inherited::SessionLogin(aUserName, aAuthString, aAuthStringType, aDeviceID);
   }
   #endif // BASED_ON_BINFILE_CLIENT
-  
+
   bool authok = false;
   string nonce;
 

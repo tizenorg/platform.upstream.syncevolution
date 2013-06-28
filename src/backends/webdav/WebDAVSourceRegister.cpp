@@ -42,7 +42,7 @@ static SyncSource *createSource(const SyncSourceParams &params)
             enabled = true;
         }
     }
-#else
+#elif defined(ENABLE_DAV)
     static bool enabled = true;
 #endif
 
@@ -230,6 +230,9 @@ public:
     virtual void updateConfig(ClientTestConfig &config) const
     {
         config.m_type = m_type.c_str();
+        if (m_type == "caldav") {
+            config.m_supportsReccurenceEXDates = true;
+        }
         config.m_createSourceA = boost::bind(&WebDAVTest::createSource, this, _3);
         config.m_createSourceB = boost::bind(&WebDAVTest::createSource, this, _3);
         ConfigProps::const_iterator it = m_props.find(m_type + "/testcases");
@@ -266,6 +269,8 @@ public:
                                 nodes,
                                 context);
         SyncSource *ss = SyncSource::createSource(params);
+        ss->setDisplayName(ss->getDisplayName() +
+                           (isSourceA ? " #A" : " #B"));
         return static_cast<TestingSyncSource *>(ss);
     }
 };

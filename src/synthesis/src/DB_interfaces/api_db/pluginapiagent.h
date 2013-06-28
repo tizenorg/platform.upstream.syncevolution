@@ -175,6 +175,6 @@ private:
 
 } // namespace sysync
 
-#endif	// PLUGINAPIAGENT_H
+#endif  // PLUGINAPIAGENT_H
 
 // eof

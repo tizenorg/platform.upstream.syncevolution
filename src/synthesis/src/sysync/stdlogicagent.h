@@ -46,9 +46,9 @@ public:
 }; // TStdLogicAgent
 
 
-}	// namespace sysync
+} // namespace sysync
 
 
-#endif	// STDLOGICAGENT_H
+#endif  // STDLOGICAGENT_H
 
 // eof

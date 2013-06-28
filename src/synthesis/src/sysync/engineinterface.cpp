@@ -199,19 +199,19 @@ TSyError TSettingsKeyImpl::GetValueByID(
       }
     }
     else {
-    	// non-text, simply return value
+      // non-text, simply return value
       sta = GetValueInternal(aID,aArrayIndex,aBuffer,aBufSize,aValSize);
       if (sta==LOCERR_OK && aBufSize && aBuffer && aValSize>aBufSize) {
-      	// not only measuring size, check for truncation
-      	if (aValType==VALTYPE_BUF) {
-        	// in case of buffer, we call this "truncated" (we don't know if the result is usable or not, depends on data itself)
-	        sta = LOCERR_TRUNCATED;
-	      	aValSize = aBufSize; // return actual size, not untruncated one
+        // not only measuring size, check for truncation
+        if (aValType==VALTYPE_BUF) {
+          // in case of buffer, we call this "truncated" (we don't know if the result is usable or not, depends on data itself)
+          sta = LOCERR_TRUNCATED;
+          aValSize = aBufSize; // return actual size, not untruncated one
         }
         else {
-        	// in other cases, too small buffer makes result unusable, so we don't call it "truncated"
+          // in other cases, too small buffer makes result unusable, so we don't call it "truncated"
           // AND: we return the needed buffer size
-        	sta = LOCERR_BUFTOOSMALL;
+          sta = LOCERR_BUFTOOSMALL;
         }
       }
       return sta;
@@ -241,7 +241,7 @@ TSyError TSettingsKeyImpl::GetValueByID(
         if ((fTimeMode & TMODE_FLAG_FLOATING)==0)
           TzConvertTimestamp(tempTime,TCTX_UTC,tctx,getEngineInterface()->getSyncAppBase()->getAppZones());
         else
-        	tctx = TCTX_UNKNOWN; // make sure that ISO8601 representation has no TZ info in floating mode
+          tctx = TCTX_UNKNOWN; // make sure that ISO8601 representation has no TZ info in floating mode
         // now return
         if (aValType==VALTYPE_TEXT) {
           // return time as text
@@ -251,7 +251,7 @@ TSyError TSettingsKeyImpl::GetValueByID(
         }
         // no time will return an error code
         if (tempTime==noLinearTime) {
- 					// no time
+          // no time
           sta=DB_NoContent; // indicates NO value
           break;
         }
@@ -412,9 +412,9 @@ TSyError TSettingsKeyImpl::SetValueByID(
   // some kind of conversion needed
   // - switch by presented value type
   switch (aValType) {
-		// Set "no value"
+    // Set "no value"
     case VALTYPE_NULL:
-    	sta = SetValueInternal(aID,aArrayIndex,NULL,0);
+      sta = SetValueInternal(aID,aArrayIndex,NULL,0);
       break;
 
     // Text presented
@@ -424,7 +424,7 @@ TSyError TSettingsKeyImpl::SetValueByID(
         appendUTF16AsUTF8((uInt16 *)aBuffer,aValSize/2,fBigEndian,convStr, true, true);
       }
       else {
-      	string s; s.assign((cAppCharP)aBuffer,aValSize);
+        string s; s.assign((cAppCharP)aBuffer,aValSize);
         appendStringAsUTF8(s.c_str(), convStr, fCharSet, lem_cstr, true);
       }
       // possibly convert text to native
@@ -433,8 +433,8 @@ TSyError TSettingsKeyImpl::SetValueByID(
           // convert text to internal time format
           ISO8601StrToTimestamp(convStr.c_str(), tempTime, tctx);
           // if not floating, assume target timestamp is UTC, so ISO string w/o time zone is treated as system time for convenience
-		      if ((fTimeMode & TMODE_FLAG_FLOATING)==0)
-    	      TzConvertTimestamp(tempTime, tctx, TCTX_UTC, getEngineInterface()->getSyncAppBase()->getAppZones(), TCTX_SYSTEM);
+          if ((fTimeMode & TMODE_FLAG_FLOATING)==0)
+            TzConvertTimestamp(tempTime, tctx, TCTX_UTC, getEngineInterface()->getSyncAppBase()->getAppZones(), TCTX_SYSTEM);
           siz=8; bP = &tempTime;
           break;
         case VALTYPE_INT8:
@@ -561,20 +561,20 @@ bool TSettingsKeyImpl::checkFieldAttrs(cAppCharP aName, size_t &aBaseNameSize, s
     return true; // asking for flag mask only
   return false; // aFldID is only the flag mask, caller must add base index
 } // TSettingsKeyImpl::checkFieldAttrs
-  
+
 
 
 // helper for returning generic field attribute type
 bool TSettingsKeyImpl::checkAttrValueType(sInt32 aID, uInt16 &aValType)
 {
-	if (aID>0 && (aID & VALID_IDXOFFS_VALTYPE)) {
-  	aValType = VALTYPE_INT16; // valtype is always uInt16
+  if (aID>0 && (aID & VALID_IDXOFFS_VALTYPE)) {
+    aValType = VALTYPE_INT16; // valtype is always uInt16
     return true;
   }
   return false;
 } // TSettingsKeyImpl::checkAttrValueType
 
-  
+
 
 // helper for returning generic field attribute values
 bool TSettingsKeyImpl::checkAttrValue(
@@ -582,12 +582,12 @@ bool TSettingsKeyImpl::checkAttrValue(
   appPointer aBuffer, memSize aBufSize, memSize &aValSize
 )
 {
-	if (aID>0 && (aID & VALID_IDXOFFS_VALTYPE)) {
-  	// return type, not value
+  if (aID>0 && (aID & VALID_IDXOFFS_VALTYPE)) {
+    // return type, not value
     aValSize = 2;
     uInt16 valtype = GetValueType(aID & VALID_MASK_IDX);
     if (aBufSize>=aValSize) {
-    	memcpy(aBuffer,&valtype,aValSize);
+      memcpy(aBuffer,&valtype,aValSize);
     }
     return true;
   }
@@ -612,7 +612,7 @@ sInt32 TReadOnlyInfoKey::GetValueID(cAppCharP aName)
   size_t namsz;
   sInt32 fldID;
   if (checkFieldAttrs(aName,namsz,fldID))
-  	return fldID;
+    return fldID;
   while(tblP && idx<numInfos()) {
     if (strucmp(aName,tblP[idx].valName,namsz)==0) {
       return fldID+idx; // found
@@ -639,7 +639,7 @@ uInt16 TReadOnlyInfoKey::GetValueType(sInt32 aID)
 {
   uInt16 valType;
   if (checkAttrValueType(aID,valType))
-  	return valType;
+    return valType;
   if (aID>=numInfos()) return VALTYPE_UNKNOWN;
   return getInfoTable()[aID].valType;
 } // TReadOnlyInfoKey::GetValueType
@@ -651,8 +651,8 @@ TSyError TReadOnlyInfoKey::GetValueInternal(
   appPointer aBuffer, memSize aBufSize, memSize &aValSize
 )
 {
-	if (checkAttrValue(aID,aArrayIndex,aBuffer,aBufSize,aValSize))
-  	return LOCERR_OK;  
+  if (checkAttrValue(aID,aArrayIndex,aBuffer,aBufSize,aValSize))
+    return LOCERR_OK;
   const TReadOnlyInfo *infoP = &(getInfoTable()[aID]);
   memSize siz = infoP->valSiz;
   if (siz==0 && infoP->valType==VALTYPE_TEXT)
@@ -679,8 +679,8 @@ sInt32 TConfigVarKey::GetValueID(cAppCharP aName)
   sInt32 fldID;
   checkFieldAttrs(aName,namsz,fldID);
   if (fldID!=0)
-  	return fldID; // is an attribute
-	// value itself cannot be accessed by ID - so cache name for next call to getValueInternal
+    return fldID; // is an attribute
+  // value itself cannot be accessed by ID - so cache name for next call to getValueInternal
   fVarName = aName; // cache name
   return KEYVAL_NO_ID;
 };
@@ -691,7 +691,7 @@ uInt16 TConfigVarKey::GetValueType(sInt32 aID)
 {
   uInt16 valType;
   if (checkAttrValueType(aID,valType))
-  	return valType;
+    return valType;
   // value itself is always text
   return VALTYPE_TEXT;
 } // TConfigVarKey::GetValueType
@@ -702,8 +702,8 @@ TSyError TConfigVarKey::GetValueInternal(
   sInt32 aID, sInt32 aArrayIndex,
   appPointer aBuffer, memSize aBufSize, memSize &aValSize
 ) {
-	if (checkAttrValue(aID,aArrayIndex,aBuffer,aBufSize,aValSize))
-  	return LOCERR_OK;  
+  if (checkAttrValue(aID,aArrayIndex,aBuffer,aBufSize,aValSize))
+    return LOCERR_OK;
   string s;
   if (!fEngineInterfaceP->getSyncAppBase()->getConfigVar(fVarName.c_str(),s))
     return DB_NotFound;
@@ -719,9 +719,9 @@ TSyError TConfigVarKey::SetValueInternal(
   sInt32 aID, sInt32 aArrayIndex,
   cAppPointer aBuffer, memSize aValSize
 ) {
-	if (!aBuffer) {
-  	// writing NULL means undefining variable
-	  fEngineInterfaceP->getSyncAppBase()->unsetConfigVar(fVarName.c_str());
+  if (!aBuffer) {
+    // writing NULL means undefining variable
+    fEngineInterfaceP->getSyncAppBase()->unsetConfigVar(fVarName.c_str());
     return LOCERR_OK;
   }
   string v; v.assign((cAppCharP)aBuffer,(size_t)aValSize); // copy because input could be unterminated string
@@ -752,22 +752,22 @@ TSyError TStructFieldsKey::returnString(cAppCharP aReturnString, appPointer aBuf
 // static helper for procedural int readers
 TSyError TStructFieldsKey::returnInt(sInt32 aInt, memSize aIntSize, appPointer aBuffer, memSize aBufSize, memSize &aValSize)
 {
-	aValSize=aIntSize;
+  aValSize=aIntSize;
   if (aBufSize==0) return LOCERR_OK; // measuring size
   if (aBufSize<aIntSize) return LOCERR_BUFTOOSMALL;
   if (aValSize>=4)
-  	*((sInt32 *)aBuffer) = (sInt32)aInt;
+    *((sInt32 *)aBuffer) = (sInt32)aInt;
   else if (aValSize>=2)
-  	*((sInt16 *)aBuffer) = (sInt16)aInt;
+    *((sInt16 *)aBuffer) = (sInt16)aInt;
   else
-  	*((sInt8 *)aBuffer) = (sInt8)aInt;
+    *((sInt8 *)aBuffer) = (sInt8)aInt;
   return LOCERR_OK;
 } // returnInt
 
 
 TSyError TStructFieldsKey::returnLineartime(lineartime_t aTime, appPointer aBuffer, memSize aBufSize, memSize &aValSize)
 {
-	aValSize=sizeof(lineartime_t);
+  aValSize=sizeof(lineartime_t);
   if (aBufSize==0) return LOCERR_OK; // measuring size
   if (aBufSize<aValSize) return LOCERR_BUFTOOSMALL;
   *((lineartime_t *)aBuffer) = aTime;
@@ -786,7 +786,7 @@ sInt32 TStructFieldsKey::GetValueID(cAppCharP aName)
   size_t namsz;
   sInt32 fldID;
   if (checkFieldAttrs(aName,namsz,fldID))
-  	return fldID;
+    return fldID;
   while(tblP && idx<numFields()) {
     if (strucmp(aName,tblP[idx].valName,namsz)==0) {
       return fldID+idx; // found
@@ -813,7 +813,7 @@ uInt16 TStructFieldsKey::GetValueType(sInt32 aID)
 {
   uInt16 valType;
   if (checkAttrValueType(aID,valType))
-  	return valType;
+    return valType;
   if (aID>=numFields()) return VALTYPE_UNKNOWN;
   const TStructFieldInfo *fldinfoP = &(getFieldsTable()[aID]);
   valType = fldinfoP->valType;
@@ -839,8 +839,8 @@ TSyError TStructFieldsKey::GetValueInternal(
   appPointer aBuffer, memSize aBufSize, memSize &aValSize
 )
 {
-	if (checkAttrValue(aID,aArrayIndex,aBuffer,aBufSize,aValSize))
-  	return LOCERR_OK;  
+  if (checkAttrValue(aID,aArrayIndex,aBuffer,aBufSize,aValSize))
+    return LOCERR_OK;
   const TStructFieldInfo *fldinfoP = &(getFieldsTable()[aID]);
   // check for programmatic access to value
   if (fldinfoP->getValueProc) {
@@ -877,9 +877,9 @@ TSyError TStructFieldsKey::SetValueInternal(
   cAppPointer aBuffer, memSize aValSize
 )
 {
-	if (!aBuffer) return LOCERR_WRONGUSAGE; // cannot handle NULL values
-	if (aID & VALID_IDXOFFS_VALTYPE)
-  	return DB_Forbidden; // can't write type
+  if (!aBuffer) return LOCERR_WRONGUSAGE; // cannot handle NULL values
+  if (aID & VALID_IDXOFFS_VALTYPE)
+    return DB_Forbidden; // can't write type
   TSyError sta = LOCERR_OK;
   const TStructFieldInfo *fldinfoP = &(getFieldsTable()[aID]);
   // refuse writing to read-only fields
@@ -903,7 +903,7 @@ TSyError TStructFieldsKey::SetValueInternal(
     siz=aValSize;
   // copy data into struct
   if (fldinfoP->valType==VALTYPE_TEXT_OBFUS) {
-  	string v; v.assign((cAppCharP)aBuffer,aValSize);
+    string v; v.assign((cAppCharP)aBuffer,aValSize);
     assignMangledToCString((appCharP)valPtr, v.c_str(), fldinfoP->valSiz, true); // always use entire buffer and fill it with garbage beyond end of actual data
   }
   else
@@ -1018,17 +1018,17 @@ static TSyError writeFuv(
   cAppPointer aBuffer, memSize aValSize
 )
 {
-	uInt32 fuv = *((uInt32 *)aBuffer);
+  uInt32 fuv = *((uInt32 *)aBuffer);
   if (fuv==0x53595359) {
-  	// start eval
+    // start eval
     aStructFieldsKeyP->getEngineInterface()->getSyncAppBase()->updateFirstUseInfo(
-    	aStructFieldsKeyP->getEngineInterface()->getSyncAppBase()->fFirstUseDate,
+      aStructFieldsKeyP->getEngineInterface()->getSyncAppBase()->fFirstUseDate,
       aStructFieldsKeyP->getEngineInterface()->getSyncAppBase()->fFirstUseVers
     );
   }
   else {
-  	// simply assign (usually values read from here in an earlier session and stored persistently outside)
-   	aStructFieldsKeyP->getEngineInterface()->getSyncAppBase()->fFirstUseVers = fuv; 
+    // simply assign (usually values read from here in an earlier session and stored persistently outside)
+    aStructFieldsKeyP->getEngineInterface()->getSyncAppBase()->fFirstUseVers = fuv;
   }
   // always ok
   return LOCERR_OK;
@@ -1051,10 +1051,10 @@ static const TStructFieldInfo LicensingFieldInfos[] =
   { "licensetext", VALTYPE_TEXT, true, 0, 0, &readLicenseText, &writeLicenseText },
   { "licensecode", VALTYPE_TEXT, true, 0, 0, NULL, &writeLicenseCode },
   #if defined(EXPIRES_AFTER_DAYS) && defined(ENGINEINTERFACE_SUPPORT)
-  // - read/write for eval 
+  // - read/write for eval
   { "fud", VALTYPE_INT32, true, OFFS_SZ_AB(fFirstUseDate) }, // first use date
   { "fuv", VALTYPE_INT32, true, OFFS_SZ_AB(fFirstUseVers), NULL, &writeFuv  }, // first use version
-	#endif  
+  #endif
   // - read-only info about licensing status from syncappbase
   { "regStatus", VALTYPE_INT16, false, 0, 0, &readRegStatus, NULL },
   { "enabledStatus", VALTYPE_INT16, false, 0, 0, &readEnabledStatus, NULL },
@@ -1746,7 +1746,7 @@ TSyError TEngineInterface::SetValueByID(
 
 TSyError TEngineInterface::StartDataRead(SessionH aSessionH, cAppCharP lastToken, cAppCharP resumeToken)
 {
-	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
   if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
   return ds->TunnelStartDataRead(lastToken,resumeToken);
 } // StartDataRead
@@ -1754,7 +1754,7 @@ TSyError TEngineInterface::StartDataRead(SessionH aSessionH, cAppCharP lastToken
 
 TSyError TEngineInterface::ReadNextItem(SessionH aSessionH, ItemID  aID, appCharP *aItemData, sInt32 *aStatus, bool  aFirst)
 {
-	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
   if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
   return ds->TunnelReadNextItem(aID,aItemData,aStatus,aFirst);
 } // ReadNextItem
@@ -1762,7 +1762,7 @@ TSyError TEngineInterface::ReadNextItem(SessionH aSessionH, ItemID  aID, appChar
 
 TSyError TEngineInterface::ReadItem(SessionH aSessionH, cItemID aID, appCharP *aItemData)
 {
-	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
   if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
   return ds->TunnelReadItem(aID,aItemData);
 } // ReadItem
@@ -1770,7 +1770,7 @@ TSyError TEngineInterface::ReadItem(SessionH aSessionH, cItemID aID, appCharP *a
 
 TSyError TEngineInterface::EndDataRead(SessionH aSessionH)
 {
-	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
   if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
   return ds->TunnelEndDataRead();
 } // EndDataRead
@@ -1778,7 +1778,7 @@ TSyError TEngineInterface::EndDataRead(SessionH aSessionH)
 
 TSyError TEngineInterface::StartDataWrite(SessionH aSessionH)
 {
-	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
   if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
   return ds->TunnelStartDataWrite();
 } // StartDataWrite
@@ -1786,7 +1786,7 @@ TSyError TEngineInterface::StartDataWrite(SessionH aSessionH)
 
 TSyError TEngineInterface::InsertItem(SessionH aSessionH, cAppCharP aItemData, ItemID aID)
 {
-	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
   if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
   return ds->TunnelInsertItem(aItemData,aID);
 } // InsertItem
@@ -1794,7 +1794,7 @@ TSyError TEngineInterface::InsertItem(SessionH aSessionH, cAppCharP aItemData, I
 
 TSyError TEngineInterface::UpdateItem(SessionH aSessionH, cAppCharP aItemData, cItemID aID, ItemID updID )
 {
-	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
   if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
   return ds->TunnelUpdateItem(aItemData,aID,updID);
 } // UpdateItem
@@ -1802,7 +1802,7 @@ TSyError TEngineInterface::UpdateItem(SessionH aSessionH, cAppCharP aItemData, c
 
 TSyError TEngineInterface::MoveItem(SessionH aSessionH, cItemID aID, cAppCharP newParID)
 {
-	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
   if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
   return ds->TunnelMoveItem(aID,newParID);
 } // MoveItem
@@ -1810,7 +1810,7 @@ TSyError TEngineInterface::MoveItem(SessionH aSessionH, cItemID aID, cAppCharP n
 
 TSyError TEngineInterface::DeleteItem(SessionH aSessionH, cItemID aID)
 {
-	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
   if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
   return ds->TunnelDeleteItem(aID);
 } // DeleteItem
@@ -1818,7 +1818,7 @@ TSyError TEngineInterface::DeleteItem(SessionH aSessionH, cItemID aID)
 
 TSyError TEngineInterface::EndDataWrite(SessionH aSessionH, bool success, appCharP *newToken)
 {
-	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
   if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
   return ds->TunnelEndDataWrite(success,newToken);
 } // EndDataWrite
@@ -1826,7 +1826,7 @@ TSyError TEngineInterface::EndDataWrite(SessionH aSessionH, bool success, appCha
 
 void TEngineInterface::DisposeObj(SessionH aSessionH, void* memory)
 {
-	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
   if (!ds) return; // need properly opened tunnel session/datastore
   return ds->TunnelDisposeObj(memory);
 } // DisposeObj
@@ -1835,7 +1835,7 @@ void TEngineInterface::DisposeObj(SessionH aSessionH, void* memory)
 // ---- asKey ----
 TSyError TEngineInterface::ReadNextItemAsKey(SessionH aSessionH, ItemID  aID, KeyH aItemKey, sInt32 *aStatus, bool aFirst)
 {
-	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
   if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
   return ds->TunnelReadNextItemAsKey(aID,aItemKey,aStatus,aFirst);
 } // ReadNextItemAsKey
@@ -1843,7 +1843,7 @@ TSyError TEngineInterface::ReadNextItemAsKey(SessionH aSessionH, ItemID  aID, Ke
 
 TSyError TEngineInterface::ReadItemAsKey(SessionH aSessionH, cItemID aID, KeyH aItemKey)
 {
-	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
   if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
   return ds->TunnelReadItemAsKey(aID,aItemKey);
 } // ReadItemAsKey
@@ -1851,7 +1851,7 @@ TSyError TEngineInterface::ReadItemAsKey(SessionH aSessionH, cItemID aID, KeyH a
 
 TSyError TEngineInterface::InsertItemAsKey(SessionH aSessionH, KeyH aItemKey, ItemID aID)
 {
-	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
   if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
   return ds->TunnelInsertItemAsKey(aItemKey,aID);
 } // InsertItemAsKey
@@ -1859,7 +1859,7 @@ TSyError TEngineInterface::InsertItemAsKey(SessionH aSessionH, KeyH aItemKey, It
 
 TSyError TEngineInterface::UpdateItemAsKey(SessionH aSessionH, KeyH aItemKey, cItemID aID, ItemID updID)
 {
-	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
   if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
   return ds->TunnelUpdateItemAsKey(aItemKey,aID,updID);
 } // UpdateItemAsKey
@@ -1885,26 +1885,26 @@ TSyError TEngineInterface::debugPuts(cAppCharP aFile, int aLine, cAppCharP aFunc
 // Callback "factory" function implementation
 
 static TSyError internal_ConnectEngine(
-	bool aIsServer,
+  bool aIsServer,
   UI_Call_In *aCIP,
   uInt16 aCallbackVersion, // if==0, engine creates new aCI
   CVersion *aEngVersionP,
   CVersion aPrgVersion,
   uInt16 aDebugFlags
-)  
+)
 {
   // create new engine
   TEngineModuleBase *engine = NULL;
   TSyError err = LOCERR_OK;
   if (aIsServer) {
-  	#ifdef SYSYNC_SERVER
+    #ifdef SYSYNC_SERVER
     engine = newServerEngine();
     #else
     err = LOCERR_WRONGUSAGE;
     #endif
   }
   else {
-  	#ifdef SYSYNC_CLIENT
+    #ifdef SYSYNC_CLIENT
     engine = newClientEngine();
     #else
     err = LOCERR_WRONGUSAGE;
@@ -1923,16 +1923,16 @@ static TSyError internal_ConnectEngine(
       err = engine->Connect("", aPrgVersion, aDebugFlags);
     }
     else {
-    	// no aCIP passed, let engine create one
+      // no aCIP passed, let engine create one
       // - connect engine
-		  err = engine->Connect("", aPrgVersion, aDebugFlags);
+      err = engine->Connect("", aPrgVersion, aDebugFlags);
       // - get CI from engine
-			*aCIP = engine->fCI;
+      *aCIP = engine->fCI;
     }
     // - get the version
     if (aEngVersionP) *aEngVersionP = Plugin_Version(0);
   }
-  return   err;	
+  return   err;
 } // internal_ConnectEngine
 
 
@@ -1944,7 +1944,7 @@ TSyError SYSYNC_EXTERNAL(ConnectEngine)(
   uInt16      aDebugFlags
 )
 {
-	return internal_ConnectEngine(false, aCI, 0, aEngVersion, aPrgVersion, aDebugFlags);
+  return internal_ConnectEngine(false, aCI, 0, aEngVersion, aPrgVersion, aDebugFlags);
 } // ConnectEngine
 
 
@@ -1957,7 +1957,7 @@ TSyError SYSYNC_EXTERNAL(ConnectEngineS)(
   uInt16      aDebugFlags
 )
 {
-	return internal_ConnectEngine(false, &aCI, aCallbackVersion, aEngVersion, aPrgVersion, aDebugFlags);
+  return internal_ConnectEngine(false, &aCI, aCallbackVersion, aEngVersion, aPrgVersion, aDebugFlags);
 } // ConnectEngineS
 
 
@@ -1969,7 +1969,7 @@ TSyError SYSYNC_EXTERNAL_SRV(ConnectEngine)(
   uInt16      aDebugFlags
 )
 {
-	return internal_ConnectEngine(true, aCI, 0, aEngVersion, aPrgVersion, aDebugFlags);
+  return internal_ConnectEngine(true, aCI, 0, aEngVersion, aPrgVersion, aDebugFlags);
 } // ConnectEngine
 
 
@@ -1982,7 +1982,7 @@ TSyError SYSYNC_EXTERNAL_SRV(ConnectEngineS)(
   uInt16      aDebugFlags
 )
 {
-	return internal_ConnectEngine(true, &aCI, aCallbackVersion, aEngVersion, aPrgVersion, aDebugFlags);
+  return internal_ConnectEngine(true, &aCI, aCallbackVersion, aEngVersion, aPrgVersion, aDebugFlags);
 } // ConnectEngineS
 
 
@@ -2013,14 +2013,14 @@ static TSyError internal_DisconnectEngine(UI_Call_In aCI)
 /* Entry point to disconnect client engine */
 TSyError SYSYNC_EXTERNAL(DisconnectEngine)(UI_Call_In aCI)
 {
-	return internal_DisconnectEngine(aCI);
+  return internal_DisconnectEngine(aCI);
 }
 
 
 /* Entry point to disconnect server engine */
 TSyError SYSYNC_EXTERNAL_SRV(DisconnectEngine)(UI_Call_In aCI)
 {
-	return internal_DisconnectEngine(aCI);
+  return internal_DisconnectEngine(aCI);
 }
 
 

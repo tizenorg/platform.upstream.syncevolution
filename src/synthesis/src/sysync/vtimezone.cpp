@@ -310,8 +310,8 @@ static bool Get_Bias( string of, string ot, short &bias )
  *         or found and extracted
  */
 static bool GetTZInfo( cAppCharP     aText,
-                       cAppCharP     aIdent, 
-                       tChange      &c, 
+                       cAppCharP     aIdent,
+                       tChange      &c,
                        short        &cBias,
                        string       &cName,
                        sInt32        aNth, // take nth occurance, -1: take last
@@ -355,7 +355,7 @@ static bool GetTZInfo( cAppCharP     aText,
   if (!Get_Bias( of,ot, cBias ))                              return false;
 
   if ( rr.empty() ) {
-    // Happens when parsing STANDARD part of VTIMEZONE 
+    // Happens when parsing STANDARD part of VTIMEZONE
     // without DAYLIGHT saving.
   } else if (RRULE2toInternalR    ( rr.c_str(), &dtstart, r, aLogP )) {
     // Note: dtstart might have been adjusted by this call in case of DTSTART not meeting a occurrence for given RRULE
@@ -533,7 +533,7 @@ bool VTIMEZONEtoInternal( const char*    aText, // VTIMEZONE string to be parsed
 
   if  (s==0 && d==0) return false;
   okM= s<=1 && d<=1; // test if more than one section
- 
+
   // find best match for VTIMEZONE: checks name and rules
   // allows multiple timezone, if last is ok !
   if (!g) return false; // avoid crashes with g==NULL
@@ -675,7 +675,7 @@ bool internalToVTIMEZONE( timecontext_t  aContext,
                           sInt32         untilYear,
                           cAppCharP      aPrefIdent )
 {
-	// %%% note: untilYear needs to be implemented, is without functionality so far
+  // %%% note: untilYear needs to be implemented, is without functionality so far
 
   sInt16              yy= testYear;
   if (testYear==0)    yy= MyYear( g );
@@ -685,7 +685,7 @@ bool internalToVTIMEZONE( timecontext_t  aContext,
   tz_entry  t, tp;
   cAppCharP id;
   bool      withDST= false;
-  
+
   bool tzEnum= TCTX_IS_TZ( aContext );
   if  (tzEnum) {
     GetTZ( aContext, t, g, yy );
@@ -717,12 +717,12 @@ bool internalToVTIMEZONE( timecontext_t  aContext,
     } // if
   } // if
 
-	// make sure we get the right TZID string according to aPrefIdent
+  // make sure we get the right TZID string according to aPrefIdent
   string tzn = t.name;
   if (aPrefIdent || !tzEnum) {
-	  TimeZoneContextToName( aContext, tzn, g, aPrefIdent );
+    TimeZoneContextToName( aContext, tzn, g, aPrefIdent );
   }
-  
+
   // at least one STANDARD or DAYLIGHT info is mandatory
   aText=    Property      (    VTZ_ID,      escapeText( tzn ) ) +
             GenerateTZInfo( t, VTZ_STD, id, t.std, y_std, t_plus,t.bias, g, aLogP );
@@ -991,14 +991,14 @@ static string PeeledStr( const string &aStr, const string &bv, const string &ev,
   }
   else {
     sInt32 i= 1;
-    
+
     while (true) {
       bp= FindProperty( aStr, bv, bp ); if (bp==string::npos) return "";
       if (i>=aNth) break;
       i++; bp++;
     } // while
   } // if
-  
+
 //string::size_type bp= aStr.find( bv, 0 ); if (bp==string::npos) return "";
   string::size_type ep= FindProperty( aStr, ev, bp ); if (ep==string::npos) return "";
 

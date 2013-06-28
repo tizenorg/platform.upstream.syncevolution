@@ -349,7 +349,7 @@ class TEngineModuleBase
 
     // Tunnel Interface Methods ---------------------------------------------------------------------
     virtual TSyError StartDataRead    ( SessionH aSessionH,  cAppCharP    lastToken,
-                                                      			 cAppCharP  resumeToken )                = 0;
+                                                             cAppCharP  resumeToken )                = 0;
     virtual TSyError ReadNextItem     ( SessionH aSessionH,     ItemID  aID,  appCharP *aItemData,
                                                                 sInt32 *aStatus,  bool  aFirst )     = 0;
     virtual TSyError ReadItem         ( SessionH aSessionH,    cItemID  aID,  appCharP *aItemData )  = 0;

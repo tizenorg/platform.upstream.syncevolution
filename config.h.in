@@ -1,4 +1,4 @@
-/* config.h.in.  Generated from configure.in by autoheader.  */
+/* config.h.in.  Generated from configure.ac by autoheader.  */
 
 /* define if dbus service is enabled */
 #undef DBUS_SERVICE
@@ -8,6 +8,9 @@
 
 /* "SyncML DevInf DevType" */
 #undef DEVICE_TYPE
+
+/* ActiveSync available */
+#undef ENABLE_ACTIVESYNC
 
 /* addressbook available */
 #undef ENABLE_ADDRESSBOOK
@@ -227,6 +230,9 @@
 /* dynamically open libnotify */
 #undef NOTIFY_COMPATIBILITY
 
+/* Define to 1 if your C compiler doesn't accept -c and -o together. */
+#undef NO_MINUS_C_MINUS_O
+
 /* Name of package */
 #undef PACKAGE
 
@@ -274,3 +280,6 @@
 
 /* Version number of package */
 #undef VERSION
+
+/* Set if using GIO GDBus */
+#undef WITH_GIO_GDBUS

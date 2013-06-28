@@ -13,8 +13,8 @@ synchronize personal information management data
 SYNOPSIS
 ========
 
-Show available sources:
-  syncevolution
+List databases:
+  syncevolution --print-databases [<properties>] [<config> <source>]
 
 Show information about configuration(s):
   syncevolution --print-servers|--print-configs|--print-peers
@@ -43,18 +43,21 @@ Create, update or remove a configuration:
   syncevolution --remove|--migrate <options> [--] <config>
 
 List items:
-  syncevolution --print-items [--] <config> <source>
+  syncevolution --print-items [--] [<config> [<source>]]
 
 Export item(s):
-  syncevolution [--delimiter <string>] --export <dir>|<file>|- [--] <config> <source> [<luid> ...]
+  syncevolution [--delimiter <string>] --export <dir>|<file>|- [--] [<config> [<source> [<luid> ...]]]
+                                                                --luids <luid> ...
 
 Add item(s):
-  syncevolution [--delimiter <string>|none] --import <dir>|<file>|- [--] <config> <source>
+  syncevolution [--delimiter <string>|none] --import <dir>|<file>|- [--] [<config> [<source>]]
+                                                                     --luids <luid> ...
 
 Update item(s):
   syncevolution --update <dir> [--] <config> <source>
 
   syncevolution [--delimiter <string>|none] --update <file>|- [--] <config> <source> <luid> ...
+                                                               --luids <luid> ...
 
 
 Remove item(s):
@@ -287,13 +290,32 @@ USAGE
 
 ::
 
-   syncevolution
+   syncevolution --print-databases [<properties>] [<config> <source>]
 
-If no arguments are given, then SyncEvolution will list all available
-data sources regardless whether there is a configuration file for them
-or not. The output includes the identifiers which can then be used to
-select those sources in a configuration file. For each source one can
-set a different synchronization mode in its configuration file. ::
+If no additional arguments are given, then SyncEvolution will list all
+available backends and the databases that can be accessed through each
+backend. This works without existing configurations. However, some
+backends, like for example the CalDAV backend, need additional
+information (like credentials or URL of a remote server). This
+additional information can be provided on the command line with
+property assignments (``username=...``) or in an existing configuration.
+
+When listing all databases of all active sources, the output starts
+with a heading that lists the values for the ``backend`` property which
+select the backend, followed by the databases.  Each database has a
+name and a unique ID (in brackets). Typically both can be used as
+value of the 'database' property. One database might be marked as
+``default``. It will be used when ``database`` is not set explicitly.
+
+When selecting an existing source configuration or specifying the ``backend``
+property on the command line, only the databases for that backend
+are listed and the initial line shows how that backend was selected
+(<config>/<source> resp. backend value).
+
+Some backends do not support listing of databases. For example, the
+file backend synchronizes directories with one file per item and
+always needs an explicit ``database`` property because it cannot guess
+which directory it is meant to use. ::
 
    syncevolution <config>
 
@@ -396,13 +418,13 @@ the right database dumps for the selected sources.
 A restore tries to minimize the number of item changes (see section
 `Item Changes and Data Changes`_). This means that items that are
 identical before and after the change will not be transmitted anew to
-the server during the next synchronization. If the server somehow
-needs to get a clean copy of all items on the client then, use "--sync
-refresh-from-client" in the next run. ::
+the peer during the next synchronization. If the peer somehow
+needs to get a clean copy of all local items, then use ``--sync
+refresh-from-local`` in the next run. ::
 
   syncevolution --print-items <config> <source>
-  syncevolution [--delimiter <string>] --export <dir>|<file>|- <config> <source> [<luid> ...]
-  syncevolution [--delimiter <string>|none] --import <dir>|<file>|- <config> <source>
+  syncevolution [--delimiter <string>] --export <dir>|<file>|- [<config> [<source> [<luid> ...]]]
+  syncevolution [--delimiter <string>|none] --import <dir>|<file>|- [<config> <source>]
   syncevolution --update <dir> <config> <source>
   syncevolution [--delimiter <string>|none] --update <file>|- <config> <source> <luid> ...
   syncevolution --delete-items <config> <source> (<luid> ... | *)
@@ -412,15 +434,22 @@ created by SyncEvolution. Arbitrary access to item data is provided
 with additional options. <luid> here is the unique local identifier
 assigned to each item in the source, transformed so that it contains
 only alphanumeric characters, dash and underscore. A star * in
---delete-items selects all items for deletion.
+--delete-items selects all items for deletion. There are two ways
+of specifying luids: either as additional parameters after the
+config and source parameters (which may be empty in this case, but
+must be given) or after the ``--luids`` keyword.
 
-<config> and <source> must be given, but they do not have to refer to
-existing configurations. In that case, the desired backend and must be
-give via the ``backend`` property, like this::
+<config> and <source> may be given to define the database which is to
+be used. If not given or not refering to an existing configuration
+(which is not an error, due to historic reasons), the desired backend
+must be given via the ``backend`` property, like this::
 
-  syncevolution --print-items backend=evolution-contacts dummy-config dummy-source
+  syncevolution --print-items backend=evolution-contacts
+  syncevolution --export - backend=evolution-contacts \
+                --luids pas-id-4E33F24300000006 pas-id-4E36DD7B00000007
 
 The desired backend database can be chosen via ``database=<identifier>``.
+See ``--print-databases``.
 
 OPTIONS
 =======
@@ -432,17 +461,12 @@ a list of valid values.
 
 --sync|-s <mode>|?
   Temporarily synchronize the active sources in that mode. Useful
-  for a `refresh-from-server` or `refresh-from-client` sync which
+  for a `refresh-from-local` or `refresh-from-remote` sync which
   clears all data at one end and copies all items from the other.
 
-  **Warning:** in local sync (`CalDAV and CardDAV`_/ActiveSync, ...) and
-  direct sync with a phone, the sync is started by the side which acts
-  as server. Therefore the ``from-server`` variants
-  (``one-way-from-server``, ``refresh-from-server``) transfer data
-  from the sync config into the target config (see "Synchronization
-  beyond SyncML" below) resp. to a phone. The ``from-client`` variants
-  transfer in the other direction, even if the target config happens
-  to access data on a remote server.
+  **Warning:** `local` is the data accessed via the sync config
+  directly and `remote` is the data on the peer, regardless
+  where the data is actually stored physically.
 
 --print-servers|--print-configs|--print-peers
   Prints the names of all configured peers to stdout. There is no
@@ -1017,8 +1041,16 @@ SYNCEVOLUTION_DEBUG
 SYNCEVOLUTION_GNUTLS_DEBUG
    Enables additional debugging output when using the libsoup HTTP transport library.
 
+SYNCEVOLUTION_DATA_DIR
+   Overrides the default path to the bluetooth device lookup table,
+   normally `/usr/lib/syncevolution/`.
+
 SYNCEVOLUTION_BACKEND_DIR
    Overrides the default path to plugins, normally `/usr/lib/syncevolution/backends`.
+
+SYNCEVOLUTION_LIBEXEC_DIR
+   Overrides the path where additional helper executables are found, normally
+   `/usr/libexec`.
 
 SYNCEVOLUTION_TEMPLATE_DIR
    Overrides the default path to template files, normally

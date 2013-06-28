@@ -1,7 +1,7 @@
 /*
  *  File:         profiling.h
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  Platform-dependent profiling implementation
  *

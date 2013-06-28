@@ -1,7 +1,7 @@
 /*
  *  File:         SuperDataStore.h
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TSuperDataStore
  *    "Virtual" datastore consisting of an union of other
@@ -111,7 +111,7 @@ public:
   virtual ~TSuperDataStore();
   virtual void dsResetDataStore(void) { InternalResetDataStore(); inherited::dsResetDataStore(); };
   // add links to subdatastores
-	void addSubDatastoreLink(TSubDSLinkConfig *aDSLinkConfigP, TLocalEngineDS *aDatastoreP);
+  void addSubDatastoreLink(TSubDSLinkConfig *aDSLinkConfigP, TLocalEngineDS *aDatastoreP);
   // abort
   virtual void engAbortDataStoreSync(TSyError aReason, bool aLocalProblem, bool aResumable=true);
   virtual bool isAborted(void); // test abort status
@@ -311,10 +311,10 @@ private:
   TSubDSLinkList::iterator fCurrentGenDSPos;
 }; // TSuperDataStore
 
-}	// namespace sysync
+} // namespace sysync
 
 #endif // SUPERDATASTORES
 
-#endif	// SuperDataStore_H
+#endif  // SuperDataStore_H
 
 // eof

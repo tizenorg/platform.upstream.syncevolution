@@ -1,7 +1,7 @@
 /*
  *  TEngineClientBase
  *    client library specific descendant of TSyncClientBase
- *		Global object, manages starting of client sessions.
+ *    Global object, manages starting of client sessions.
  *
  *  Copyright (c) 2002-2011 by Synthesis AG + plan44.ch
  *

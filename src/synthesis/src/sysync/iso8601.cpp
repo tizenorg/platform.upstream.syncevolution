@@ -366,7 +366,7 @@ bool ContextToISO8601StrAppend(string &aISOString, timecontext_t aTimeContext, b
   // offset specified, show it
   long moffs = TCTX_MINOFFSET(aTimeContext);
   bool minus = moffs<0;
-	moffs = abs(moffs);
+  moffs = abs(moffs);
   long hoffs = moffs / MinsPerHour;
   moffs = moffs % MinsPerHour;
   StringObjAppendPrintf(aISOString, "%c%02ld", minus ? '-' : '+', hoffs);

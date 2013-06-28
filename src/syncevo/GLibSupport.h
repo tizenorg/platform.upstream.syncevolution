@@ -106,6 +106,12 @@ SE_END_CXX
 SE_GOBJECT_TYPE(GFile)
 SE_GOBJECT_TYPE(GFileMonitor)
 
+void inline intrusive_ptr_add_ref(GMainLoop *ptr) { g_main_loop_ref(ptr); }
+void inline intrusive_ptr_release(GMainLoop *ptr) { g_main_loop_unref(ptr); }
+SE_BEGIN_CXX
+typedef boost::intrusive_ptr<GMainLoop> GMainLoopCXX;
+SE_END_CXX
+
 SE_BEGIN_CXX
 
 /**
@@ -167,6 +173,9 @@ struct GErrorCXX {
     /** clear error if any is set */
     void clear() { g_clear_error(&m_gerror); }
 
+    /** checks whether the current error is the one passed as parameters */
+    bool matches(GQuark domain, gint code) { return g_error_matches(m_gerror, domain, code); }
+
     /**
      * Use this when passing GErrorCXX instance to C functions which need to set it.
      * Make sure the pointer isn't set yet (new GErrorCXX instance, reset if
@@ -183,6 +192,56 @@ struct GErrorCXX {
 };
 
 template<class T> void NoopDestructor(T *) {}
+template<class T> void GFreeDestructor(T *ptr) { g_free(static_cast<void *>(ptr)); }
+
+/**
+ * Copies strings from a collection into a newly allocated, NULL
+ * terminated array. Copying the strings is optional. Suggested
+ * usage is:
+ *
+ * C collection;
+ * collection.push_back(...);
+ * boost::scoped_array<char *> array(AllocStringArray(collection));
+ *
+ */
+template<typename T> char **AllocStringArray(const T &strings,
+                                             const char **(*allocArray)(size_t) = NULL,
+                                             void (*freeArray)(const char **) = NULL,
+                                             const char *(*copyString)(const char *) = NULL,
+                                             const void (*freeString)(char *) = NULL)
+{
+    size_t arraySize = strings.size() + 1;
+    const char **array = NULL;
+    array = allocArray ? allocArray(arraySize) : new const char *[arraySize];
+    if (!array) {
+        throw std::bad_alloc();
+    }
+    try {
+        memset(array, 0, sizeof(*array) * arraySize);
+        size_t i = 0;
+        BOOST_FOREACH(const std::string &str, strings) {
+            array[i] = copyString ? copyString(str.c_str()) : str.c_str();
+            if (!array[i]) {
+                throw std::bad_alloc();
+            }
+            i++;
+        }
+    } catch (...) {
+        if (freeString) {
+            for (const char **ptr = array;
+                 *ptr;
+                 ptr++) {
+                freeString(const_cast<char *>(*ptr));
+            }
+        }
+        if (freeArray) {
+            freeArray(array);
+        }
+        throw;
+    }
+    return const_cast<char **>(array);
+}
+
 
 /**
  * Wraps a G[S]List of pointers to a specific type.
@@ -211,11 +270,14 @@ template< class T, class L, void (*D)(T*) = NoopDestructor<T> > struct GListCXX 
  public:
     typedef T * value_type;
 
-    /** empty error, NULL pointer */
-    GListCXX() : m_list(NULL) {}
+    /** by default initialize an empty list; if parameter is not NULL,
+        owership is transferred to the new instance of GListCXX */
+    GListCXX(L *list = NULL) : m_list(list) {}
 
     /** free list */
     ~GListCXX() { clear(); }
+
+    bool empty() { return m_list == NULL; }
 
     /** clear error if any is set */
     void clear() {
@@ -245,7 +307,7 @@ template< class T, class L, void (*D)(T*) = NoopDestructor<T> > struct GListCXX 
      */
     operator L * () { return m_list; }
 
-    class iterator : public std::iterator<forward_iterator_tag, T *> {
+    class iterator : public std::iterator<std::forward_iterator_tag, T *> {
         L *m_entry;
     public:
         iterator(L *list) : m_entry(list) {}
@@ -257,29 +319,45 @@ template< class T, class L, void (*D)(T*) = NoopDestructor<T> > struct GListCXX 
          * pointer value directly yields an rvalue, which can't be used to initialize
          * the reference return value.
          */
-        T * &operator -> () const { return *(T **)&m_entry->data; }
-        T * &operator * () const { return *(T **)&m_entry->data; }
+        T * &operator -> () const { return *getEntryPtr(); }
+        T * &operator * () const { return *getEntryPtr(); }
         iterator & operator ++ () { m_entry = m_entry->next; return *this; }
         iterator operator ++ (int) { return iterator(m_entry->next); }
         bool operator == (const iterator &other) { return m_entry == other.m_entry; }
         bool operator != (const iterator &other) { return m_entry != other.m_entry; }
+
+    private:
+        /**
+         * Used above, necessary to hide the fact that we do type
+         * casting tricks. Otherwise the compiler will complain about
+         * *(T **)&m_entry->data with "dereferencing type-punned
+         * pointer will break strict-aliasing rules".
+         *
+         * That warning is about breaking assumptions that the compiler
+         * uses for optimizations. The hope is that those optimzations
+         * aren't done here, and/or are disabled by using a function.
+         */
+        T** getEntryPtr() const { return (T **)&m_entry->data; }
     };
     iterator begin() { return iterator(m_list); }
     iterator end() { return iterator(NULL); }
 
-    class const_iterator : public std::iterator<forward_iterator_tag, T *> {
+    class const_iterator : public std::iterator<std::forward_iterator_tag, T *> {
         L *m_entry;
         T *m_value;
 
     public:
         const_iterator(L *list) : m_entry(list) {}
         const_iterator(const const_iterator &other) : m_entry(other.m_entry) {}
-        T * &operator -> () const { return *(T **)&m_entry->data; }
-        T * &operator * () const { return *(T **)&m_entry->data; }
+        T * &operator -> () const { return *getEntryPtr(); }
+        T * &operator * () const { return *getEntryPtr(); }
         const_iterator & operator ++ () { m_entry = m_entry->next; return *this; }
         const_iterator operator ++ (int) { return iterator(m_entry->next); }
         bool operator == (const const_iterator &other) { return m_entry == other.m_entry; }
         bool operator != (const const_iterator &other) { return m_entry != other.m_entry; }
+
+    private:
+        T** getEntryPtr() const { return (T **)&m_entry->data; }
     };
 
     const_iterator begin() const { return const_iterator(m_list); }
@@ -289,6 +367,10 @@ template< class T, class L, void (*D)(T*) = NoopDestructor<T> > struct GListCXX 
     void push_front(T *entry) { m_list = listPrepend(m_list, entry); }
 };
 
+/** use this for a list which owns the strings it points to */
+typedef GListCXX<char, GList, GFreeDestructor<char> > GStringListFreeCXX;
+/** use this for a list which does not own the strings it points to */
+typedef GListCXX<char, GList> GStringListNoFreeCXX;
 
 #endif
 

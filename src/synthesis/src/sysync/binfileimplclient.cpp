@@ -126,6 +126,20 @@ static TSyError readDispName(
 } // readDispName
 
 
+// - read path where binfiles are, for plugin config files passed around engine
+static TSyError readBinFileDirTarget(
+  TStructFieldsKey *aStructFieldsKeyP, const TStructFieldInfo *aFldInfoP,
+  appPointer aBuffer, memSize aBufSize, memSize &aValSize
+)
+{
+  TBinfileTargetKey *targetKeyP = static_cast<TBinfileTargetKey *>(aStructFieldsKeyP);
+  // get info
+  string binFilesDir;
+  targetKeyP->getBinfileClientConfig()->getBinFilesPath(binFilesDir);
+  return TStructFieldsKey::returnString(binFilesDir.c_str(), aBuffer, aBufSize, aValSize);
+} // readBinFileDirTarget
+
+
 // - read availability flag for this datastore
 static TSyError readIsAvailable(
   TStructFieldsKey *aStructFieldsKeyP, const TStructFieldInfo *aFldInfoP,
@@ -254,7 +268,9 @@ const TStructFieldInfo TargetFieldInfos[] =
   { "checkForReadOnly", VALTYPE_INT16, true, 0,0, NULL, &writeTargetReadOnlyCheck }, // target level readonly check
   { "checkForFeature", VALTYPE_INT16, true, 0,0, NULL, &writeTargetFeatureCheck }, // target level feature check
   // display name from config
-  { "dispName", VALTYPE_TEXT, false, 0,0, &readDispName, NULL }, // display name from config
+  { "dispName", VALTYPE_TEXT, false, 0,0, &readDispName, NULL },
+  // path where binfiles are, for plugin config files passed around engine
+  { "binfilesDir", VALTYPE_TEXT, false, 0,0, &readBinFileDirTarget, NULL },
   // new fields of TARGETS_DB_VERSION 6 and beyond
   #if TARGETS_DB_VERSION>5
   { "remoteDispName", VALTYPE_TEXT, false, OFFS_SZ_TG(remoteDBdispName) },
@@ -585,6 +601,21 @@ TSyError TBinfileProfileKey::OpenSubKeyByName(
 } // TBinfileProfileKey::OpenSubKeyByName
 
 
+// - read path where binfiles are, for plugin config files passed around engine
+static TSyError readBinFileDirProfile(
+  TStructFieldsKey *aStructFieldsKeyP, const TStructFieldInfo *aFldInfoP,
+  appPointer aBuffer, memSize aBufSize, memSize &aValSize
+)
+{
+  TBinfileProfileKey *profileKeyP = static_cast<TBinfileProfileKey *>(aStructFieldsKeyP);
+  // get info
+  string binFilesDir;
+  profileKeyP->getBinfileClientConfig()->getBinFilesPath(binFilesDir);
+  return TStructFieldsKey::returnString(binFilesDir.c_str(), aBuffer, aBufSize, aValSize);
+} // readBinFileDirProfile
+
+
+
 // - read danger flags for the profile (combined danger of all enabled datastores)
 static TSyError readDangerFlags(
   TStructFieldsKey *aStructFieldsKeyP, const TStructFieldInfo *aFldInfoP,
@@ -605,8 +636,6 @@ static TSyError readDangerFlags(
     (zapsClient ? DANGERFLAG_WILLZAPCLIENT : 0);
   return TStructFieldsKey::returnInt(danger, sizeof(danger), aBuffer, aBufSize, aValSize);
 } // readDangerFlags
-
-
 
 
 
@@ -692,6 +721,8 @@ const TStructFieldInfo ProfileFieldInfos[] =
   // special programmatic feature check
   { "checkForFeature", VALTYPE_INT16, true, 0,0, NULL, &writeFeatureCheck },
   { "checkForReadOnly", VALTYPE_INT16, true, 0,0, NULL, &writeReadOnlyCheck },
+  // path where binfiles are, for plugin config files passed around engine
+  { "binfilesDir", VALTYPE_TEXT, false, 0,0, &readBinFileDirProfile, NULL },
   #ifdef AUTOSYNC_SUPPORT
   // autosync
   { "timedSyncMobile", VALTYPE_INT16, true, OFFS_SZ_PF(TimedSyncMobilePeriod) },
@@ -2924,11 +2955,17 @@ localstatus TBinfileImplClient::SelectProfile(uInt32 aProfileSelector, bool aAut
       } // if we can read the target record
     } // for all target records
     // ok if at least one datastore enabled;
-    // this also used to check fRemoteURI, but that setting is
-    // not needed if the app on top of libsynthesis knows how
-    // to contact the server (for example, via some transport
+    #ifdef ENGINE_LIBRARY
+    // For engine library, check for a non-empty URL makes no
+    // sense any more, because the app on top of libsynthesis may know how
+    // to contact the server without an URL (for example, via some transport
     // which doesn't need a parameter)
     return fLocalDataStores.size()>0 ? LOCERR_OK : LOCERR_NOCFG;
+    #else
+    // for classic synthesis builds (winmobile, palmos) the app relies on
+    // the check for a non-empty URL, so we keep it for these legacy build cases
+    return fLocalDataStores.size()>0 && fRemoteURI.size()>0 ? LOCERR_OK : LOCERR_NOCFG;
+    #endif
   } // active
 defaultprofile:
   return inherited::SelectProfile(aProfileSelector, aAutoSyncSession);

@@ -1,7 +1,7 @@
 /*
  *  File:         SyncCommand.cpp
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TSmlCommand, TXXXCmd....
  *    Wrapper classes for SyncML Commands and the associated SyncML
@@ -84,7 +84,7 @@ public:
   uInt32 getDbgMask(void);
   #endif
   // - get session owner (dispatcher/clientbase)
-  TSyncAppBase *getSyncAppBase(void);  
+  TSyncAppBase *getSyncAppBase(void);
   #ifndef USE_SML_EVALUATION
   // - get (approximated) message size required for sending it
   virtual uInt32 messageSize(void);
@@ -475,9 +475,9 @@ protected:
   uInt32 fChunkedItemSize; // size of object currently being chunked
   bool fIncompleteData; // set for commands that do not tranfer the final chunk (and must be answered with 213 status)
   // SyncML 1.2 resuming a chunked item transmission
-	uInt32 fStoredSize; // from previous session
-	uInt32 fUnconfirmedSize; // from previous session
-	uInt32 fLastChunkSize; // size of last chunk received in THIS session (=probably unconfirmed reception, will probably be sent again from remote)
+  uInt32 fStoredSize; // from previous session
+  uInt32 fUnconfirmedSize; // from previous session
+  uInt32 fLastChunkSize; // size of last chunk received in THIS session (=probably unconfirmed reception, will probably be sent again from remote)
 }; // TSyncOpCommand
 
 
@@ -802,8 +802,8 @@ protected:
 }; // TDevInfPutCommand
 
 
-}	// namespace sysync
+} // namespace sysync
 
-#endif	// SyncCommand_H
+#endif  // SyncCommand_H
 
 // eof

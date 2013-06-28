@@ -80,9 +80,9 @@ bferr TBinFileBase::createAsCopyFrom(TBinFileBase &aSourceBinFile, bool aOverwri
   // make sure it is closed first
   close();
   aSourceBinFile.close();
-	// open original
-	if (!aSourceBinFile.platformOpenFile(aSourceBinFile.fFilename.c_str(), fopm_update))
-  	return BFE_NOTFOUND;
+  // open original
+  if (!aSourceBinFile.platformOpenFile(aSourceBinFile.fFilename.c_str(), fopm_update))
+    return BFE_NOTFOUND;
   // get original header into my own fBinFileHeader
   aSourceBinFile.platformSeekFile(0);
   if (!aSourceBinFile.platformReadFile(&fBinFileHeader,sizeof(fBinFileHeader))) {
@@ -93,24 +93,24 @@ bferr TBinFileBase::createAsCopyFrom(TBinFileBase &aSourceBinFile, bool aOverwri
   uInt32 filesize = fBinFileHeader.headersize + fBinFileHeader.recordsize * fBinFileHeader.allocatedrecords;
   // create output file
   if (!aOverwrite) {
-  	// first test for existing file
+    // first test for existing file
     if (platformOpenFile(fFilename.c_str(), fopm_update)) {
-    	// already exists, don't copy
+      // already exists, don't copy
       platformCloseFile(); // close existing file
-	    aSourceBinFile.platformCloseFile(); // close input
+      aSourceBinFile.platformCloseFile(); // close input
       return BFE_EXISTS; // already exists, don't overwrite
     }
   }
   if (!platformOpenFile(fFilename.c_str(), fopm_create)) {
     aSourceBinFile.platformCloseFile(); // close input
-  	return BFE_IOERR;
+    return BFE_IOERR;
   }
   // allocate buffer to read entire file
   void *copybuffer = malloc(filesize);
   if (!copybuffer) {
     aSourceBinFile.platformCloseFile(); // close input
     platformCloseFile(); // close output
-  	return BFE_MEMORY; // fatal
+    return BFE_MEMORY; // fatal
   }
   // read everything from old file
   aSourceBinFile.platformSeekFile(0);
@@ -176,16 +176,16 @@ bferr TBinFileBase::open(uInt32 aExtraHeadersize, void *aExtraHeaderP, TUpdateFu
         // - read all current records into memory (relative to old headersize)
         readRecord(0,oldrecords,numrecords);
         // Update header because extra header might have changed in size
-				if (fExtraHeaderP && (fBinFileHeader.headersize!=sizeof(TBinFileHeader)+fExtraHeaderSize)) {
-        	// (extra) header has changed in size
+        if (fExtraHeaderP && (fBinFileHeader.headersize!=sizeof(TBinFileHeader)+fExtraHeaderSize)) {
+          // (extra) header has changed in size
           // - read old extra header (or part of it that will be retained in case it shrinks between versions)
           uInt32 oldEHdrSz = fBinFileHeader.headersize-sizeof(TBinFileHeader);
-				  platformSeekFile(sizeof(TBinFileHeader));
+          platformSeekFile(sizeof(TBinFileHeader));
           platformReadFile(fExtraHeaderP,oldEHdrSz<=fExtraHeaderSize ? oldEHdrSz : fExtraHeaderSize);
-        	// - adjust the overall header size
-	        fBinFileHeader.headersize = sizeof(TBinFileHeader)+fExtraHeaderSize;
+          // - adjust the overall header size
+          fBinFileHeader.headersize = sizeof(TBinFileHeader)+fExtraHeaderSize;
           // - let the update function handle init of the extra header
-      		aUpdateFunc(fFoundVersion,fVersion,NULL,fExtraHeaderP,0);
+          aUpdateFunc(fFoundVersion,fVersion,NULL,fExtraHeaderP,0);
           // - make sure new extra header gets written
           fExtraHeaderDirty = true;
         }
@@ -228,7 +228,7 @@ bferr TBinFileBase::open(uInt32 aExtraHeadersize, void *aExtraHeaderP, TUpdateFu
   // check record compatibility
   if (fExpectedRecordSize && fExpectedRecordSize!=fBinFileHeader.recordsize) {
     close();
-    return BFE_BADSTRUCT;  
+    return BFE_BADSTRUCT;
   }
   // check extra header compatibility
   if (fBinFileHeader.headersize<sizeof(TBinFileHeader)+fExtraHeaderSize) {
@@ -237,7 +237,7 @@ bferr TBinFileBase::open(uInt32 aExtraHeadersize, void *aExtraHeaderP, TUpdateFu
   }
   // read extra header
   if (fExtraHeaderP && fExtraHeaderSize>0) {
-	  platformSeekFile(sizeof(TBinFileHeader));
+    platformSeekFile(sizeof(TBinFileHeader));
     platformReadFile(fExtraHeaderP,fExtraHeaderSize);
     fExtraHeaderDirty=false;
   }
@@ -302,9 +302,9 @@ bferr TBinFileBase::close(void)
 // - close and delete file (full cleanup)
 bferr TBinFileBase::closeAndDelete(void)
 {
-	close();
+  close();
   // now delete
-	return platformDeleteFile(fFilename.c_str()) ? BFE_OK : BFE_IOERR;
+  return platformDeleteFile(fFilename.c_str()) ? BFE_OK : BFE_IOERR;
 } // TBinFileBase::closeAndDelete
 
 

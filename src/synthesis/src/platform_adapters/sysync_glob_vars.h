@@ -1,7 +1,7 @@
 /*
  *  File:         sysync_glob_vars.h
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  Global variables
  *

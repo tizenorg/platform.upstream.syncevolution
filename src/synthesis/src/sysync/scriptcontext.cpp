@@ -28,6 +28,7 @@
 #endif
 
 #include <stdio.h>
+#include <errno.h>
 
 // script debug messages
 #ifdef SYDEBUG
@@ -40,9 +41,9 @@
   #define DBGSTRINGDEF(s) string s
   #define DBGVALUESHOW(s,v) dbgValueShow(s,v)
   #if SYDEBUG>1
-	  #define SHOWVARDEFS(t) showVarDefs(t)
+    #define SHOWVARDEFS(t) showVarDefs(t)
   #else
-  	#define SHOWVARDEFS(t)
+    #define SHOWVARDEFS(t)
   #endif
 #else
   #define SCRIPTDBGMSGX(lvl,x)
@@ -907,11 +908,11 @@ public:
       // return content as string
       aTermP->setAsString(content);
     } else {
-        PLOGDEBUGPRINTFX(aFuncContextP->getDbgLogger(),
-                       DBG_ERROR,(
-                                  "IO error in READ(\"%s\"): %s ",
-                                  file.c_str(),
-                                  strerror(errno)));
+        PLOGDEBUGPRINTFX(aFuncContextP->getDbgLogger(),DBG_ERROR,(
+          "IO error in READ(\"%s\"): %s ",
+          file.c_str(),
+          strerror(errno)
+        ));
     }
 
     if (in) {
@@ -922,7 +923,7 @@ public:
 
   // string REMOTERULENAME()
   // returns name of the LAST matched remote rule (or subrule), empty if none
-  // Note: this is legacy from 3.4.0.4 onwards, as we now have a list of multiple active rules 
+  // Note: this is legacy from 3.4.0.4 onwards, as we now have a list of multiple active rules
   static void func_Remoterulename(TItemField *&aTermP, TScriptContext *aFuncContextP)
   {
     #ifndef NO_REMOTE_RULES
@@ -941,7 +942,7 @@ public:
 
 
   // boolean ISACTIVERULE(string rulename)
-  // checks if given rule is currently activated 
+  // checks if given rule is currently activated
   static void func_isActiveRule(TItemField *&aTermP, TScriptContext *aFuncContextP)
   {
     #ifndef NO_REMOTE_RULES
@@ -1401,12 +1402,12 @@ public:
         if (matchesP->isArray())
           fldP = matchesP->getArrayField(mIdx);
         else {
-        	// non-array specified
+          // non-array specified
           fldP = matchesP;
           // - if there are no subpatterns, assign the first match (entire pattern)
           // - if there are subpatterns, assign the first subpattern match
           if (rc>1) {
-          	// there is at least one subpattern
+            // there is at least one subpattern
             mIdx++; // skip the entire pattern match such that 1st subpattern gets assigned
           }
         }
@@ -1623,19 +1624,19 @@ public:
   static void func_IsAvailable(TItemField *&aTermP, TScriptContext *aFuncContextP)
   {
     if (aFuncContextP->fParentContextP) {
-    	// get item to find field in
-    	TMultiFieldItem *checkItemP = aFuncContextP->fParentContextP->fTargetItemP;
+      // get item to find field in
+      TMultiFieldItem *checkItemP = aFuncContextP->fParentContextP->fTargetItemP;
       // check if this item's type has actually received availability info
       if (!checkItemP->knowsRemoteFieldOptions()) {
         aTermP->assignEmpty(); // nothing known about field availability
         return;
       }
       else {
-      	// we have availability info
+        // we have availability info
         // - get index of field by field pointer (passed by reference)
         sInt16 fid = checkItemP->getIndexOfField(aFuncContextP->getLocalVar(0));
         if (fid!=FID_NOT_SUPPORTED) {
-        	// field exists, return availability
+          // field exists, return availability
           aTermP->setAsBoolean(checkItemP->isAvailable(fid));
           return;
         }
@@ -1646,6 +1647,40 @@ public:
   }; // func_IsAvailable
 
 
+  // SETFIELDOPTIONS(variant &fieldvar, bool available [[[, int maxsize=0 ], int maxoccur=0 ], int notruncate=FALSE])
+  // set field options (override what might have been set by reading devInf)
+  // - fieldvar must be a field contained in the primary item of the caller, else function is NOP
+  static void func_SetFieldOptions(TItemField *&aTermP, TScriptContext *aFuncContextP)
+  {
+    if (aFuncContextP->fParentContextP) {
+      // get item to find field in
+      TMultiFieldItem *checkItemP = aFuncContextP->fParentContextP->fTargetItemP;
+      // modify options on the "remote" type
+      TMultiFieldItemType *mfitP = checkItemP->getRemoteItemType();
+      // - get index of field by field pointer (passed by reference)
+      sInt16 fid = checkItemP->getIndexOfField(aFuncContextP->getLocalVar(0));
+      if (mfitP && fid!=FID_NOT_SUPPORTED) {
+        // field exists, we can set availability
+        // - get params
+        bool available = aFuncContextP->getLocalVar(1)->getAsBoolean();
+        sInt32 maxsize = FIELD_OPT_MAXSIZE_NONE;
+        if (aFuncContextP->getLocalVar(2)->isAssigned())
+          maxsize = aFuncContextP->getLocalVar(2)->getAsInteger();
+        sInt32 maxoccur = aFuncContextP->getLocalVar(3)->getAsInteger(); // returns 0 if not specified
+        bool notruncate = aFuncContextP->getLocalVar(4)->getAsBoolean();
+        // - now set options
+        TFieldOptions *fo = mfitP->getFieldOptions(fid);
+        if (fo) {
+          fo->available=available;
+          fo->maxsize=maxsize;
+          fo->maxoccur=maxoccur;
+          fo->notruncate=notruncate;
+        }
+      }
+    }
+  }; // func_SetFieldOptions
+
+
   // string ITEMDATATYPE()
   // returns the type's internal name (like "vcard21")
   static void func_ItemDataType(TItemField *&aTermP, TScriptContext *aFuncContextP)
@@ -1654,9 +1689,9 @@ public:
       // get item of which we want to know the type
       TMultiFieldItem *checkItemP = aFuncContextP->fParentContextP->fTargetItemP;
       if (checkItemP) {
-		    TMultiFieldItemType *mfitP = static_cast<TMultiFieldItemType *>(checkItemP->getItemType());
+        TMultiFieldItemType *mfitP = static_cast<TMultiFieldItemType *>(checkItemP->getItemType());
         if (mfitP) {
-			    aTermP->setAsString(mfitP->getTypeConfig()->getName());
+          aTermP->setAsString(mfitP->getTypeConfig()->getName());
           return;
         }
       }
@@ -1674,9 +1709,9 @@ public:
       // get item of which we want to know the type
       TMultiFieldItem *checkItemP = aFuncContextP->fParentContextP->fTargetItemP;
       if (checkItemP) {
-		    TMultiFieldItemType *mfitP = static_cast<TMultiFieldItemType *>(checkItemP->getItemType());
+        TMultiFieldItemType *mfitP = static_cast<TMultiFieldItemType *>(checkItemP->getItemType());
         if (mfitP) {
-			    aTermP->setAsString(mfitP->getTypeName());
+          aTermP->setAsString(mfitP->getTypeName());
           return;
         }
       }
@@ -1694,9 +1729,9 @@ public:
       // get item of which we want to know the type
       TMultiFieldItem *checkItemP = aFuncContextP->fParentContextP->fTargetItemP;
       if (checkItemP) {
-		    TMultiFieldItemType *mfitP = static_cast<TMultiFieldItemType *>(checkItemP->getItemType());
+        TMultiFieldItemType *mfitP = static_cast<TMultiFieldItemType *>(checkItemP->getItemType());
         if (mfitP) {
-			    aTermP->setAsString(mfitP->getTypeVers());
+          aTermP->setAsString(mfitP->getTypeVers());
           return;
         }
       }
@@ -1744,7 +1779,7 @@ public:
     aFuncContextP->getLocalVar(0)->getAsString(varname);
     // get variable from session
     if (aFuncContextP->getSession())
-    	sessionContextP=aFuncContextP->getSession()->getSessionScriptContext();
+      sessionContextP=aFuncContextP->getSession()->getSessionScriptContext();
     if (sessionContextP) {
       // get definition
       sessionVarDefP = sessionContextP->getVarDef(
@@ -1847,7 +1882,7 @@ public:
   {
     TSyncSession *sessionP = aFuncContextP->getSession();
     if (sessionP) {
-    	sessionP->setReadOnly(aFuncContextP->getLocalVar(0)->getAsBoolean());
+      sessionP->setReadOnly(aFuncContextP->getLocalVar(0)->getAsBoolean());
     }
   }; // func_SetReadOnly
 
@@ -2073,7 +2108,7 @@ public:
     if (profileConfig) {
       // create a profile handler for the item type
       return profileConfig->newProfileHandler(aItemP->getItemType());
-  	}
+    }
     return NULL; // no such profile
   }
 
@@ -2081,20 +2116,20 @@ public:
   // integer PARSETEXTWITHPROFILE(string textformat, string profileName [, int mode = 0 = default [, string remoteRuleName = "" = other]])
   static void func_ParseTextWithProfile(TItemField *&aTermP, TScriptContext *aFuncContextP)
   {
-  	bool ok = false;
+    bool ok = false;
     if (aFuncContextP->fParentContextP) {
-			// get the item to work with
-    	TMultiFieldItem *itemP = aFuncContextP->fParentContextP->fTargetItemP;
+      // get the item to work with
+      TMultiFieldItem *itemP = aFuncContextP->fParentContextP->fTargetItemP;
       // get a handler by name
       string s;
-    	aFuncContextP->getLocalVar(1)->getAsString(s);
+      aFuncContextP->getLocalVar(1)->getAsString(s);
       TProfileHandler *profileHandlerP = newProfileHandlerByName(s.c_str(), itemP);
       if (profileHandlerP) {
-      	// now we can convert
+        // now we can convert
         // - set the mode code (none = 0 = default)
         profileHandlerP->setProfileMode(aFuncContextP->getLocalVar(2)->getAsInteger());
         profileHandlerP->setRelatedDatastore(NULL); // no datastore in particular is related
-				#ifndef NO_REMOTE_RULES
+        #ifndef NO_REMOTE_RULES
         // - try to find remote rule
         TItemField *field = aFuncContextP->getLocalVar(3);
         if (field) {
@@ -2102,9 +2137,9 @@ public:
           if (!s.empty())
             profileHandlerP->setRemoteRule(s);
         }
-				#endif
+        #endif
         // - convert
-	    	aFuncContextP->getLocalVar(0)->getAsString(s);
+        aFuncContextP->getLocalVar(0)->getAsString(s);
         ok = profileHandlerP->parseText(s.c_str(), s.size(), *itemP);
         // - forget
         delete profileHandlerP;
@@ -2118,18 +2153,18 @@ public:
   static void func_MakeTextWithProfile(TItemField *&aTermP, TScriptContext *aFuncContextP)
   {
     if (aFuncContextP->fParentContextP) {
-			// get the item to work with
-    	TMultiFieldItem *itemP = aFuncContextP->fParentContextP->fTargetItemP;
+      // get the item to work with
+      TMultiFieldItem *itemP = aFuncContextP->fParentContextP->fTargetItemP;
       // get a handler by name
       string s;
-    	aFuncContextP->getLocalVar(0)->getAsString(s);
+      aFuncContextP->getLocalVar(0)->getAsString(s);
       TProfileHandler *profileHandlerP = newProfileHandlerByName(s.c_str(), itemP);
       if (profileHandlerP) {
-      	// now we can convert
+        // now we can convert
         // - set the mode code (none = 0 = default)
         profileHandlerP->setProfileMode(aFuncContextP->getLocalVar(1)->getAsInteger());
         profileHandlerP->setRelatedDatastore(NULL); // no datastore in particular is related
-				#ifndef NO_REMOTE_RULES
+        #ifndef NO_REMOTE_RULES
         // - try to find remote rule
         TItemField *field = aFuncContextP->getLocalVar(2);
         if (field) {
@@ -2137,7 +2172,7 @@ public:
           if (!s.empty())
             profileHandlerP->setRemoteRule(s);
         }
-				#endif
+        #endif
         // - convert, after clearing the string (some generateText() implementations
         // append instead of overwriting)
         s = "";
@@ -2176,6 +2211,7 @@ const uInt8 param_contains[] = { REF(fty_none), VAL(fty_none), OPTVAL(fty_intege
 const uInt8 param_append[] = { REF(fty_none), VAL(fty_none) };
 const uInt8 param_swap[] = { REF(fty_none), REF(fty_none) };
 const uInt8 param_isAvailable[] = { REF(fty_none) };
+const uInt8 param_setFieldOptions[] = { REF(fty_none), VAL(fty_integer), OPTVAL(fty_integer), OPTVAL(fty_integer), OPTVAL(fty_integer) };
 const uInt8 param_typename[] = { VAL(fty_none) };
 const uInt8 param_SetSessionVar[] = { VAL(fty_string), VAL(fty_none) };
 const uInt8 param_SetDebugOptions[] = { VAL(fty_string), VAL(fty_integer) };
@@ -2208,9 +2244,10 @@ const TBuiltInFuncDef BuiltInFuncDefs[] = {
   { "NUMFORMAT", TBuiltinStdFuncs::func_NumFormat, fty_string, 4, param_NumFormat },
   { "NORMALIZED", TBuiltinStdFuncs::func_Normalized, fty_string, 1, param_Normalized },
   { "ISAVAILABLE", TBuiltinStdFuncs::func_IsAvailable, fty_integer, 1, param_isAvailable },
-	{ "ITEMDATATYPE", TBuiltinStdFuncs::func_ItemDataType, fty_string, 0, NULL },
-	{ "ITEMTYPENAME", TBuiltinStdFuncs::func_ItemTypeName, fty_string, 0, NULL },
-	{ "ITEMTYPEVERS", TBuiltinStdFuncs::func_ItemTypeVers, fty_string, 0, NULL },
+  { "SETFIELDOPTIONS", TBuiltinStdFuncs::func_SetFieldOptions, fty_none, 5, param_setFieldOptions },
+  { "ITEMDATATYPE", TBuiltinStdFuncs::func_ItemDataType, fty_string, 0, NULL },
+  { "ITEMTYPENAME", TBuiltinStdFuncs::func_ItemTypeName, fty_string, 0, NULL },
+  { "ITEMTYPEVERS", TBuiltinStdFuncs::func_ItemTypeVers, fty_string, 0, NULL },
   { "EXPLODE", TBuiltinStdFuncs::func_Explode, fty_string, 2, param_Explode },
   { "SUBSTR", TBuiltinStdFuncs::func_Substr, fty_string, 3, param_substr },
   { "LENGTH", TBuiltinStdFuncs::func_Length, fty_integer, 1, param_oneString },
@@ -2486,15 +2523,15 @@ void TScriptContext::Tokenize(TSyncAppBase *aAppBaseP, cAppCharP aScriptName, sI
   //       $n macros that can't be expanded will be left in the text AS IS
   string itext;
   if (aMacroArgsP) {
-  	itext = text; // we need a string to substitute macro args in
+    itext = text; // we need a string to substitute macro args in
     size_t i = 0;
     while (i<itext.size()) {
-    	c=itext[i++];
+      c=itext[i++];
       if (c=='$') {
-      	// could be macro argument
+        // could be macro argument
         c=itext[i];
         if (c=='$') {
-        	// $$ expands to $
+          // $$ expands to $
           itext.erase(i, 1); // erase second occurrence of $
           continue;
         }
@@ -2703,14 +2740,14 @@ void TScriptContext::Tokenize(TSyncAppBase *aAppBaseP, cAppCharP aScriptName, sI
             TMacroArgsArray macroArgs;
             // check for macro arguments
             if (*text=='(') {
-            	// Macro has Arguments
+              // Macro has Arguments
               text++;
               string arg;
               // Note: closing brackets and commas must be escaped when used as part of a macro argument
               while (*text) {
-              	c=*text++;
-              	if (c==',' || c==')') {
-                	// end of argument
+                c=*text++;
+                if (c==',' || c==')') {
+                  // end of argument
                   macroArgs.push_back(arg); // save it in array
                   arg.erase();
                   if (c==')') break; // end of macro
@@ -2718,7 +2755,7 @@ void TScriptContext::Tokenize(TSyncAppBase *aAppBaseP, cAppCharP aScriptName, sI
                 }
                 else if (c=='\\') {
                   if (*text==0) break; // end of string
-                	// escaped - use next char w/o testing for , or )
+                  // escaped - use next char w/o testing for , or )
                   c=*text++;
                 }
                 // add to argument string
@@ -4215,11 +4252,11 @@ void TScriptContext::evalExpression(
         aLeftTermP=NULL;
         resultP->setAsInteger(intres);
       opdone:
-      	// check for special conditions when operating on timestamps
+        // check for special conditions when operating on timestamps
         if (resultP->isBasedOn(fty_timestamp) && termP->isBasedOn(fty_timestamp)) {
-        	// both based on timestamp.
+          // both based on timestamp.
           if (binaryop==TK_MINUS && !static_cast<TTimestampField *>(resultP)->isDuration() && !static_cast<TTimestampField *>(termP)->isDuration()) {
-          	// subtracted two points in time -> result is duration
+            // subtracted two points in time -> result is duration
             static_cast<TTimestampField *>(resultP)->makeDuration();
           }
         }

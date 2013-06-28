@@ -1,7 +1,7 @@
 /*
  *  File:         VCardItemType.h
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TVCardItemType
  *    vCard item type, based on MIME-DIR Item Type, uses
@@ -94,10 +94,10 @@ public:
   virtual bool supportsType(const char *aName, const char *aVers, bool aVersMustMatch=false);
   // try to extract a version string from actual item data, false if none
   virtual bool versionFromData(SmlItemPtr_t aItemP, string &aString);
-	#ifdef APP_CAN_EXPIRE
-	// test if modified date of item is expired
-	virtual sInt32 expiryFromData(SmlItemPtr_t aItemP, lineardate_t &aDat);
-	#endif
+  #ifdef APP_CAN_EXPIRE
+  // test if modified date of item is expired
+  virtual sInt32 expiryFromData(SmlItemPtr_t aItemP, lineardate_t &aDat);
+  #endif
   // helper to create same-typed instance via base class
   // MUST BE IMPLEMENTED IN ALL DERIVED CLASSES!
   virtual TSyncItemType *newCopyForSameType(
@@ -111,14 +111,14 @@ public:
   virtual sInt16 getFilterIdentifierFieldIndex(const char *aIdentifier, uInt16 aIndex);
   #endif
 private:
-	TVCardVersion getVCardVersionByMode(sInt32 aMode);
+  TVCardVersion getVCardVersionByMode(sInt32 aMode);
   // vCard version
   TVCardVersion fVCardVersion;
 }; // TVCardItemType
 
 
-}	// namespace sysync
+} // namespace sysync
 
-#endif	// VCardItemType_H
+#endif  // VCardItemType_H
 
 // eof

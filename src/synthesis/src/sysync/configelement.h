@@ -1,7 +1,7 @@
 /*
  *  File:         ConfigElement.h
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TConfigElement
  *    Element of hierarchical configuration
@@ -159,7 +159,7 @@ protected:
   // - helpers
   void expectNested(void) { fParseMode=pamo_nested; };
   void startNestedParsing()
-  	{ fNest++; expectNested(); } // let same element parse nested levels
+    { fNest++; expectNested(); } // let same element parse nested levels
   void expectString(string &aString) { fParseMode=pamo_string; fResultPtr.fStringP=&aString; };
   void expectMacroString(string &aString) { fParseMode=pamo_macrostring; fResultPtr.fStringP=&aString; };
   void expectCString(string &aString) { fParseMode=pamo_cstring; fResultPtr.fStringP=&aString; };
@@ -278,8 +278,8 @@ private:
 };
 
 
-}	// namespace sysync
+} // namespace sysync
 
-#endif	// ConfigElement_H
+#endif  // ConfigElement_H
 
 // eof

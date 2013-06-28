@@ -87,6 +87,8 @@ my $google_valarm = $ENV{CLIENT_TEST_GOOGLE_VALARM};
 my $yahoo = $server =~ /yahoo/;
 my $davical = $server =~ /davical/;
 my $apple = $server =~ /apple/;
+my $oracle = $server =~ /oracle/;
+my $radicale = $server =~ /radicale/;
 my $evolution = $client =~ /evolution/;
 my $addressbook = $client =~ /addressbook/;
 
@@ -296,6 +298,20 @@ sub NormalizeItem {
         while (s/^(\w+)([^:\n]*);$strip=\d+/$1$2/mg) {}
     }
 
+    # strip redundant VTIMEZONE definitions (happen to be
+    # added by Google CalDAV server when storing an all-day event
+    # which doesn't need any time zone definition)
+    # http://code.google.com/p/google-caldav-issues/issues/detail?id=63
+    while (m/(BEGIN:VTIMEZONE.*?TZID:([^\n]*)\n.*?END:VTIMEZONE\n)/gs) {
+        my $def = $1;
+        my $tzid = $2;
+        # used as parameter?
+        if (! m/;TZID="?\Q$tzid\E"?/) {
+            # no, remove definition
+            s!\Q$def\E!!s;
+        }
+    }
+
     if (!$full_timezones) {
         # Strip trailing digits from TZID. They are appended by
         # Evolution and SyncEvolution to distinguish VTIMEZONE
@@ -336,7 +352,7 @@ sub NormalizeItem {
     #                                      >    LY                                 
     s/^(\w+)([^:\n]*);X-EVOLUTION-ENDDATE=[0-9TZ]*/$1$2/mg;
 
-    if ($scheduleworld || $egroupware || $synthesis || $addressbook || $funambol ||$google || $mobical || $memotoo || $yahoo || $davical) {
+    if ($scheduleworld || $egroupware || $synthesis || $addressbook || $funambol ||$google || $mobical || $memotoo) {
       # does not preserve X-EVOLUTION-UI-SLOT=
       s/^(\w+)([^:\n]*);X-EVOLUTION-UI-SLOT=\d+/$1$2/mg;
     }
@@ -388,9 +404,18 @@ sub NormalizeItem {
         s/^(ORGANIZER[^:]*);SCHEDULE-STATUS=5.3/$1/gm;
         # seems to require a fixed number of recurrences; hmm, okay...
         s/^RRULE:COUNT=400;FREQ=DAILY/RRULE:FREQ=DAILY/gm;
+    }
 
-        # X- properties are stored, but not X- parameters
-        s/^(\w+)([^:\n]*);X-EVOLUTION-UI-SLOT=\d+/$1$2/mg;
+    if ($oracle) {
+        # remove extensions added by server
+        s/^(X-S1CS-RECURRENCE-COUNT)(;[^:;\n]*)*:.*\r?\n?//gm;
+        # ignore loss of LANGUAGE=xxx property in ATTENDEE
+        s/^ATTENDEE([^\n:]*);LANGUAGE=([^\n;:]*)/ATTENDEE$1/mg;
+    }
+
+    if ($radicale) {
+        # remove extensions added by server
+        s/^(X-RADICALE-NAME)(;[^:;\n]*)*:.*\r?\n?//gm;
     }
 
     if ($google || $yahoo) {

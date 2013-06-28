@@ -1,7 +1,7 @@
 /*
  *  File:         MultiFieldItemType.cpp
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TMultiFieldItemType
  *    Type consisting of multiple data fields (TItemField objects)

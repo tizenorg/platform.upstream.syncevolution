@@ -13,6 +13,7 @@ DESCRIPTION:This is a test task in time zone New York\, to be started May
  1st 2009 (not supported by Memotoo)\, due Mai 2st 2009.\n\nIt uses non-standard status values.
 DUE:20090502T190000
 CLASS:PUBLIC
+PERCENT-COMPLETE:100
 STATUS:COMPLETED
 CATEGORIES:Business,Waiting
 COMPLETED:20090401T050000

@@ -1918,7 +1918,8 @@ static void decodeValue(
   const char *p,*q;
 
   aVal.erase();
-  bool escaped=false;
+  bool escaped = false;
+  bool lastWasQPCR = false;
   if (aEncoding==enc_quoted_printable) {
     // decode quoted-printable content
     p = skipfolded(aText,aMimeMode,true); // get unfolded start point (in case value starts with folding sequence)
@@ -1943,13 +1944,27 @@ static void decodeValue(
           p=s; // continue with next char after second digit
           c=code; // decoded char
           if (c=='\x0D') {
-            c='\n'; // make newline
+            c='\n'; // convert to newline
+            lastWasQPCR = true; // remember
           }
           else if (c=='\x0A') {
-            p=nextunfolded(p,aMimeMode,true); // advance to char after second digit
-            continue; // ignore LF
+            if (lastWasQPCR) {
+              // if last was CR, ignore LF (CR already has generated a newline)
+              p = nextunfolded(p,aMimeMode,true); // but skip it for now.
+              lastWasQPCR = false;
+              continue; // ignore LF
+            }
+            // LF not preceeded by CR is a newline
+            c='\n'; // convert to newline
+          }
+          else {
+            // neither CR nor LF
+            lastWasQPCR = false;
           }
         }
+      }
+      else {
+        lastWasQPCR = false;
       }
       seqlen=1; // assume logical char consists of single byte
       chrs[0]=c;

@@ -641,7 +641,7 @@ libsynthesissdk_la_CPPFLAGS = \
 	-I$(srcdir)/sysync/ \
 	-I$(srcdir)/syncml_tk/src/sml/inc/ \
 	-I$(srcdir)/syncml_tk/src/sml/lib/inc/ \
-	-I$(srcdir)/syncml_tk/src/sml/mgr/inc/ 
+	-I$(srcdir)/syncml_tk/src/sml/mgr/inc/
 
 libsynthesisstubs_la_LDFLAGS = -static
 libsynthesisstubs_la_CFLAGS = $(libsynthesissdk_la_CXXFLAGS)

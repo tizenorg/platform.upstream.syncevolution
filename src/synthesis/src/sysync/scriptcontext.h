@@ -1,7 +1,7 @@
 /*
  *  File:         scriptcontext.cpp
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TScriptContext
  *    Environment to tokenize, prepare and run scripts

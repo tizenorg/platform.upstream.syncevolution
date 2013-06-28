@@ -72,11 +72,11 @@ typedef signed long sIntArch;
 typedef  unsigned long uInt32;
 typedef  signed   long sInt32;
 #ifdef UINT32_HAS_64BITS_ON_ARCH64
-	#warning "%%% UINT32_HAS_64BITS_ON_ARCH64 - which means that uInt32 is really 64bit: UGLY & DANGEROUS, please be careful"
+  #warning "%%% UINT32_HAS_64BITS_ON_ARCH64 - which means that uInt32 is really 64bit: UGLY & DANGEROUS, please be careful"
 #endif
 #else
 /* according to the ILP32/LP64 std for all other platforms, int is 32bit (and long is 64bit) */
-typedef unsigned int uInt32; 
+typedef unsigned int uInt32;
 typedef signed   int sInt32;
 #endif
 

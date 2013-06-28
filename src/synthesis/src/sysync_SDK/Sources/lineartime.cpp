@@ -1,7 +1,7 @@
 /*
  *  File:         lineartime.c
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  conversion from/to linear time scale.
  *
@@ -157,16 +157,16 @@ static sInt32 lfloor(double x) {
 
 // convert date to linear date (generic version using our internal scale)
 /* procedure calcEphTime(year:integer;month,day:byte;hour:single;var julDat:double);
-		{ Berechnet Julianisches Datum aus Weltzeit } */
+    { Berechnet Julianisches Datum aus Weltzeit } */
 lineardate_t date2lineardate(sInt16 aYear, sInt16 aMonth, sInt16 aDay)
 {
   // use custom algorithm that goes back to year -4712...
-	
-	/* const MinYear= -4712; */
-	const sInt32 MinYear = -4712;
 
-	/* var a,b:integer; */
-	sInt32 a,b;
+  /* const MinYear= -4712; */
+  const sInt32 MinYear = -4712;
+
+  /* var a,b:integer; */
+  sInt32 a,b;
 
   /* if aMonth<3 then begin year:=year-1; aMonth:=aMonth+12; end; */
   if (aMonth<3) { aYear--; aMonth+=12; }
@@ -174,19 +174,19 @@ lineardate_t date2lineardate(sInt16 aYear, sInt16 aMonth, sInt16 aDay)
     ((aYear=1582) and (aMonth<10)) or
     ((aYear=1582) and (aMonth=10) and (aDay<15)) */
   if (
-  	aYear<1582 ||
+    aYear<1582 ||
     (aYear==1582 && aMonth<10) ||
     (aYear==1582 && aMonth==10 && aDay<15)
   ) {
-  	// julian
-  	/* then b:=0    { julianisch } */
-  	b=0;
+    // julian
+    /* then b:=0    { julianisch } */
+    b=0;
   }
   else {
-  	// gregorian
+    // gregorian
     /* else begin a:=floor(aYear/100); b:=2-a+floor(a/4) end;    { gregorianisch } */
-  	a=lfloor(aYear/100);
-  	b=2-a+lfloor(a/4);
+    a=lfloor(aYear/100);
+    b=2-a+lfloor(a/4);
   }
   // now calc julian date
   /*JulDat:=floor(365.25*(aYear-minYear)+1E-6)+round(30.6*(aMonth-3))+aDay+b+58.5;
@@ -339,8 +339,8 @@ void lineartime2date(lineartime_t aLinearTime, sInt16 *aYearP, sInt16 *aMonthP, 
 // convert lineartime to h,m,s,ms
 void lineartime2time(lineartime_t aLinearTime, sInt16 *aHourP, sInt16 *aMinP, sInt16 *aSecP, sInt16 *aMSP)
 {
-	if (aLinearTime<0) {
-  	// negative time, create wrap around to make sure time remains positive
+  if (aLinearTime<0) {
+    // negative time, create wrap around to make sure time remains positive
     aLinearTime = lineartime2timeonly(aLinearTime);
   }
   if (secondToLinearTimeFactor==1) {

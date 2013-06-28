@@ -32,8 +32,8 @@ extern "C" {
 typedef struct {
   // GAL settings
   bool galUpdated;
-	char url[GAL_STRING_MAX];
-	char domain[GAL_STRING_MAX];
+  char url[GAL_STRING_MAX];
+  char domain[GAL_STRING_MAX];
 } TGALInfo;
 
 extern TGALInfo gGALInfo;

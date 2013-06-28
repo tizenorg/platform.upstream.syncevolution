@@ -1,7 +1,7 @@
 /*
  *  File:         platform_thread.cpp
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  Platform specific thread object implementation
  *

@@ -1,7 +1,7 @@
 /*
  *  File:         textprofile.cpp
  *
- *  Author:			  Lukas Zeller (luz@plan44.ch)
+ *  Author:       Lukas Zeller (luz@plan44.ch)
  *
  *  TTextProfile
  *    utility class to parse line-by-line type text including RFC822 emails
@@ -287,13 +287,13 @@ TLineMapDefinition *TTextProfileConfig::addLineMap(
 // handler factory
 TProfileHandler *TTextProfileConfig::newProfileHandler(TMultiFieldItemType *aItemTypeP)
 {
-	// check if fieldlists match as they should
+  // check if fieldlists match as they should
   if (aItemTypeP->getFieldDefinitions()!=fFieldListP) {
-  	// profile is for another field list, cannot be used for this item type
-   	return NULL;
+    // profile is for another field list, cannot be used for this item type
+    return NULL;
   }
-	// our handler is the text profile handler
-	return (TProfileHandler *)(new TTextProfileHandler(this,aItemTypeP));
+  // our handler is the text profile handler
+  return (TProfileHandler *)(new TTextProfileHandler(this,aItemTypeP));
 }
 
 
@@ -1276,7 +1276,7 @@ void TTextProfileHandler::generateText(TMultiFieldItem &aItem, string &aString)
   // init attachment limit
   // - get from datastore if one is related
   if (fRelatedDatastoreP) {
-  	fItemSizeLimit = fRelatedDatastoreP->getItemSizeLimit();
+    fItemSizeLimit = fRelatedDatastoreP->getItemSizeLimit();
     fNoAttachments = fRelatedDatastoreP->getNoAttachments();
   }
   // - if size limit is zero or attachments explicitly disabled,
@@ -1477,7 +1477,7 @@ bool TTextProfileHandler::parseText(const char *aText, stringSize aTextSize, TMu
 
   // get options from datastore if one is related
   if (fRelatedDatastoreP) {
-  	fItemSizeLimit = fRelatedDatastoreP->getItemSizeLimit();
+    fItemSizeLimit = fRelatedDatastoreP->getItemSizeLimit();
     fNoAttachments = fRelatedDatastoreP->getNoAttachments();
   }
   // parse according to linemaps

@@ -127,7 +127,7 @@ bool TBinFile::platformTruncateFile(uInt32 aNewSize)
 bool TBinFile::platformDeleteFile(cAppCharP aFilePath)
 {
   #if defined(LINUX) || defined(MACOSX)
-  	unlink(aFilePath);
+    unlink(aFilePath);
   #elif defined(WINCE)
     TCHAR filename[MAX_PATH];
     UTF8toWCharBuf(aFilePath,filename,MAX_PATH);
