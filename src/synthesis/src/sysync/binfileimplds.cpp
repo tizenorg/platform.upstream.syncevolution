@@ -2446,6 +2446,7 @@ localstatus TBinfileImplDS::SaveAdminData(bool aSessionFinished, bool aSuccessfu
   fTarget.lastChangeCheck=fPreviousToRemoteSyncCmpRef;
   #if TARGETS_DB_VERSION>=6
   // - identifiers (tokens for StartDataRead)
+  PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_EXOTIC,("SaveAdminData: saving target sync token %s", fPreviousToRemoteSyncIdentifier.c_str()));
   AssignCString(fTarget.dummyIdentifier1,fPreviousToRemoteSyncIdentifier.c_str(),remoteAnchorMaxLen); // former lastSyncIdentifier
   AssignCString(fTarget.dummyIdentifier2,NULL,remoteAnchorMaxLen); // former lastSuspendIdentifier, not needed, make empty
   // store remote datastore's display name (is empty if we haven't got one from the remote via devInf)
@@ -2597,7 +2598,7 @@ localstatus TBinfileImplDS::SaveAdminData(bool aSessionFinished, bool aSuccessfu
       PDEBUGPRINTFX(DBG_ERROR,("Error writing pending item file, bferr=%hd",bfe));
     }
   }
-  PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_DETAILS,("SaveAdminData: resumeAlertCode = %hd, lastSuspendModCount = %ld",fResumeAlertCode,(long)fTarget.lastSuspendModCount));
+  PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_DETAILS,("SaveAdminData: fTargetIndex %d resumeAlertCode = %hd, lastSuspendModCount = %ld",fTargetIndex,fResumeAlertCode,(long)fTarget.lastSuspendModCount));
   // update the target record
   if (fTargetIndex>=0) {
     targetsBinFileP->updateRecord(fTargetIndex,&fTarget);

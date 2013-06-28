@@ -61,6 +61,7 @@ public:
   // destructor
   virtual ~TTextItemType();
   // access to type
+  virtual cAppCharP getTypeVers(sInt32 aMode=0);
   virtual uInt16 getTypeID(void) const { return ity_text; };
   virtual bool isBasedOn(uInt16 aItemTypeID) const { return aItemTypeID==ity_text ? true : TMultiFieldItemType::isBasedOn(aItemTypeID); };
   // differentiation between implemented and just descriptive TSyncTypeItems

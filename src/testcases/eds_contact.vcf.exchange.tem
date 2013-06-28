@@ -167,9 +167,6 @@ ADR;TYPE=HOME:;;Test Drive 1;Test Village;Lower Test County;1234
  5;Testovia
 LABEL;TYPE=HOME:Test Drive 1\nTest Village\, Lower Test County\n12345\nTest
   Box #1\nTestovia
-ADR;TYPE=OTHER:;;Test Drive 3;Test Megacity;Test County;12347;New Testonia
-LABEL;TYPE=OTHER:Test Drive 3\nTest Megacity\, Test County\n12347\nTest Box
-  #3\nNew Testonia
 UID:pas-id-43C0ED3900000001
 EMAIL:john.doe@work.com
 EMAIL:john.doe@home.priv
@@ -181,7 +178,7 @@ TEL;TYPE=WORK;TYPE=FAX:businessfax 4
 TEL;TYPE=HOME;TYPE=FAX:homefax 5
 TEL;TYPE=PAGER:pager 6
 TEL;TYPE=CAR:car 7
-TEL;TYPE=RADIO:radio 8
+TEL;TYPE="X-EVOLUTION-RADIO":radio 8
 TEL;TYPE=work:business 9
 TEL;HOME:home 10
 END:VCARD

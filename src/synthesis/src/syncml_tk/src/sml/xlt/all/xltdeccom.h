@@ -143,8 +143,13 @@ struct XltDecScanner_s
 
     /**
      * Get the current position of the scanner within the working buffer.
+     *
+     * @param pScanner (IN/OUT)
+     *        the scanner
+     * @param remaining (OUT)
+     *        number of valid bytes after current position, optional (NULL acceptable)
      */
-    MemPtr_t (*getPos)(XltDecScannerPtr_t pScanner);
+    MemPtr_t (*getPos)(XltDecScannerPtr_t pScanner, Long_t *remaining);
 
     /* public attributes */
 

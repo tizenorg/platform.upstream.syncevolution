@@ -3187,6 +3187,9 @@ localstatus TCustomImplDS::implSaveEndOfSession(bool aUpdateAnchors)
       }
       // also update opaque reference string possibly needed in DS API implementations
       fPreviousToRemoteSyncIdentifier = fCurrentSyncIdentifier;
+      PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_EXOTIC,("updating sync token (fPreviousToRemoteSyncIdentifier) from %s to current sync token %s",fPreviousToRemoteSyncIdentifier.c_str(),fCurrentSyncIdentifier.c_str()));
+    } else {
+      PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_EXOTIC,("keeping old sync token (fPreviousToRemoteSyncIdentifier) %s instead of updating to current sync token %s",fPreviousToRemoteSyncIdentifier.c_str(),fCurrentSyncIdentifier.c_str()));
     }
     // updating anchor means invalidating last Suspend
     fPreviousSuspendCmpRef = fPreviousToRemoteSyncCmpRef; // setting to current reference can do less harm than setting it to zero

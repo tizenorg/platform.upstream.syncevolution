@@ -246,10 +246,15 @@ Ret_t show_decode_error(Ret_t aRc, XltDecScannerPtr_t aScanner, char *aRoutineNa
     SMLERRPRINTFX(DBG_ERROR,("%s: smlErr 0x%hX (%s) while parsing",aRoutineName,aRc,smlErrorText(aRc)));
     // Show details
     if (aScanner && aScanner->curtok) {
+      Long_t currentBytesShow = numBytesShow;
+      Long_t remaining;
+
       // show what token we are parsing
       show_token(aScanner->curtok,DBG_ERROR);
-      // show hex of 32 bytes after scan position
-      b = aScanner->getPos(aScanner);
+      // show hex of at most 32 bytes after scan position
+      b = aScanner->getPos(aScanner, &remaining);
+      if (remaining < currentBytesShow)
+        currentBytesShow = remaining;
       SMLERRPRINTFX(DBG_ERROR,(
         "- Tag start at 0x%lX, scanner pos at 0x%lX%s, data:",
         (unsigned long)aScanner->curtok->start,
@@ -258,16 +263,16 @@ Ret_t show_decode_error(Ret_t aRc, XltDecScannerPtr_t aScanner, char *aRoutineNa
       ));
       if (b!=NULL) {
         p=hexshow;
-        for (i=0; i<numBytesShow; i++) {
+        for (i=0; i<currentBytesShow; i++) {
           *p++ = NibbleToHexDigit(*b>>4);
           *p++ = NibbleToHexDigit(*b++);
           *p++ = ' ';
         }
         *p=0;
-        b-=numBytesShow; // rewind
+        b-=currentBytesShow; // rewind
         SMLERRPRINTFX(DBG_ERROR,("%s", hexshow));
         p=hexshow;
-        for (i=0; i<numBytesShow; i++) {
+        for (i=0; i<currentBytesShow; i++) {
           *p++ = (*b>=0x20) && (*b<0x7F) ? *b : '_';
           b++;
         }
@@ -470,7 +475,7 @@ xltDecInit(const SmlEncoding_t enc,
         return rc;
     }
 
-    *ppBufPos = pDecoder->scanner->getPos(pDecoder->scanner);
+    *ppBufPos = pDecoder->scanner->getPos(pDecoder->scanner, NULL);
 
     *ppDecoder = (XltDecoderPtr_t)pDecoder;
 
@@ -590,7 +595,7 @@ xltDecNext(XltDecoderPtr_t pDecoder,
         }
     }
 
-    *ppBufPos = pScanner->getPos(pScanner);
+    *ppBufPos = pScanner->getPos(pScanner, NULL);
 
     return SML_ERR_OK;
 }

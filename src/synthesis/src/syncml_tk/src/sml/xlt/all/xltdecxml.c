@@ -71,7 +71,7 @@ struct xmlScannerPriv_s
     Ret_t (*destroy)(XltDecScannerPtr_t);
     Ret_t (*pushTok)(XltDecScannerPtr_t);
     void  (*setBuf)(XltDecScannerPtr_t pScanner, const MemPtr_t pBufStart, const MemPtr_t pBufEnd);
-    MemPtr_t (*getPos)(XltDecScannerPtr_t pScanner);
+    MemPtr_t (*getPos)(XltDecScannerPtr_t pScanner, Long_t *remaining);
 
     XltDecTokenPtr_t curtok;       /**< current token */
     Long_t charset;                /**< 0 */
@@ -100,7 +100,7 @@ static Ret_t _destroy(XltDecScannerPtr_t);
 static Ret_t _nextTok(XltDecScannerPtr_t);
 static Ret_t _pushTok(XltDecScannerPtr_t);
 static void _setBuf(XltDecScannerPtr_t, const MemPtr_t, const MemPtr_t);
-static MemPtr_t _getPos(XltDecScannerPtr_t);
+static MemPtr_t _getPos(XltDecScannerPtr_t, Long_t *remaining);
 
 /**
  * Advance the current position pointer after checking whether the end of
@@ -311,8 +311,10 @@ _setBuf(XltDecScannerPtr_t pScanner, const MemPtr_t pBufStart,
  * Get the current position of the scanner within its working buffer.
  */
 static MemPtr_t
-_getPos(XltDecScannerPtr_t pScanner)
+_getPos(XltDecScannerPtr_t pScanner, Long_t *remaining)
 {
+    if (remaining)
+      *remaining = ((xmlScannerPrivPtr_t)pScanner)->bufend - ((xmlScannerPrivPtr_t)pScanner)->pos;
     return ((xmlScannerPrivPtr_t)pScanner)->pos;
 }
 

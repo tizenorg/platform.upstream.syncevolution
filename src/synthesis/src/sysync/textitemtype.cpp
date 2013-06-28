@@ -157,6 +157,23 @@ TTextItemType::~TTextItemType()
     delete fProfileHandlerP;
 } // TTextItemType::~TTextItemType
 
+cAppCharP TTextItemType::getTypeVers(sInt32 aMode)
+{
+  // This function is called by TMimeDirProfile when generating the
+  // VERSION property. Allow converting a plain text item to
+  // iCalendar 2.0 (aMode = 2) or vCalendar 1.0 (aMode = 1) by
+  // overriding the base version that was configured for the
+  // underlying text item type.
+  switch (aMode) {
+  default:
+    return inherited::getTypeVers(aMode);
+  case 1:
+    return "1.0";
+  case 2:
+    return "2.0";
+  }
+} // TTextItemType::getTypeVers
+
 
 #ifdef OBJECT_FILTERING
 
