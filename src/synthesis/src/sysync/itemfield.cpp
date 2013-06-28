@@ -466,8 +466,33 @@ sInt16 TArrayField::compareWith(TItemField &aItemField, bool aCaseInsensitive)
   }
   // all compared fields are equal
   if (mysz==othersz) return 0; // same size : equal
-  // larger array is greater
-  return mysz>othersz ? 1 : -1;
+  // Sizes differ, but that only matters if the extra entries are
+  // actually assigned. Without that special case, we end up
+  // with the situation where parsing, encoding and parsing
+  // again leads to different fields:
+  // - EMAIL;TYPE=OTHER:foo -> EMAIL_FLAGS 1 entry "unassigned"
+  // - unassigned -> EMAIL:foo
+  // - EMAIL:foo -> EMAIL_FLAGS 0 entry
+  // - EMAIL_FLAGS 1 entry "unassigned" > EMAIL_FLAGS 0 entry
+  TItemField &largerField = mysz < othersz ? aItemField : *this;
+  sInt16 minsz, maxsz;
+  sInt16 res; // larger array is greater
+  if (mysz < othersz) {
+    minsz = mysz;
+    maxsz = othersz;
+    res = -1;
+  } else {
+    minsz = othersz;
+    maxsz = mysz;
+    res = 1;
+  }
+  for (sInt16 idx=minsz; idx<maxsz; idx++) {
+    if (largerField.getArrayField(idx)->isAssigned())
+      // found real difference
+      return res;
+  }
+  // larger array contains only extra unassigned entries, ignore them
+  return 0;
 } // TArrayField::compareWith
 
 /* end of TArrayField implementation */

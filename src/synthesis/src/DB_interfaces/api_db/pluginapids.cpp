@@ -1069,7 +1069,7 @@ localstatus TPluginApiDS::apiReadSyncSet(bool aNeedAll)
   // we don't need to load the syncset if we are only refreshing from remote
   // but we also must load it if we can't zap without it on slow refresh, or when we can't retrieve items on non-slow refresh
   // (we won't retrieve anything in case of slow refresh, because after zapping there's nothing left by definition)
-  if (!fRefreshOnly || (fSlowSync && apiNeedSyncSetToZap()) || (!fSlowSync && implNeedSyncSetToRetrieve())) {
+  if (!fRefreshOnly || (fRefreshOnly && fCacheData) || (fSlowSync && apiNeedSyncSetToZap()) || (!fSlowSync && implNeedSyncSetToRetrieve())) {
     SYSYNC_TRY {
       // true for initial ReadNextItem*() call, false later on
       bool firstReadNextItem=true;
@@ -1202,6 +1202,8 @@ localstatus TPluginApiDS::apiReadSyncSet(bool aNeedAll)
     SYSYNC_CATCH (...)
       dberr=LOCERR_EXCEPTION;
     SYSYNC_ENDCATCH
+  } else {
+    PDEBUGPRINTFX(DBG_DATA+DBG_EXOTIC,("skipped reading sync set because of refresh-from-peer sync"));
   } // if we need the syncset at all
 endread:
   // then end read here

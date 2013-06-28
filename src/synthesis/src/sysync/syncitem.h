@@ -126,13 +126,18 @@ public:
   virtual bool replaceDataFrom(TSyncItem & /* aItem */, bool /* aAvailableOnly */=false, bool /* aDetectCutoffs */=false, bool /* aAssignedOnly */=false, bool /* aTransferUnassigned */=false) { return true; }; // no data -> nop
   // check item before processing it
   virtual bool checkItem(TLocalEngineDS * /* aDatastoreP */) { return true; }; // default is: ok
+  enum {
+    MERGE_OPTION_FROM_CONFIG,   /**< merge as defined in the field list */
+    MERGE_OPTION_CHANGE_OTHER,  /**< ensure that the other item is the same as this item */
+    MERGE_OPTION_CHANGE_THIS    /**< ensure that this items is the same as the other */
+  };
   // merge this item with specified item.
   // Notes:
   // - specified item is treated as loosing item, this item is winning item
   // - also updates other item to make sure it is equal to the winning after the merge
   // sets (but does not reset) change status of this and other item.
   // Note that changes of non-relevant fields are not reported here.
-  virtual void mergeWith(TSyncItem & /* aItem */, bool &aChangedThis, bool &aChangedOther, TLocalEngineDS * /* aDatastoreP */) { aChangedThis=false; aChangedOther=false; }; // nop by default
+  virtual void mergeWith(TSyncItem & /* aItem */, bool &aChangedThis, bool &aChangedOther, TLocalEngineDS * /* aDatastoreP */, int mode = MERGE_OPTION_FROM_CONFIG) { aChangedThis=false; aChangedOther=false; }; // nop by default
   // remote and local ID
   string fRemoteID; // ID in remote party (if this is a server: LUID, GUID otherwise)
   string fLocalID;  // ID in this party (if this is a server: GUID, LUID otherwise)

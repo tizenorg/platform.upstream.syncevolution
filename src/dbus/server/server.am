@@ -1,3 +1,11 @@
+EXTRA_DIST += \
+  src/dbus/server/pim/README \
+  src/dbus/server/pim/examples/search.py \
+  src/dbus/server/pim/examples/sync.py \
+  src/dbus/server/pim/testpim.py \
+  src/dbus/server/pim/test-dbus/simple-sort/config/syncevolution/pim-manager.ini \
+  src/dbus/server/pim/test-dbus/first-last-sort/config/syncevolution/pim-manager.ini
+
 if COND_DBUS
 
 noinst_LTLIBRARIES += src/dbus/server/libsyncevodbusserver.la
@@ -43,11 +51,37 @@ src_dbus_server_libsyncevodbusserver_la_SOURCES = \
   $(src_dbus_server_server_cpp_files) \
   src/dbus/server/main.cpp
 
+nodist_src_dbus_server_libsyncevodbusserver_la_SOURCES =
+
 dist_pkgdata_DATA += src/dbus/server/bluetooth_products.ini
 
+src_dbus_server_libsyncevodbusserver_la_LDFLAGS =
 src_dbus_server_libsyncevodbusserver_la_LIBADD = $(LIBNOTIFY_LIBS) $(MLITE_LIBS) $(DBUS_LIBS)
 src_dbus_server_libsyncevodbusserver_la_CPPFLAGS = -DHAVE_CONFIG_H -DSYNCEVOLUTION_LOCALEDIR=\"${SYNCEVOLUTION_LOCALEDIR}\" -I$(top_srcdir)/src -I$(top_srcdir)/test -I$(top_srcdir) -I$(gdbus_dir) $(BACKEND_CPPFLAGS)
 src_dbus_server_libsyncevodbusserver_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS) $(SYNTHESIS_CFLAGS) $(GLIB_CFLAGS) $(DBUS_CFLAGS) $(LIBNOTIFY_CFLAGS) $(MLITE_CFLAGS) $(SYNCEVO_WFLAGS)
+
+if COND_DBUS_PIM
+src_dbus_server_server_cpp_files += \
+  src/dbus/server/pim/individual-traits.cpp \
+  src/dbus/server/pim/folks.cpp \
+  src/dbus/server/pim/manager.cpp
+
+src_dbus_server_server_h_files += \
+  src/dbus/server/pim/locale-factory.h \
+  src/dbus/server/pim/persona-details.h
+
+nodist_src_dbus_server_libsyncevodbusserver_la_SOURCES += \
+  src/dbus/server/pim/locale-factory-@DBUS_PIM_PLUGIN@.cpp
+
+src_dbus_server_libsyncevodbusserver_la_LDFLAGS += $(DBUS_PIM_PLUGIN_LDFLAGS)
+src_dbus_server_libsyncevodbusserver_la_LIBADD += $(FOLKS_LIBS) $(DBUS_PIM_PLUGIN_LIBS) $(PHONENUMBERS_LIBS)
+src_dbus_server_libsyncevodbusserver_la_CXXFLAGS += $(FOLKS_CFLAGS) $(DBUS_PIM_PLUGIN_CFLAGS) $(PHONENUMBERS_CFLAGS)
+endif
+
+# Need to list all plugins here and not include the active one in the regular
+# source list above, because "make dist" would only include the configured one.
+EXTRA_DIST += \
+  src/dbus/server/pim/locale-factory-boost.cpp
 
 # Session helper: syncevo-dbus-helper 
 noinst_LTLIBRARIES += src/dbus/server/libsyncevodbushelper.la
@@ -95,8 +129,13 @@ src_dbus_server_service_files_in = src/dbus/server/org.syncevolution.service.in
 src_dbus_server_service_files = $(src_dbus_server_service_files_in:.service.in=.service)
 src_dbus_server_servicedir = $(DBUS_SERVICES_DIR)
 src_dbus_server_service_DATA = $(src_dbus_server_service_files)
-$(src_dbus_server_service_files): $(src_dbus_server_service_files_in)
+src/dbus/server/%.service: src/dbus/server/%.service.in
 	@sed -e "s|\@libexecdir\@|$(libexecdir)|" $< >$@
+
+if COND_DBUS_PIM
+src_dbus_server_service_files_in += \
+  src/dbus/server/pim/org._01.pim.contacts.service.in
+endif
 
 dist_noinst_DATA += \
   $(src_dbus_server_service_files_in) \

@@ -1505,6 +1505,26 @@ class SyncSource : virtual public SyncSourceBase, public SyncSourceConfig, publi
     virtual Databases getDatabases() = 0;
 
     /**
+     * Creates a new database.
+     * The default implementation just throws an error.
+     *
+     * @param database     At least the name should be set. Some backends
+     *                     may also be able to create the database with
+     *                     a specific URI.
+     * @return description of the new database
+     */
+    virtual Database createDatabase(const Database &database) { throwError("creating databases is not supported by backend " + getBackend()); return Database("", ""); }
+
+    /**
+     * Removes a database. To map a "database" property to a uri,
+     * instantiate the source with the desired config, open() it and
+     * then call getDatabase().
+     *
+     * @param uri    unique identifier for the database
+     */
+    virtual void deleteDatabase(const std::string &uri) { throwError("deleting databases is not supported by backend " + getBackend()); }
+
+    /**
      * Actually opens the data source specified in the constructor,
      * will throw the normal exceptions if that fails. Should
      * not modify the state of the sync source.
@@ -1520,6 +1540,27 @@ class SyncSource : virtual public SyncSourceBase, public SyncSourceConfig, publi
      * the client asks for it, but not sooner.
      */
     virtual void open() = 0;
+
+    /**
+     * Returns the actual database that is in use. open() must
+     * have been called first.
+     *
+     * Useful because the "database" property might be empty or
+     * be interpreted in different ways by different backends.
+     *
+     * Needed for deleting databases. Not implemented in all
+     * backends. The default implementation returns an empty
+     * structure.
+     *
+     * @return Database structure with at least m_uri set if
+     *         the actual database is known.
+     */
+    Database getDatabase() const { return m_database; }
+
+    /**
+     * To be called by derived implementation of open().
+     */
+    void setDatabase(const Database &database) { m_database = database; }
 
     /**
      * Read-only access to operations.  Derived classes can modify
@@ -1665,6 +1706,9 @@ class SyncSource : virtual public SyncSourceBase, public SyncSourceConfig, publi
      * the engine is running.
      */
     std::vector<sysync::SDK_InterfaceType *> m_synthesisAPI;
+
+    /** database in use after open(), to be set via setDatabase() by derived class */
+    Database m_database;
 
     /** actual name of the source */
     std::string m_name;
@@ -2003,7 +2047,7 @@ class SyncSourceSerialize : virtual public SyncSourceBase, virtual public SyncSo
     /**
      * returns the backend selection and configuration
      */
-    virtual InitStateClass<SourceType> getSourceType() const = 0;
+    virtual InitState<SourceType> getSourceType() const = 0;
 
     /**
      * Create or modify an item.
@@ -2185,6 +2229,9 @@ class SyncSourceRevisions : virtual public SyncSourceChanges, virtual public Syn
      * string. The caller of this method will detect situations where
      * a non-empty string is necessary and none was provided.
      *
+     * An source must set the revision string for all items or
+     * none at all.
+     *
      * This call is typically only invoked only once during the
      * lifetime of a source, at the time when detectChanges() needs
      * the information. The result returned in that invocation is
@@ -2237,12 +2284,6 @@ class SyncSourceRevisions : virtual public SyncSourceChanges, virtual public Syn
          * Don't rely on previous information. Will call
          * listAllItems() and generate a full list of items based on
          * the result.
-         *
-         * TODO: Added/updated/deleted information is still getting
-         * calculated based on the previous items although it is not
-         * needed. In other words, CHANGES_SLOW == CHANGES_FULL at the
-         * moment. Once we are sure that slow sync detection works,
-         * calculating changes in this mode can be removed.
          */
         CHANGES_SLOW,
 
@@ -2273,8 +2314,10 @@ class SyncSourceRevisions : virtual public SyncSourceChanges, virtual public Syn
      *                         use CHANGES_FULL, which will always produce
      *                         the required information, albeit more slowly
      *                         than the other modes
+     * @return true if change detection could only provide a list of currently
+     *         existing items, but not the list of added/updated/deleted items
      */
-    void detectChanges(ConfigNode &trackingNode, ChangeMode mode);
+    bool detectChanges(ConfigNode &trackingNode, ChangeMode mode);
 
     /**
      * record that an item was added or updated
@@ -2524,7 +2567,7 @@ class TestingSyncSource : public SyncSource,
     }
     ~TestingSyncSource() {}
 
-    virtual InitStateClass<SourceType> getSourceType() const { return SyncSourceConfig::getSourceType(); }
+    virtual InitState<SourceType> getSourceType() const { return SyncSourceConfig::getSourceType(); }
 
     virtual void removeAllItems();
 };

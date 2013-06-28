@@ -1849,14 +1849,17 @@ static const char *ProxyString = "http_proxy";
 
 /* Reads http_proxy from environment, if not available returns configured value */
 InitState<bool> SyncConfig::getUseProxy() const {
-    char *proxy = getenv(ProxyString);
-    if (!proxy ) {
-        return syncPropUseProxy.getPropertyValue(*getNode(syncPropUseProxy));
-    } else if (strlen(proxy)>0) {
-        return InitState<bool>(true, true);
-    } else {
-        return InitState<bool>(false, true);
+    InitState<bool> res = syncPropUseProxy.getPropertyValue(*getNode(syncPropUseProxy));
+    if (!res.wasSet()) {
+        // Not configured. Check environment.
+        char *proxy = getenv(ProxyString);
+        if (proxy && *proxy) {
+            // Environment has it. Assume that it applies to us and
+            // use it. TODO: check no_proxy against our sync URL.
+            res = InitState<bool>(true, true);
+        }
     }
+    return res;
 }
 
 void SyncConfig::setUseProxy(bool value, bool temporarily) { syncPropUseProxy.setProperty(*getNode(syncPropUseProxy), value, temporarily); }
@@ -1880,7 +1883,7 @@ InitStateString SyncConfig::getProxyPassword() const {
     return syncPropProxyPassword.getCachedProperty(*getNode(syncPropProxyPassword), m_cachedProxyPassword);
 }
 void SyncConfig::setProxyPassword(const string &value, bool temporarily) { m_cachedProxyPassword = ""; syncPropProxyPassword.setProperty(*getNode(syncPropProxyPassword), value, temporarily); }
-InitStateClass< vector<string> > SyncConfig::getSyncURL() const { 
+InitState< vector<string> > SyncConfig::getSyncURL() const { 
     InitStateString s = syncPropSyncURL.getProperty(*getNode(syncPropSyncURL));
     vector<string> urls;
     if (!s.empty()) {
@@ -1889,7 +1892,7 @@ InitStateClass< vector<string> > SyncConfig::getSyncURL() const {
         static const string sep(" \t");
         boost::split(urls, s.get(), boost::is_any_of(sep));
     }
-    return InitStateClass< vector<string> >(urls, s.wasSet());
+    return InitState< vector<string> >(urls, s.wasSet());
 }
 void SyncConfig::setSyncURL(const string &value, bool temporarily) { syncPropSyncURL.setProperty(*getNode(syncPropSyncURL), value, temporarily); }
 void SyncConfig::setSyncURL(const vector<string> &value, bool temporarily) { 
@@ -2235,6 +2238,11 @@ StringConfigProperty SyncSourceConfig::m_sourcePropSync("sync",
                                            "    transmit changes from peer\n"
                                            "  one-way-from-local\n"
                                            "    transmit local changes\n"
+                                           "  local-cache-slow (server only)\n"
+                                           "    mirror remote data locally, transferring all data\n"
+                                           "  local-cache-incremental (server only)\n"
+                                           "    mirror remote data locally, transferring only changes;\n"
+                                           "    falls back to local-cache-slow automatically if necessary\n"
                                            "  disabled (or none)\n"
                                            "    synchronization disabled\n"
                                            "\n"
@@ -2264,6 +2272,8 @@ StringConfigProperty SyncSourceConfig::m_sourcePropSync("sync",
                                            (Aliases("refresh-from-server") + "refresh-server") +
                                            (Aliases("one-way-from-client") + "one-way-client") +
                                            (Aliases("one-way-from-server") + "one-way-server") +
+                                           (Aliases("local-cache-slow")) +
+                                           (Aliases("local-cache-incremental") + "local-cache") +
                                            (Aliases("disabled") + "none"));
 
 static class SourceBackendConfigProperty : public StringConfigProperty {
@@ -2607,14 +2617,14 @@ string SourceType::toString() const
     return type;
 }
 
-InitStateClass<SourceType> SyncSourceConfig::getSourceType(const SyncSourceNodes &nodes)
+InitState<SourceType> SyncSourceConfig::getSourceType(const SyncSourceNodes &nodes)
 {
     // legacy "type" property is tried if the backend property is not set
     InitStateString backend = sourcePropBackend.getProperty(*nodes.getNode(sourcePropBackend));
     if (!backend.wasSet()) {
         string type;
         if (nodes.getNode(sourcePropBackend)->getProperty("type", type)) {
-            return InitStateClass<SourceType>(SourceType(type), true);
+            return InitState<SourceType>(SourceType(type), true);
         }
     }
 
@@ -2623,9 +2633,9 @@ InitStateClass<SourceType> SyncSourceConfig::getSourceType(const SyncSourceNodes
     sourceType.m_localFormat = sourcePropDatabaseFormat.getProperty(*nodes.getNode(sourcePropDatabaseFormat));
     sourceType.m_format = sourcePropSyncFormat.getProperty(*nodes.getNode(sourcePropSyncFormat));
     sourceType.m_forceFormat = sourcePropForceSyncFormat.getPropertyValue(*nodes.getNode(sourcePropForceSyncFormat));
-    return InitStateClass<SourceType>(sourceType, backend.wasSet());
+    return InitState<SourceType>(sourceType, backend.wasSet());
 }
-InitStateClass<SourceType> SyncSourceConfig::getSourceType() const { return getSourceType(m_nodes); }
+InitState<SourceType> SyncSourceConfig::getSourceType() const { return getSourceType(m_nodes); }
 
 void SyncSourceConfig::setSourceType(const SourceType &type, bool temporarily)
 {

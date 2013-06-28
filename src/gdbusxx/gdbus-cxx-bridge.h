@@ -61,6 +61,7 @@
 #include <gio/gio.h>
 
 #include <map>
+#include <list>
 #include <vector>
 #include <utility>
 
@@ -70,7 +71,9 @@
 #include <boost/variant.hpp>
 #include <boost/variant/get.hpp>
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/algorithm/string/join.hpp>
 #include <boost/tuple/tuple.hpp>
+#include <boost/utility.hpp>
 
 /* The SyncEvolution exception handler must integrate into the D-Bus
  * C++ wrapper. In contrast to the rest of the code, that handler uses
@@ -80,6 +83,10 @@
  * implementations, this is made to be a define. The intention is to
  * remove the define once the in-tree gdbus is dropped. */
 #define DBUS_NEW_ERROR_MSG   g_dbus_message_new_method_error
+
+// allow some code to deal with API differences betwee GDBus C++ for GIO
+// and the version for libdbus
+#define GDBUS_CXX_GIO 1
 
 // Boost docs want this in the boost:: namespace, but
 // that fails with clang 2.9 depending on the inclusion order of
@@ -100,6 +107,29 @@ typedef GDBusConnection connection_type;
 typedef GDBusMessage message_type;
 typedef GVariantBuilder builder_type;
 typedef GVariantIter reader_type;
+
+/**
+ * Simple auto_ptr for GVariant.
+ */
+class GVariantCXX : boost::noncopyable
+{
+    GVariant *m_var;
+ public:
+    /** takes over ownership */
+    GVariantCXX(GVariant *var = NULL) : m_var(var) {}
+    ~GVariantCXX() { if (m_var) { g_variant_unref(m_var); } }
+
+    operator GVariant * () { return m_var; }
+    GVariantCXX &operator = (GVariant *var) {
+        if (m_var != var) {
+            if (m_var) {
+                g_variant_unref(m_var);
+            }
+            m_var = var;
+        }
+        return *this;
+    }
+};
 
 class DBusMessagePtr;
 
@@ -156,8 +186,32 @@ class DBusConnectionPtr : public boost::intrusive_ptr<GDBusConnection>
     void setDisconnect(const Disconnect_t &func);
     // #define GDBUS_CXX_HAVE_DISCONNECT 1
 
+    /**
+     * Starts processing of messages,
+     * claims the bus name set with addName() or
+     * when creating the connection (legacy API,
+     * done that way for compatibility with GDBus for libdbus).
+     */
     void undelay() const;
     void addName(const std::string &name) { m_name = name; }
+
+    /**
+     * Claims another name on the connection.
+     *
+     * The callback will be invoked with true as
+     * parameter once the name was successfully
+     * claimed. If that fails, false will be passed.
+     *
+     * The caller should be prepared to get called
+     * again later on, when loosing an already obtained
+     * name. Currently this shouldn't happen, though,
+     * because name transfer is not enabled when
+     * registering the name.
+     *
+     * The callback is allowed to be empty.
+     */
+    void ownNameAsync(const std::string &name,
+                      const boost::function<void (bool)> &obtainedCB) const;
 };
 
 class DBusMessagePtr : public boost::intrusive_ptr<GDBusMessage>
@@ -412,11 +466,21 @@ template<class A> struct Set <A &>
  * ultimately on the prototype of the method.
  */
 struct ExtractArgs {
+    // always set
     GDBusConnection *m_conn;
+
+    // only set when handling a method call
     GDBusMessage *m_msg;
     GVariantIter m_iter;
 
+    // only set when m_msg is NULL (happens when handling signal)
+    const char *m_sender;
+    const char *m_path;
+    const char *m_interface;
+    const char *m_signal;
+
  public:
+    /** constructor for parsing a method invocation message, which must not be NULL */
     ExtractArgs(GDBusConnection *conn, GDBusMessage *msg) {
         m_conn = conn;
         m_msg = msg;
@@ -425,6 +489,21 @@ struct ExtractArgs {
         if (msgBody != NULL) {
             g_variant_iter_init(&m_iter, msgBody);
         }
+    }
+
+    /** constructor for parsing signal parameters */
+    ExtractArgs(GDBusConnection *conn,
+                const char *sender,
+                const char *path,
+                const char *interface,
+                const char *signal)
+    {
+        m_conn = conn;
+        m_msg = NULL;
+        m_sender = sender;
+        m_path = path;
+        m_interface = interface;
+        m_signal = signal;
     }
 
     /** syntactic sugar: redirect >> into Get instance */
@@ -439,7 +518,7 @@ template<class A> struct Get
     A &m_a;
     Get(A &a) : m_a(a) {}
     ExtractArgs &get(ExtractArgs &context) const {
-        dbus_traits<A>::get(context.m_conn, context.m_msg, context.m_iter, m_a);
+        dbus_traits<A>::get(context, context.m_iter, m_a);
         return context;
     }
 };
@@ -450,7 +529,7 @@ template<class A> struct Get <const A &>
     A &m_a;
     Get(A &a) : m_a(a) {}
     ExtractArgs &get(ExtractArgs &context) const {
-        dbus_traits<A>::get(context.m_conn, context.m_msg, context.m_iter, m_a);
+        dbus_traits<A>::get(context, context.m_iter, m_a);
         return context;
     }
 };
@@ -469,9 +548,12 @@ template<class A> struct Get <A &>
  */
 class DBusObject
 {
+ protected:
     DBusConnectionPtr m_conn;
-    std::string m_path;
+    DBusObject_t m_path;
     std::string m_interface;
+
+ private:
     bool m_closeConnection;
 
  public:
@@ -505,6 +587,7 @@ class DBusObject
 
     GDBusConnection *getConnection() const { return m_conn.get(); }
     const char *getPath() const { return m_path.c_str(); }
+    const DBusObject_t &getObject() const { return m_path; }
     const char *getInterface() const { return m_interface.c_str(); }
 };
 
@@ -513,6 +596,7 @@ class DBusObject
  */
 class DBusRemoteObject : public DBusObject
 {
+ protected:
     std::string m_destination;
 public:
     DBusRemoteObject(const DBusConnectionPtr &conn,
@@ -1239,15 +1323,14 @@ template<class host, class VariantTraits> struct basic_marshal : public dbus_tra
     /**
      * copy value from GVariant iterator into variable
      */
-    static void get(GDBusConnection *conn, GDBusMessage *msg,
+    static void get(ExtractArgs &context,
                     GVariantIter &iter, host &value)
     {
-        GVariant *var = g_variant_iter_next_value(&iter);
+        GVariantCXX var(g_variant_iter_next_value(&iter));
         if (var == NULL || !g_variant_type_equal(g_variant_get_type(var), VariantTraits::getVariantType())) {
             throw std::runtime_error("g_variant failure " GDBUS_CXX_SOURCE_INFO);
         }
         g_variant_get(var, g_variant_get_type_string(var), &value);
-        g_variant_unref(var);
     }
 
     /**
@@ -1288,10 +1371,10 @@ template<> struct dbus_traits<int8_t> : dbus_traits<uint8_t>
     typedef int8_t host_type;
     typedef int8_t arg_type;
 
-    static void get(GDBusConnection *conn, GDBusMessage *msg,
+    static void get(ExtractArgs &context,
                     GVariantIter &iter, host_type &value)
     {
-        dbus_traits<uint8_t>::get(conn, msg, iter, reinterpret_cast<uint8_t &>(value));
+        dbus_traits<uint8_t>::get(context, iter, reinterpret_cast<uint8_t &>(value));
     }
 };
 
@@ -1336,17 +1419,16 @@ template<> struct dbus_traits<bool> : public dbus_traits_base
     typedef bool host_type;
     typedef bool arg_type;
 
-    static void get(GDBusConnection *conn, GDBusMessage *msg,
+    static void get(ExtractArgs &context,
                     GVariantIter &iter, bool &value)
     {
-        GVariant *var = g_variant_iter_next_value(&iter);
+        GVariantCXX var(g_variant_iter_next_value(&iter));
         if (var == NULL || !g_variant_type_equal(g_variant_get_type(var), VariantTypeBoolean::getVariantType())) {
             throw std::runtime_error("g_variant failure " GDBUS_CXX_SOURCE_INFO);
         }
         gboolean buffer;
         g_variant_get(var, g_variant_get_type_string(var), &buffer);
         value = buffer;
-        g_variant_unref(var);
     }
 
     static void append(GVariantBuilder &builder, bool value)
@@ -1363,17 +1445,15 @@ template<> struct dbus_traits<std::string> : public dbus_traits_base
     static std::string getSignature() {return getType(); }
     static std::string getReply() { return ""; }
 
-    static void get(GDBusConnection *conn, GDBusMessage *msg,
+    static void get(ExtractArgs &context,
                     GVariantIter &iter, std::string &value)
     {
-        GVariant *var = g_variant_iter_next_value(&iter);
+        GVariantCXX var(g_variant_iter_next_value(&iter));
         if (var == NULL || !g_variant_type_equal(g_variant_get_type(var), G_VARIANT_TYPE_STRING)) {
             throw std::runtime_error("g_variant failure " GDBUS_CXX_SOURCE_INFO);
         }
         const char *str = g_variant_get_string(var, NULL);
         value = str;
-
-        g_variant_unref(var);
     }
 
     static void append(GVariantBuilder &builder, const std::string &value)
@@ -1385,22 +1465,38 @@ template<> struct dbus_traits<std::string> : public dbus_traits_base
     typedef const std::string &arg_type;
 };
 
+template<> struct dbus_traits<const char *> : public dbus_traits_base
+{
+    static std::string getType() { return "s"; }
+    static std::string getSignature() {return getType(); }
+    static std::string getReply() { return ""; }
+
+    // Cannot copy into that type. Can only be used for encoding.
+
+    static void append(GVariantBuilder &builder, const char *value)
+    {
+        g_variant_builder_add_value(&builder, g_variant_new_string(value ? value : ""));
+    }
+
+    typedef const char *host_type;
+    typedef const char *arg_type;
+};
+
 template <> struct dbus_traits<DBusObject_t> : public dbus_traits_base
 {
     static std::string getType() { return "o"; }
     static std::string getSignature() {return getType(); }
     static std::string getReply() { return ""; }
 
-    static void get(GDBusConnection *conn, GDBusMessage *msg,
+    static void get(ExtractArgs &context,
                     GVariantIter &iter, DBusObject_t &value)
     {
-        GVariant *var = g_variant_iter_next_value(&iter);
+        GVariantCXX var(g_variant_iter_next_value(&iter));
         if (var == NULL || !g_variant_type_equal(g_variant_get_type(var), G_VARIANT_TYPE_OBJECT_PATH)) {
             throw std::runtime_error("g_variant failure " GDBUS_CXX_SOURCE_INFO);
         }
         const char *objPath = g_variant_get_string(var, NULL);
         value = objPath;
-        g_variant_unref(var);
     }
 
     static void append(GVariantBuilder &builder, const DBusObject_t &value)
@@ -1425,10 +1521,12 @@ template <> struct dbus_traits<Caller_t> : public dbus_traits_base
     static std::string getSignature() { return ""; }
     static std::string getReply() { return ""; }
 
-    static void get(GDBusConnection *conn, GDBusMessage *msg,
+    static void get(ExtractArgs &context,
                     GVariantIter &iter, Caller_t &value)
     {
-        const char *peer = g_dbus_message_get_sender(msg);
+        const char *peer = context.m_msg ?
+            g_dbus_message_get_sender(context.m_msg) :
+            context.m_sender;
         if (!peer) {
             throw std::runtime_error("D-Bus method call without sender?!");
         }
@@ -1437,6 +1535,84 @@ template <> struct dbus_traits<Caller_t> : public dbus_traits_base
 
     typedef Caller_t host_type;
     typedef const Caller_t &arg_type;
+};
+
+/**
+ * pseudo-parameter: not part of D-Bus signature,
+ * but rather extracted from message attributes
+ */
+template <> struct dbus_traits<Path_t> : public dbus_traits_base
+{
+    static std::string getType() { return ""; }
+    static std::string getSignature() { return ""; }
+    static std::string getReply() { return ""; }
+
+    static void get(ExtractArgs &context,
+                    GVariantIter &iter, Path_t &value)
+    {
+        const char *path = context.m_msg ?
+            g_dbus_message_get_path(context.m_msg) :
+            context.m_path;
+        if (!path) {
+            throw std::runtime_error("D-Bus message without path?!");
+        }
+        value = path;
+    }
+
+    typedef Path_t host_type;
+    typedef const Path_t &arg_type;
+};
+
+/**
+ * pseudo-parameter: not part of D-Bus signature,
+ * but rather extracted from message attributes
+ */
+template <> struct dbus_traits<Interface_t> : public dbus_traits_base
+{
+    static std::string getType() { return ""; }
+    static std::string getSignature() { return ""; }
+    static std::string getReply() { return ""; }
+
+    static void get(ExtractArgs &context,
+                    GVariantIter &iter, Interface_t &value)
+    {
+        const char *path = context.m_msg ?
+            g_dbus_message_get_path(context.m_msg) :
+            context.m_path;
+        if (!path) {
+            throw std::runtime_error("D-Bus message without path?!");
+        }
+        value = path;
+    }
+
+    typedef Interface_t host_type;
+    typedef const Interface_t &arg_type;
+};
+
+/**
+ * pseudo-parameter: not part of D-Bus signature,
+ * but rather extracted from message attributes
+ */
+template <> struct dbus_traits<Member_t> : public dbus_traits_base
+{
+    static std::string getType() { return ""; }
+    static std::string getSignature() { return ""; }
+    static std::string getReply() { return ""; }
+
+    static void get(ExtractArgs &context,
+                    GVariantIter &iter, Member_t &value)
+    {
+        const char *path = context.m_msg ?
+            g_dbus_message_get_path(context.m_msg) :
+            context.m_path;
+        if (!path) {
+            throw std::runtime_error("D-Bus message without path?!");
+        }
+        value = path;
+    }
+
+    typedef Member_t host_type;
+    typedef const Member_t &arg_type;
 };
 
 /**
@@ -1457,20 +1633,18 @@ template<class A, class B> struct dbus_traits< std::pair<A,B> > : public dbus_tr
     typedef std::pair<A,B> host_type;
     typedef const std::pair<A,B> &arg_type;
 
-    static void get(GDBusConnection *conn, GDBusMessage *msg,
+    static void get(ExtractArgs &context,
                     GVariantIter &iter, host_type &pair)
     {
-        GVariant *var = g_variant_iter_next_value(&iter);
+        GVariantCXX var(g_variant_iter_next_value(&iter));
         if (var == NULL || !g_variant_type_is_subtype_of(g_variant_get_type(var), G_VARIANT_TYPE_TUPLE)) {
             throw std::runtime_error("g_variant failure " GDBUS_CXX_SOURCE_INFO);
         }
 
         GVariantIter tupIter;
         g_variant_iter_init(&tupIter, var);
-        dbus_traits<A>::get(conn, msg, tupIter, pair.first);
-        dbus_traits<B>::get(conn, msg, tupIter, pair.second);
-
-        g_variant_unref(var);
+        dbus_traits<A>::get(context, tupIter, pair.first);
+        dbus_traits<B>::get(context, tupIter, pair.second);
     }
 
     static void append(GVariantBuilder &builder, arg_type pair)
@@ -1478,6 +1652,135 @@ template<class A, class B> struct dbus_traits< std::pair<A,B> > : public dbus_tr
         g_variant_builder_open(&builder, G_VARIANT_TYPE(getType().c_str()));
         dbus_traits<A>::append(builder, pair.first);
         dbus_traits<B>::append(builder, pair.second);
+        g_variant_builder_close(&builder);
+    }
+};
+
+/**
+ * a boost::tuple - maps to D-Bus struct
+ */
+template<class A, class B> struct dbus_traits< boost::tuple<A,B> > : public dbus_traits_base
+{
+    static std::string getContainedType()
+    {
+        return dbus_traits<A>::getType() + dbus_traits<B>::getType();
+    }
+    static std::string getType()
+    {
+        return "(" + getContainedType() + ")";
+    }
+    static std::string getSignature() {return getType(); }
+    static std::string getReply() { return ""; }
+    typedef boost::tuple<A,B> host_type;
+    typedef const boost::tuple<A,B> &arg_type;
+
+    static void get(ExtractArgs &context,
+                    GVariantIter &iter, host_type &t)
+    {
+        GVariantCXX var(g_variant_iter_next_value(&iter));
+        if (var == NULL || !g_variant_type_is_subtype_of(g_variant_get_type(var), G_VARIANT_TYPE_TUPLE)) {
+            throw std::runtime_error("g_variant failure " GDBUS_CXX_SOURCE_INFO);
+        }
+
+        GVariantIter tupIter;
+        g_variant_iter_init(&tupIter, var);
+        dbus_traits<A>::get(context, tupIter, boost::tuples::get<0>(t));
+        dbus_traits<B>::get(context, tupIter, boost::tuples::get<1>(t));
+    }
+
+    static void append(GVariantBuilder &builder, arg_type t)
+    {
+        g_variant_builder_open(&builder, G_VARIANT_TYPE(getType().c_str()));
+        dbus_traits<A>::append(builder, boost::tuples::get<0>(t));
+        dbus_traits<B>::append(builder, boost::tuples::get<1>(t));
+        g_variant_builder_close(&builder);
+    }
+};
+
+/**
+ * a boost::tuple - maps to D-Bus struct
+ */
+template<class A, class B, class C> struct dbus_traits< boost::tuple<A,B,C> > : public dbus_traits_base
+{
+    static std::string getContainedType()
+    {
+        return dbus_traits<A>::getType() + dbus_traits<B>::getType() + dbus_traits<C>::getType();
+    }
+    static std::string getType()
+    {
+        return "(" + getContainedType() + ")";
+    }
+    static std::string getSignature() {return getType(); }
+    static std::string getReply() { return ""; }
+    typedef boost::tuple<A,B,C> host_type;
+    typedef const boost::tuple<A,B,C> &arg_type;
+
+    static void get(ExtractArgs &context,
+                    GVariantIter &iter, host_type &t)
+    {
+        GVariantCXX var(g_variant_iter_next_value(&iter));
+        if (var == NULL || !g_variant_type_is_subtype_of(g_variant_get_type(var), G_VARIANT_TYPE_TUPLE)) {
+            throw std::runtime_error("g_variant failure " GDBUS_CXX_SOURCE_INFO);
+        }
+
+        GVariantIter tupIter;
+        g_variant_iter_init(&tupIter, var);
+        dbus_traits<A>::get(context, tupIter, boost::tuples::get<0>(t));
+        dbus_traits<B>::get(context, tupIter, boost::tuples::get<1>(t));
+        dbus_traits<C>::get(context, tupIter, boost::tuples::get<2>(t));
+    }
+
+    static void append(GVariantBuilder &builder, arg_type t)
+    {
+        g_variant_builder_open(&builder, G_VARIANT_TYPE(getType().c_str()));
+        dbus_traits<A>::append(builder, boost::tuples::get<0>(t));
+        dbus_traits<B>::append(builder, boost::tuples::get<1>(t));
+        dbus_traits<C>::append(builder, boost::tuples::get<2>(t));
+        g_variant_builder_close(&builder);
+    }
+};
+
+/**
+ * a boost::tuple - maps to D-Bus struct
+ */
+template<class A, class B, class C, class D> struct dbus_traits< boost::tuple<A,B,C,D> > : public dbus_traits_base
+{
+    static std::string getContainedType()
+    {
+        return dbus_traits<A>::getType() + dbus_traits<B>::getType() + dbus_traits<C>::getType() + dbus_traits<D>::getType();
+    }
+    static std::string getType()
+    {
+        return "(" + getContainedType() + ")";
+    }
+    static std::string getSignature() {return getType(); }
+    static std::string getReply() { return ""; }
+    typedef boost::tuple<A,B,C,D> host_type;
+    typedef const boost::tuple<A,B,C,D> &arg_type;
+
+    static void get(ExtractArgs &context,
+                    GVariantIter &iter, host_type &t)
+    {
+        GVariantCXX var(g_variant_iter_next_value(&iter));
+        if (var == NULL || !g_variant_type_is_subtype_of(g_variant_get_type(var), G_VARIANT_TYPE_TUPLE)) {
+            throw std::runtime_error("g_variant failure " GDBUS_CXX_SOURCE_INFO);
+        }
+
+        GVariantIter tupIter;
+        g_variant_iter_init(&tupIter, var);
+        dbus_traits<A>::get(context, tupIter, boost::tuples::get<0>(t));
+        dbus_traits<B>::get(context, tupIter, boost::tuples::get<1>(t));
+        dbus_traits<C>::get(context, tupIter, boost::tuples::get<2>(t));
+        dbus_traits<D>::get(context, tupIter, boost::tuples::get<3>(t));
+    }
+
+    static void append(GVariantBuilder &builder, arg_type t)
+    {
+        g_variant_builder_open(&builder, G_VARIANT_TYPE(getType().c_str()));
+        dbus_traits<A>::append(builder, boost::tuples::get<0>(t));
+        dbus_traits<B>::append(builder, boost::tuples::get<1>(t));
+        dbus_traits<C>::append(builder, boost::tuples::get<2>(t));
+        dbus_traits<D>::append(builder, boost::tuples::get<3>(t));
         g_variant_builder_close(&builder);
     }
 };
@@ -1521,10 +1824,10 @@ template<class V> struct dbus_traits< DBusArray<V> > : public dbus_traits_base
     typedef DBusArray<V> host_type;
     typedef const host_type &arg_type;
 
-    static void get(GDBusConnection *conn, GDBusMessage *msg,
+    static void get(ExtractArgs &context,
                     GVariantIter &iter, host_type &array)
     {
-        GVariant *var = g_variant_iter_next_value(&iter);
+        GVariantCXX var(g_variant_iter_next_value(&iter));
         if (var == NULL || !g_variant_type_is_subtype_of(g_variant_get_type(var), G_VARIANT_TYPE_ARRAY)) {
             throw std::runtime_error("g_variant failure " GDBUS_CXX_SOURCE_INFO);
         }
@@ -1536,7 +1839,6 @@ template<class V> struct dbus_traits< DBusArray<V> > : public dbus_traits_base
                                                          static_cast<gsize>(sizeof(V_host_type)));
         array.first = nelements;
         array.second = data;
-        g_variant_unref(var);
     }
 
     static void append(GVariantBuilder &builder, arg_type array)
@@ -1573,28 +1875,26 @@ template<class K, class V, class C> struct dbus_traits< std::map<K, V, C> > : pu
     typedef std::map<K, V, C> host_type;
     typedef const host_type &arg_type;
 
-    static void get(GDBusConnection *conn, GDBusMessage *msg,
+    static void get(ExtractArgs &context,
                     GVariantIter &iter, host_type &dict)
     {
-        GVariant *var = g_variant_iter_next_value(&iter);
+        GVariantCXX var(g_variant_iter_next_value(&iter));
         if (var == NULL || !g_variant_type_is_subtype_of(g_variant_get_type(var), G_VARIANT_TYPE_ARRAY)) {
             throw std::runtime_error("g_variant failure " GDBUS_CXX_SOURCE_INFO);
         }
 
         GVariantIter contIter;
-        GVariant *child;
+        GVariantCXX child;
         g_variant_iter_init(&contIter, var);
         while((child = g_variant_iter_next_value(&contIter)) != NULL) {
             K key;
             V value;
             GVariantIter childIter;
             g_variant_iter_init(&childIter, child);
-            dbus_traits<K>::get(conn, msg, childIter, key);
-            dbus_traits<V>::get(conn, msg, childIter, value);
+            dbus_traits<K>::get(context, childIter, key);
+            dbus_traits<V>::get(context, childIter, value);
             dict.insert(std::make_pair(key, value));
-            g_variant_unref(child);
         }
-        g_variant_unref(var);
     }
 
     static void append(GVariantBuilder &builder, arg_type dict)
@@ -1634,10 +1934,10 @@ template<class V> struct dbus_traits< std::vector<V> > : public dbus_traits_base
     typedef std::vector<V> host_type;
     typedef const std::vector<V> &arg_type;
 
-    static void get(GDBusConnection *conn, GDBusMessage *msg,
+    static void get(ExtractArgs &context,
                     GVariantIter &iter, host_type &array)
     {
-        GVariant *var = g_variant_iter_next_value(&iter);
+        GVariantCXX var(g_variant_iter_next_value(&iter));
         if (var == NULL || !g_variant_type_is_subtype_of(g_variant_get_type(var), G_VARIANT_TYPE_ARRAY)) {
             throw std::runtime_error("g_variant failure " GDBUS_CXX_SOURCE_INFO);
         }
@@ -1647,10 +1947,9 @@ template<class V> struct dbus_traits< std::vector<V> > : public dbus_traits_base
         g_variant_iter_init(&childIter, var);
         for(int i = 0; i < nelements; ++i) {
             V value;
-            dbus_traits<V>::get(conn, msg, childIter, value);
+            dbus_traits<V>::get(context, childIter, value);
             array.push_back(value);
         }
-        g_variant_unref(var);
     }
 
     static void append(GVariantBuilder &builder, arg_type array)
@@ -1698,18 +1997,17 @@ template <class V> struct dbus_traits <boost::variant <V> > : public dbus_traits
     static std::string getSignature() { return getType(); }
     static std::string getReply() { return ""; }
 
-    static void get(GDBusConnection *conn, GDBusMessage *msg,
+    static void get(ExtractArgs &context,
                     GVariantIter &iter, boost::variant <V> &value)
     {
-        GVariant *var = g_variant_iter_next_value(&iter);
+        GVariantCXX var(g_variant_iter_next_value(&iter));
         if (var == NULL || !g_variant_type_equal(g_variant_get_type(var), G_VARIANT_TYPE_VARIANT)) {
             throw std::runtime_error("g_variant failure " GDBUS_CXX_SOURCE_INFO);
         }
 
-        GVariant *varVar;
         GVariantIter varIter;
         g_variant_iter_init(&varIter, var);
-        varVar = g_variant_iter_next_value(&varIter);
+        GVariantCXX varVar(g_variant_iter_next_value(&varIter));
         if (!boost::iequals(g_variant_get_type_string(varVar), dbus_traits<V>::getSignature())) {
             //ignore unrecognized sub type in variant
             return;
@@ -1718,11 +2016,8 @@ template <class V> struct dbus_traits <boost::variant <V> > : public dbus_traits
         V val;
         // Note: Reset the iterator so that the call to dbus_traits<V>::get() will get the right variant;
         g_variant_iter_init(&varIter, var);
-        dbus_traits<V>::get(conn, msg, varIter, val);
+        dbus_traits<V>::get(context, varIter, val);
         value = val;
-
-        g_variant_unref(var);
-        g_variant_unref(varVar);
     }
 
     static void append(GVariantBuilder &builder, const boost::variant<V> &value)
@@ -1748,18 +2043,17 @@ template <class V1, class V2> struct dbus_traits <boost::variant <V1, V2> > : pu
     static std::string getSignature() { return getType(); }
     static std::string getReply() { return ""; }
 
-    static void get(GDBusConnection *conn, GDBusMessage *msg,
+    static void get(ExtractArgs &context,
                     GVariantIter &iter, boost::variant <V1, V2> &value)
     {
-        GVariant *var = g_variant_iter_next_value(&iter);
+        GVariantCXX var(g_variant_iter_next_value(&iter));
         if (var == NULL || !g_variant_type_equal(g_variant_get_type(var), G_VARIANT_TYPE_VARIANT)) {
             throw std::runtime_error("g_variant failure " GDBUS_CXX_SOURCE_INFO);
         }
 
-        GVariant *varVar;
         GVariantIter varIter;
         g_variant_iter_init(&varIter, var);
-        varVar = g_variant_iter_next_value(&varIter);
+        GVariantCXX varVar(g_variant_iter_next_value(&varIter));
         if ((!boost::iequals(g_variant_get_type_string(varVar), dbus_traits<V2>::getSignature())) &&
             (!boost::iequals(g_variant_get_type_string(varVar), dbus_traits<V1>::getSignature()))) {
             // ignore unrecognized sub type in variant
@@ -1769,17 +2063,15 @@ template <class V1, class V2> struct dbus_traits <boost::variant <V1, V2> > : pu
             V1 val;
             // Note: Reset the iterator so that the call to dbus_traits<V>::get() will get the right variant;
             g_variant_iter_init(&varIter, var);
-            dbus_traits<V1>::get(conn, msg, varIter, val);
+            dbus_traits<V1>::get(context, varIter, val);
             value = val;
         } else {
             V2 val;
             // Note: Reset the iterator so that the call to dbus_traits<V>::get() will get the right variant;
             g_variant_iter_init(&varIter, var);
-            dbus_traits<V2>::get(conn, msg, varIter, val);
+            dbus_traits<V2>::get(context, varIter, val);
             value = val;
         }
-        g_variant_unref(var);
-        g_variant_unref(varVar);
     }
 
     static void append(GVariantBuilder &builder, const boost::variant<V1, V2> &value)
@@ -1804,10 +2096,10 @@ template<class K, class V, V K::*m> struct dbus_member_single
     }
     typedef V host_type;
 
-    static void get(GDBusConnection *conn, GDBusMessage *msg,
+    static void get(ExtractArgs &context,
                     GVariantIter &iter, K &val)
     {
-        dbus_traits<V>::get(conn, msg, iter, val.*m);
+        dbus_traits<V>::get(context, iter, val.*m);
     }
 
     static void append(GVariantBuilder &builder, const K &val)
@@ -1828,11 +2120,11 @@ template<class K, class V, V K::*m, class M> struct dbus_member
     }
     typedef V host_type;
 
-    static void get(GDBusConnection *conn, GDBusMessage *msg,
+    static void get(ExtractArgs &context,
                     GVariantIter &iter, K &val)
     {
-        dbus_traits<V>::get(conn, msg, iter, val.*m);
-        M::get(conn, msg, iter, val);
+        dbus_traits<V>::get(context, iter, val.*m);
+        M::get(context, iter, val);
     }
 
     static void append(GVariantBuilder &builder, const K &val)
@@ -1867,19 +2159,17 @@ template<class K, class M> struct dbus_struct_traits : public dbus_traits_base
     typedef K host_type;
     typedef const K &arg_type;
 
-    static void get(GDBusConnection *conn, GDBusMessage *msg,
+    static void get(ExtractArgs &context,
                     GVariantIter &iter, host_type &val)
     {
-        GVariant *var = g_variant_iter_next_value(&iter);
+        GVariantCXX var(g_variant_iter_next_value(&iter));
         if (var == NULL || !g_variant_type_is_subtype_of(g_variant_get_type(var), G_VARIANT_TYPE_TUPLE)) {
             throw std::runtime_error("g_variant failure " GDBUS_CXX_SOURCE_INFO);
         }
 
         GVariantIter tupIter;
         g_variant_iter_init(&tupIter, var);
-        M::get(conn, msg, tupIter, val);
-
-        g_variant_unref(var);
+        M::get(context, tupIter, val);
     }
 
     static void append(GVariantBuilder &builder, arg_type val)
@@ -1902,11 +2192,11 @@ template<class E, class I> struct dbus_enum_traits : public dbus_traits<I>
 
     // cast from enum to int in append() is implicit; in
     // get() we have to make it explicit
-    static void get(GDBusConnection *conn, GDBusMessage *msg,
+    static void get(ExtractArgs &context,
                     GVariantIter &iter, host_type &val)
     {
         I ival;
-        dbus_traits<I>::get(conn, msg, iter, ival);
+        dbus_traits<I>::get(context, iter, ival);
         val = static_cast<E>(ival);
     }
 };
@@ -2011,8 +2301,7 @@ class Watch : private boost::noncopyable
     void activate(const char *peer);
 };
 
-void getWatch(GDBusConnection *conn, GDBusMessage *msg,
-              GVariantIter &iter, boost::shared_ptr<Watch> &value);
+void getWatch(ExtractArgs &context, boost::shared_ptr<Watch> &value);
 
 /**
  * pseudo-parameter: not part of D-Bus signature,
@@ -2024,8 +2313,8 @@ template <> struct dbus_traits< boost::shared_ptr<Watch> >  : public dbus_traits
     static std::string getSignature() { return ""; }
     static std::string getReply() { return ""; }
 
-    static void get(GDBusConnection *conn, GDBusMessage *msg,
-                    GVariantIter &iter, boost::shared_ptr<Watch> &value) { getWatch(conn, msg, iter, value); }
+    static void get(ExtractArgs &context,
+                    GVariantIter &iter, boost::shared_ptr<Watch> &value) { getWatch(context, value); }
     static void append(GVariantBuilder &builder, const boost::shared_ptr<Watch> &value) {}
 
     typedef boost::shared_ptr<Watch> host_type;
@@ -2042,9 +2331,11 @@ class DBusResult : virtual public Result
  protected:
     DBusConnectionPtr m_conn;     /**< connection via which the message was received */
     DBusMessagePtr m_msg;         /**< the method invocation message */
+    bool m_replied;               /**< a response was sent */
 
     void sendMsg(const DBusMessagePtr &msg)
     {
+        m_replied = true;
         GError *error = NULL;
         if (!g_dbus_connection_send_message(m_conn.get(), msg.get(),
                                             G_DBUS_SEND_MESSAGE_FLAGS_NONE, NULL, &error)) {
@@ -2056,8 +2347,22 @@ class DBusResult : virtual public Result
     DBusResult(GDBusConnection *conn,
                GDBusMessage *msg) :
         m_conn(conn, true),
-        m_msg(msg, true)
+        m_msg(msg, true),
+        m_replied(false)
     {}
+
+    ~DBusResult()
+    {
+        if (!m_replied) {
+            try {
+                failed(dbus_error("org.syncevolution.gdbus", "processing the method call failed"));
+            } catch (...) {
+                // Ignore failure, we are probably shutting down
+                // anyway, which will tell the caller that the
+                // method won't be processed.
+            }
+        }
+    }
 
     virtual void failed(const dbus_error &error)
     {
@@ -2090,11 +2395,7 @@ class DBusResult0 :
         if (!reply) {
             throw std::runtime_error("no GDBusMessage");
         }
-        GError *error = NULL;
-        if (!g_dbus_connection_send_message(m_conn.get(), reply.get(),
-                                            G_DBUS_SEND_MESSAGE_FLAGS_NONE, NULL, &error)) {
-            throwFailure("", "g_dbus_connection_send_message()", error);
-        }
+        sendMsg(reply);
     }
 
     static std::string getSignature() { return ""; }
@@ -2206,11 +2507,7 @@ class DBusResult4 :
             throw std::runtime_error("no GDBusMessage");
         }
         AppendRetvals(reply) << a1 << a2 << a3 << a4;
-        GError *error = NULL;
-        if (!g_dbus_connection_send_message(m_conn.get(), reply.get(),
-                                            G_DBUS_SEND_MESSAGE_FLAGS_NONE, NULL, &error)) {
-            throwFailure("", "g_dbus_connection_send_message()", error);
-        }
+        sendMsg(reply);
     }
     static std::string getSignature() {
         return dbus_traits<A1>::getSignature() +
@@ -2431,10 +2728,10 @@ template <class R, class DBusR> struct dbus_traits_result
     typedef boost::shared_ptr<R> &arg_type;
     static const bool asynchronous = true;
 
-    static void get(GDBusConnection *conn, GDBusMessage *msg,
+    static void get(ExtractArgs &context,
                     GVariantIter &iter, host_type &value)
     {
-        value.reset(new DBusR(conn, msg));
+        value.reset(new DBusR(context.m_conn, context.m_msg));
     }
 };
 
@@ -4204,7 +4501,7 @@ protected:
         }
     }
 
-    void prepare(DBusMessagePtr &msg)
+    void prepare(DBusMessagePtr &msg) const
     {
         // Constructor steals reference, reset() doesn't!
         // Therefore use constructor+copy instead of reset().
@@ -4217,7 +4514,7 @@ protected:
         }
     }
 
-    void send(DBusMessagePtr &msg, const Callback_t &callback)
+    void send(DBusMessagePtr &msg, const Callback_t &callback) const
     {
         CallbackData *data = new CallbackData(m_conn, callback);
         g_dbus_connection_send_message_with_reply(m_conn.get(), msg.get(), G_DBUS_SEND_MESSAGE_FLAGS_NONE,
@@ -4225,7 +4522,7 @@ protected:
                                                   NULL, NULL, dbusCallback, data);
     }
 
-    Return_t sendAndReturn(DBusMessagePtr &msg)
+    Return_t sendAndReturn(DBusMessagePtr &msg) const
     {
         GError* error = NULL;
         DBusMessagePtr reply(g_dbus_connection_send_message_with_reply_sync(m_conn.get(),
@@ -4263,7 +4560,7 @@ public:
         return sendAndReturn(msg);
     }
 
-    void start(const Callback_t &callback)
+    void start(const Callback_t &callback) const
     {
         DBusMessagePtr msg;
         prepare(msg);
@@ -4271,7 +4568,7 @@ public:
     }
 
     template <class A1>
-    Return_t operator () (const A1 &a1)
+    Return_t operator () (const A1 &a1) const
     {
         DBusMessagePtr msg;
         prepare(msg);
@@ -4280,7 +4577,7 @@ public:
     }
 
     template <class A1>
-    void start(const A1 &a1, const Callback_t &callback)
+    void start(const A1 &a1, const Callback_t &callback) const
     {
         DBusMessagePtr msg;
         prepare(msg);
@@ -4289,7 +4586,7 @@ public:
     }
 
     template <class A1, class A2>
-    Return_t operator () (const A1 &a1, const A2 &a2)
+    Return_t operator () (const A1 &a1, const A2 &a2) const
     {
         DBusMessagePtr msg;
         prepare(msg);
@@ -4298,7 +4595,7 @@ public:
     }
 
     template <class A1, class A2>
-    void start(const A1 &a1, const A2 &a2, const Callback_t &callback)
+    void start(const A1 &a1, const A2 &a2, const Callback_t &callback) const
     {
         DBusMessagePtr msg;
         prepare(msg);
@@ -4307,7 +4604,7 @@ public:
     }
 
     template <class A1, class A2, class A3>
-    void operator () (const A1 &a1, const A2 &a2, const A3 &a3)
+    void operator () (const A1 &a1, const A2 &a2, const A3 &a3) const
     {
         DBusMessagePtr msg;
         prepare(msg);
@@ -4316,7 +4613,7 @@ public:
     }
 
     template <class A1, class A2, class A3>
-    void start(const A1 &a1, const A2 &a2, const A3 &a3, const Callback_t &callback)
+    void start(const A1 &a1, const A2 &a2, const A3 &a3, const Callback_t &callback) const
     {
         DBusMessagePtr msg;
         prepare(msg);
@@ -4325,7 +4622,7 @@ public:
     }
 
     template <class A1, class A2, class A3, class A4>
-    void operator () (const A1 &a1, const A2 &a2, const A3 &a3, const A4 &a4)
+    void operator () (const A1 &a1, const A2 &a2, const A3 &a3, const A4 &a4) const
     {
         DBusMessagePtr msg;
         prepare(msg);
@@ -4334,7 +4631,7 @@ public:
     }
 
     template <class A1, class A2, class A3, class A4>
-    void start(const A1 &a1, const A2 &a2, const A3 &a3, const A4 &a4, const Callback_t &callback)
+    void start(const A1 &a1, const A2 &a2, const A3 &a3, const A4 &a4, const Callback_t &callback) const
     {
         DBusMessagePtr msg;
         prepare(msg);
@@ -4343,7 +4640,7 @@ public:
     }
 
     template <class A1, class A2, class A3, class A4, class A5>
-    void operator () (const A1 &a1, const A2 &a2, const A3 &a3, const A4 &a4, const A5 &a5)
+    void operator () (const A1 &a1, const A2 &a2, const A3 &a3, const A4 &a4, const A5 &a5) const
     {
         DBusMessagePtr msg;
         prepare(msg);
@@ -4352,7 +4649,7 @@ public:
     }
 
     template <class A1, class A2, class A3, class A4, class A5>
-    void start(const A1 &a1, const A2 &a2, const A3 &a3, const A4 &a4, const A5 &a5, const Callback_t &callback)
+    void start(const A1 &a1, const A2 &a2, const A3 &a3, const A4 &a4, const A5 &a5, const Callback_t &callback) const
     {
         DBusMessagePtr msg;
         prepare(msg);
@@ -4362,7 +4659,7 @@ public:
 
     template <class A1, class A2, class A3, class A4, class A5, class A6>
     void operator () (const A1 &a1, const A2 &a2, const A3 &a3, const A4 &a4, const A5 &a5,
-                      const A6 &a6)
+                      const A6 &a6) const
     {
         DBusMessagePtr msg;
         prepare(msg);
@@ -4373,7 +4670,7 @@ public:
     template <class A1, class A2, class A3, class A4, class A5, class A6>
     void start(const A1 &a1, const A2 &a2, const A3 &a3, const A4 &a4, const A5 &a5,
                const A6 &a6,
-               const Callback_t &callback)
+               const Callback_t &callback) const
     {
         DBusMessagePtr msg;
         prepare(msg);
@@ -4383,7 +4680,7 @@ public:
 
     template <class A1, class A2, class A3, class A4, class A5, class A6, class A7>
     void operator () (const A1 &a1, const A2 &a2, const A3 &a3, const A4 &a4, const A5 &a5,
-                      const A6 &a6, const A7 &a7)
+                      const A6 &a6, const A7 &a7) const
     {
         DBusMessagePtr msg;
         prepare(msg);
@@ -4394,7 +4691,7 @@ public:
     template <class A1, class A2, class A3, class A4, class A5, class A6, class A7>
     void start(const A1 &a1, const A2 &a2, const A3 &a3, const A4 &a4, const A5 &a5,
                const A6 &a6, const A7 &a7,
-               const Callback_t &callback)
+               const Callback_t &callback) const
     {
         DBusMessagePtr msg;
         prepare(msg);
@@ -4404,7 +4701,7 @@ public:
 
     template <class A1, class A2, class A3, class A4, class A5, class A6, class A7, class A8>
     void operator () (const A1 &a1, const A2 &a2, const A3 &a3, const A4 &a4, const A5 &a5,
-                      const A6 &a6, const A7 &a7, const A8 &a8)
+                      const A6 &a6, const A7 &a7, const A8 &a8) const
     {
         DBusMessagePtr msg;
         prepare(msg);
@@ -4415,7 +4712,7 @@ public:
     template <class A1, class A2, class A3, class A4, class A5, class A6, class A7, class A8>
     void start(const A1 &a1, const A2 &a2, const A3 &a3, const A4 &a4, const A5 &a5,
                const A6 &a6, const A7 &a7, const A8 &a8,
-               const Callback_t &callback)
+               const Callback_t &callback) const
     {
         DBusMessagePtr msg;
         prepare(msg);
@@ -4425,7 +4722,7 @@ public:
 
     template <class A1, class A2, class A3, class A4, class A5, class A6, class A7, class A8, class A9>
     void operator () (const A1 &a1, const A2 &a2, const A3 &a3, const A4 &a4, const A5 &a5,
-                      const A6 &a6, const A7 &a7, const A8 &a8, const A9 &a9)
+                      const A6 &a6, const A7 &a7, const A8 &a8, const A9 &a9) const
     {
         DBusMessagePtr msg;
         prepare(msg);
@@ -4436,7 +4733,7 @@ public:
     template <class A1, class A2, class A3, class A4, class A5, class A6, class A7, class A8, class A9>
     void start(const A1 &a1, const A2 &a2, const A3 &a3, const A4 &a4, const A5 &a5,
                const A6 &a6, const A7 &a7, const A8 &a8, const A9 &a9,
-               const Callback_t &callback)
+               const Callback_t &callback) const
     {
         DBusMessagePtr msg;
         prepare(msg);
@@ -4446,7 +4743,7 @@ public:
 
     template <class A1, class A2, class A3, class A4, class A5, class A6, class A7, class A8, class A9, class A10>
     void operator () (const A1 &a1, const A2 &a2, const A3 &a3, const A4 &a4, const A5 &a5,
-                      const A6 &a6, const A7 &a7, const A8 &a8, const A9 &a9, const A10 &a10)
+                      const A6 &a6, const A7 &a7, const A8 &a8, const A9 &a9, const A10 &a10) const
     {
         DBusMessagePtr msg;
         prepare(msg);
@@ -4457,7 +4754,7 @@ public:
     template <class A1, class A2, class A3, class A4, class A5, class A6, class A7, class A8, class A9, class A10>
     void start(const A1 &a1, const A2 &a2, const A3 &a3, const A4 &a4, const A5 &a5,
                const A6 &a6, const A7 &a7, const A8 &a8, const A9 &a9, const A10 &a10,
-               const Callback_t &callback)
+               const Callback_t &callback) const
     {
         DBusMessagePtr msg;
         prepare(msg);
@@ -4513,26 +4810,161 @@ public:
 };
 
 /**
+ * Describes which signals are meant to be received by the callback in
+ * a SignalWatch. Only available when using GDBus C++ for GIO (this
+ * code here). GDBus libdbus only supports passing a DBusRemoteObject
+ * to the SignalWatch constructors, which does a match based on object
+ * path, interface name, and signal name.
+ *
+ * Traditionally, all three strings had to be given. Now if any of
+ * them is empty, it is excluded from the filter entirely (any string
+ * matches).
+ *
+ * Using this class adds the possibility to do a path prefix match or,
+ * in the future, other kind of matches.
+ *
+ * TODO: add support for filtering by sender. Not doing so leads to
+ * a situation where a malicious local process can fake signals.
+ *
+ * Avoid situations where different SignalWatches use exactly the same
+ * filter. Creating both watches will work, but when one is destroyed
+ * it might happen that the process stops receiving signals from the
+ * D-Bus daemon because the watch for that signal filter was removed
+ * from the connection (neither D-Bus spec nor D-Bus GIO guarantee
+ * that the match is ref counted).
+ */
+class SignalFilter : public DBusRemoteObject
+{
+ public:
+    enum Flags {
+        SIGNAL_FILTER_NONE,
+        /**
+         * Normally, a path must match completely. With this flag set,
+         * any signal which has the given path as prefix
+         * matches.
+         *
+         * The path filter must not end in a slash.
+         *
+         * Example: "/foo/bar/xyz" matches "/foo/bar" only if
+         * SIGNAL_FILTER_PATH_PREFIX is set. "/foo/barxyz" does not
+         * match it in any case.
+         *
+         */
+        SIGNAL_FILTER_PATH_PREFIX = 1<<0
+    };
+
+    /**
+     * Match based on object path and interface as stored in object
+     * and based on signal name as passed separately. Does a full
+     * match of all unless a a string is empty, in which case
+     * that criteria is ignored.
+     */
+    SignalFilter(const DBusRemoteObject &object,
+                      const std::string &signal) :
+        DBusRemoteObject(object),
+        m_signal(signal),
+        m_flags(SIGNAL_FILTER_NONE)
+    {}
+
+    /**
+     * Full control over filtering.
+     */
+    SignalFilter(const DBusConnectionPtr &conn,
+                 const std::string &path,
+                 const std::string &interface,
+                 const std::string &signal,
+                 Flags flags) :
+        DBusRemoteObject(conn, path, interface, ""),
+        m_signal(signal),
+        m_flags(flags)
+    {}
+
+    const char *getSignal() const { return m_signal.c_str(); }
+    Flags getFlags() const { return Flags(m_flags); }
+
+    /**
+     * Check that current signal matches the filter.  Necessary
+     * because GIO D-Bus does not know about "path_namespace" and
+     * because G_DBUS_SIGNAL_FLAGS_NO_MATCH_RULE seems to disable all
+     * signal filtering by GIO.
+     */
+    bool matches(const ExtractArgs &context) const
+    {
+        return
+            (m_interface.empty() || m_interface == context.m_interface) &&
+            (m_signal.empty() || m_signal == context.m_signal) &&
+            (m_path.empty() ||
+             ((m_flags & SIGNAL_FILTER_PATH_PREFIX) ?
+              (strlen(context.m_path) > m_path.size() &&
+               !m_path.compare(0, m_path.size(),
+                               context.m_path, m_path.size()) &&
+               context.m_path[m_path.size()] == '/') :
+              m_path == context.m_path));
+    }
+
+ private:
+    std::string m_signal;
+    Flags m_flags;
+};
+
+/**
+ * Helper class for builting a match rule.
+ */
+class Criteria : public std::list<std::string> {
+ public:
+    void add(const char *keyword, const char *value) {
+        if (value && value[0]) {
+            std::string buffer;
+            buffer.reserve(strlen(keyword) + strlen(value) + 3);
+            buffer += keyword;
+            buffer += '=';
+            buffer += '\'';
+            buffer += value;
+            buffer += '\'';
+            push_back(buffer);
+        }
+    }
+
+    std::string createMatchRule() const { return boost::join(*this, ","); }
+};
+
+/**
  * Common functionality of all SignalWatch* classes.
  * @param T     boost::function with the right signature
  */
-template <class T> class SignalWatch
+template <class T> class SignalWatch : public SignalFilter
 {
  public:
     SignalWatch(const DBusRemoteObject &object,
                 const std::string &signal,
                 bool = true)
-      : m_object(object), m_signal(signal), m_tag(0)
+    : SignalFilter(object, signal), m_tag(0), m_manualMatch(false)
+    {
+    }
+
+    SignalWatch(const SignalFilter &filter)
+    : SignalFilter(filter), m_tag(0), m_manualMatch(false)
     {
     }
 
     ~SignalWatch()
     {
-        if (m_tag) {
-            GDBusConnection *connection = m_object.getConnection();
-            if (connection) {
-                g_dbus_connection_signal_unsubscribe(connection, m_tag);
+        try {
+            if (m_tag) {
+                GDBusConnection *connection = getConnection();
+                if (connection) {
+                    g_dbus_connection_signal_unsubscribe(connection, m_tag);
+                }
             }
+            if (m_manualMatch) {
+                DBusClientCall0(GDBusCXX::DBusRemoteObject(getConnection(),
+                                                           "/org/freedesktop/DBus",
+                                                           "org.freedesktop.DBus",
+                                                           "org.freedesktop.DBus"),
+                                "RemoveMatch")(m_matchRule);
+            }
+        } catch (...) {
+            // TODO (?): log error
         }
     }
 
@@ -4540,27 +4972,22 @@ template <class T> class SignalWatch
     const Callback_t &getCallback() const { return m_callback; }
 
  protected:
-    const DBusRemoteObject &m_object;
-    std::string m_signal;
     guint m_tag;
     T m_callback;
-
-    static gboolean isMatched(GDBusMessage *msg, void *data)
-    {
-        SignalWatch *watch = static_cast<SignalWatch*>(data);
-        return boost::iequals(g_dbus_message_get_path(msg), watch->m_object.getPath()) &&
-            g_dbus_message_get_message_type(msg) == G_DBUS_MESSAGE_TYPE_SIGNAL;
-    }
+    bool m_manualMatch;
+    std::string m_matchRule;
 
     void activateInternal(const Callback_t &callback, GDBusSignalCallback cb)
     {
         m_callback = callback;
-        m_tag = g_dbus_connection_signal_subscribe(m_object.getConnection(),
+        m_tag = g_dbus_connection_signal_subscribe(getConnection(),
                                                    NULL,
-                                                   m_object.getInterface(),
-                                                   m_signal.c_str(),
-                                                   m_object.getPath(),
+                                                   getInterface()[0] ? getInterface() : NULL,
+                                                   getSignal()[0] ? getSignal() : NULL,
+                                                   (!(getFlags() & SIGNAL_FILTER_PATH_PREFIX) && getPath()[0]) ? getPath() : NULL,
                                                    NULL,
+                                                   (getFlags() & SIGNAL_FILTER_PATH_PREFIX) ?
+                                                   G_DBUS_SIGNAL_FLAGS_NO_MATCH_RULE :
                                                    G_DBUS_SIGNAL_FLAGS_NONE,
                                                    cb,
                                                    this,
@@ -4568,9 +4995,24 @@ template <class T> class SignalWatch
 
         if (!m_tag) {
             throw std::runtime_error(std::string("activating signal failed: ") +
-                                     "path " + m_object.getPath() +
-                                     " interface " + m_object.getInterface() +
-                                     " member " + m_signal);
+                                     "path " + getPath() +
+                                     " interface " + getInterface() +
+                                     " member " + getSignal());
+        }
+        if (getFlags() & SignalFilter::SIGNAL_FILTER_PATH_PREFIX) {
+            // Need to set up match rules manually.
+            Criteria criteria;
+            criteria.push_back("type='signal'");
+            criteria.add("interface", getInterface());
+            criteria.add("member", getSignal());
+            criteria.add("path_namespace", getPath());
+            m_matchRule = criteria.createMatchRule();
+            DBusClientCall0(GDBusCXX::DBusRemoteObject(getConnection(),
+                                                       "/org/freedesktop/DBus",
+                                                       "org.freedesktop.DBus",
+                                                       "org.freedesktop.DBus"),
+                            "AddMatch")(m_matchRule);
+            m_manualMatch = true;
         }
     }
 };
@@ -4587,6 +5029,10 @@ class SignalWatch0 : public SignalWatch< boost::function<void (void)> >
     {
     }
 
+    SignalWatch0(const SignalFilter &filter)
+        : SignalWatch<Callback_t>(filter)
+    {}
+
     static void internalCallback(GDBusConnection *conn,
                                  const gchar *sender,
                                  const gchar *path,
@@ -4596,7 +5042,13 @@ class SignalWatch0 : public SignalWatch< boost::function<void (void)> >
                                  gpointer data) throw ()
     {
         try {
-            const Callback_t &cb = static_cast< SignalWatch<Callback_t> *>(data)->getCallback();
+            SignalWatch<Callback_t> *watch = static_cast< SignalWatch<Callback_t> *>(data);
+            ExtractArgs context(conn, sender, path, interface, signal);
+            if (!watch->matches(context)) {
+                return;
+            }
+
+            const Callback_t &cb = watch->getCallback();
             cb();
         } catch (const std::exception &ex) {
             g_error("unexpected exception caught in internalCallback(): %s", ex.what());
@@ -4624,6 +5076,10 @@ class SignalWatch1 : public SignalWatch< boost::function<void (const A1 &)> >
     {
     }
 
+    SignalWatch1(const SignalFilter &filter)
+        : SignalWatch<Callback_t>(filter)
+    {}
+
     static void internalCallback(GDBusConnection *conn,
                                  const gchar *sender,
                                  const gchar *path,
@@ -4633,13 +5089,18 @@ class SignalWatch1 : public SignalWatch< boost::function<void (const A1 &)> >
                                  gpointer data) throw()
     {
         try {
-            const Callback_t &cb = static_cast< SignalWatch<Callback_t> *>(data)->getCallback();
+            SignalWatch<Callback_t> *watch = static_cast< SignalWatch<Callback_t> *>(data);
+            ExtractArgs context(conn, sender, path, interface, signal);
+            if (!watch->matches(context)) {
+                return;
+            }
 
             typename dbus_traits<A1>::host_type a1;
 
             GVariantIter iter;
             g_variant_iter_init(&iter, params);
-            dbus_traits<A1>::get(conn, NULL, iter, a1);
+            dbus_traits<A1>::get(context, iter, a1);
+            const Callback_t &cb = watch->getCallback();
             cb(a1);
         } catch (const std::exception &ex) {
             g_error("unexpected exception caught in internalCallback(): %s", ex.what());
@@ -4667,6 +5128,10 @@ class SignalWatch2 : public SignalWatch< boost::function<void (const A1 &, const
     {
     }
 
+    SignalWatch2(const SignalFilter &filter)
+        : SignalWatch<Callback_t>(filter)
+    {}
+
     static void internalCallback(GDBusConnection *conn,
                                  const gchar *sender,
                                  const gchar *path,
@@ -4676,15 +5141,20 @@ class SignalWatch2 : public SignalWatch< boost::function<void (const A1 &, const
                                  gpointer data) throw ()
     {
         try {
-            const Callback_t &cb = static_cast< SignalWatch<Callback_t> *>(data)->getCallback();
+            SignalWatch<Callback_t> *watch = static_cast< SignalWatch<Callback_t> *>(data);
+            ExtractArgs context(conn, sender, path, interface, signal);
+            if (!watch->matches(context)) {
+                return;
+            }
 
             typename dbus_traits<A1>::host_type a1;
             typename dbus_traits<A2>::host_type a2;
 
             GVariantIter iter;
             g_variant_iter_init(&iter, params);
-            dbus_traits<A1>::get(conn, NULL, iter, a1);
-            dbus_traits<A2>::get(conn, NULL, iter, a2);
+            dbus_traits<A1>::get(context, iter, a1);
+            dbus_traits<A2>::get(context, iter, a2);
+            const Callback_t &cb = watch->getCallback();
             cb(a1, a2);
         } catch (const std::exception &ex) {
             g_error("unexpected exception caught in internalCallback(): %s", ex.what());
@@ -4713,6 +5183,10 @@ class SignalWatch3 : public SignalWatch< boost::function<void (const A1 &, const
     {
     }
 
+    SignalWatch3(const SignalFilter &filter)
+        : SignalWatch<Callback_t>(filter)
+    {}
+
     static void internalCallback(GDBusConnection *conn,
                                  const gchar *sender,
                                  const gchar *path,
@@ -4722,7 +5196,11 @@ class SignalWatch3 : public SignalWatch< boost::function<void (const A1 &, const
                                  gpointer data) throw ()
     {
         try {
-            const Callback_t &cb =static_cast< SignalWatch<Callback_t> *>(data)->getCallback();
+            SignalWatch<Callback_t> *watch = static_cast< SignalWatch<Callback_t> *>(data);
+            ExtractArgs context(conn, sender, path, interface, signal);
+            if (!watch->matches(context)) {
+                return;
+            }
 
             typename dbus_traits<A1>::host_type a1;
             typename dbus_traits<A2>::host_type a2;
@@ -4730,9 +5208,10 @@ class SignalWatch3 : public SignalWatch< boost::function<void (const A1 &, const
 
             GVariantIter iter;
             g_variant_iter_init(&iter, params);
-            dbus_traits<A1>::get(conn, NULL, iter, a1);
-            dbus_traits<A2>::get(conn, NULL, iter, a2);
-            dbus_traits<A3>::get(conn, NULL, iter, a3);
+            dbus_traits<A1>::get(context, iter, a1);
+            dbus_traits<A2>::get(context, iter, a2);
+            dbus_traits<A3>::get(context, iter, a3);
+            const Callback_t &cb = watch->getCallback();
             cb(a1, a2, a3);
         } catch (const std::exception &ex) {
             g_error("unexpected exception caught in internalCallback(): %s", ex.what());
@@ -4764,6 +5243,10 @@ class SignalWatch4 : public SignalWatch< boost::function<void (const A1 &, const
     {
     }
 
+    SignalWatch4(const SignalFilter &filter)
+        : SignalWatch<Callback_t>(filter)
+    {}
+
     static void internalCallback(GDBusConnection *conn,
                                  const gchar *sender,
                                  const gchar *path,
@@ -4773,7 +5256,11 @@ class SignalWatch4 : public SignalWatch< boost::function<void (const A1 &, const
                                  gpointer data) throw ()
     {
         try {
-            const Callback_t &cb = static_cast< SignalWatch<Callback_t> *>(data)->getCallback();
+            SignalWatch<Callback_t> *watch = static_cast< SignalWatch<Callback_t> *>(data);
+            ExtractArgs context(conn, sender, path, interface, signal);
+            if (!watch->matches(context)) {
+                return;
+            }
 
             typename dbus_traits<A1>::host_type a1;
             typename dbus_traits<A2>::host_type a2;
@@ -4782,10 +5269,11 @@ class SignalWatch4 : public SignalWatch< boost::function<void (const A1 &, const
 
             GVariantIter iter;
             g_variant_iter_init(&iter, params);
-            dbus_traits<A1>::get(conn, NULL, iter, a1);
-            dbus_traits<A2>::get(conn, NULL, iter, a2);
-            dbus_traits<A3>::get(conn, NULL, iter, a3);
-            dbus_traits<A4>::get(conn, NULL, iter, a4);
+            dbus_traits<A1>::get(context, iter, a1);
+            dbus_traits<A2>::get(context, iter, a2);
+            dbus_traits<A3>::get(context, iter, a3);
+            dbus_traits<A4>::get(context, iter, a4);
+            const Callback_t &cb = watch->getCallback();
             cb(a1, a2, a3, a4);
         } catch (const std::exception &ex) {
             g_error("unexpected exception caught in internalCallback(): %s", ex.what());
@@ -4815,6 +5303,10 @@ class SignalWatch5 : public SignalWatch< boost::function<void (const A1 &, const
     {
     }
 
+    SignalWatch5(const SignalFilter &filter)
+        : SignalWatch<Callback_t>(filter)
+    {}
+
     static void internalCallback(GDBusConnection *conn,
                                  const gchar *sender,
                                  const gchar *path,
@@ -4824,7 +5316,11 @@ class SignalWatch5 : public SignalWatch< boost::function<void (const A1 &, const
                                  gpointer data)
     {
         try {
-            const Callback_t &cb = static_cast< SignalWatch<Callback_t> *>(data)->getCallback();
+            SignalWatch<Callback_t> *watch = static_cast< SignalWatch<Callback_t> *>(data);
+            ExtractArgs context(conn, sender, path, interface, signal);
+            if (!watch->matches(context)) {
+                return;
+            }
 
             typename dbus_traits<A1>::host_type a1;
             typename dbus_traits<A2>::host_type a2;
@@ -4834,11 +5330,12 @@ class SignalWatch5 : public SignalWatch< boost::function<void (const A1 &, const
 
             GVariantIter iter;
             g_variant_iter_init(&iter, params);
-            dbus_traits<A1>::get(conn, NULL, iter, a1);
-            dbus_traits<A2>::get(conn, NULL, iter, a2);
-            dbus_traits<A3>::get(conn, NULL, iter, a3);
-            dbus_traits<A4>::get(conn, NULL, iter, a4);
-            dbus_traits<A5>::get(conn, NULL, iter, a5);
+            dbus_traits<A1>::get(context, iter, a1);
+            dbus_traits<A2>::get(context, iter, a2);
+            dbus_traits<A3>::get(context, iter, a3);
+            dbus_traits<A4>::get(context, iter, a4);
+            dbus_traits<A5>::get(context, iter, a5);
+            const Callback_t &cb = watch->getCallback();
             cb(a1, a2, a3, a4, a5);
         } catch (const std::exception &ex) {
             g_error("unexpected exception caught in internalCallback(): %s", ex.what());
@@ -4871,6 +5368,10 @@ class SignalWatch6 : public SignalWatch< boost::function<void (const A1 &, const
     {
     }
 
+    SignalWatch6(const SignalFilter &filter)
+        : SignalWatch<Callback_t>(filter)
+    {}
+
     static void internalCallback(GDBusConnection *conn,
                                  const gchar *sender,
                                  const gchar *path,
@@ -4880,7 +5381,11 @@ class SignalWatch6 : public SignalWatch< boost::function<void (const A1 &, const
                                  gpointer data) throw ()
     {
         try {
-            const Callback_t &cb = static_cast< SignalWatch<Callback_t> *>(data)->getCallback();
+            SignalWatch<Callback_t> *watch = static_cast< SignalWatch<Callback_t> *>(data);
+            ExtractArgs context(conn, sender, path, interface, signal);
+            if (!watch->matches(context)) {
+                return;
+            }
 
             typename dbus_traits<A1>::host_type a1;
             typename dbus_traits<A2>::host_type a2;
@@ -4891,12 +5396,13 @@ class SignalWatch6 : public SignalWatch< boost::function<void (const A1 &, const
 
             GVariantIter iter;
             g_variant_iter_init(&iter, params);
-            dbus_traits<A1>::get(conn, NULL, iter, a1);
-            dbus_traits<A2>::get(conn, NULL, iter, a2);
-            dbus_traits<A3>::get(conn, NULL, iter, a3);
-            dbus_traits<A4>::get(conn, NULL, iter, a4);
-            dbus_traits<A5>::get(conn, NULL, iter, a5);
-            dbus_traits<A6>::get(conn, NULL, iter, a6);
+            dbus_traits<A1>::get(context, iter, a1);
+            dbus_traits<A2>::get(context, iter, a2);
+            dbus_traits<A3>::get(context, iter, a3);
+            dbus_traits<A4>::get(context, iter, a4);
+            dbus_traits<A5>::get(context, iter, a5);
+            dbus_traits<A6>::get(context, iter, a6);
+            const Callback_t &cb = watch->getCallback();
             cb(a1, a2, a3, a4, a5, a6);
         } catch (const std::exception &ex) {
             g_error("unexpected exception caught in internalCallback(): %s", ex.what());

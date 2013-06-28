@@ -688,6 +688,8 @@ protected:
     TSyncItem &aItem,         // the item
     TStatusCommand &aStatusCommand
   );
+  virtual localstatus logicDeleteItemByID(TSyncItem &aSyncItem) { return apiDeleteItem((TMultiFieldItem &)aSyncItem); }
+
   /// process item (according to operation: add/delete/replace - and for future: copy/move)
   virtual bool implProcessItem(
     TSyncItem *aItemP,         // the item

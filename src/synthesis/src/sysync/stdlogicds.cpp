@@ -302,7 +302,7 @@ localstatus TStdLogicDS::performStartSync(void)
   fNumRefOnlyItems=0;
   if (sta==LOCERR_OK) {
     // now get data from DB
-    if (!isRefreshOnly() || (isSlowSync() && isResuming())) {
+    if (!isRefreshOnly() || (isRefreshOnly() && isCacheData()) || (isSlowSync() && isResuming())) {
       // not only updating from client, so read all items now
       // Note: for a resumed slow updating from client only, we need the
       //   currently present syncset as well as we need it to detect
@@ -1532,6 +1532,33 @@ localstatus TStdLogicDS::dsBeforeStateChange(TLocalEngineDSState aOldState,TLoca
       sta = startDataWrite();
     }
   } // client
+  if (aNewState==dssta_serverseenclientmods) {
+    // Can only happen in server. Implement removal of unmatched items
+    // when in caching mode.
+    if (fCacheData && fSlowSync) {
+      TSyncItemPContainer::iterator pos=fItems.begin();
+      while (pos!=fItems.end()) {
+        TSyncItem *syncitemP = (*pos);
+        if (syncitemP->getSyncOp() == sop_wants_add) {
+          PDEBUGPRINTFX(DBG_DATA,("caching mode: remove unmatched item %s",
+                                  syncitemP->getLocalID()));
+          syncitemP->setSyncOp(sop_delete);
+          localstatus status = logicDeleteItemByID(*syncitemP);
+          if (status != LOCERR_OK) {
+            return status;
+          } else {
+            TSyncItemPContainer::iterator next = pos;
+            ++next;
+            fItems.erase(pos);
+            pos = next;
+            fLocalItemsDeleted++;
+          }
+        } else {
+          ++pos;
+        }
+      }
+    }
+  }
   if (aNewState==dssta_completed && !isAborted()) {
     // finish writing data now anyway
     endDataWrite();

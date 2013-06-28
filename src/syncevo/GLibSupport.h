@@ -37,6 +37,10 @@ typedef void *GMainLoop;
 #include <boost/intrusive_ptr.hpp>
 #include <boost/utility.hpp>
 #include <boost/foreach.hpp>
+#include <boost/function.hpp>
+#include <boost/bind.hpp>
+#include <boost/type_traits/remove_pointer.hpp>
+#include <boost/type_traits/function_traits.hpp>
 
 #include <iterator>
 
@@ -76,8 +80,13 @@ GLibSelectResult GLibSelect(GMainLoop *loop, int fd, int direction, Timespec *ti
  * functions must be put into the boost namespace. The type itself is
  * *inside* the SyncEvolution namespace.
  *
+ * connectSignal() connects a GObject signal to a boost::function with
+ * the function signature S. Returns the handler ID, which can be
+ * passed to g_signal_handler_disconnect() to remove the connection.
+ *
  * Example:
  * SE_GOBJECT_TYPE(GFile)
+ * SE_GOBJECT_TYPE(GObject)
  * SE_BEGIN_CXX
  * {
  *   // reference normally increased during construction,
@@ -86,6 +95,17 @@ GLibSelectResult GLibSelect(GMainLoop *loop, int fd, int direction, Timespec *ti
  *   GFile *filec = filecxx.get(); // does not increase reference count
  *   // file freed here as filecxx gets destroyed
  * }
+ *
+ * GObjectCXX object(...);
+ * // Define signature explicitly because it cannot be guessed from
+ * // boost::bind() result.
+ * object.connectSignal<void (GObject *gobject, GParamSpec *pspec)>("notify",
+ *                                                                  boost::bind(...));
+ * // Signature is taken from boost::function parameter.
+ * guint handlerID =
+ *     object.connectSignal("notify",
+ *                          boost::function<void (GObject *, GParamSpec *)>(boost::bind(...)));
+ * object.disconnectSignal(handlerID);
  * SE_END_CXX
  */
 #define SE_GOBJECT_TYPE(_x) \
@@ -98,23 +118,166 @@ GLibSelectResult GLibSelect(GMainLoop *loop, int fd, int direction, Timespec *ti
          _x ## CXX() {} \
          _x ## CXX(const _x ## CXX &other) : boost::intrusive_ptr<_x>(other) {} \
          operator _x * () { return get(); } \
+         _x * ref() const { return static_cast<_x *>(g_object_ref(get())); } \
 \
          static  _x ## CXX steal(_x *ptr) { return _x ## CXX(ptr, false); } \
+\
+         template<class S> guint connectSignal(const char *signal, \
+                                               const boost::function<S> &callback) \
+         { \
+             return ConnectGObjectSignal(static_cast<gpointer>(get()), signal, callback); \
+         } \
+         void disconnectSignal(guint handlerID) { \
+             g_signal_handler_disconnect(static_cast<gpointer>(get()), \
+                                         handlerID); \
+         } \
     }; \
     SE_END_CXX \
+
+/**
+ * Defines a CXX smart pointer similar to SE_GOBJECT_TYPE,
+ * but for types which have their own _ref and _unref
+ * calls.
+ *
+ * Example:
+ * SE_GLIB_TYPE(GMainLoop, g_main_loop)
+ */
+#define SE_GLIB_TYPE(_type, _func_prefix) \
+    void inline intrusive_ptr_add_ref(_type *ptr) { _func_prefix ## _ref(ptr); } \
+    void inline intrusive_ptr_release(_type *ptr) { _func_prefix ## _unref(ptr); } \
+    SE_BEGIN_CXX \
+        typedef boost::intrusive_ptr<_type> _type ## CXX; \
+    SE_END_CXX
 
 SE_END_CXX
 
 SE_GOBJECT_TYPE(GFile)
 SE_GOBJECT_TYPE(GFileMonitor)
-
-void inline intrusive_ptr_add_ref(GMainLoop *ptr) { g_main_loop_ref(ptr); }
-void inline intrusive_ptr_release(GMainLoop *ptr) { g_main_loop_unref(ptr); }
-SE_BEGIN_CXX
-typedef boost::intrusive_ptr<GMainLoop> GMainLoopCXX;
-SE_END_CXX
+SE_GLIB_TYPE(GMainLoop, g_main_loop)
 
 SE_BEGIN_CXX
+
+// Signal callback. Specializations will handle varying number of parameters.
+template<class S> struct GObjectSignalHandler {
+    // static void handler();
+    // No specialization defined for the requested function prototype.
+};
+
+template<> struct GObjectSignalHandler<void ()> {
+    static void handler(gpointer data) throw () {
+        try {
+            (*reinterpret_cast< boost::function<void ()> *>(data))();
+        } catch (...) {
+            Exception::handle(HANDLE_EXCEPTION_FATAL);
+        }
+    }
+};
+template<class A1> struct GObjectSignalHandler<void (A1)> {
+    static void handler(A1 a1, gpointer data) throw () {
+        try {
+            (*reinterpret_cast< boost::function<void (A1)> *>(data))(a1);
+        } catch (...) {
+            Exception::handle(HANDLE_EXCEPTION_FATAL);
+        }
+    }
+};
+template<class A1, class A2> struct GObjectSignalHandler<void (A1, A2)> {
+    static void handler(A1 a1, A2 a2, gpointer data) throw () {
+        try {
+            (*reinterpret_cast< boost::function<void (A1, A2)> *>(data))(a1, a2);
+        } catch (...) {
+            Exception::handle(HANDLE_EXCEPTION_FATAL);
+        }
+    }
+};
+template<class A1, class A2, class A3> struct GObjectSignalHandler<void (A1, A2, A3)> {
+    static void handler(A1 a1, A2 a2, A3 a3, gpointer data) throw () {
+        try {
+            (*reinterpret_cast< boost::function<void (A1, A2, A3)> *>(data))(a1, a2, a3);
+        } catch (...) {
+            Exception::handle(HANDLE_EXCEPTION_FATAL);
+        }
+    }
+};
+template<class A1, class A2, class A3, class A4> struct GObjectSignalHandler<void (A1, A2, A3, A4)> {
+    static void handler(A1 a1, A2 a2, A3 a3, A4 a4, gpointer data) throw () {
+        try {
+            (*reinterpret_cast< boost::function<void (A1, A2, A3, A4)> *>(data))(a1, a2, a3, a4);
+        } catch (...) {
+            Exception::handle(HANDLE_EXCEPTION_FATAL);
+        }
+    }
+};
+template<class A1, class A2, class A3, class A4, class A5> struct GObjectSignalHandler<void (A1, A2, A3, A4, A5)> {
+    static void handler(A1 a1, A2 a2, A3 a3, A4 a4, A5 a5, gpointer data) throw () {
+        try {
+            (*reinterpret_cast< boost::function<void (A1, A2, A3, A4, A5)> *>(data))(a1, a2, a3, a4, a5);
+        } catch (...) {
+            Exception::handle(HANDLE_EXCEPTION_FATAL);
+        }
+    }
+};
+template<class A1, class A2, class A3, class A4, class A5, class A6> struct GObjectSignalHandler<void (A1, A2, A3, A4, A5, A6)> {
+    static void handler(A1 a1, A2 a2, A3 a3, A4 a4, A5 a5, A6 a6, gpointer data) throw () {
+        try {
+            (*reinterpret_cast< boost::function<void (A1, A2, A3, A4, A5, A6)> *>(data))(a1, a2, a3, a4, a5, a6);
+        } catch (...) {
+            Exception::handle(HANDLE_EXCEPTION_FATAL);
+        }
+    }
+};
+template<class A1, class A2, class A3, class A4, class A5, class A6, class A7> struct GObjectSignalHandler<void (A1, A2, A3, A4, A5, A6, A7)> {
+    static void handler(A1 a1, A2 a2, A3 a3, A4 a4, A5 a5, A6 a6, A7 a7, gpointer data) throw () {
+        try {
+            (*reinterpret_cast< boost::function<void (A1, A2, A3, A4, A5, A6, A7)> *>(data))(a1, a2, a3, a4, a5, a6, a7);
+        } catch (...) {
+            Exception::handle(HANDLE_EXCEPTION_FATAL);
+        }
+    }
+};
+template<class A1, class A2, class A3, class A4, class A5, class A6, class A7, class A8> struct GObjectSignalHandler<void (A1, A2, A3, A4, A5, A6, A7, A8)> {
+    static void handler(A1 a1, A2 a2, A3 a3, A4 a4, A5 a5, A6 a6, A7 a7, A8 a8, gpointer data) throw () {
+        try {
+            (*reinterpret_cast< boost::function<void (A1, A2, A3, A4, A5, A6, A7, A8)> *>(data))(a1, a2, a3, a4, a5, a6, a7, a8);
+        } catch (...) {
+            Exception::handle(HANDLE_EXCEPTION_FATAL);
+        }
+    }
+};
+template<class A1, class A2, class A3, class A4, class A5, class A6, class A7, class A8, class A9> struct GObjectSignalHandler<void (A1, A2, A3, A4, A5, A6, A7, A8, A9)> {
+    static void handler(A1 a1, A2 a2, A3 a3, A4 a4, A5 a5, A6 a6, A7 a7, A8 a8, A9 a9, gpointer data) throw () {
+        try {
+            (*reinterpret_cast< boost::function<void (A1, A2, A3, A4, A5, A6, A7, A8, A9)> *>(data))(a1, a2, a3, a4, a5, a6, a7, a8, a9);
+        } catch (...) {
+            Exception::handle(HANDLE_EXCEPTION_FATAL);
+        }
+    }
+};
+
+// Frees the instance of boost::function which was allocated
+// by ConnectGObjectSignal.
+template<class S> void GObjectSignalDestroy(gpointer data, GClosure *closure) throw ()
+{
+    try {
+        delete reinterpret_cast< boost::function<void ()> *>(data);
+    } catch (...) {
+        Exception::handle(HANDLE_EXCEPTION_FATAL);
+    }
+}
+
+/**
+ * implements SE_GOBJECT_TYPE() connectSignal()
+ */
+template<class S> guint ConnectGObjectSignal(gpointer instance,
+                                             const char *signal,
+                                             const boost::function<S> &callback)
+{
+    return g_signal_connect_data(instance, signal,
+                                 G_CALLBACK(&GObjectSignalHandler<S>::handler),
+                                 new boost::function<S>(callback),
+                                 &GObjectSignalDestroy<S>,
+                                 GConnectFlags(0));
+}
 
 /**
  * Wrapper around g_file_monitor_file().
@@ -132,17 +295,6 @@ class GLibNotify : public boost::noncopyable
     GFileMonitorCXX m_monitor;
     callback_t m_callback;
 };
-
-/**
- * always throws an exception, including information from GError if available:
- * <action>: <error message>|failure
- *
- * Takes ownership of the error and frees it.
- *
- * Deprecated. Better use GErrorCXX.
- */
-void GLibErrorException(const std::string &action, GError *error);
-
 
 /**
  * Wraps GError. Where a GError** is expected, simply pass
@@ -219,6 +371,7 @@ struct GErrorCXX {
      * <action>: <error message>|failure
      */
     void throwError(const std::string &action);
+    static void throwError(const std::string &action, const GError *err);
 };
 
 template<class T> void NoopDestructor(T *) {}
@@ -415,6 +568,260 @@ class PlainGStr : public boost::shared_ptr<gchar>
         operator const gchar *() const { return &**this; }
         const gchar *c_str() const { return &**this; }
 };
+
+// non-void result, three parameters to finish function
+template<class T, class F, F finish, class A1, int arity> class GAsyncReadyCXX {
+ public:
+    typedef boost::function<void (const GError *, T)> CXXFunctionCB_t;
+
+    static void handleGLibResult(GObject *sourceObject,
+                                 GAsyncResult *result,
+                                 gpointer userData) throw () {
+        try {
+            GErrorCXX gerror;
+            T t = finish(reinterpret_cast<A1>(sourceObject),
+                         result, gerror);
+            CXXFunctionCB_t *cb = static_cast<CXXFunctionCB_t *>(userData);
+            (*cb)(gerror, t);
+        } catch (...) {
+            // called from C, must not let exception escape
+            Exception::handle(HANDLE_EXCEPTION_FATAL);
+        }
+    }
+};
+
+// non-void result type, two parameters for finish,
+// first parameter is not GAsyncResult (= must be object pointer)
+template<class T, class F, F finish, class A1> class GAsyncReadyCXX<T, F, finish, A1, 2> {
+ public:
+    typedef boost::function<void (T)> CXXFunctionCB_t;
+
+    static void handleGLibResult(GObject *sourceObject,
+                                 GAsyncResult *result,
+                                 gpointer userData) throw () {
+        try {
+            T t = finish(reinterpret_cast<A1>(sourceObject),
+                         result);
+            CXXFunctionCB_t *cb = static_cast<CXXFunctionCB_t *>(userData);
+            (*cb)(t);
+        } catch (...) {
+            // called from C, must not let exception escape
+            Exception::handle(HANDLE_EXCEPTION_FATAL);
+        }
+    }
+};
+
+// non-void result type, two parameters for finish,
+// first parameter is GAsyncResult (= no object pointer)
+template<class T, class F, F finish> class GAsyncReadyCXX<T, F, finish, GAsyncResult *, 2> {
+ public:
+    typedef boost::function<void (const GError *, T)> CXXFunctionCB_t;
+
+    static void handleGLibResult(GObject *sourceObject,
+                                 GAsyncResult *result,
+                                 gpointer userData) throw () {
+        try {
+            GErrorCXX gerror;
+            T t = finish(result, gerror);
+            CXXFunctionCB_t *cb = static_cast<CXXFunctionCB_t *>(userData);
+            (*cb)(gerror, t);
+        } catch (...) {
+            // called from C, must not let exception escape
+            Exception::handle(HANDLE_EXCEPTION_FATAL);
+        }
+    }
+};
+
+// void result type, three parameters of finish
+template<class F, F finish, class A1> class GAsyncReadyCXX<void, F, finish, A1, 3> {
+ public:
+    typedef boost::function<void (const GError *)> CXXFunctionCB_t;
+
+    static void handleGLibResult(GObject *sourceObject,
+                                 GAsyncResult *result,
+                                 gpointer userData) throw () {
+        try {
+            GErrorCXX gerror;
+            finish(reinterpret_cast<A1>(sourceObject),
+                   result, gerror);
+            CXXFunctionCB_t *cb = static_cast<CXXFunctionCB_t *>(userData);
+            try {
+                (*cb)(gerror);
+            } catch (...) {
+                delete cb;
+                throw;
+            }
+            delete cb;
+        } catch (...) {
+            // called from C, must not let exception escape
+            Exception::handle(HANDLE_EXCEPTION_FATAL);
+        }
+    }
+};
+
+// void result type, two parameters of finish,
+// first is not GAsyncResult (= must be object pointer)
+template<class F, F finish, class A1> class GAsyncReadyCXX<void, F, finish, A1, 2> {
+ public:
+    typedef boost::function<void ()> CXXFunctionCB_t;
+
+    static void handleGLibResult(GObject *sourceObject,
+                                 GAsyncResult *result,
+                                 gpointer userData) throw () {
+        try {
+            finish(reinterpret_cast<A1>(sourceObject),
+                   result);
+            CXXFunctionCB_t *cb = static_cast<CXXFunctionCB_t *>(userData);
+            try {
+                (*cb)();
+            } catch (...) {
+                delete cb;
+                throw;
+            }
+            delete cb;
+        } catch (...) {
+            // called from C, must not let exception escape
+            Exception::handle(HANDLE_EXCEPTION_FATAL);
+        }
+    }
+};
+
+// void result type, two parameters of finish,
+// first is GAsyncResult (= no object pointer)
+template<class F, F finish> class GAsyncReadyCXX<void, F, finish, GAsyncResult *, 2> {
+ public:
+    typedef boost::function<void (const GError *)> CXXFunctionCB_t;
+
+    static void handleGLibResult(GObject *sourceObject,
+                                 GAsyncResult *result,
+                                 gpointer userData) throw () {
+        try {
+            GErrorCXX gerror;
+            finish(result, gerror);
+            CXXFunctionCB_t *cb = static_cast<CXXFunctionCB_t *>(userData);
+            try {
+                (*cb)(gerror);
+            } catch (...) {
+                delete cb;
+                throw;
+            }
+            delete cb;
+        } catch (...) {
+            // called from C, must not let exception escape
+            Exception::handle(HANDLE_EXCEPTION_FATAL);
+        }
+    }
+};
+
+/** convenience macro for picking the GAsyncReadyCXX that matches the _prepare call */
+#define SYNCEVO_GLIB_CALL_ASYNC_CXX(_prepare) \
+    GAsyncReadyCXX< boost::function_traits<boost::remove_pointer<typeof(_prepare ## _finish)>::type>::result_type, \
+                    typeof(_prepare ## _finish) *, \
+                    & _prepare ## _finish, \
+                    boost::function_traits<boost::remove_pointer<typeof(_prepare ## _finish)>::type>::arg1_type, \
+                    boost::function_traits<boost::remove_pointer<typeof(_prepare ## _finish)>::type>::arity >
+
+/**
+ * Macro for asynchronous methods which use a GAsyncReadyCallback to
+ * indicate completion. The assumption is that there is a matching
+ * _finish function for the function which starts the operation.
+ *
+ * The boost::function callback will be called exactly once, with a
+ * GError * pointer as first parameter (NULL if the _finish function
+ * did not set an error), followed by the result of the _finish
+ * function (unless that function returns void).
+ *
+ * Use boost::bind() with a boost::weak_ptr as second
+ * parameter when the callback belongs to an instance which is
+ * not guaranteed to be around when the operation completes.
+ *
+ * Example:
+ *
+ *  static void asyncCB(const GError *gerror, const char *func, bool &failed, bool &done) {
+ *      done = true;
+ *      if (gerror) {
+ *          failed = true;
+ *          // log gerror->message or store in GErrorCXX
+ *      }
+ *  }
+ *
+ *  bool done = false, failed = false;
+ *  SYNCEVO_GLIB_CALL_ASYNC(folks_individual_aggregator_prepare,
+ *                          boost::bind(asyncCB, _1,
+ *                                      "folks_individual_aggregator_prepare",
+ *                                      boost::ref(failed), boost::ref(done)),
+ *                          aggregator);
+ *
+ *  // Don't continue unless finished, because the callback will write
+ *  // into "done" and possibly "failed".
+ *  while (!done) {
+ *      g_main_context_iteration(NULL, true);
+ *  }
+ *
+ * @param _prepare     name of the function which starts the operation
+ * @param _cb          boost::function with GError pointer and optional result value;
+ *                     exceptions are considered fatal
+ * @param _args        parameters of _prepare, without the final GAsyncReadyCallback + user_data pair;
+ *                     usually at least a GCancellable pointer is part of the arguments
+ */
+#define SYNCEVO_GLIB_CALL_ASYNC(_prepare, _cb, _args...) \
+    _prepare(_args, \
+             SYNCEVO_GLIB_CALL_ASYNC_CXX(_prepare)::handleGLibResult, \
+             new SYNCEVO_GLIB_CALL_ASYNC_CXX(_prepare)::CXXFunctionCB_t(_cb))
+
+// helper class for finish method with some kind of result other than void
+template<class T> class GAsyncReadyDoneCXX
+{
+ public:
+    template<class R> static void storeResult(GErrorCXX &gerrorStorage,
+                                              R &resultStorage,
+                                              bool &done,
+                                              const GError *gerror,
+                                              T result) {
+        done = true;
+        gerrorStorage = gerror;
+        resultStorage = result;
+    }
+
+    template<class R> static boost::function<void (const GError *, T)> createCB(R &result, GErrorCXX &gerror, bool &done) {
+        return boost::bind(storeResult<R>, boost::ref(gerror), boost::ref(result), boost::ref(done), _1, _2);
+    }
+};
+
+// helper class for finish method with void result
+template<> class GAsyncReadyDoneCXX<void>
+{
+ public:
+    static void storeResult(GErrorCXX &gerrorStorage,
+                            bool &done,
+                            const GError *gerror) {
+        done = true;
+        gerrorStorage = gerror;
+    }
+
+    static boost::function<void (const GError *)> createCB(const int *dummy, GErrorCXX &gerror, bool &done) {
+        return boost::bind(storeResult, boost::ref(gerror), boost::ref(done), _1);
+    }
+};
+
+/**
+ * Like SYNCEVO_GLIB_CALL_ASYNC, but blocks until the operation
+ * has finished.
+ *
+ * @param _res         an instance which will hold the result when done, NULL when result is void
+ * @param _gerror      a GErrorCXX instance which will hold an error
+ *                     pointer afterwards in case of a failure
+ */
+#define SYNCEVO_GLIB_CALL_SYNC(_res, _gerror, _prepare, _args...) \
+    do { \
+        bool done = false; \
+        SYNCEVO_GLIB_CALL_ASYNC(_prepare, \
+                                GAsyncReadyDoneCXX<boost::function<typeof(_prepare ## _finish)>::result_type>::createCB(_res, _gerror, done), \
+                                _args); \
+        while (!done) { \
+            g_main_context_iteration(NULL, true); \
+        } \
+    } while (false); \
 
 #endif
 

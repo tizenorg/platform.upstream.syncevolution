@@ -1844,7 +1844,7 @@ void TCustomImplDS::implMarkOnlyUngeneratedForResume(void)
           }
         }
       }
-      else if (!isRefreshOnly()) {
+      else if (!isRefreshOnly() || (isRefreshOnly() && isCacheData())) {
         // not slow sync, and not refresh from remote only - mark those that are actually are involved
         if (pos!=fMapTable.end()) {
           // known item, needs a mark only if record is modified (and updates reported at all)
@@ -2110,7 +2110,7 @@ localstatus TCustomImplDS::implGetItem(
   TMultiFieldItem *myitemP=NULL;
 
   // short-cut if refreshing only and not slowsync resuming (then we need the items for comparison)
-  if (isRefreshOnly() && !(isResuming() && isSlowSync()))
+  if (isRefreshOnly() && !isCacheData() && !(isResuming() && isSlowSync()))
     return sta; // aEof is set, return nothing
 
   TP_DEFIDX(li);
@@ -2249,7 +2249,7 @@ localstatus TCustomImplDS::implGetItem(
                 // this item apparently was already slow-sync-matched before the suspend - still show it for reference to avoid re-adding it
                 sop=sop_reference_only;
               }
-              else if (!isRefreshOnly()) {
+              else if (!isRefreshOnly() || (isRefreshOnly() && isCacheData())) {
                 // item is already in map: check if this is an already detected, but unfinished add
                 if (!((*pos).mapflags & mapflag_pendingAddConfirm)) {
                   // is a replace (not an add): changed if mod date newer or resend flagged (AND updates enabled)
@@ -2337,7 +2337,10 @@ localstatus TCustomImplDS::implGetItem(
               // session, so just leave it out for now)
               // Note: this is first-time add detection. If we get this reported as sop_wants_add below, a map with
               //       mapflag_pendingAddConfirm will be created for it.
-              if (isRefreshOnly()) {
+              if (isRefreshOnly() && isCacheData()) {
+                PDEBUGPRINTFX(DBG_ADMIN+DBG_EXOTIC,("New item (no map yet) detected during Refresh only -> ignore for now, will be deleted later unless matched against peer item"));
+                sop=sop_none;
+              } else if (isRefreshOnly()) {
                 PDEBUGPRINTFX(DBG_ADMIN+DBG_EXOTIC,("New item (no map yet) detected during Refresh only -> ignore for now, will be added in next two-way sync"));
                 sop=sop_none;
               }
@@ -2532,7 +2535,7 @@ localstatus TCustomImplDS::implStartDataWrite()
         // - transaction starts implicitly when first INSERT / UPDATE / DELETE occurs
         // - resumed slow refreshes must NOT zap the sync set again!
         // - prevent zapping when datastore is in readonly mode!
-        if (fRefreshOnly && fSlowSync && !isResuming() && !fReadOnly) {
+        if (fRefreshOnly && !fCacheData && fSlowSync && !isResuming() && !fReadOnly) {
           // - make sure we have at least one pev_deleting event, in case app tracks it to see if session caused changes to DB
           DB_PROGRESS_EVENT(this,pev_deleting,0,0,0);
           // now, we need to zap the DB first
@@ -3163,7 +3166,7 @@ localstatus TCustomImplDS::implSaveEndOfSession(bool aUpdateAnchors)
   PDEBUGBLOCKCOLL("SaveEndOfSession");
   // update TCustomImplDS dsSavedAdmin variables (other levels have already updated their variables
   if (aUpdateAnchors) {
-    if (!fRefreshOnly || fSlowSync) {
+    if (!fRefreshOnly || (fRefreshOnly && fCacheData) || fSlowSync) {
       // This was really a two-way sync or we implicitly know that
       // we are now in sync with remote (like after one-way-from-remote refresh = reload local)
       #ifdef BASED_ON_BINFILE_CLIENT

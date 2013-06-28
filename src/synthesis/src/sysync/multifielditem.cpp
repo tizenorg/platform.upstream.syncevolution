@@ -1356,15 +1356,15 @@ bool TMultiFieldItem::checkItem(TLocalEngineDS *aDatastoreP)
 // - also updates other item to make sure it is equal to the winning after the merge
 // sets (but does not reset) change status of this and other item.
 // Note that changes of non-relevant fields are not reported here.
-void TMultiFieldItem::mergeWith(TSyncItem &aItem, bool &aChangedThis, bool &aChangedOther, TLocalEngineDS *aDatastoreP)
+void TMultiFieldItem::mergeWith(TSyncItem &aItem, bool &aChangedThis, bool &aChangedOther, TLocalEngineDS *aDatastoreP, int mode)
 {
   TMultiFieldItem *multifielditemP = castToSameTypeP(&aItem);
   if (!multifielditemP) return;
   // do the merge
-  if (fItemTypeP)
+  if (fItemTypeP && mode == MERGE_OPTION_FROM_CONFIG)
     fItemTypeP->mergeItems(*this,*multifielditemP,aChangedThis,aChangedOther,aDatastoreP);
   else
-    standardMergeWith(*multifielditemP,aChangedThis,aChangedOther);
+    standardMergeWith(*multifielditemP,aChangedThis,aChangedOther, mode);
   // show result
   OBJDEBUGPRINTFX(getItemType()->getSession(),DBG_DATA+DBG_CONFLICT,(
     "mergeWith() final status: thisitem: %schanged, otheritem: %schanged (relevant; eqm_none field changes are not indicated)",
@@ -1380,7 +1380,8 @@ void TMultiFieldItem::mergeWith(TSyncItem &aItem, bool &aChangedThis, bool &aCha
 // - also updates other item to make sure it is equal to the winning after the merge
 // returns update status of this and other item. Note that changes of non-relevant fields are
 // not reported here.
-void TMultiFieldItem::standardMergeWith(TMultiFieldItem &aItem, bool &aChangedThis, bool &aChangedOther)
+void TMultiFieldItem::standardMergeWith(TMultiFieldItem &aItem, bool &aChangedThis, bool &aChangedOther,
+                                        int mode)
 {
   // same type of multifield, try to merge
   for (sInt16 i=0; i<fFieldDefinitionsP->numFields(); i++) {
@@ -1401,7 +1402,7 @@ void TMultiFieldItem::standardMergeWith(TMultiFieldItem &aItem, bool &aChangedTh
       bool winning = winningField.isAssigned();
       bool loosing = loosingField.isAssigned();
       // - now decide what to do
-      if (sep!=mem_none) {
+      if (sep!=mem_none && mode == MERGE_OPTION_FROM_CONFIG) {
         // merge enabled
         PDEBUGPRINTFX(DBG_DATA+DBG_CONFLICT,(
           "Field '%s' available and enabled for merging, mode/sep=0x%04hX, %srelevant",
@@ -1483,7 +1484,11 @@ void TMultiFieldItem::standardMergeWith(TMultiFieldItem &aItem, bool &aChangedTh
       //   assignment just passes the proxy)
       if (!mergerelevant) {
         // everything is handled by the field assignment mechanisms
-        loosingField = winningField;
+        if (mode == MERGE_OPTION_CHANGE_THIS) {
+          winningField = loosingField;
+        } else {
+          loosingField = winningField;
+        }
       }
       else if (winningField!=loosingField) {
         // merge relevant fields will get more sophisticated treatment, such
@@ -1498,16 +1503,17 @@ void TMultiFieldItem::standardMergeWith(TMultiFieldItem &aItem, bool &aChangedTh
           FMT_LENGTH_LIMITED(30,wfv.c_str()),FMT_LENGTH_LIMITED(30,lfv.c_str())
         ));
         #endif
-        // update loosing item, too
-        if (loosingField.isShortVers(winningField,fItemTypeP->getFieldOptions(i)->maxsize)) {
+        // update loosing item, too, unless the winning field is shorter or explicitly requested
+        if (mode == MERGE_OPTION_CHANGE_THIS ||
+            loosingField.isShortVers(winningField,fItemTypeP->getFieldOptions(i)->maxsize)) {
           // winning field is short version of loosing field -> loosing field is "better", use it
           winningField=loosingField;
-          if (mergerelevant) aChangedThis=true;
+          aChangedThis=true;
         }
         else {
           // standard case, loosing field is replaced by winning field
           loosingField=winningField;
-          if (mergerelevant) aChangedOther=true;
+          aChangedOther=true;
         }
         // this is some kind of item-level merge as well
         #ifdef SYDEBUG

@@ -86,9 +86,14 @@ void LocalTransportAgent::start()
                               m_clientContext.c_str(),
                               context.c_str()));
     }
-    if (m_clientContext == m_server->getContextName()) {
-        SE_THROW(StringPrintf("invalid local sync inside context '%s', need second context with different databases", context.c_str()));
-    }
+    // TODO (?): check that there are no conflicts between the active
+    // sources. The old "contexts must be different" check achieved that
+    // via brute force (because by definition, databases from different
+    // contexts are meant to be independent), but it was too coarse
+    // and ruled out valid configurations.
+    // if (m_clientContext == m_server->getContextName()) {
+    //     SE_THROW(StringPrintf("invalid local sync inside context '%s', need second context with different databases", context.c_str()));
+    // }
 
     if (m_forkexec) {
         SE_THROW("local transport already started");
@@ -748,7 +753,8 @@ class LocalTransportAgentChild : public TransportAgent, private LoggerBase
             const std::string &sourceName = entry.first;
             const std::string &targetName = entry.second.first;
             std::string sync = entry.second.second;
-            if (sync != "disabled") {
+            SyncMode mode = StringToSyncMode(sync);
+            if (mode != SYNC_NONE) {
                 SyncSourceNodes targetNodes = m_client->getSyncSourceNodes(targetName);
                 SyncSourceConfig targetSource(targetName, targetNodes);
                 string fullTargetName = clientContext + "/" + targetName;
@@ -772,16 +778,27 @@ class LocalTransportAgentChild : public TransportAgent, private LoggerBase
                                                       serverConfig.first.c_str()));
                 }
                 // invert data direction
-                if (sync == "refresh-from-local") {
-                    sync = "refresh-from-remote";
-                } else if (sync == "refresh-from-remote") {
-                    sync = "refresh-from-local";
-                } else if (sync == "one-way-from-local") {
-                    sync = "one-way-from-remote";
-                } else if (sync == "one-way-from-remote") {
-                    sync = "one-way-from-local";
+                if (mode == SYNC_REFRESH_FROM_LOCAL) {
+                    mode = SYNC_REFRESH_FROM_REMOTE;
+                } else if (mode == SYNC_REFRESH_FROM_REMOTE) {
+                    mode = SYNC_REFRESH_FROM_LOCAL;
+                } else if (mode == SYNC_ONE_WAY_FROM_LOCAL) {
+                    mode = SYNC_ONE_WAY_FROM_REMOTE;
+                } else if (mode == SYNC_ONE_WAY_FROM_REMOTE) {
+                    mode = SYNC_ONE_WAY_FROM_LOCAL;
+                } else if (mode == SYNC_LOCAL_CACHE_SLOW) {
+                    // Remote side is running in caching mode and
+                    // asking for refresh. Send all our data.
+                    mode = SYNC_SLOW;
+                } else if (mode == SYNC_LOCAL_CACHE_INCREMENTAL) {
+                    // Remote side is running in caching mode and
+                    // asking for an update. Use two-way mode although
+                    // nothing is going to come back (simpler that way
+                    // than using one-way, which has special code
+                    // paths in libsynthesis).
+                    mode = SYNC_TWO_WAY;
                 }
-                targetSource.setSync(sync, true);
+                targetSource.setSync(PrettyPrintSyncMode(mode, true), true);
                 targetSource.setURI(sourceName, true);
             }
         }
