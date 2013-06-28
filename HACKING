@@ -1,0 +1,210 @@
+Checking out the Source
+-----------------------
+
+SyncEvolution is hosted at sf.net. If you want to work
+on the code, just let me know what your SF account is
+and I can provide access to the developers CVS. The
+anonymous CVS mirrors the sources automatically, but
+sometimes is lacking a bit behind. Before using sources
+checked out from CVS, invoke "sh autogen.sh" with
+appropriate autotools packages installed.
+
+The most recent version of the Sync4j C++ client library
+is available from CVS, checkout the "3x" module from the CVS at
+   http://forge.objectweb.org/projects/sync4j
+You'll need the files in 3x/client-api/native.
+
+Also note that some of the patches in the
+3x/client-api/native/.patches directory might be needed for
+SyncEvolution to compile and work correctly. See
+3x/client-api/native/README for more information about those patches
+and SyncEvolution's NEWS file for some information which client
+library is compatible.
+
+The recommended way to make that library available is by
+installing it into its own directory with shared libraries disabled:
+   configure --prefix=<dir> --disable-shared; make; make install
+and then pointing the configure of SyncEvolution towards it:
+   configure --with-sync4j=<dir> --disable-shared
+Shared versions of the libraries are not recommended at the moment
+because the client libraries API is not expected to be stable.
+
+Alternatively SyncEvolution can work with a source snapshot of
+the client library directly:
+   configure --with-sync4j-src=<dir>
+where <dir> points towards the contents of the 3x/client-api/native
+directory. This mode is required to generate source distributions
+because those are meant to contain a copy of the client library
+code.
+
+
+Working with the Code
+---------------------
+
+The code follows the code formatting of the Funambol
+Sync4j C++ client library. Just emulate the existing
+code when possible.
+
+Exceptions derived from std::exception are used to report
+errors, but not in code which is called from inside the Sync4j
+library because that library does not handle exceptions for compatibility
+reasons. In that case special case must be taken to not
+forget that an error occurred (EvolutionSyncSource::m_hasFailed).
+This is done in in EvolutionSyncSource wrapper functions
+which call the real functions which then may throw exceptions.
+The EvolutionSyncSource::handleException() function deals with
+logging the exception.
+
+SyncEvolution uses the Funambol C++ testing framework (which is
+based on the previous SyncEvolution testing). Configure with
+--enable-integration-tests and (optionally) --enable-unit-tests,
+then run "src/client-test" as described in the C++ client libraries
+test/README.txt.
+
+It understands the same environment variables as the C++ client
+libraries "client-test", among them:
+- CLIENT_TEST_SERVER = chooses config
+- CLIENT_TEST_LOG = name of server log file, will be copied and reset
+  after each sync
+- CLIENT_TEST_FAILURES = comma separated list of tests which are allowed
+  to fail without affecting the return code of the test runner
+- CLIENT_TEST_ALARM = number of seconds a single test is allowed to run
+  before aborting it
+- CLIENT_TEST_SOURCES = comma separated list of enabled sources, identified
+  by their name (ical20, vcard21, vcard30, itodo20, text (= memos))
+
+In addition it supports:
+- CLIENT_TEST_EVOLUTION_PREFIX=[name|file://<path>] overrides
+  the evolutionsource setting in the configuration; if file:// is used
+  then these database will be created automatically
+
+Here are step-by-step instructions to get started with testing,
+using ScheduleWorld as example:
+- CLIENT_TEST_SERVER=scheduleworld \
+  CLIENT_TEST_EVOLUTION_PREFIX=file:///tmp/testing/ \
+  ./client-test -h
+  => creates ~/.sync4j/evolution/scheduleworld_[12]/ configs
+     which use data bases under /tmp/testing, then
+     prints all available tests
+- edit ~/.sync4j/evolution/scheduleworld_[12]/spds/syncml/config.txt
+  and enter account data for ScheduleWorld in both configurations;
+  check that the syncURL is correct
+- CLIENT_TEST_SERVER=scheduleworld \
+  CLIENT_TEST_EVOLUTION_PREFIX=file:///tmp/testing/ \
+  ./client-test Client::Source
+  => runs alls tests involving just local operations
+- CLIENT_TEST_SERVER=scheduleworld \
+  CLIENT_TEST_EVOLUTION_PREFIX=file:///tmp/testing/ \
+  ./client-test Client::Sync::vcard30::testCopy
+  => runs one test that checks that one contact can
+     be copied to and from the server using the two
+     configurations
+- CLIENT_TEST_SERVER=scheduleworld \
+  CLIENT_TEST_EVOLUTION_PREFIX=file:///tmp/testing/ \
+  ./client-test Client::Sync
+  => runs all tests which involve the SyncML server;
+     tests involving just one source are run first,
+     followed by the same tests with all enabled
+     sources in two different orders
+
+"make valgrind" runs the same tests inside valgrind
+[http://www.valgrind.org]. A suppression file is
+used to hide errors inside system libraries which
+are not caused by SyncEvolution or Sync4j C++
+library code. Most likely the suppressions will only
+work on Debian GNU/Linux 3.1 ("Sarge") - feel free
+to add more for your system.
+
+
+CVS
+---
+
+Please add your changes to the ChangeLog file. The
+Emacs vc-update-change-log = C-x v a command collects
+the latest CVS commit messages and adds them automatically.
+
+
+Building a Release
+------------------
+
+- increase version number in configure.in/AM_INIT_AUTOMAKE
+- ensure files were updated:
+  ./ChangeLog ./NEWS debian/changelog
+- make distcheck
+- compile binary .tar.gz packages for different Evolution versions;
+  done automatically by runtests.py on estamos.de (= Debian 3.0), using different Garnome
+  installations, and with special configure options to ensure maximum
+  portability (LDFLAGS=-W,--as-needed --enable-static-cxx)
+- compile .deb for Maemo
+- add new .debs/.zip to www.estamos.de/download
+- upload new files to sf.net
+- remove files from www.estamos.de so that downloads access sf.net
+- update entries on the web about the release:
+  http://maemo.org/downloads/product/syncevolution/
+  http://www.modmyiphone.com/ (?)
+  http://www.estamos.de/blog/wp-admin
+  http://www.estamos.de/projects/SyncEvolution/Roadmap.html
+
+
+Compiling for Maemo
+-------------------
+  build patched libdbus (apt-get source dbus; apply dbus-timeout.patch; fakeroot dpkg-buildpackage);
+  unpack source archive in Scratchbox (for maximum compatibility: use Mistral 2.0
+  rootstrap; for support of all backends: ensure that the EDS-DBus calendar dev packages
+  are installed),
+  DEB_BUILD_OPTIONS=maemo=<path of directory with patched libdbus-1.a> fakeroot dpkg-buildpackage
+  NOTE: dpkg-buildpackage -rfakeroot does *not* work as it leads to strange problems executing a.out
+  during the client-src configure.
+
+Maemo EDS-DBus calendar dev packages /etc/apt/source.list:
+  deb http://maemo.o-hand.com/packages mistral/
+  deb-src http://maemo.o-hand.com/packages mistral/ 
+Installation _without_ updating more than strictly necessary (just to be sure
+that address book syncing uses the default libraries):
+  apt-get update
+  apt-cache showpkg libecal-dev libedata-cal-dev
+  ver=1.4.1-0zoh4; for i in libecal-dev libecal libedata-cal libedata-cal-dev; do  wget http://maemo.o-hand.com/packages/mistral/${i}_${ver}_armel.deb; done
+  dpkg --force-depends -i *.deb
+
+
+Compiling for iPhone
+--------------------
+  Requires iPhone toolchain and a libcurl compiled for the iPhone.
+  libcurl is ideally configured as small as possible
+  and statically (to avoid packaging problems):
+      ./configure --prefix=/usr/local/iphone --host=arm-apple-darwin --disable-shared \
+                  --disable-crypto-auth --without-gnutls --without-ssl --without-zlib \
+                  --without-libssh2 --disable-ipv6 --disable-manual --disable-telnet \
+                  --disable-tftp  --disable-ldap  --disable-file --disable-ftp
+      manually set HAVE_POSIX_STRERROR_R in lib/config.h
+
+  Potential problems with toolchain:
+    std++ not found: ln -s libstdc++.6.dylib /usr/local/iphone-filesystem/usr/lib/libstdc++.dylib
+    AddressBook framework must be added to iphone-dev/include/install-headers.sh.in
+
+  Compile with curl-config in the PATH:
+    PATH=/usr/local/iphone/bin/:$PATH ~/projects/sync4jevolution/configure --host=arm-apple-darwin --with-sync4j-src=/home/patrick/projects/native CXXFLAGS=-O0 --disable-ecal --disable-ebook --enable-addressbook --prefix=/usr
+    PATH=/usr/local/iphone/bin/:$PATH make all
+
+  Build a package with:
+    make distbin BINSUFFIX="iphone"
+
+Compiling for Mac OS X
+----------------------
+
+  <path>/configure --with-sync4j-src= --enable-addressbook
+  make CFLAGS="-isysroot /Developer/SDKs/MacOSX10.4u.sdk -arch ppc -arch i386" \
+       LDFLAGS="-Wl,-syslibroot,/Developer/SDKs/MacOSX10.4u.sdk -arch ppc -arch i386"
+  
+  Fine-grained memory checking:
+    MallocStackLogging=1 MallocStackLoggingNoCompact=1 \
+    MallocScribble=1 MallocPreScribble=1 MallocGuardEdges=1 \
+    MallocCheckHeapStart=1 MallocCheckHeapEach=100
+
+
+Debugging
+---------
+
+The following packages contain debug information for
+relevant libraries on Ubuntu 7.10:
+  evolution-data-server-dbg libglib2.0-0-dbg evolution-dbg

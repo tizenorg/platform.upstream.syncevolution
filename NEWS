@@ -1,0 +1,524 @@
+SyncEvolution 0.6 -> 0.7, 17.12.2007
+------------------------------------
+C++ client library: r_6_5_3_1
+
+Updating user configuration: no relevant changes in this release. For those
+who haven't done so already, enabling large object support is recommended
+(see syncml/config.txt sample configs).
+
+* added port for iPhone and Mac OS X Address Book
+
+* fixed Nokia packaging problem which prevented installation
+  via the package manager unless it was in "red pill" mode
+  (SF #1781652)
+
+* sync with eGroupware - lost or messed up telephones: SyncEvolution
+  incorrectly added TYPE=OTHER to phone numbers sent with e.g.
+  CELL instead of TYPE=CELL (SF #1796086). Another patch was
+  required for eGroupware itself to correctly map phone numbers
+  as sent by SyncEvolution, see Compatibility web page.
+
+* added .deb packages
+
+* adapted calendar event insert/update to Evolution 2.12: the UID needs to be
+  restored, otherwise the Evolution backend crashes (GNOME issue #488881)
+
+* new feature: if the previous log directory is still available,
+  then local changes made since last sync can be queried
+  before starting a sync (new option --status) and will be
+  printed directly before a sync. Setting the "logdir" option
+  will automatically keep the most recent logs and database
+  dumps around.
+
+* added command line options:
+  --sync|-s <mode>
+    Temporarily synchronize the active sources in that mode. Useful
+    for a 'refresh-from-server' or 'refresh-from-client' sync which
+    clears all data at one end and copies all items from the other.
+
+  --status|-t
+    The changes made to local data since the last synchronization are
+    shown without starting a new one. This can be used to see in advance
+    whether the local data needs to be synchronized with the server.
+
+  --quiet|-q
+    Suppresses most of the normal output during a synchronization. The
+    log file still contains all the information.
+
+  --help|-h
+    Prints usage information.
+
+  --version
+    Prints the SyncEvolution version.
+
+* default configurations now reference the normal Evolution databases
+  ("Personal") thus requiring less changes to use. The account information
+  is now clearly marked as placeholder which needs to be entered.
+
+* bugfix: vCard 3.0 with mixed case were not converted properly to vCard 2.1
+  by SyncEvolution (must convert to upper case because vCard 2.1 only allows
+  that), leading to problems with mapping phone numbers in the Funambol server.
+  Diagnosed and reported by Paul McDermott, thanks a lot!
+
+* support receiving plain text notes with \n and \r\n line breaks;
+  always send with \r\n
+
+* added explicit error message when syncevolution is invoked
+  with incorrect names in the list of sources to synchronize:
+  previously it silently ignored unknown names
+
+* improved output: less verbose ("extracting" items is now
+  logged at debug level and thus not normally shown) and more
+  informative printing of changes (table summarizes number of
+  changes on client and server, heading for comparison changed
+  to make it clear that it shows changes on the client)
+
+* SyncCap is not generated unless syncModes are configured: added
+  a comment to example config (SF #1764123)
+
+* improved error handling: catch errors during post-processing and
+  continue
+
+
+SyncEvolution 0.7-pre2 -> 0.7, 17.12.2007
+-----------------------------------------
+C++ client library: r_6_5_3_1
+
+* bugfix: vCard 3.0 with mixed case were not converted properly to vCard 2.1
+  by SyncEvolution (must convert to upper case because vCard 2.1 only allows
+  that), leading to problems with mapping phone numbers in the Funambol server.
+  Diagnosed and reported by Paul McDermott, thanks a lot!
+
+* support receiving plain text notes with \n and \r\n line breaks;
+  always send with \r\n
+
+* added explicit error message when syncevolution is invoked
+  with incorrect names in the list of sources to synchronize:
+  previously it silently ignored unknown names
+
+* added stack dumping in case of premature abort;
+  removed workaround for lost connection to Evolution Dataserver
+  again because the workaround itself caused random segfaults inside
+  glib
+
+
+SyncEvolution 0.7-pre1 -> 0.7-pre2, 08.11.2007
+----------------------------------------------
+C++ client library: branch b_v65
+
+Updating user configuration: no relevant changes in this release. For those
+who haven't done so already, enabling large object support is recommended
+(see syncml/config.txt sample configs). It is required for myFUNAMBOL to
+synchronize very large address books and some users have reported segfaults
+unless this option was enabled.
+
+* iPhone bug fix: syncing contacts with photos was unreliable (export) and
+  crashed (import) because the API had not been called correctly
+
+* iPhone + ScheduleWorld: when configured to use vcard3 (recommended!) then
+  contacts are exchanged as vCard 3.0
+
+* iPhone + ScheduleWorld bugfix: importing vCard 3.0 did not correctly
+  classify the phone numbers. A sync with the new "--sync refresh-from-server"
+  option will fix this, assuming that the server has the correct data.
+
+* Evolution: detect a crashed backend and abort SyncEvolution instead of
+  hanging forever.
+
+* adapted calendar event insert/update to Evolution 2.12: the UID needs to be
+  restored, otherwise the Evolution backend crashes (GNOME issue #488881)
+
+* new feature: if the previous log directory is still available,
+  then local changes made since last sync can be queried
+  before starting a sync (new option --status) and will be
+  printed directly before a sync. Setting the "logdir" option
+  will automatically keep the most recent logs and database
+  dumps around.
+
+* added command line options:
+  --sync|-s <mode>
+    Temporarily synchronize the active sources in that mode. Useful
+    for a 'refresh-from-server' or 'refresh-from-client' sync which
+    clears all data at one end and copies all items from the other.
+
+  --status|-t
+    The changes made to local data since the last synchronization are
+    shown without starting a new one. This can be used to see in advance
+    whether the local data needs to be synchronized with the server.
+
+  --quiet|-q
+    Suppresses most of the normal output during a synchronization. The
+    log file still contains all the information.
+
+  --help|-h
+    Prints usage information.
+
+  --version
+    Prints the SyncEvolution version.
+
+* default configurations now reference the normal Evolution databases
+  ("Personal") thus requiring less changes to use. The account information
+  is now clearly marked as placeholder which needs to be entered.
+
+
+SyncEvolution 0.6 -> 0.7-pre1, 17.10.2007
+-----------------------------------------
+* C++ client library: tag "sdkcpp_6_0_9_1" (same as before)
+* added support for Mac OS X/iPhone address book
+* fixed Nokia packaging problem which prevented installation
+  via the package manager unless it was in "red pill" mode
+* improved output: less verbose ("extracting" items is now
+  logged at debug level and thus not normally shown) and more
+  informative printing of changes (table summarizes number of
+  changes on client and server, heading for comparison changed
+  to make it clear that it shows changes on the client)
+* example configs were in share/share directory (SF #1767329)
+* Nokia 770/800: uninstallable package fixed by setting category
+  (SF #1781652)
+* sync with eGroupware - lost or messed up telephones: SyncEvolution
+  incorrectly added TYPE=OTHER to phone numbers sent with e.g.
+  CELL instead of TYPE=CELL (SF #1796086). Another patch was
+  required for eGroupware itself to correctly map phone numbers
+  as sent by SyncEvolution, see Compatibility web page.
+* SyncCap is not generated unless syncModes are configured: added
+  a comment to example config (SF #1764123)
+* improved error handling: catch errors during post-processing and
+  continue
+
+
+SyncEvolution 0.5 -> 0.6, 13.07.2007
+------------------------------------
+* C++ client library: tag "sdkcpp_6_0_9_1"
+* added support for synchronizing Evolution notes (aka memos) as
+  plain text where the first line serves as summary; this is the
+  format understood by ScheduleWorld
+* added support for synchronizing Evolution notes (aka memos) as
+  iCal 2.0 journal; not currently supported by any server and 
+  untested
+* revamped example configs and documentation: only one set of
+  config files for each server is provided, because this is more
+  likely to be needed by users
+* example configs are now installed in share/doc/syncevolution,
+  enabled message limit and large object support in them
+* added support for Nokia 770/800 (aka Maemo):
+  built with loadable modules so that it works with whatever
+  backends are installed, improved log handling to accomodate
+  for limited space on filesystem (see below), some workarounds
+* added workaround for Nokia 770:
+  contacts are not really deleted unless the EDS-Sync with
+  instant messaging servers is activated; now SyncEvolution
+  will delete contacts marked as deleted by the GUI before
+  a sync if it finds any.
+  WARNING: if you use EDS-Sync and SyncEvolution, then give
+  EDS-Sync enough time after going online to finish its own
+  synchronization of modified/deleted contacts before starting
+  SyncEvolution.
+* improved log handling: writing log and database dumps can be
+  disabled with "logdir=none", verbosity of log is controlled by
+  "loglevel", better handling of errors during initial database
+  access
+* added workaround for Evolution bug #455274:
+  the separator for multiple categories in events and tasks
+  is not generated and interpreted according to iCalendar 2.0
+  by Evolution; as a consequence of that items sent to the server
+  had all categories merged into one and items imported into
+  Evolution only used one of the catories
+  http://bugzilla.gnome.org/show_bug.cgi?id=455274
+* fixed off-by-one counting of months in backup directory names
+* fixed error handling: a failed source was not forced into a slow
+  sync as required; one failed source prevented saving configs of
+  not-failed ones and thus forced those into an unnecessary slow
+  sync
+* uses the Funambol C++ testing framework (which is based on the
+  previous SyncEvolution testing); now creates its configs
+  and (when using CLIENT_TEST_EVOLUTION_PREFIX=file://<path>)
+  also the Evolution databases automatically
+* implemented synccompare as pure Perl script using Algorithm::Diff
+  instead of external diff tool
+* synccompare did not figure out width of shell window as it should have
+* better error handling if creating the before/after database dumps
+  fails (SF #1685637)
+* workaround for Funambol 3.0 trailing = parser bug
+
+UPGRADING
+
+Old config files from 0.5 or older continue to work, but it is recommended
+to set the following options to enable message size limits:
+  maxMsgSize = 8192
+  maxObjSize = 500000
+  loSupport = 1
+
+
+SyncEvolution 0.6pre2 -> 0.6, 13.07.2007
+----------------------------------------
+* improved README/HACKING documents
+* fixed the new example configs: use event/task for Funambol 6.0,
+  name was wrong
+* added workaround for Evolution bug #455274:
+  the separator for multiple categories in events and tasks
+  is not generated and interpreted according to iCalendar 2.0
+  by Evolution; as a consequence of that items sent to the server
+  had all categories merged into one and items imported into
+  Evolution only used one of the catories
+  http://bugzilla.gnome.org/show_bug.cgi?id=455274
+* added workaround for Nokia 770:
+  contacts are not really deleted unless the EDS-Sync with
+  instant messaging servers is activated; now SyncEvolution
+  will delete contacts marked as deleted by the GUI before
+  a sync if it finds any.
+  WARNING: if you use EDS-Sync and SyncEvolution, then give
+  EDS-Sync enough time after going online to finish its own
+  synchronization of modified/deleted contacts before starting
+  SyncEvolution.
+
+
+SyncEvolution 0.6pre1 -> 0.6pre2, 23.04.2006
+--------------------------------------------
+* C++ client library: tag "sdkcpp_6_0_7" + revision 1.7 of
+  build/autotools/test/Makefile.am
+* added support for synchronizing Evolution notes (aka memos) as
+  plain text where the first line serves as summary; this is the
+  format understood by ScheduleWorld, not the iCal 2.0 format
+  added in 0.6pre1
+* improved log handling: writing log and database dumps can be
+  disabled with "logdir=none", verbosity of log is controled by
+  "loglevel", better handling of errors during initial database
+  access
+* fixed off-by-one counting of months in backup directory names
+* fixed error handling: a failed source was not forced into a slow
+  sync as required; one failed source prevented saving configs of
+  not-failed ones and thus forced those into an unnecessary slow
+  sync
+* revamped example configs: only one set of config files for each
+  server is provided, because this is more likely to be needed
+  by users
+* uses the Funambol C++ testing framework (which is based on the
+  previous SyncEvolution testing); now creates its configs
+  and (when using CLIENT_TEST_EVOLUTION_PREFIX=file://<path>)
+  also the Evolution databases automatically
+
+
+SyncEvolution 0.5 -> 0.6pre1, 26.03.2006
+----------------------------------------
+* C++ client library: CVS snapshot from 26.03.2006
+* added support for synchronizing Evolution notes (aka memos) as
+  iCal 2.0 journal
+* added --enable-static-cxa = linking C++ runtime statically:
+  binaries produced for 0.6 will have less external
+  dependencies than the 0.5 binaries
+* added hacks for Maemo/Nokia 770, including a build
+  mode with dynamically loadable modules (--enable-shared, --enable-maemo,
+  --with-patched-dbus)
+* implemented synccompare as pure Perl script using Algorithm::Diff
+  instead of external diff tool
+* synccompare did not figure out width of shell window as it should have
+* better error handling if creating the before/after database dumps
+  fails (SF #1685637)
+* example configs are now installed in share/doc/syncevolution,
+  enabled message limit and large object support in them
+* workaround for Funambol 3.0 trailing = parser bug
+
+UPGRADING
+
+Old config files continue to work, but it is recommended
+to set the following options to enable message size limits:
+  maxMsgSize = 8192
+  maxObjSize = 500000
+  loSupport = 1
+
+
+
+SyncEvolution 0.4 -> 0.5, 12.11.2006
+------------------------------------
+* C++ client library revision "syncevolution-0-5":
+  - added support for sending changes in smaller chunks
+    ("Large Object Support"): disabled by default, see updated
+    example configuration
+  - time is printed with GMT offset so that a server admin in
+    a different timezone can always figure out how a client log
+    relates to events on the server
+  - special item keys as they might be stored in some calendars after
+    importing non-Evolution events are now properly supported
+* bug fix: in 0.4 it was necessary to manually configure the verDTD
+  or the Funambol 3.0a server would choke on the invalid SyncML during
+  the second synchronization with SyncEvolution; now this option is set
+  automatically
+* added support and testing of transmitting just the changes
+  from client to server or vice versa; see "one-way-from-server/client"
+  in example configuration
+* fixed/updated comments in the example configuration
+* improved automated testing and fixed the problem that CPPUnit was not
+  found unless it was part of the system
+* Now works on Maemo/Nokia 770: minor changes were necessary so that
+  the system address book can now be selected under the name "<<system>>.
+  Copying 300 contacts into the Nokia 770 went fine, but any further
+  attempt to synchronize suffered from timeouts inside the embedded
+  Evolution Data Server.
+
+
+SyncEvolution 0.3 -> 0.4, 11.09.2006 
+------------------------------------
+* C++ client library revision "syncevolution-0-4":
+  - added support for device information, required by some servers
+  - fixed incompatibilities with non-Funambol servers
+  - the user agent string can now be modified in the
+    spds/syncml/config.txt, but it is recommended to not set
+    it explicitly. Then SyncEvolution will automatically insert
+    its current version.
+  - #305795: for tasks the "text/x-todo" type from the configuration
+    was sent to servers instead of the correct "text/calendar"
+    provided by SyncEvolution itself
+  - sync modes "refresh-client/server" can now be specified as
+    "refresh-from-client/server" in the config
+* updated default syncml/config.txt:
+  - firstTimeSyncMode has never been implemented in the library,
+    removed its documentation,
+  - added documentation for userAgent
+  - use "refresh-from-client/server"
+* SF issue 1511951: support copying changes back from EGroupware
+  server by not expecting the UID of calendar items to be unmodified
+* fixed a bug where after a refresh-from-client sync changes would
+  be sent to the server again during a two-way sync although the
+  server already had them
+* implemented authentication for Evolution databases
+* synccompare was removing too many parts of vCards with 
+  single-value ORG properties
+* improved error reporting when selected server is not configured
+* changed vCard parser to make it compatible with servers
+  which send a verbatim semicolon as part of properties where
+  the semicolon has no special meaning
+* If minor errors occur like not being able to insert an
+  item at the client or server side, then it is reported in the
+  log and output, but the next synchronization will be a normal
+  synchronization, not a forced slow one as in previous versions.
+  The old approach ensured that the problem was noticed and fixed,
+  but required user assistance. With the new approach synchronization
+  continues to work, although without fixing the root cause of
+  the problem.
+* Workaround for bug in Evolution 2.0.6 (and perhaps other versions):
+  for calendars and task lists not all deleted items were reported
+  at once thus a single synchronization would only tell the server
+  about a subset of the changes. Repeating the synchronization would
+  eventually be told of all changes, so now this repetition is built
+  into the code which queries for changes and a single synchronization
+  is sufficient as it should be.
+
+
+SyncEvolution 0.4 pre2 -> 0.4, 11.09.2006 
+-----------------------------------------
+* adapted to C++ client library from CVS head, tagged as syncevolution-0-4:
+  devinfo.patch patch was merged with several changes to the API
+* SF issue 1511951: support copying changes back from EGroupware
+  server by not expecting the UID of calendar items to be unmodified
+
+
+SyncEvolution 0.4 pre1 -> pre2, 21.08.2006
+------------------------------------------
+* C++ client library revision "syncevolution-0-4-pre2":
+  most patches were merged into CVS head, but .patches/devinfo.patch
+  still needs to be applied manually when checking out from the
+  Funambol CVS instead of using the bundled version
+* fixed a bug where after a refresh-from-client sync changes would
+  be sent to the server again during a two-way sync although the
+  server already had them
+* implemented authentication for Evolution databases
+* synccompare was removing too many parts of vCards with 
+  single-value ORG properties
+* improved error reporting when selected server is not configured
+* use 7-bit quoted-printable encoding with explicit UTF-8 charset for
+  vCard 2.1 to avoid any potential confusion about the content; not
+  really necessary because SyncML specifies 8-bit UTF-8 as the default
+* fix for 0.4 pre 1: sending CHARSET is not allowed (and not
+  needed) for vCard 3.0, so it was removed again (did not harm
+  either)
+* fix for 0.4 pre 1: sending vCard 2.1 to Synthesis server did
+  not work because the new device info always mentioned 3.0 as
+  the preferred format - now the preferred format matches the one
+  that was configured and that thus will be used.
+
+
+SyncEvolution 0.3 -> 0.4 pre 1, 2006-08-06
+------------------------------------------
+* C++ client library revision "funambol30ga" plus the patches
+  stored in its ".patches" directory:
+  - the user agent string can now be modified in the
+    spds/syncml/config.txt, but it is recommended to not set
+    it explicitly. Then SyncEvolution will automatically insert
+    its current version.
+  - now compatible with additional servers (fixed some SyncML
+    protocol issues, added support for sending device
+    information)
+  - revised API of the client library
+  - #305795: for tasks the "text/x-todo" type from the configuration
+    was sent to servers instead of the correct "text/calendar"
+    provided by SyncEvolution itself
+  - sync modes "refresh-client/server" can now be specified as
+    "refresh-from-client/server" in the config
+* updated default syncml/config.txt:
+  - firstTimeSyncMode has never been implemented in the library,
+    removed its documentation,
+  - added documentation for userAgent
+  - use "refresh-from-client/server"
+* changed vCard parser to make it compatible with servers
+  which send a verbatim semicolon as part of properties where
+  the semicolon has no special meaning
+* If minor errors occur like not being able to insert an
+  item at the client or server side, then it is reported in the
+  log and output, but the next synchronization will be a normal
+  synchronization, not a forced slow one as in previous versions.
+  The old approach ensured that the problem was noticed and fixed,
+  but required user assistance. With the new approach synchronization
+  continues to work, although without fixing the root cause of
+  the problem.
+* Workaround for bug in Evolution 2.0.6 (and perhaps other versions):
+  for calendars and task lists not all deleted items were reported
+  at once thus a single synchronization would only tell the server
+  about a subset of the changes. Repeating the synchronization would
+  eventually be told of all changes, so now this repetition is built
+  into the code which queries for changes and a single synchronization
+  is sufficient as it should be.
+* Made it compile on Maemo 2.0, the Nokia 770 build environment, by
+  adding "--disable-ecal". Not tested yet, though.
+
+
+SyncEvolution 0.3, 2006-06-27
+-----------------------------
+
+* added syncing of calendars and tasks as iCalendar 2.0
+* added syncing of contacts as vCard 3.0
+* tested extensively with sync.scheduleworld.com and
+  added an example configuration for it
+* uses C++ client library revision "wmplugin_3_0_20"
+  which contains several bug fixes, among them proper
+  support for special characters and memory handling
+  fixes
+* much nicer listing of changes made during a sync,
+  handled by the improved "synccompare" utility script
+  (formerly known as "normalize_vcard")
+* improved automated testing
+
+
+SyncEvolution 0.2, 2006-03-19
+-----------------------------
+
+* added automatic backup mechanism and log storage,
+  see "Automatic Backups and Logging".
+* output no longer is the original log data, but rather
+  a human-readable report of errors and synchronization
+  results.
+* "normalize_vcard" can now also compare two .vcf files
+  directly.
+* improved unit tests to catch more errors
+* hide certain differences in vcards coming back from
+  the server: duplication of extended vcard properties,
+  missing TYPE=OTHER
+* fixed client library problems:
+  see http://forge.objectweb.org/tracker/?group_id=96&atid=100096
+      #304792, #304829
+* added some more problems to the "Known Problems" section
+
+
+SyncEvolution 0.1, 2006-03-13
+-----------------------------
+
+* initial release
