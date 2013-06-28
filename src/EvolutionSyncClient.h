@@ -23,14 +23,15 @@
 #include <config.h>
 
 #include "EvolutionSmartPtr.h"
+#include "SyncEvolutionConfig.h"
 #include <client/SyncClient.h>
+#include <spds/SyncManagerConfig.h>
 
 #include <string>
 #include <set>
 using namespace std;
 
 class SourceList;
-class EvolutionClientConfig;
 
 /*
  * This is the main class inside sync4jevolution which
@@ -38,11 +39,10 @@ class EvolutionClientConfig;
  * sources and executes the synchronization.
  *
  */
-class EvolutionSyncClient : public SyncClient {
+class EvolutionSyncClient : public SyncClient, public EvolutionSyncConfig, public ConfigUserInterface {
     const string m_server;
     const set<string> m_sources;
     const bool m_doLogging;
-    const string m_configPath;
     SyncMode m_syncMode;
     bool m_quiet;
 
@@ -57,13 +57,25 @@ class EvolutionSyncClient : public SyncClient {
      * @param server     identifies the server config to be used
      * @param syncMode   setting this overrides the sync mode from the config
      * @param doLogging  write additional log and datatbase files about the sync
-     * @param configRoot DM config root (= ".sync4j/<configRoot>")
      */
     EvolutionSyncClient(const string &server,
                         bool doLogging = false,
-                        const set<string> &sources = set<string>(),
-                        const string &configRoot = "evolution/");
+                        const set<string> &sources = set<string>());
     ~EvolutionSyncClient();
+
+    /**
+     * A helper function which interactively asks the user for
+     * a certain password. May throw errors.
+     *
+     * The default implementation uses stdin/stdout to communicate
+     * with the user.
+     *
+     * @param descr     A simple string explaining what the password is needed for,
+     *                  e.g. "SyncML server". Has to be unique and understandable
+     *                  by the user.
+     * @return entered password
+     */
+    virtual string askPassword(const string &descr);
 
     bool getQuiet() { return m_quiet; }
     void setQuiet(bool quiet) { m_quiet = quiet; }
@@ -113,17 +125,21 @@ class EvolutionSyncClient : public SyncClient {
      */
     static void startLoopThread();
 
+
+    /* AbstractSyncConfig API */
+    virtual AbstractSyncSourceConfig* getAbstractSyncSourceConfig(const char* name) const;
+    virtual AbstractSyncSourceConfig* getAbstractSyncSourceConfig(unsigned int i) const;
+    virtual unsigned int getAbstractSyncSourceConfigsCount() const;
+
   protected:
     /**
      * Callback for derived classes: called after setting up the client's
      * and sources' configuration. Can be used to reconfigure before
      * actually starting the synchronization.
      *
-     * @param config    the clients config, can be modified
      * @param sources   a NULL terminated array of all active sources
      */
-    virtual void prepare(SyncManagerConfig &config,
-                         SyncSource **sources);
+    virtual void prepare(SyncSource **sources);
 
  private:
     /**
@@ -131,7 +147,7 @@ class EvolutionSyncClient : public SyncClient {
      * populate source list with active sources and open
      * them for reading without changing their state yet
      */
-    void initSources(SourceList &sourceList, EvolutionClientConfig &config, const string &url);
+    void initSources(SourceList &sourceList);
 };
 
 #endif // INCL_EVOLUTIONSYNCCLIENT

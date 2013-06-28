@@ -38,19 +38,39 @@
 #include "base/Log.h"
 #include "client/SyncClient.h"
 #include "spds/spdsutils.h"
+#include "spds/SyncSourceConfig.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 static SyncSourceConfig defaultConfig;
 
-SyncSource::SyncSource(const WCHAR* sourceName, SyncSourceConfig *sc) :
-    config(sc ? *sc : defaultConfig)
+const AbstractSyncSourceConfig& SyncSource::getConfig() const
+{
+    return config ? *config : defaultConfig;
+}
+AbstractSyncSourceConfig& SyncSource::getConfig()
+{
+    return config ? *config : defaultConfig;
+}
+
+void SyncSource::setConfig(AbstractSyncSourceConfig* sc)
+{
+    config = sc;
+    setPreferredSyncMode(sc ? syncModeCode(sc->getSync()) : SYNC_NONE);
+}
+
+SyncSource::SyncSource(const WCHAR* sourceName, AbstractSyncSourceConfig *sc) :
+    config(NULL)
 {
     name   = NULL;
     report = NULL;
 
-    setPreferredSyncMode(sc ? syncModeCode(sc->getSync()) : SYNC_NONE);
+    setConfig(sc);
     if ((sourceName == NULL) || (*sourceName == 0)) {
-        lastErrorCode = ERR_PARAMETER_IS_EMPTY;
-        sprintf(lastErrorMsg, "name cannot be empty (NULL or 0-length)");
+        //lastErrorCode = ERR_PARAMETER_IS_EMPTY;
+        //sprintf(lastErrorMsg, "name cannot be empty (NULL or 0-length)");
+        setError(ERR_PARAMETER_IS_EMPTY, "name cannot be empty (NULL or 0-length)");
         goto finally;
     }
     name = wstrdup(sourceName);
@@ -245,5 +265,23 @@ void SyncSource::assign(SyncSource& s) {
     setLastAnchor(s.getLastAnchor());
     setNextAnchor(s.getNextAnchor());
     setFilter(s.getFilter());
+}
+
+/**
+* Indicates that all the server status of the current package 
+* of the client items has been processed by the engine.
+* This signal can be useful to update the modification arrays
+*/
+void SyncSource::serverStatusPackageEnded() {
+
+}
+    
+/**
+* Indicates that all the client status of the current package 
+* of the server items that has been processed by the client and 
+* are going to be sent to the server.
+* This signal can be useful to update the modification arrays
+*/
+void SyncSource::clientStatusPackageEnded() {
 }
 

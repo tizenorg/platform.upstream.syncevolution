@@ -43,6 +43,9 @@
 #include "spds/spdsutils.h"
 
 #include "event/FireEvent.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 /*
  * This class is responsible for the processing of the incoming messages.
@@ -126,7 +129,7 @@ int SyncMLProcessor::processServerAlert(SyncSource& source, SyncML* syncml) {
     int iterator        = 0;
     AbstractCommand* a  = NULL;
     Item* item          = NULL;
-    BOOL found          = FALSE;
+    bool found          = false;
 
     ret = 0;
     do {
@@ -154,14 +157,15 @@ int SyncMLProcessor::processServerAlert(SyncSource& source, SyncML* syncml) {
             const char *locURI = ((Target*)item->getTarget())->getLocURI();
             if (strcmp( locURI, _wcc(source.getName()) ) == 0) {
                 if (alert->getData() == NULL) {
-                    lastErrorCode = ERR_REPRESENTATION;
-                    sprintf(lastErrorMsg, "SyncBody/Alert/Data not found!");
+                    //lastErrorCode = ERR_REPRESENTATION;
+                    //sprintf(lastErrorMsg, "SyncBody/Alert/Data not found!");
+                    setError(ERR_REPRESENTATION, "SyncBody/Alert/Data not found!");
                     goto finally;
                 }
 
                 source.setSyncMode((SyncMode)alert->getData());
                 ret = 0;
-                found = TRUE;
+                found = true;
                 break;
             }
         }
@@ -251,9 +255,11 @@ int SyncMLProcessor::processItemStatus(SyncSource& source, SyncBody* syncBody) {
 
             if(alertStatus < 0 || alertStatus >=300){
                 if (statusMessage) {
-                    strcpy(lastErrorMsg, statusMessage);
+                    //strcpy(lastErrorMsg, statusMessage);
+                    setError( alertStatus, statusMessage);
                 } else {
-                    strcpy(lastErrorMsg, "Error in sync status sent by server.");
+                    //strcpy(lastErrorMsg, "Error in sync status sent by server.");
+                    setError( alertStatus, "Error in sync status sent by server.");
                 }
                 if ((ret = alertStatus) < 0)
                     LOG.error("processItemStatus: status not found in SYNC");
@@ -292,7 +298,7 @@ int SyncMLProcessor::processItemStatus(SyncSource& source, SyncBody* syncBody) {
                         // Update SyncReport
                         source.getReport()->addItem(SERVER, s->getCmd(), uri, s->getStatusCode(), statusMessage);
 
-                        source.setItemStatus(uri, val);
+                        source.setItemStatus(uri, val, name);
                         delete [] uri;
                         if (statusMessage)
                             delete [] statusMessage;
@@ -314,14 +320,18 @@ int SyncMLProcessor::processItemStatus(SyncSource& source, SyncBody* syncBody) {
                     // Update SyncReport
                     source.getReport()->addItem(SERVER, s->getCmd(), srcref, s->getStatusCode(), NULL);
 
-                    source.setItemStatus(srcref, val);
+                    source.setItemStatus(srcref, val, name);
                     delete [] srcref;
                 }
             }
         }
     }
 
-    deleteArrayList(&list);
+    //deleteArrayList(&list);
+    if (list){
+        delete list;
+        list = NULL;
+    }
     return ret;
 }
 
@@ -439,8 +449,9 @@ Chal* SyncMLProcessor::getChal(SyncBody* syncBody) {
             if (strcmp(s->getCmd(), SYNC_HDR) == 0) {
                 if (strcmp(s->getCmdRef(), "0") != 0) {
 
-                    sprintf(lastErrorMsg, "Status/CmdRef either not found or not referring to SyncHeader!");
-                    lastErrorCode = ERR_REPRESENTATION;
+                    //sprintf(lastErrorMsg, "Status/CmdRef either not found or not referring to SyncHeader!");
+                    //lastErrorCode = ERR_REPRESENTATION;
+                    setError(ERR_REPRESENTATION, "Status/CmdRef either not found or not referring to SyncHeader!"); 
                     goto finally;
                 }
 
@@ -554,8 +565,9 @@ int SyncMLProcessor::getStatusCode(SyncBody* syncBody, SyncSource* source, const
     }
 
     if (ret == -1) {
-        sprintf(lastErrorMsg, "Error reading status code of command '%s'", commandName);
-        lastErrorCode = ERR_REPRESENTATION;
+        //sprintf(lastErrorMsg, "Error reading status code of command '%s'", commandName);
+        //lastErrorCode = ERR_REPRESENTATION;
+        setErrorF(ERR_REPRESENTATION, "Error reading status code of command '%s'", commandName);
     }
     return ret;
 
@@ -577,8 +589,9 @@ int SyncMLProcessor::getSyncHeaderStatusCode(Status* s) {
 
     if (strcmp(s->getCmdRef(), "0") != 0) {
 
-        sprintf(lastErrorMsg, "Status/CmdRef either not found or not referring to SyncHeader!");
-        lastErrorCode = ERR_REPRESENTATION;
+        //sprintf(lastErrorMsg, "Status/CmdRef either not found or not referring to SyncHeader!");
+        //lastErrorCode = ERR_REPRESENTATION;
+        setError(ERR_REPRESENTATION, "Status/CmdRef either not found or not referring to SyncHeader!");
         goto finally;
     }
 
@@ -587,8 +600,9 @@ int SyncMLProcessor::getSyncHeaderStatusCode(Status* s) {
          //
         // It should not happen
         //
-        sprintf(lastErrorMsg, "Status/Data not found!");
-        lastErrorCode = ERR_REPRESENTATION;
+        //sprintf(lastErrorMsg, "Status/Data not found!");
+        //lastErrorCode = ERR_REPRESENTATION;
+        setError(ERR_REPRESENTATION, "Status/Data not found!");
         goto finally;
     }
     ret = strtol(data->getData() , NULL, 10);
@@ -621,8 +635,9 @@ int SyncMLProcessor::getAlertStatusCode(Status* s, const char* sourceName) {
             //
             // It should not happen
             //
-            sprintf(lastErrorMsg, "Status/Data not found!");
-            lastErrorCode = ERR_REPRESENTATION;
+            //sprintf(lastErrorMsg, "Status/Data not found!");
+            //lastErrorCode = ERR_REPRESENTATION;
+            setError(ERR_REPRESENTATION, "Status/Data not found!");
             return ret;
         }
         ret = strtol(data->getData(), NULL, 10);

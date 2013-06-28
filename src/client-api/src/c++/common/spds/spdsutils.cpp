@@ -37,9 +37,13 @@
 #include "base/util/utils.h"
 #include "spds/spdsutils.h"
 #include "base/quoted-printable.h"
+#include "base/globalsdef.h"
+
 
 #define BASE64 "base64"
 #define QUOTED_PRINTABLE "quoted-printable"
+
+BEGIN_NAMESPACE
 
 // Base64 encoding for files (with newline)
 char *uuencode(const char *msg, int len);
@@ -194,8 +198,7 @@ int uudecode(const char *msg, char **binmsg, size_t *binlen)
             break;
         nl++;
         len += b64_decode(out+len, line);
-        if(nl==200)
-            puts("Near the end");
+
         delete [] line;
     }
     delete [] buf;
@@ -284,8 +287,9 @@ const char* getSourceName(const char *uri)
 
     node = dmt->readManagementNode(nodeName);
     if ( ! node ) {
-        lastErrorCode = ERR_INVALID_CONTEXT;
-        sprintf(lastErrorMsg, ERRMSG_INVALID_CONTEXT, nodeName);
+        //lastErrorCode = ERR_INVALID_CONTEXT;
+        //sprintf(lastErrorMsg, ERRMSG_INVALID_CONTEXT, nodeName);
+        setErrorf(ERR_INVALID_CONTEXT, ERRMSG_INVALID_CONTEXT, nodeName);
         goto finally;
     }
     n = node->getChildrenMaxCount();
@@ -296,4 +300,5 @@ const char* getSourceName(const char *uri)
 #endif
 }
 
+END_NAMESPACE
 

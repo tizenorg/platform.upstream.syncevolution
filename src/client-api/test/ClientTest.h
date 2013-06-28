@@ -41,6 +41,7 @@
 
 #include <string>
 #include <vector>
+#include <list>
 #include "spds/SyncSource.h"
 #include "spds/SyncReport.h"
 
@@ -49,6 +50,9 @@
 #include <cppunit/TestSuite.h>
 #include <cppunit/TestAssert.h>
 #include <cppunit/TestFixture.h>
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 /**
  * This class encapsulates logging and checking of a SyncReport.
@@ -70,6 +74,8 @@ class CheckSyncReport {
         serverUpdated(srUpdated),
         serverDeleted(srDeleted)
         {}
+
+    virtual ~CheckSyncReport() {}
 
     const int clientAdded, clientUpdated, clientDeleted,
         serverAdded, serverUpdated, serverDeleted;
@@ -145,7 +151,7 @@ class ClientTest {
      */
     virtual void registerTests();
 
-    class Config;
+    struct Config;
 
     /**
      * Creates an instance of LocalTests (default implementation) or a
@@ -184,8 +190,6 @@ class ClientTest {
      * synccompare.pl Perl script
      */
     static bool compare(ClientTest &client, const char *fileA, const char *fileB);
-
-    struct Config;
 
     /**
      * A derived class can use this call to get default test
@@ -332,6 +336,21 @@ class ClientTest {
         const char *mergeItem2;
 
         /**
+         * These two items are related: one is main one, the other is
+         * a subordinate one. The semantic is that the main item is
+         * complete on it its own, while the other normally should only
+         * be used in combination with the main one.
+         *
+         * Because SyncML cannot express such dependencies between items,
+         * a SyncSource has to be able to insert, updated and remove
+         * both items independently.
+         *
+         * One example for main and subordinate items are a recurring
+         * iCalendar 2.0 event and a detached recurrence.
+         */
+        const char *parentItem, *childItem;
+
+        /**
          * called to dump all items into a file, required by tests which need
          * to compare items
          *
@@ -424,7 +443,7 @@ class ClientTest {
      *                     beware, the later may throw exceptions inside CPPUNIT macros
      * @param maxMsgSize   >0: enable the maximum message size, else disable it
      * @param maxObjSize   same as maxMsgSize for maximum object size
-     * @param loSupport    if TRUE, then the sync is expected to enable Large Object support
+     * @param loSupport    if true, then the sync is expected to enable Large Object support
      * @param encoding     if non-empty, then let client library transform all items
      *                     into this format (guaranteed to be not NULL)
      *
@@ -536,8 +555,10 @@ public:
      *
      * The type of the item is unset; it is assumed that the source
      * can handle that.
+     *
+     * @return the UID of the inserted item
      */
-    virtual void insert(CreateSource createSource, const char *data);
+    virtual std::string insert(CreateSource createSource, const char *data);
 
     /**
      * assumes that exactly one element is currently inserted and updates it with the given item
@@ -586,6 +607,7 @@ public:
     virtual void testImport();
     virtual void testImportDelete();
     virtual void testManyChanges();
+    virtual void testLinkedItems();
 };
 
 enum itemType {
@@ -602,6 +624,12 @@ enum itemType {
  * @return number of valid items iterated over
  */
 int countItemsOfType(SyncSource *source, itemType type);
+
+typedef std::list<std::string> UIDList;
+/**
+ * generates list of UIDs in the specified kind of items
+ */
+UIDList listItemsOfType(SyncSource *source, itemType type);
 
 /**
  * Tests synchronization with one or more sync sources enabled.
@@ -790,6 +818,9 @@ protected:
 
 
 #endif // ENABLE_INTEGRATION_TESTS
+
+
+END_NAMESPACE
 
 /** @} */
 /** @endcond */

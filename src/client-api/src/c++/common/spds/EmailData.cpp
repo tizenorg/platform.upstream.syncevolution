@@ -39,6 +39,9 @@
 #include "base/quoted-printable.h"
 #include "syncml/formatter/Formatter.h"
 #include "spds/EmailData.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 
 #define EMAIL_READ  "read"
@@ -190,7 +193,7 @@ int EmailData::parse(const char *msg, size_t len)
     if (end != StringBuffer::npos) {
         unsigned int pos = end;
         unsigned int previous = end;
-        start = 0, end = 0;        
+        start = 0, end = 0;
         char* ext = NULL;
 
         // for try
@@ -225,7 +228,7 @@ int EmailData::parse(const char *msg, size_t len)
                 unsigned int from = 0, previous = 0;
                 char* val = XMLProcessor::copyElementContent(ext, "XVal", &from);
                 if (val) {
-                    extMailData->attachName = stringdup(val);
+                    extMailData->attachName = stringdup(MailMessage::decodeHeader(val).c_str());
                     delete [] val; val = NULL;
                 }
                 val = XMLProcessor::copyElementContent(&ext[from], "XVal", &from);
@@ -237,6 +240,9 @@ int EmailData::parse(const char *msg, size_t len)
                 if (extMailData->attachName && extMailData->attachSize != 0) {
                     remainingAttachments->add(*extMailData);
                     isMailPartial = true;
+                } else {
+                    setRemainingAttachNumber(getRemainingAttachNumber() == 0 ? 0 
+                        : (getRemainingAttachNumber() - 1));
                 }
                 delete extMailData;
                 extMailData = NULL;

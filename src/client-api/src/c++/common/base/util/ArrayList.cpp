@@ -33,8 +33,10 @@
  * the words "Powered by Funambol".
  */
 
-
 #include "base/util/ArrayList.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 /**
  * This class implements a simple linked list that can be accessed by index too.
@@ -43,12 +45,12 @@
  *
  * Since this class works with pointers, it can be instructed to delete the
  * list elements at object destruction. If the property autoDeleteElements is
- * TRUE all elements are delete using the C++ delete operator (therefore, make
+ * true all elements are delete using the C++ delete operator (therefore, make
  * sure elements are allocated with a compatible memory allocation function -
  * such as the C++ new operator)
  */
 
-ArrayList::ArrayList() : head(0), iterator(0), lastElement(0) {
+ArrayList::ArrayList() : head(0), lastElement(0), iterator(0) {
     count = 0;
 }
 
@@ -159,6 +161,9 @@ int ArrayList::add(ArrayElement& element) {
 * array list
 */
 int ArrayList::add(ArrayList* list) {
+    if (!list) {
+        return -1;
+    }
     int ret = 0;
     for (int i = 0; i < list->size(); i++) {
         ret = ret + add(*(ArrayElement*)list->get(i));
@@ -231,7 +236,7 @@ void ArrayList::clear()
  *
  * @param index the element position
  */
-ArrayElement* ArrayList::get(int index) {
+ArrayElement* ArrayList::get(int index) const {
 
     if ( index<0 ) {
         return NULL;
@@ -250,7 +255,7 @@ ArrayElement* ArrayList::get(int index) {
 /**
  * Returns the array size.
  */
-int ArrayList::size() {
+int ArrayList::size() const {
 /*    Element *e = head;
     int i = 0;
     while (e) {
@@ -266,9 +271,10 @@ ArrayElement* ArrayList::front() {
     iterator = head;
     return (iterator) ? iterator->e : 0 ;
 }
+
 ArrayElement* ArrayList::next() {
     if(!iterator) {
-        return 0;
+        return front();
     }
     iterator = iterator->n;
     return (iterator) ? iterator->e : 0 ;
@@ -289,14 +295,34 @@ ArrayElement* ArrayList::prev() {
 }
 
 ArrayElement* ArrayList::back() {
-    for(iterator = head; iterator->n; iterator = iterator->n);
+    for(iterator = head; iterator->n; iterator = iterator->n) {}
     return iterator->e;
 }
 
+bool ArrayList::last() const {
+    if (!iterator) {
+        if (size() == 0) {
+            return true;
+        } else {
+            return false;
+        }
+    } else {
+        return (iterator->n) ? false : true;
+    }
+    /**
+    if (!iterator && size() == 0) {
+        return true;
+    } else if (!iterator && size() > 0) {
+        return false;
+    } else {
+        return (iterator->n) ? false : true;
+    }
+    */
+}
 /**
  * Same as get(index)
  */
-ArrayElement* ArrayList::operator[] (int index) {
+ArrayElement* ArrayList::operator[] (int index) const {
     return get(index);
 }
 
@@ -320,105 +346,4 @@ ArrayList* ArrayList::clone() {
 
 }
 
-#ifdef ENABLE_UNIT_TESTS
 
-#include "base/util/StringBuffer.h"
-
-class ArrayListTest : public CppUnit::TestFixture {
-    CPPUNIT_TEST_SUITE(ArrayListTest);
-    CPPUNIT_TEST(removeFirst);
-    CPPUNIT_TEST(removeLast);
-    CPPUNIT_TEST(removeMiddle);
-    CPPUNIT_TEST(removeAll);
-    CPPUNIT_TEST_SUITE_END();
-
-public:
-    void setUp() {
-        StringBuffer a("a"), b("b"), c("c");
-
-        abc.add(a);
-        abc.add(b);
-        abc.add(c);
-
-        bc.add(b);
-        bc.add(c);
-
-        ac.add(a);
-        ac.add(c);
-        
-        ab.add(a);
-        ab.add(b);
-    }
-    void tearDown() {
-        abc.clear();
-        bc.clear();
-        ac.clear();
-        ab.clear();
-    }
-
-private:
-    void removeFirst() {
-        ArrayList l = abc;
-
-        l.removeElementAt(0);
-        CPPUNIT_ASSERT_EQUAL(2, l.size());
-        CPPUNIT_ASSERT(equal(l, bc));
-    }
-
-    void removeMiddle() {
-        ArrayList l = abc;
-
-        l.removeElementAt(1);
-        CPPUNIT_ASSERT_EQUAL(2, l.size());
-        CPPUNIT_ASSERT(equal(l, ac));
-    }
-
-    void removeLast() {
-        ArrayList l = abc;
-
-        l.removeElementAt(2);
-        CPPUNIT_ASSERT_EQUAL(2, l.size());
-        CPPUNIT_ASSERT(equal(l, ab));
-    }
-
-    void removeAll() {
-        ArrayList l = abc;
-        CPPUNIT_ASSERT_EQUAL(0, l.removeElementAt(0));
-        CPPUNIT_ASSERT_EQUAL(1, l.removeElementAt(1));
-        CPPUNIT_ASSERT_EQUAL(0, l.removeElementAt(0));
-        CPPUNIT_ASSERT(equal(l, empty));
-    }
-
-    bool equal(ArrayList &first, ArrayList &second) {
-        ArrayElement *first_e = first.front();
-        int index = 0;
-        ArrayElement *second_e = second.get(index);
-        while (true) {
-            if (!first_e && !second_e) {
-                // end of both lists
-                return true;
-            }
-
-            if (first_e && !second_e ||
-                !first_e && second_e) {
-                // different length
-                return false;
-            }
-
-            if (*(StringBuffer *)first_e != *(StringBuffer *)second_e) {
-                // different content
-                return false;
-            }
-
-            first_e = first.next();
-            index++;
-            second_e = second.get(index);
-        }
-    }
-
-    ArrayList abc, bc, ac, ab, empty;
-};
-
-FUNAMBOL_TEST_SUITE_REGISTRATION(ArrayListTest);
-
-#endif

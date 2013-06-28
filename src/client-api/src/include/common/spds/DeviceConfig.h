@@ -40,6 +40,9 @@
 #include "spds/constants.h"
 #include "syncml/core/VerDTD.h"
 #include "base/Log.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 /*
  * ---------------------------- DeviceConfig class -------------------------------
@@ -48,54 +51,11 @@
  * <DevInf> element for client capabilities.
  * DeviceConfig is a part of SyncManagerConfig (along with AccessConfig
  * and an array of SyncSourceConfig).
- *
- * Class members:
- * --------------
- * verDTD       : Specifies the major and minor version identifier of the
- *                Device Information DTD used in the representation
- *                of the Device Information. The value MUST be "1.1".
- *                This property is mandatory.
- * man          : Specifies the name of the manufacturer of the device.
- *                This property is optional.
- * mod          : Specifies the model name or model number of the device.
- *                This property is optional.
- * oem          : Specifies the OEM (Original Equipment Manufacturer) of the device.
- *                This property is optional.
- * fwv          : Specifies the firmware version of the device.
- *                This property is optional.
- * swv          : Specifies the software version of the device.
- *                This property is optional.
- * hwv          : Specifies the hardware version of the device.
- *                This property is optional.
- * devID        : Specifies the identifier of the source synchronization device.
- *                The content information MUST specify a theoretically,
- *                globally unique identifier. This property is mandatory.
- * devType      : Specifies the type of the source synchronization device.
- *                Type values for this element type can be e.g. "pager",
- *                "handheld", "pda", "phone", "smartphone", "server", "workstation".
- *                Other values can also be specified. This property is mandatory.
- * dsV          : Specifies the implemented DS version. This property is optional.
- * utc          : Boolean. Specifies that the device supports UTC based time.
- *                If utc = TRUE, the server SHOULD send time in UTC format,
- *                else MUST send in local time. Default value = TRUE.
- * loSupport    : Boolean. Specifies that the device supports handling of large objects.
- *                Default value = FALSE.
- * nocSupport   : Boolean. Specifies that the device supports number of changes.
- *                Default value = FALSE.
- * logLevel     : Specifies the logging level on the device.
- *                It can be one of 0 – 1 – 2 (none, info, debug).
- *                Default value = 1 (info).
- * maxObjSize   : Specifies the maximum object size allowed by the device.
- *                Default value = 0 (no maxObjSize set).
- * devInfHash   : This is a hash value generated from all properties that are used
- *                for the <DevInf> element, plus the syncURL property from AccessConfig.
- *                Initial value = "0".
  */
 class DeviceConfig {
 
     private:
 
-        char*         verDTD       ;
         char*         man          ;
         char*         mod          ;
         char*         oem          ;
@@ -105,9 +65,9 @@ class DeviceConfig {
         char*         devID        ;
         char*         devType      ;
         char*         dsV          ;
-        BOOL          utc          ;
-        BOOL          loSupport    ;
-        BOOL          nocSupport   ;
+        bool          utc          ;
+        bool          loSupport    ;
+        bool          nocSupport   ;
         LogLevel      logLevel     ;
         unsigned int  maxObjSize   ;
         char*         devInfHash   ;
@@ -141,9 +101,6 @@ class DeviceConfig {
          *      buffer so that the caller is assured that the
          *      given address can be released after the call.
          */
-        const char*  getVerDTD() const         ;
-        void setVerDTD(const char*  v)         ;
-
         const char*  getMan() const            ;
         void setMan(const char*  v)            ;
 
@@ -171,14 +128,14 @@ class DeviceConfig {
         const char*  getDsV() const            ;
         void setDsV(const char*  v)            ;
 
-        BOOL getUtc() const                    ;
-        void setUtc(BOOL v)                    ;
+        bool getUtc() const                    ;
+        void setUtc(bool v)                    ;
 
-        BOOL getLoSupport() const              ;
-        void setLoSupport(BOOL v)              ;
+        bool getLoSupport() const              ;
+        void setLoSupport(bool v)              ;
 
-        BOOL getNocSupport() const             ;
-        void setNocSupport(BOOL v)             ;
+        bool getNocSupport() const             ;
+        void setNocSupport(bool v)             ;
 
         LogLevel getLogLevel() const           ;
         void setLogLevel(LogLevel v)           ;
@@ -205,6 +162,9 @@ class DeviceConfig {
             return *this;
         }
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

@@ -24,28 +24,45 @@
 using namespace std;
 
 #include "config.h"
+#include "EvolutionSyncSource.h"
 
 #ifdef ENABLE_EBOOK
 
 #include "EvolutionSyncClient.h"
 #include "EvolutionContactSource.h"
+#include "SyncEvolutionUtil.h"
 
 #include <common/base/Log.h>
-#include <base/test.h>
 #include "vocl/VConverter.h"
-
 using namespace vocl;
+
+#include <boost/algorithm/string.hpp>
+
+class unrefEBookChanges {
+ public:
+    /** free list of EBookChange instances */
+    static void unref(GList *pointer) {
+        if (pointer) {
+            GList *next = pointer;
+            do {
+                EBookChange *ebc = (EBookChange *)next->data;
+                g_object_unref(ebc->contact);
+                g_free(next->data);
+                next = next->next;
+            } while (next);
+            g_list_free(pointer);
+        }
+    }
+};
+
 
 const EvolutionContactSource::extensions EvolutionContactSource::m_vcardExtensions;
 const EvolutionContactSource::unique EvolutionContactSource::m_uniqueProperties;
 
-EvolutionContactSource::EvolutionContactSource( const string &name,
-                                                SyncSourceConfig *sc,
-                                                const string &changeId,
-                                                const string &id,
-                                                EVCardFormat vcardFormat ) :
-    EvolutionSyncSource( name, sc, changeId, id ),
-    m_vcardFormat( vcardFormat )
+EvolutionContactSource::EvolutionContactSource(const EvolutionSyncSourceParams &params,
+                                               EVCardFormat vcardFormat) :
+    EvolutionSyncSource(params),
+    m_vcardFormat(vcardFormat)
 {
 }
 
@@ -64,13 +81,15 @@ EvolutionSyncSource::sources EvolutionContactSource::getSyncBackends()
     }
 
     EvolutionSyncSource::sources result;
-
+    bool first = true;
     for (GSList *g = e_source_list_peek_groups (sources); g; g = g->next) {
         ESourceGroup *group = E_SOURCE_GROUP (g->data);
         for (GSList *s = e_source_group_peek_sources (group); s; s = s->next) {
             ESource *source = E_SOURCE (s->data);
             result.push_back( EvolutionSyncSource::source( e_source_peek_name(source),
-                                                           e_source_get_uri(source) ) );
+                                                           e_source_get_uri(source),
+                                                           first ) );
+            first = false;
         }
     }
 
@@ -91,7 +110,7 @@ EvolutionSyncSource::sources EvolutionContactSource::getSyncBackends()
 
         if (book) {
             const char *uri = e_book_get_uri (book);
-            result.push_back (EvolutionSyncSource::source (name, uri));
+            result.push_back (EvolutionSyncSource::source (name, uri, true));
         }
     }
     
@@ -106,19 +125,20 @@ void EvolutionContactSource::open()
     }
     
     GError *gerror = NULL;
-    ESource *source = findSource( sources, m_id );
+    string id = getDatabaseID();
+    ESource *source = findSource(sources, id);
     bool onlyIfExists = true;
     if (!source) {
         // might have been special "<<system>>" or "<<default>>", try that and
         // creating address book from file:// URI before giving up
-        if (m_id == "<<system>>") {
+        if (id.empty() || id == "<<system>>") {
             m_addressbook.set( e_book_new_system_addressbook (&gerror), "system address book" );
-        } else if (m_id == "<<default>>") {
+        } else if (id.empty() || id == "<<default>>") {
             m_addressbook.set( e_book_new_default_addressbook (&gerror), "default address book" );
-        } else if (!m_id.compare(0, 7, "file://")) {
-            m_addressbook.set(e_book_new_from_uri(m_id.c_str(), &gerror), "creating address book");
+        } else if (boost::starts_with(id, "file://")) {
+            m_addressbook.set(e_book_new_from_uri(id.c_str(), &gerror), "creating address book");
         } else {
-            throwError(string(getName()) + ": no such address book: '" + m_id + "'");
+            throwError(string(getName()) + ": no such address book: '" + id + "'");
         }
         onlyIfExists = false;
     } else {
@@ -137,9 +157,9 @@ void EvolutionContactSource::open()
     // users are not expected to configure an authentication method,
     // so pick one automatically if the user indicated that he wants authentication
     // by setting user or password
-    string user, passwd;
-    getAuthentication(user, passwd);
-    if (passwd.size() || passwd.size()) {
+    const char *user = getUser(),
+        *passwd = getPassword();
+    if (user && user[0] || passwd && passwd[0]) {
         GList *authmethod;
         if (!e_book_get_supported_auth_methods(m_addressbook, &authmethod, &gerror)) {
             throwError("getting authentication methods", gerror );
@@ -148,11 +168,11 @@ void EvolutionContactSource::open()
             const char *method = (const char *)authmethod->data;
             LOG.debug("%s: trying authentication method \"%s\", user %s, password %s",
                       getName(), method,
-                      user.size() ? "configured" : "not configured",
-                      passwd.size() ? "configured" : "not configured");
+                      user && user[0] ? "configured" : "not configured",
+                      passwd && passwd[0] ? "configured" : "not configured");
             if (e_book_authenticate_user(m_addressbook,
-                                         user.c_str(),
-                                         passwd.c_str(),
+                                         user ? user : "",
+                                         passwd ? passwd : "",
                                          method,
                                          &gerror)) {
                 LOG.debug("%s: authentication succeeded", getName());
@@ -162,8 +182,8 @@ void EvolutionContactSource::open()
                           getName(), gerror->message);
                 g_clear_error(&gerror);
             }
+            authmethod = authmethod->next;
         }
-        authmethod = authmethod->next;
     }
 
     g_signal_connect_after(m_addressbook,
@@ -177,7 +197,6 @@ void EvolutionContactSource::beginSyncThrow(bool needAll,
                                             bool deleteLocal)
 {
     GError *gerror = NULL;
-    bool removedSome = false;
 
     eptr<EBookQuery> deleteItemsQuery;
     if (deleteLocal) {
@@ -195,6 +214,7 @@ void EvolutionContactSource::beginSyncThrow(bool needAll,
         if (!e_book_get_contacts( m_addressbook, deleteItemsQuery, &nextItem, &gerror )) {
             throwError( "reading items to be deleted", gerror );
         }
+        eptr<GList> listptr(nextItem);
         for (;nextItem; nextItem = nextItem->next) {
             const char *uid = (const char *)e_contact_get_const(E_CONTACT(nextItem->data),
                                                                 E_CONTACT_UID);
@@ -212,7 +232,7 @@ void EvolutionContactSource::beginSyncThrow(bool needAll,
                 if (!deleted) {
                     continue;
                 }
-                logItem(uid, "deleting item scheduled for removal", true);
+                logItem(string(uid), "deleting item scheduled for removal", true);
                 if (needPartial) {
                     // the observation is that the deleted item is not listed again
                     // below; apparently only changes made by someone else are recorded
@@ -234,6 +254,7 @@ void EvolutionContactSource::beginSyncThrow(bool needAll,
         if (!e_book_get_contacts( m_addressbook, allItemsQuery, &nextItem, &gerror )) {
             throwError( "reading all items", gerror );
         }
+        eptr<GList> listptr(nextItem);
         while (nextItem) {
             const char *uid = (const char *)e_contact_get_const(E_CONTACT(nextItem->data),
                                                                 E_CONTACT_UID);
@@ -247,6 +268,7 @@ void EvolutionContactSource::beginSyncThrow(bool needAll,
         if (!e_book_get_changes( m_addressbook, (char *)m_changeId.c_str(), &nextItem, &gerror )) {
             throwError( "reading changes", gerror );
         }
+        eptr<GList, GList, unrefEBookChanges> listptr(nextItem);
         while (nextItem) {
             EBookChange *ebc = (EBookChange *)nextItem->data;
 
@@ -281,6 +303,7 @@ void EvolutionContactSource::endSyncThrow()
         if (!e_book_get_changes( m_addressbook, (char *)m_changeId.c_str(), &nextItem, &gerror )) {
             throwError( "reading changes", gerror );
         }
+        eptr<GList, GList, unrefEBookChanges> listptr(nextItem);
     }
     resetItems();
     m_isModified = false;
@@ -300,6 +323,7 @@ void EvolutionContactSource::exportData(ostream &out)
     if (!e_book_get_contacts( m_addressbook, allItemsQuery, &nextItem, &gerror )) {
         throwError( "reading all items", gerror );
     }
+    eptr<GList> listptr(nextItem);
     while (nextItem) {
         eptr<char> vcardstr(e_vcard_to_string(&E_CONTACT(nextItem->data)->parent,
                                               EVC_FORMAT_VCARD_30));
@@ -312,15 +336,7 @@ void EvolutionContactSource::exportData(ostream &out)
     }
 }
 
-string toupperstr(string str)
-{
-    for (size_t i = 0; i < str.size(); i++) {
-        str[i] = toupper(str[i]);
-    }
-    return str;
-}
-
-SyncItem *EvolutionContactSource::createItem( const string &uid, SyncState state )
+SyncItem *EvolutionContactSource::createItem(const string &uid)
 {
     logItem( uid, "extracting from EV", true );
 
@@ -448,7 +464,7 @@ SyncItem *EvolutionContactSource::createItem( const string &uid, SyncState state
                 if (!param || !value) {
                     break;
                 }
-                parameters.push_back(pair<string, string>(toupperstr(param), toupperstr(value)));
+                parameters.push_back(pair<string, string>(boost::to_upper_copy(string(param)), boost::to_upper_copy(string(value))));
                 vprop->removeParameter(0);
             }
             while (parameters.size() > 0) {
@@ -473,14 +489,13 @@ SyncItem *EvolutionContactSource::createItem( const string &uid, SyncState state
     item->setData( (char *)finalstr, strlen(finalstr) );
     item->setDataType( getMimeType() );
     item->setModificationTime( 0 );
-    item->setState( state );
 
     return item.release();
 }
 
 string EvolutionContactSource::preparseVCard(SyncItem& item)
 {
-    string data = getData(item);
+    string data = (const char *)item.getData();
     // convert to 3.0 to get rid of quoted-printable encoded
     // non-ASCII chars, because Evolution does not support
     // decoding them
@@ -554,7 +569,7 @@ string EvolutionContactSource::preparseVCard(SyncItem& item)
                     // Evolution cannot handle e.g. "WORK,VOICE". Split into
                     // different parts.
                     string buffer = type, value;
-                    int start = 0, end;
+                    size_t start = 0, end;
                     vprop->removeParameter("TYPE");
                     while ((end = buffer.find(',', start)) != buffer.npos) {
                         value = buffer.substr(start, end - start);
@@ -685,7 +700,9 @@ void EvolutionContactSource::setItemStatusThrow(const char *key, int status)
                       getName(), key);
             break;
         }
+        eptr<EContact, GObject> contactptr( contact, "contact" );
         EContact *copy = e_contact_duplicate(contact);
+        eptr<EContact, GObject> contactcopyptr(copy);
         if(!copy ||
            ! e_book_add_contact(m_addressbook,
                                 copy,
@@ -760,6 +777,7 @@ int EvolutionContactSource::updateItemThrow(SyncItem& item)
                 throwError( string( "reading refresh contact " ) + uid,
                             gerror );
             }
+            eptr<EContact, GObject> contactptr( refresh_contact, "contact" );
             string nick = (const char *)e_contact_get_const(refresh_contact, E_CONTACT_NICKNAME);
             string nick_mod = nick + "_";
             e_contact_set(refresh_contact, E_CONTACT_NICKNAME, (void *)nick_mod.c_str());
@@ -795,7 +813,7 @@ int EvolutionContactSource::deleteItemThrow(SyncItem& item)
     return status;
 }
 
-const char *EvolutionContactSource::getMimeType()
+const char *EvolutionContactSource::getMimeType() const
 {
     switch( m_vcardFormat ) {
      case EVC_FORMAT_VCARD_21:
@@ -808,7 +826,7 @@ const char *EvolutionContactSource::getMimeType()
     }
 }
 
-const char *EvolutionContactSource::getMimeVersion()
+const char *EvolutionContactSource::getMimeVersion() const
 {
     switch( m_vcardFormat ) {
      case EVC_FORMAT_VCARD_21:
@@ -832,6 +850,8 @@ void EvolutionContactSource::logItem(const string &uid, const string &info, bool
                                 uid.c_str(),
                                 &contact,
                                 &gerror )) {
+            eptr<EContact, GObject> contactptr(contact);
+
             const char *fileas = (const char *)e_contact_get_const( contact, E_CONTACT_FILE_AS );
             if (fileas) {
                 line += fileas;
@@ -844,6 +864,7 @@ void EvolutionContactSource::logItem(const string &uid, const string &info, bool
                 }
             }
         } else {
+            g_clear_error(&gerror);
             line += "<name unavailable>";
         }
         line += " (";
@@ -855,7 +876,7 @@ void EvolutionContactSource::logItem(const string &uid, const string &info, bool
     }
 }
 
-void EvolutionContactSource::logItem(SyncItem &item, const string &info, bool debug)
+void EvolutionContactSource::logItem(const SyncItem &item, const string &info, bool debug)
 {
     if (LOG.getLevel() >= (debug ? LOG_LEVEL_DEBUG : LOG_LEVEL_INFO)) {
         string line;
@@ -889,6 +910,8 @@ void EvolutionContactSource::logItem(SyncItem &item, const string &info, bool de
                                     item.getKey(),
                                     &contact,
                                     &gerror )) {
+                eptr<EContact, GObject> contactptr( contact, "contact" );
+
                 line += ", EV ";
                 const char *fileas = (const char *)e_contact_get_const( contact, E_CONTACT_FILE_AS );
                 if (fileas) {
@@ -912,106 +935,8 @@ void EvolutionContactSource::logItem(SyncItem &item, const string &info, bool de
     }
 }
 
-
-EContact *EvolutionContactSource::getContact( const string &uid )
-{
-    EContact *contact;
-    GError *gerror = NULL;
-    if (e_book_get_contact( m_addressbook,
-                            uid.c_str(),
-                            &contact,
-                            &gerror )) {
-        return contact;
-    } else {
-        return NULL;
-    }
-}
+#endif /* ENABLE_EBOOK */
 
 #ifdef ENABLE_MODULES
-
-extern "C" EvolutionSyncSource *SyncEvolutionCreateSource(const string &name,
-                                                          SyncSourceConfig *sc,
-                                                          const string &changeId,
-                                                          const string &id,
-                                                          const string &mimeType)
-{
-    if (mimeType == "text/x-vcard") {
-        return new EvolutionContactSource(name, sc, changeId, id, EVC_FORMAT_VCARD_21);
-    } else if (mimeType == "text/vcard") {
-        return new EvolutionContactSource(name, sc, changeId, id, EVC_FORMAT_VCARD_30);
-    } else {
-        return NULL;
-    }
-}
-
-#else /* ENABLE_MODULES */
-
-#ifdef ENABLE_UNIT_TESTS
-
-class EvolutionContactTest : public CppUnit::TestFixture {
-    CPPUNIT_TEST_SUITE(EvolutionContactTest);
-    CPPUNIT_TEST(testImport);
-    CPPUNIT_TEST_SUITE_END();
-
-protected:
-    /**
-     * Tests parsing of contacts as they might be send by certain servers.
-     * This complements the actual testing with real servers and might cover
-     * cases not occurring with servers that are actively tested against.
-     */
-    void testImport() {
-        EvolutionContactSource source21("foo", NULL, "", "", EVC_FORMAT_VCARD_21),
-            source30("foo", NULL, "", "", EVC_FORMAT_VCARD_30);
-        string parsed;
-
-        // SF bug 1796086: sync with EGW: lost or messed up telephones
-        parsed = "BEGIN:VCARD\r\nVERSION:3.0\r\nTEL;CELL:cell\r\nEND:VCARD\r\n";
-        CPPUNIT_ASSERT_EQUAL(parsed,
-                             preparse(source21,
-                                      "BEGIN:VCARD\nVERSION:2.1\nTEL;CELL:cell\nEND:VCARD\n",
-                                      "text/x-vcard"));
-
-        parsed = "BEGIN:VCARD\r\nVERSION:3.0\r\nTEL;TYPE=CAR:car\r\nEND:VCARD\r\n";
-        CPPUNIT_ASSERT_EQUAL(parsed,
-                             preparse(source21,
-                                      "BEGIN:VCARD\nVERSION:2.1\nTEL;TYPE=CAR:car\nEND:VCARD\n",
-                                      "text/x-vcard"));
-
-        parsed = "BEGIN:VCARD\r\nVERSION:3.0\r\nTEL;TYPE=HOME:home\r\nEND:VCARD\r\n";
-        CPPUNIT_ASSERT_EQUAL(parsed,
-                             preparse(source21,
-                                      "BEGIN:VCARD\nVERSION:2.1\nTEL:home\nEND:VCARD\n",
-                                      "text/x-vcard"));
-
-        // TYPE=PARCEL not supported by Evolution, used to represent Evolutions TYPE=OTHER
-        parsed = "BEGIN:VCARD\r\nVERSION:3.0\r\nTEL;TYPE=OTHER:other\r\nEND:VCARD\r\n";
-        CPPUNIT_ASSERT_EQUAL(parsed,
-                             preparse(source21,
-                                      "BEGIN:VCARD\nVERSION:2.1\nTEL;TYPE=PARCEL:other\nEND:VCARD\n",
-                                      "text/x-vcard"));
-
-        parsed = "BEGIN:VCARD\r\nVERSION:3.0\r\nTEL;TYPE=HOME;TYPE=VOICE:cell\r\nEND:VCARD\r\n";
-        CPPUNIT_ASSERT_EQUAL(parsed,
-                             preparse(source21,
-                                      "BEGIN:VCARD\nVERSION:2.1\nTEL;TYPE=HOME,VOICE:cell\nEND:VCARD\n",
-                                      "text/x-vcard"));
-    }
-
-private:
-    string preparse(EvolutionContactSource &source,
-                    const char *data,
-                    const char *type) {
-        SyncItem item;
-        item.setData(data, strlen(data));
-        item.setDataType(type);
-        return source.preparseVCard(item);
-    }
-};
-
-FUNAMBOL_TEST_SUITE_REGISTRATION(EvolutionContactTest);
-
+# include "EvolutionContactSourceRegister.cpp"
 #endif
-
-#endif /* ENABLE_MODULES */
-
-#endif /* ENABLE_EBOOK */

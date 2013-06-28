@@ -38,7 +38,10 @@
 #define INCL_VIRTUAL_OBJECT
 /** @cond DEV */
 
-#include "VProperty.h"
+#include "vocl/VProperty.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 
 
@@ -180,6 +183,9 @@ public:
 
 };
 
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

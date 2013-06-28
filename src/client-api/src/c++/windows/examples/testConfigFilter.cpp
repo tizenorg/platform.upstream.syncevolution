@@ -57,6 +57,9 @@
 #include "spds/MailSyncSourceConfig.h"
 #include "syncml/core/core.h"
 #include "syncml/formatter/Formatter.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 
 void testConfigFilter() {
@@ -78,7 +81,7 @@ void testConfigFilter() {
     // Now we can read the config and than create the needed clause
     //
     MailSourceManagementNode node("sources", "mail");
-    MailSyncSourceConfig& config = node.getMailSourceConfig(TRUE);
+    MailSyncSourceConfig& config = node.getMailSourceConfig(true);
 
 
     //
@@ -236,7 +239,7 @@ void testConfigFilter() {
         MailSourceManagementNode node("sources", "mail", config);
     }
 
-    config = node.getMailSourceConfig(TRUE); // reread from the DM
+    config = node.getMailSourceConfig(true); // reread from the DM
 
     filter = ClauseUtil::createSourceFilter(TODAY, config.getBodySize(), config.getAttachSize());
 

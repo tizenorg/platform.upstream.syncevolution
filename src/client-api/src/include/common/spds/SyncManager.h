@@ -39,10 +39,11 @@
 /** @addtogroup Client */
 /** @{ */
 
+#include "base/globalsdef.h"
 #include "base/util/ArrayList.h"
 #include "http/TransportAgent.h"
 #include "spds/constants.h"
-#include "spds/SyncManagerConfig.h"
+#include "spds/AbstractSyncConfig.h"
 #include "spds/SyncSource.h"
 #include "spds/SyncMLBuilder.h"
 #include "spds/SyncMLProcessor.h"
@@ -50,6 +51,10 @@
 #include "spds/CredentialHandler.h"
 #include "spds/SyncReport.h"
 
+// Tolerance to data size for incoming items (106%) -> will be allocated some more space.
+#define DATA_SIZE_TOLERANCE      1.06
+
+BEGIN_NAMESPACE
 
 typedef enum {
                 STATE_START        = 0,
@@ -60,13 +65,6 @@ typedef enum {
                 STATE_PKG5_SENDING = 5,
                 STATE_PKG5_SENT    = 6
              } SyncManagerState ;
-
-
-// Tolerance to data size for incoming items (106%) -> will be allocated some more space.
-#define DATA_SIZE_TOLERANCE      1.06
-
-
-static void fillContentTypeInfoList(ArrayList &l, const char*  types);
 
 
 /**
@@ -86,13 +84,28 @@ class SyncManager {
          * @param config     required configuration
          * @param report     sync report reference to store sync results
          */
-        SyncManager(SyncManagerConfig& config, SyncReport& report);
+        SyncManager(AbstractSyncConfig& config, SyncReport& report);
         ~SyncManager();
 
+        /**
+         * Prepares the sync, performing authentication and 
+         * device capability exchange.
+         */
         int prepareSync(SyncSource** sources);
 
+        /**
+        * Starts the synchronization phase
+        *
+        * @return a status code for the sync. Can be:
+        *              0 on success
+        *              an interal code (see: TODO)
+        *              a status code from the server
+        */
         int sync();
 
+        /**
+         * Performs the commit phase of the synchronization.
+         */
         int endSync();
 
         /**
@@ -105,7 +118,7 @@ class SyncManager {
          *
          * @return device infos, to be deleted by caller, or NULL if unavailable
          */
-        virtual DevInf *createDeviceInfo();
+        DevInf *createDeviceInfo();
 
     private:
 
@@ -134,7 +147,7 @@ class SyncManager {
         };
 
         DevInf* devInf;
-        SyncManagerConfig& config;
+        AbstractSyncConfig& config;
         SyncReport& syncReport;
 
         CredentialHandler credentialHandler;
@@ -144,8 +157,8 @@ class SyncManager {
 
         SyncManagerState currentState;
         SyncSource** sources;
-        ArrayList* commands;
-        ArrayList** mappings;
+        ArrayList commands;
+        ArrayList* mappings;
 
         // Now using sources[i].checkState() method
         //int* check;
@@ -159,14 +172,14 @@ class SyncManager {
          */
         char** sortedSourcesFromServer;
 
-		ArrayList** allItemsList;
+        ArrayList** allItemsList;
 
         StringBuffer syncURL;
         StringBuffer deviceId;
         int responseTimeout;  // the response timeout for a rensponse from server (default = 5min) [in seconds]
         int maxMsgSize;       // the max message size. Default = 512k. Setting it implies LargeObject support.
         int maxObjSize;       // The maximum object size. The server gets this in the Meta init message and should obey it.
-        BOOL loSupport;             // enable support for large objects - without it large outgoing items are not split
+        bool loSupport;             // enable support for large objects - without it large outgoing items are not split
         unsigned int readBufferSize; // the size of the buffer to store chunk of incoming stream.
         char  credentialInfo[1024]; // used to store info for the des;b64 encription
 
@@ -193,14 +206,14 @@ class SyncManager {
         } *incomingItem;       // sync item which is not complete yet, more data expected
 
         void initialize();
-        BOOL readSyncSourceDefinition(SyncSource& source);
-        BOOL commitChanges(SyncSource& source);
+        bool readSyncSourceDefinition(SyncSource& source);
+        bool commitChanges(SyncSource& source);
         int assignSources(SyncSource** sources);
 
         Status *processSyncItem(Item* item, const CommandInfo &cmdInfo, SyncMLBuilder &syncMLBuilder);
-        BOOL checkForServerChanges(SyncML* syncml, ArrayList &statusList);
+        bool checkForServerChanges(SyncML* syncml, ArrayList &statusList);
 
-        const char*  getUserAgent(SyncManagerConfig& config);
+        const char*  getUserAgent(AbstractSyncConfig& config);
         bool isToExit();
         void setSourceStateAndError(unsigned int index, SourceState  state,
                                     unsigned int code,  const char*  msg);
@@ -213,13 +226,23 @@ class SyncManager {
         /**
          * A wrapper around the sync source's first/next iterator functions.
          * By default the data is encoded according to the "encoding"
-         * SyncSourceConfig property, unless the SyncSource already set an encoding.
+         * AbstractSyncSourceConfig property, unless the SyncSource already set an encoding.
          *
          * In case of an error the error is logged and the item is set to NULL, just as
          * if the source itself had returned NULL.
          */
         SyncItem* getItem(SyncSource& source, SyncItem* (SyncSource::* getItem)());
+
+        /**
+         * Add the map command according to the current value of the 
+         * member 'mappings', and clean up the member afterwards.
+         */
+        void addMapCommand(int sourceIndex);
+
 };
+
+
+END_NAMESPACE
 
 /** @} */
 /** @endcond */

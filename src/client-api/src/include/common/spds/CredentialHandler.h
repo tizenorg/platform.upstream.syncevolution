@@ -43,6 +43,9 @@
     #include "spds/constants.h"
     #include "syncml/core/TagNames.h"
     #include "syncml/core/ObjectDel.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
     class CredentialHandler{
 
@@ -58,7 +61,7 @@
         char*  serverAuthType;
         char*  serverNonce;
 
-        BOOL isServerAuthRequired;
+        bool isServerAuthRequired;
 
         /**
          * Initializes private members
@@ -106,15 +109,18 @@
         const char*  getServerAuthType();
         const char*  getServerNonce();
 
-        void setServerAuthRequired(BOOL t);
-        BOOL getServerAuthRequired();
+        void setServerAuthRequired(bool t);
+        bool getServerAuthRequired();
 
         Cred* getClientCredential();
         Cred* getServerCredential();
-        Chal* getServerChal(BOOL isServerAuthenticated);
-        BOOL  performServerAuth(Cred* cred);
+        Chal* getServerChal(bool isServerAuthenticated);
+        bool  performServerAuth(Cred* cred);
 
     };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

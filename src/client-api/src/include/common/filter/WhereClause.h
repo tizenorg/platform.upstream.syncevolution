@@ -39,6 +39,9 @@
 
 #include "base/fscapi.h"
 #include "filter/Clause.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 typedef enum {
     EQ       =  0,
@@ -60,7 +63,7 @@ private:
     char*             property     ;
     char*             value        ;
     WhereClauseOperator op           ;
-    BOOL                caseSensitive;
+    bool                caseSensitive;
 
     // ----------------------------------------------------- Protected interface
 protected:
@@ -83,7 +86,7 @@ public:
      * @param o
      * @param s
      */
-    WhereClause(const char*  property, const char*  value, WhereClauseOperator o, BOOL p3);
+    WhereClause(const char*  property, const char*  value, WhereClauseOperator o, bool p3);
 
 
     /*
@@ -142,7 +145,7 @@ public:
      * isCaseSensitive
      *
      */
-    BOOL isCaseSensitive();
+    bool isCaseSensitive();
 
 
     /*
@@ -150,7 +153,7 @@ public:
      *
      * @param s
      */
-    void setCaseSensitive(BOOL s);
+    void setCaseSensitive(bool s);
 
     /*
      * Creates a new instance of this Clause
@@ -162,6 +165,9 @@ public:
 
 };
 
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

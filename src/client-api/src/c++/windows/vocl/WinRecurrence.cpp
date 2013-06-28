@@ -1,34 +1,34 @@
 /*
- * Funambol is a mobile platform developed by Funambol, Inc.
+ * Funambol is a mobile platform developed by Funambol, Inc. 
  * Copyright (C) 2003 - 2007 Funambol, Inc.
- *
+ * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by
- * the Free Software Foundation with the addition of the following permission
+ * the Free Software Foundation with the addition of the following permission 
  * added to Section 15 as permitted in Section 7(a): FOR ANY PART OF THE COVERED
- * WORK IN WHICH THE COPYRIGHT IS OWNED BY FUNAMBOL, FUNAMBOL DISCLAIMS THE
+ * WORK IN WHICH THE COPYRIGHT IS OWNED BY FUNAMBOL, FUNAMBOL DISCLAIMS THE 
  * WARRANTY OF NON INFRINGEMENT  OF THIRD PARTY RIGHTS.
- *
+ * 
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
  * details.
- *
- * You should have received a copy of the GNU Affero General Public License
+ * 
+ * You should have received a copy of the GNU Affero General Public License 
  * along with this program; if not, see http://www.gnu.org/licenses or write to
  * the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA 02110-1301 USA.
- *
- * You can contact Funambol, Inc. headquarters at 643 Bair Island Road, Suite
+ * 
+ * You can contact Funambol, Inc. headquarters at 643 Bair Island Road, Suite 
  * 305, Redwood City, CA 94063, USA, or at email address info@funambol.com.
- *
+ * 
  * The interactive user interfaces in modified source and object code versions
  * of this program must display Appropriate Legal Notices, as required under
  * Section 5 of the GNU Affero General Public License version 3.
- *
+ * 
  * In accordance with Section 7(b) of the GNU Affero General Public License
  * version 3, these Appropriate Legal Notices must retain the display of the
- * "Powered by Funambol" logo. If the display of the logo is not reasonably
+ * "Powered by Funambol" logo. If the display of the logo is not reasonably 
  * feasible for technical reasons, the Appropriate Legal Notices must display
  * the words "Powered by Funambol".
  */
@@ -38,6 +38,9 @@
 #include "vocl/WinRecurrence.h"
 #include "vocl/constants.h"
 #include <oleauto.h>
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 using namespace std;
 
@@ -45,12 +48,16 @@ using namespace std;
 // Constructor
 WinRecurrence::WinRecurrence() {
     rrule = L"";
+    startDate = 0;
+    useTimezone = false;
 }
 
 // Constructor: fills propertyMap parsing the passed RRULE
-WinRecurrence::WinRecurrence(const wstring dataString, const DATE startDate) {
+WinRecurrence::WinRecurrence(const wstring dataString, const DATE date) {
     rrule = L"";
-    parse(dataString, startDate);
+    startDate = date;
+    useTimezone = false;
+    parse(dataString);
 }
 
 // Destructor
@@ -81,7 +88,7 @@ wstring& WinRecurrence::toString() {
     int  dayofmonth  = 0;
     int  instance    = 1;
     int  monthofyear = 0;
-    BOOL noEnd       = FALSE;
+    bool noEnd       = false;
     wstring pStart   = L"";
 
     // Read all values from propertyMap.
@@ -93,7 +100,7 @@ wstring& WinRecurrence::toString() {
     getProperty(L"DayOfMonth",     tmp);       dayofmonth  = _wtoi(tmp.c_str());
     getProperty(L"Instance",       tmp);       instance    = _wtoi(tmp.c_str());
     getProperty(L"MonthOfYear",    tmp);       monthofyear = _wtoi(tmp.c_str());
-    getProperty(L"NoEndDate",      tmp);       noEnd       = _wtoi(tmp.c_str());
+    getProperty(L"NoEndDate",      tmp);       noEnd       = (tmp != TEXT("0"));
     getProperty(L"PatternStartDate", pStart);
     // Note: "PatternEndDate" is no more sent: using only "Occurrences"
 
@@ -130,7 +137,7 @@ wstring& WinRecurrence::toString() {
             }
             break;
         }
-
+        
         // Monthly = 2
         case winRecursMonthly: {
             if(dayofmonth > 0) {
@@ -142,7 +149,7 @@ wstring& WinRecurrence::toString() {
                 break;
             }
         }
-
+        
         // MonthNth = 3
         case winRecursMonthNth: {
             if(instance>0 && dayofweek>0) {
@@ -168,7 +175,7 @@ wstring& WinRecurrence::toString() {
             }
             break;
         }
-
+        
         // YearNth = 6
         case winRecursYearNth: {
             if(dayofweek>0 && instance>0) {
@@ -198,7 +205,7 @@ wstring& WinRecurrence::toString() {
 
 
 // Parse a RRULE string and fills the propertyMap.
-int WinRecurrence::parse(const wstring dataString, const DATE startDate) {
+int WinRecurrence::parse(const wstring dataString) {
 
     int ret = 0;
     WCHAR* str = wstrdup(dataString.c_str());
@@ -211,6 +218,10 @@ int WinRecurrence::parse(const wstring dataString, const DATE startDate) {
     int dayOfMonth  = -1;
     int weekOfMonth = -1;
     int monthOfYear = -1;
+
+    if (!token) {
+        goto error;
+    }
 
 
     //
@@ -264,7 +275,7 @@ int WinRecurrence::parse(const wstring dataString, const DATE startDate) {
                 setIntProperty(L"RecurrenceType", recType);
                 setIntProperty(L"Interval",      interval);
                 occurences = _wtoi(token+1);
-                if(occurences == 0)             setIntProperty(L"NoEndDate",   TRUE);
+                if(occurences == 0)             setIntProperty(L"NoEndDate",   1);
                 else                            setIntProperty(L"Occurrences", occurences);
                 token ++;
             }
@@ -282,10 +293,10 @@ int WinRecurrence::parse(const wstring dataString, const DATE startDate) {
                 setIntProperty(L"RecurrenceType", recType);
                 setIntProperty(L"Interval",      interval);
                 occurences = _wtoi(token+1);
-                if(occurences == 0)             setIntProperty(L"NoEndDate",   TRUE);
+                if(occurences == 0)             setIntProperty(L"NoEndDate",   1);
                 else                            setIntProperty(L"Occurrences", occurences);
                 if(wcscmp(days, L""))           setIntProperty(L"DayOfWeekMask", stringToDaysOfWeek(days));
-                else                            setIntProperty(L"DayOfWeekMask", getWeekDayFromDate(startDate));
+                else                            setIntProperty(L"DayOfWeekMask", getWeekDayFromDate(startDate)); 
                 token++;
             }
             else if(token[8] == TEXT('T')) {
@@ -293,7 +304,7 @@ int WinRecurrence::parse(const wstring dataString, const DATE startDate) {
                 setProperty(L"PatternEndDate",      token);
                 setIntProperty(L"Interval",      interval);
                 if(wcscmp(days, L""))          setIntProperty(L"DayOfWeekMask", stringToDaysOfWeek(days));
-                else                           setIntProperty(L"DayOfWeekMask", getWeekDayFromDate(startDate));
+                else                           setIntProperty(L"DayOfWeekMask", getWeekDayFromDate(startDate)); 
             }
             else if(isWeekDay(token)) {
                 wcscat(days, token);
@@ -311,7 +322,7 @@ int WinRecurrence::parse(const wstring dataString, const DATE startDate) {
                 setIntProperty(L"DayOfMonth",  dayOfMonth);
                 setIntProperty(L"Interval",      interval);
                 occurences = _wtoi(token+1);
-                if(occurences == 0)             setIntProperty(L"NoEndDate",   TRUE);
+                if(occurences == 0)             setIntProperty(L"NoEndDate",   1);
                 else                            setIntProperty(L"Occurrences", occurences);
                 token++;
             }
@@ -341,7 +352,7 @@ int WinRecurrence::parse(const wstring dataString, const DATE startDate) {
                 setIntProperty(L"Instance",   weekOfMonth);
                 setIntProperty(L"DayOfWeekMask", stringToDaysOfWeek(days));
                 occurences = _wtoi(token+1);
-                if(occurences == 0)             setIntProperty(L"NoEndDate",   TRUE);
+                if(occurences == 0)             setIntProperty(L"NoEndDate",   1);
                 else                            setIntProperty(L"Occurrences", occurences);
                 token++;
             }
@@ -383,7 +394,7 @@ int WinRecurrence::parse(const wstring dataString, const DATE startDate) {
                 setIntProperty(L"MonthOfYear",monthOfYear);
                 setIntProperty(L"DayOfMonth",  dayOfMonth);
                 occurences = _wtoi(token+1);
-                if(occurences == 0)             setIntProperty(L"NoEndDate",   TRUE);
+                if(occurences == 0)             setIntProperty(L"NoEndDate",   1);
                 else                            setIntProperty(L"Occurrences", occurences);
                 token++;
             }
@@ -426,25 +437,3 @@ finally:
     if (mOfYear) delete [] mOfYear;
     return ret;
 }
-
-
-
-
-
-
-const int WinRecurrence::getIntProperty(const wstring propertyName) {
-    int ret = 0;
-    wstring tmp;
-    if (getProperty(propertyName, tmp)) {
-        ret = _wtoi(tmp.c_str());
-    }
-    return ret;
-}
-
-
-void WinRecurrence::setIntProperty(const wstring propertyName, const int propertyValue) {
-    WCHAR tmp[10];
-    wsprintf(tmp, TEXT("%d"), propertyValue);
-    setProperty(propertyName, tmp);
-}
-

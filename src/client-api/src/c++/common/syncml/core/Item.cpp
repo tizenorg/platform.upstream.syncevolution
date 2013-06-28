@@ -35,6 +35,9 @@
 
 
 #include "syncml/core/Item.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 
 Item::Item() {
@@ -48,7 +51,7 @@ Item::~Item() {
     if (data  ) { delete data  ; data   = NULL; }
     if (targetParent) { delete [] targetParent; targetParent = NULL; }
     if (sourceParent) { delete [] sourceParent; sourceParent = NULL; }
-    moreData = FALSE;
+    moreData = false;
 
 }
 
@@ -60,7 +63,7 @@ void Item::initialize() {
     sourceParent = NULL;
     meta         = NULL;
     data         = NULL;
-    moreData     = FALSE;
+    moreData     = false;
 }
 
 /**
@@ -80,7 +83,7 @@ Item::Item( Target* target,
             char* sParent,
             Meta*   meta  ,
             ComplexData* data,
-            BOOL moreData) {
+            bool moreData) {
     initialize();
 
     setTarget(target);
@@ -109,7 +112,7 @@ Item::Item( Target* target,
             Source* source,
             Meta*   meta  ,
             ComplexData* data,
-            BOOL moreData) {
+            bool moreData) {
     initialize();
     setTarget(target);
     setSource(source);
@@ -224,7 +227,7 @@ void Item::setData(ComplexData* data) {
 * @return true if the data item is incomplete and has further chunks
 *         to come, false otherwise
 */
-BOOL Item::isMoreData() {
+bool Item::isMoreData() {
     return (moreData != NULL);
 }
 
@@ -234,7 +237,7 @@ BOOL Item::isMoreData() {
 * @return true if the data item is incomplete and has further chunks
 *         to come, false otherwise
 */
-BOOL Item::getMoreData() {
+bool Item::getMoreData() {
     return moreData;
 }
 
@@ -243,12 +246,8 @@ BOOL Item::getMoreData() {
 *
 * @param moreData the moreData property
 */
-void Item::setMoreData(BOOL moreData) {
-    if ((moreData == NULL) || (moreData != TRUE && moreData != FALSE)) {
-        this->moreData = NULL;
-    } else {
-        this->moreData = moreData;
-    }
+void Item::setMoreData(bool moreData) {
+    this->moreData = moreData;
 }
 
 /**

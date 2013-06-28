@@ -43,6 +43,9 @@
 #include "base/util/XMLProcessor.h"
 #include "base/util/ArrayList.h"
 #include "syncml/core/ObjectDel.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 class Parser {
 
@@ -66,16 +69,16 @@ class Parser {
         static Authentication*  getAuthentication   (const char* xml);
         static ArrayList*       getCommands         (const char* xml);
         static Alert*           getAlert            (const char* xml);
-        static BOOL             getFinalMsg         (const char* xml);
+        static bool             getFinalMsg         (const char* xml);
         static int              getDataCode         (const char* xml);
         static Data*            getData             (const char* xml);
-        static BOOL             getNoResp           (const char* xml);
-        static BOOL             getNoResults        (const char* xml);
+        static bool             getNoResp           (const char* xml);
+        static bool             getNoResults        (const char* xml);
         static CmdID*           getCmdID            (const char* xml);
         static Item*            getItem             (const char* xml, const char* command = NULL);
         static ArrayList*       getItems            (const char* xml, const char* command = NULL);
         static ComplexData*     getComplexData      (const char* xml, const char* command = NULL);
-        static BOOL             getMoreData         (const char* xml);
+        static bool             getMoreData         (const char* xml);
         static Status*          getStatus           (const char* xml);
         static DevInf*          getDevInf           (const char* xml);
         static TargetRef*       getTargetRef        (const char* xml);
@@ -112,6 +115,9 @@ class Parser {
         static Search*          getSearch           (const char* xml);
         static ArrayList*       getSources          (const char* xml);
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

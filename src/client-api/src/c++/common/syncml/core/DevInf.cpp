@@ -35,6 +35,9 @@
 
 #include "base/util/utils.h"
 #include "syncml/core/DevInf.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 DevInf::DevInf() {
 
@@ -54,13 +57,13 @@ DevInf::~DevInf() {
     if(devID )  { delete [] devID ;  devID  = NULL; }
     if(devTyp)  { delete [] devTyp;  devTyp = NULL; }
 
-    if(dataStores) { dataStores->clear() ; } //delete dataStores; dataStores = NULL;}     //DataStore[]
-    if(ctCap     ) { ctCap->clear()      ; } //delete ctCap;      ctCap = NULL;     }     // CTCap[]
-    if(ext       ) { ext->clear()        ; } //delete ext;        ext = NULL;       }     // Ext[]
+    if(dataStores) { /*dataStores->clear() ; }*/ delete dataStores; dataStores = NULL;}     //DataStore[]
+    if(ctCap     ) { /*ctCap->clear()      ; }*/ delete ctCap;      ctCap = NULL;     }     // CTCap[]
+    if(ext       ) { /*ext->clear()        ; }*/ delete ext;        ext = NULL;       }     // Ext[]
 
-    utc                    = FALSE;
-    supportLargeObjs       = FALSE;
-    supportNumberOfChanges = FALSE;
+    utc                    = false;
+    supportLargeObjs       = false;
+    supportNumberOfChanges = false;
 
 }
 
@@ -96,9 +99,9 @@ DevInf::DevInf(VerDTD* verDTD,
         ArrayList* dataStores,
         ArrayList* ctCap,
         ArrayList* ext,
-        BOOL utc,
-        BOOL supportLargeObjs,
-        BOOL supportNumberOfChanges,
+        bool utc,
+        bool supportLargeObjs,
+        bool supportNumberOfChanges,
         SyncCap* syncCap) {
 
     initialize();
@@ -135,13 +138,13 @@ void DevInf::initialize() {
     devTyp = NULL;
 
     syncCap = NULL;
-    dataStores = new ArrayList();  //DataStore[]
+    dataStores = NULL; //new ArrayList();  //DataStore[]
     ctCap      = new ArrayList();  // CTCap[]
     ext        = new ArrayList();  // Ext[]
 
-    utc                    = FALSE;
-    supportLargeObjs       = FALSE;
-    supportNumberOfChanges = FALSE;
+    utc                    = false;
+    supportLargeObjs       = false;
+    supportNumberOfChanges = false;
 }
 
 
@@ -394,12 +397,12 @@ ArrayList* DevInf::getCTCap() {
 * @param ctCap an array of content type capability
 *
 */
-void DevInf::setCTCap(ArrayList* ctCap) {
-    if (this->ctCap) {
-		this->ctCap->clear();
-    }
-    if (ctCap) {
-	    this->ctCap = ctCap->clone();
+void DevInf::setCTCap(ArrayList* ct_Cap) {
+    if (ct_Cap && !(ct_Cap->isEmpty())) {
+        if (this->ctCap) {
+            this->ctCap->clear();
+        }
+        this->ctCap = ct_Cap;//->clone();
     }
 }
 
@@ -420,7 +423,9 @@ ArrayList* DevInf::getExt() {
 */
 void DevInf::setExt(ArrayList* ext) {
     if (this->ext) {
-		this->ext->clear();
+		//this->ext->clear();
+                delete this->ext;
+                this->ext = NULL;
     }
     if (ext) {
 	    this->ext = ext->clone();
@@ -432,7 +437,7 @@ void DevInf::setExt(ArrayList* ext) {
 *
 * @return true if the device supports UTC based time
 */
-BOOL DevInf::isUTC() {
+bool DevInf::isUTC() {
     return (utc != NULL);
 }
 
@@ -441,12 +446,8 @@ BOOL DevInf::isUTC() {
 *
 * @param utc is true if the device supports UTC based time
 */
-void DevInf::setUTC(BOOL utc) {
-    if ((utc == NULL) || (utc != TRUE && utc != FALSE)) {
-        this->utc = NULL;
-    } else {
-        this->utc = utc;
-    }
+void DevInf::setUTC(bool utc) {
+    this->utc = utc;
 }
 
 
@@ -455,7 +456,7 @@ void DevInf::setUTC(BOOL utc) {
 *
 * @return true if the device supports UTC based time
 */
-BOOL DevInf::getUTC() {
+bool DevInf::getUTC() {
     return utc;
 }
 
@@ -464,7 +465,7 @@ BOOL DevInf::getUTC() {
 *
 * @return true if the device supports handling of large objects
 */
-BOOL DevInf::isSupportLargeObjs() {
+bool DevInf::isSupportLargeObjs() {
     return (supportLargeObjs != NULL);
 }
 
@@ -474,12 +475,8 @@ BOOL DevInf::isSupportLargeObjs() {
 * @param supportLargeObjs is true if the device supports handling of large objects
 *
 */
-void DevInf::setSupportLargeObjs(BOOL supportLargeObjs) {
-    if ((supportLargeObjs == NULL) || (supportLargeObjs != TRUE && supportLargeObjs != FALSE)) {
-        this->supportLargeObjs = NULL;
-    } else {
-        this->supportLargeObjs = supportLargeObjs;
-    }
+void DevInf::setSupportLargeObjs(bool supportLargeObjs) {
+    this->supportLargeObjs = supportLargeObjs;
 }
 
 /**
@@ -487,7 +484,7 @@ void DevInf::setSupportLargeObjs(BOOL supportLargeObjs) {
 *
 * @return true if the device supports handling of large objects
 */
-BOOL DevInf::getSupportLargeObjs() {
+bool DevInf::getSupportLargeObjs() {
     return supportLargeObjs;
 }
 
@@ -496,7 +493,7 @@ BOOL DevInf::getSupportLargeObjs() {
 *
 * @return true if the device supports number of changes
 */
-BOOL DevInf::isSupportNumberOfChanges() {
+bool DevInf::isSupportNumberOfChanges() {
     return (supportNumberOfChanges != NULL);
 }
 
@@ -506,12 +503,8 @@ BOOL DevInf::isSupportNumberOfChanges() {
 * @param supportNumberOfChanges is true if the device supports number of changes
 *
 */
-void DevInf::setSupportNumberOfChanges(BOOL supportNumberOfChanges) {
-    if ((supportNumberOfChanges == NULL) || (supportNumberOfChanges != TRUE && supportNumberOfChanges != FALSE)) {
-        this->supportNumberOfChanges = NULL;
-    } else {
-        this->supportNumberOfChanges = supportNumberOfChanges;
-    }
+void DevInf::setSupportNumberOfChanges(bool supportNumberOfChanges) {
+    this->supportNumberOfChanges = supportNumberOfChanges;
 }
 
 /**
@@ -519,7 +512,7 @@ void DevInf::setSupportNumberOfChanges(BOOL supportNumberOfChanges) {
 *
 * @return true if the device supports number of changes
 */
-BOOL DevInf::getSupportNumberOfChanges() {
+bool DevInf::getSupportNumberOfChanges() {
     return supportNumberOfChanges;
 }
 

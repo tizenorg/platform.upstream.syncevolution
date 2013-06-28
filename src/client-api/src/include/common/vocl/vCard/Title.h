@@ -36,7 +36,7 @@
 
 //
 // @author Stefano Fornari @ Funambol
-// @version $Id: Title.h,v 1.4.2.1 2007/11/28 14:26:36 toccy Exp $
+// @version $Id: Title.h,v 1.7 2008-04-11 08:17:13 marco_garatti Exp $
 //
 
 
@@ -44,7 +44,10 @@
 #define INCL_PIM_TITLE
 /** @cond DEV */
 
-#include "TypedProperty.h"
+#include "vocl/vCard/TypedProperty.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 /**
  * An object representing a contact title.
@@ -83,6 +86,9 @@ class Title : public TypedProperty {
          */
         ArrayElement* clone() ; //FIXME
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

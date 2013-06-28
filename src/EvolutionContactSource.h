@@ -37,28 +37,10 @@
 class EvolutionContactSource : public EvolutionSyncSource
 {
   public:
-    /**
-     * Creates a new Evolution address book source.
-     *
-     * @param    changeId    is used to track changes in the Evolution backend;
-     *                       not specifying it implies that always all items are returned
-     * @param    id          identifies the backend; not specifying it makes this instance
-     *                       unusable for anything but listing backend databases
-     */
-    EvolutionContactSource( const string &name,
-                            SyncSourceConfig *sc,
-                            const string &changeId = string(""),
-                            const string &id = string(""),
-                            EVCardFormat vcardFormat = EVC_FORMAT_VCARD_30 );
-    EvolutionContactSource( const EvolutionContactSource &other );
+    EvolutionContactSource(const EvolutionSyncSourceParams &params,
+                           EVCardFormat vcardFormat = EVC_FORMAT_VCARD_30);
+    EvolutionContactSource(const EvolutionContactSource &other);
     virtual ~EvolutionContactSource() { close(); }
-
-    //
-    // utility function for testing:
-    // returns a pointer to an Evolution contact (memory owned
-    // by Evolution) with the given UID, NULL if not found or failure
-    //
-    EContact *getContact( const string &uid );
 
     // utility function: extract vcard from item in format suitable for Evolution
     string preparseVCard(SyncItem& item);
@@ -71,16 +53,11 @@ class EvolutionContactSource : public EvolutionSyncSource
     virtual void close(); 
     virtual void exportData(ostream &out);
     virtual string fileSuffix() { return "vcf"; }
-    virtual const char *getMimeType();
-    virtual const char *getMimeVersion();
-    virtual const char *getSupportedTypes() { return "text/vcard:3.0,text/x-vcard:2.1"; }
+    virtual const char *getMimeType() const;
+    virtual const char *getMimeVersion() const;
+    virtual const char *getSupportedTypes() const { return "text/vcard:3.0,text/x-vcard:2.1"; }
    
-    virtual SyncItem *createItem( const string &uid, SyncState state );
-    
-    //
-    // implementation of SyncSource
-    //
-    virtual ArrayElement *clone() { return new EvolutionContactSource(*this); }
+    virtual SyncItem *createItem(const string &uid);
     
   protected:
     //
@@ -95,7 +72,7 @@ class EvolutionContactSource : public EvolutionSyncSource
     virtual int updateItemThrow(SyncItem& item);
     virtual int deleteItemThrow(SyncItem& item);
     virtual void logItem(const string &uid, const string &info, bool debug = false);
-    virtual void logItem(SyncItem &item, const string &info, bool debug = false);
+    virtual void logItem(const SyncItem &item, const string &info, bool debug = false);
 
   private:
     /** valid after open(): the address book that this source references */

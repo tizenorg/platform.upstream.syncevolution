@@ -42,8 +42,8 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\src\include\common;..\..\src\include\windows;&quot;..\..\..\..\..\cppunit-1.12.0\include&quot;;..\..\..\..\tools\zlib"
-				PreprocessorDefinitions="WIN32;_DEBUG;_MBCS;UNICODE;_LIB;NO_CRIT_MSGBOX;_CRT_SECURE_NO_DEPRECATE;_CRT_NON_CONFORMING_SWPRINTFS;DISABLE_UNIT_TESTS;USE_ZLIB"
+				AdditionalIncludeDirectories="..\..\src\include\common;..\..\src\include\windows;..\..\..\..\tools\cppunit\include;..\..\..\..\tools\zlib"
+				PreprocessorDefinitions="WIN32;_DEBUG;_MBCS;UNICODE;_LIB;NO_CRIT_MSGBOX;_CRT_SECURE_NO_DEPRECATE;_CRT_NON_CONFORMING_SWPRINTFS;ENABLE_UNIT_TESTS;USE_ZLIB"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -350,6 +350,10 @@
 						</FileConfiguration>
 					</File>
 					<File
+						RelativePath="..\..\src\c++\common\base\util\ArrayListKeyValueStore.cpp"
+						>
+					</File>
+					<File
 						RelativePath="..\..\src\c++\common\base\util\baseutils.cpp"
 						>
 						<FileConfiguration
@@ -376,10 +380,6 @@
 						>
 					</File>
 					<File
-						RelativePath="..\..\src\c++\common\base\util\ItemContainer.cpp"
-						>
-					</File>
-					<File
 						RelativePath="..\..\src\c++\common\base\util\KeyValuePair.cpp"
 						>
 						<FileConfiguration
@@ -400,6 +400,10 @@
 								PreprocessorDefinitions=""
 							/>
 						</FileConfiguration>
+					</File>
+					<File
+						RelativePath="..\..\src\c++\common\base\util\PropertyFile.cpp"
+						>
 					</File>
 					<File
 						RelativePath="..\..\src\c++\common\base\util\StringBuffer.cpp"
@@ -585,6 +589,10 @@
 				Name="client"
 				>
 				<File
+					RelativePath="..\..\src\c++\common\client\CacheSyncSource.cpp"
+					>
+				</File>
+				<File
 					RelativePath="..\..\src\c++\common\client\DMTClientConfig.cpp"
 					>
 					<FileConfiguration
@@ -605,6 +613,10 @@
 							PreprocessorDefinitions=""
 						/>
 					</FileConfiguration>
+				</File>
+				<File
+					RelativePath="..\..\src\c++\common\client\MailSourceManagementNode.cpp"
+					>
 				</File>
 				<File
 					RelativePath="..\..\src\c++\common\client\SyncClient.cpp"
@@ -796,6 +808,14 @@
 				</File>
 				<File
 					RelativePath="..\..\src\c++\common\spds\ItemReport.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\src\c++\common\spds\MailMessage.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\src\c++\common\spds\MailSyncSourceConfig.cpp"
 					>
 				</File>
 				<File
@@ -3218,6 +3238,10 @@
 					Name="winObjects"
 					>
 					<File
+						RelativePath="..\..\src\c++\windows\vocl\sifUtils.cpp"
+						>
+					</File>
+					<File
 						RelativePath="..\..\src\c++\windows\vocl\WinContact.cpp"
 						>
 					</File>
@@ -3230,7 +3254,19 @@
 						>
 					</File>
 					<File
+						RelativePath="..\..\src\c++\windows\vocl\WinEventSIF.cpp"
+						>
+					</File>
+					<File
 						RelativePath="..\..\src\c++\windows\vocl\WinItem.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\..\src\c++\windows\vocl\WinNote.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\..\src\c++\windows\vocl\WinNoteSIF.cpp"
 						>
 					</File>
 					<File
@@ -3239,6 +3275,18 @@
 					</File>
 					<File
 						RelativePath="..\..\src\c++\windows\vocl\WinRecurrence.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\..\src\c++\windows\vocl\WinRecurrenceSIF.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\..\src\c++\windows\vocl\WinTask.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\..\src\c++\windows\vocl\WinTaskSIF.cpp"
 						>
 					</File>
 				</Filter>
@@ -3431,6 +3479,10 @@
 					RelativePath="..\..\src\include\windows\base\winadapter.h"
 					>
 				</File>
+				<File
+					RelativePath="..\..\src\include\windows\base\winlog.h"
+					>
+				</File>
 				<Filter
 					Name="util"
 					>
@@ -3443,7 +3495,19 @@
 						>
 					</File>
 					<File
+						RelativePath="..\..\src\include\common\base\util\ArrayListEnumeration.h"
+						>
+					</File>
+					<File
+						RelativePath="..\..\src\include\common\base\util\ArrayListKeyValueStore.h"
+						>
+					</File>
+					<File
 						RelativePath="..\..\src\include\common\base\util\BasicTime.h"
+						>
+					</File>
+					<File
+						RelativePath="..\..\src\include\common\base\util\Enumeration.h"
 						>
 					</File>
 					<File
@@ -3452,6 +3516,14 @@
 					</File>
 					<File
 						RelativePath="..\..\src\include\common\base\util\KeyValuePair.h"
+						>
+					</File>
+					<File
+						RelativePath="..\..\src\include\common\base\util\KeyValueStore.h"
+						>
+					</File>
+					<File
+						RelativePath="..\..\src\include\common\base\util\PropertyFile.h"
 						>
 					</File>
 					<File
@@ -4055,6 +4127,10 @@
 						>
 					</File>
 					<File
+						RelativePath="..\..\src\include\windows\vocl\sifUtils.h"
+						>
+					</File>
+					<File
 						RelativePath="..\..\src\include\windows\vocl\wincontact.h"
 						>
 					</File>
@@ -4067,7 +4143,19 @@
 						>
 					</File>
 					<File
+						RelativePath="..\..\src\include\windows\vocl\WineventSIF.h"
+						>
+					</File>
+					<File
 						RelativePath="..\..\src\include\windows\vocl\winitem.h"
+						>
+					</File>
+					<File
+						RelativePath="..\..\src\include\windows\vocl\WinNote.h"
+						>
+					</File>
+					<File
+						RelativePath="..\..\src\include\windows\vocl\WinNoteSIF.h"
 						>
 					</File>
 					<File
@@ -4076,6 +4164,18 @@
 					</File>
 					<File
 						RelativePath="..\..\src\include\windows\vocl\WinRecurrence.h"
+						>
+					</File>
+					<File
+						RelativePath="..\..\src\include\windows\vocl\WinRecurrenceSIF.h"
+						>
+					</File>
+					<File
+						RelativePath="..\..\src\include\windows\vocl\WinTask.h"
+						>
+					</File>
+					<File
+						RelativePath="..\..\src\include\windows\vocl\WinTaskSIF.h"
 						>
 					</File>
 				</Filter>
@@ -4097,6 +4197,10 @@
 				</File>
 				<File
 					RelativePath="..\..\src\include\common\spds\BodyPart.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\src\include\common\spds\CacheSyncSource.h"
 					>
 				</File>
 				<File
@@ -4137,6 +4241,10 @@
 				</File>
 				<File
 					RelativePath="..\..\src\include\common\spds\ItemReport.h"
+					>
+				</File>
+				<File
+					RelativePath="..\..\src\include\common\spds\PropertyFile.h"
 					>
 				</File>
 				<File

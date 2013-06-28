@@ -33,33 +33,18 @@
  * the words "Powered by Funambol".
  */
 
+#include "base/globalsdef.h"
 #include "base/fscapi.h"
 #include "base/messages.h"
 #include "base/util/utils.h"
 #include "base/util/StringBuffer.h"
-#include "base/test.h"
 
-#include <stdio.h>
+
+USE_NAMESPACE
 
 const size_t StringBuffer::npos = 0xFFFFFFFF;
 static size_t growup = 5;
 
-#if 0
-/// FIXME: Debug code
-#include <stdio.h>
-void abort(const char *msg)
-{
-    FILE *f=fopen("\fatal.txt", "w");
-    fputs(msg, f);
-    fclose(f);
-    exit(1);
-}
-size_t charlen = sizeof(char);
-    if(charlen != 2) {
-        abort("Panic: wide char size in not 2");
-    }
-
-#endif
 
 StringBuffer::StringBuffer(const char* str, size_t len) {
     size = 0;
@@ -83,6 +68,7 @@ StringBuffer::StringBuffer(const char* str, size_t len) {
     }
 }
 
+//Copy Costructor
 StringBuffer::StringBuffer(const StringBuffer &sb) {
     size = 0;
     s = NULL;
@@ -115,24 +101,37 @@ StringBuffer& StringBuffer::append(const char* sNew) {
     return *this;
 }
 
-StringBuffer& StringBuffer::append(unsigned long i, BOOL sign) {
+StringBuffer& StringBuffer::append(unsigned long i, bool sign) {
     append(StringBuffer().sprintf(sign ? "%ld" : "%lu", i));
 
     return *this;
 }
 
+/* TODO:
+
+StringBuffer& StringBuffer::append(unsigned long i) {
+    append(StringBuffer().sprintf("%lu", i));
+
+    return *this;
+}
+
+StringBuffer& StringBuffer::append(long i) {
+    append(StringBuffer().sprintf("%ld", i));
+
+    return *this;
+}
+
+*/
+
 StringBuffer& StringBuffer::append(StringBuffer& str) {
-    return append(str.getChars());
+    return append(str.c_str());
 }
 
 StringBuffer& StringBuffer::append(StringBuffer* str) {
-    if (str)
-        return append(str->getChars());
-    else
-        return *this;
+    return (str) ? append(str->c_str()) : *this;
 }
 
-StringBuffer& StringBuffer::set(const char* sNew) {
+StringBuffer& StringBuffer::assign(const char* sNew) {
     if (sNew) {
         size_t len = strlen(sNew);
         if ( len ) {
@@ -153,18 +152,35 @@ StringBuffer& StringBuffer::set(const char* sNew) {
     return *this;
 }
 
-StringBuffer& StringBuffer::sprintf(const char* format, ...) {
-    va_list ap;
+/////////////////////////////////////////////////////////////////////////////
+// convert.
+/////////////////////////////////////////////////////////////////////////////
+StringBuffer& StringBuffer::convert(const WCHAR* wc, const char *encoding) {
+    
+    if(sizeof(WCHAR) != sizeof(char)) {
+        char *tmp = toMultibyte(wc, encoding);
+        assign(tmp);
+        delete [] tmp;
+    }
+    else {
+        assign((const char *)wc);
+    }
+    return *this;
+}
 
-    va_start(ap, format);
+// sprintf ----------------------------
+StringBuffer& StringBuffer::sprintf(const char* format, ...) {
+    PLATFORM_VA_LIST ap;
+
+    PLATFORM_VA_START(ap, format);
     this->vsprintf(format, ap);
-    va_end(ap);
+    PLATFORM_VA_END(ap);
 
     return *this;
 }
 
-StringBuffer& StringBuffer::vsprintf(const char* format, va_list ap) {
-    va_list aq;
+StringBuffer& StringBuffer::vsprintf(const char* format, PLATFORM_VA_LIST ap) {
+    PLATFORM_VA_LIST aq;
 
     // ensure minimal size for first iteration
     int realsize = 255;
@@ -172,13 +188,18 @@ StringBuffer& StringBuffer::vsprintf(const char* format, va_list ap) {
     do {
         // make a copy to keep ap valid for further iterations
 #ifdef va_copy
-        va_copy(aq, ap);
+        PLATFORM_VA_COPY(aq, ap);
 #else
         aq = ap;
 #endif
 
         if (size < (unsigned long)realsize) {
             s = (char*)realloc(s, (realsize + 1) * sizeof(char));
+            if (s == NULL) {
+                // Out of memory. Flush the string content and return
+                size = 0;
+                return *this;
+            }
             size = realsize;
         }
 
@@ -187,7 +208,7 @@ StringBuffer& StringBuffer::vsprintf(const char* format, va_list ap) {
             // old-style vnsprintf: exact len unknown, try again with doubled size
             realsize = size * 2;
         }
-        va_end(aq);
+        PLATFORM_VA_END(aq);
     } while((unsigned long)realsize > size);
 
     // free extra memory
@@ -198,12 +219,12 @@ StringBuffer& StringBuffer::vsprintf(const char* format, va_list ap) {
 }
 
 
-const char* StringBuffer::getChars() const { return s; }
 
 unsigned long StringBuffer::length() const {
     return (s) ? strlen(s) : 0;
 }
 
+// Watch out
 StringBuffer& StringBuffer::reset() {
     freemem();
     return *this;
@@ -211,8 +232,9 @@ StringBuffer& StringBuffer::reset() {
 
 size_t StringBuffer::find(const char *str, size_t pos) const
 {
-    if (pos >= length())
+    if (pos >= length()) {
         return npos;
+    }
     char *p = strstr(s+pos, str);
     if(!p)
         return npos;
@@ -223,6 +245,7 @@ size_t StringBuffer::ifind(const char *str, size_t pos) const
 {
     if (pos >= length())
         return npos;
+
     char *ls = strtolower(s+pos);
     char *lstr = strtolower(str);
 
@@ -238,14 +261,6 @@ size_t StringBuffer::ifind(const char *str, size_t pos) const
 
 size_t StringBuffer::rfind(const char *str, size_t pos) const
 {
-    /*
-    if (pos >= length())
-        return npos;
-    const char *p = brfind(s+pos, str);
-    if(!p)
-        return npos;
-    return (p-s);
-    */
     if (pos >= length())
         return npos;
 
@@ -414,9 +429,9 @@ bool StringBuffer::null() const { return (s==0); }
 
 // Member Operators
 StringBuffer& StringBuffer::operator= (const char* sc)
-    { return set(sc); }
+    { return assign(sc); }
 StringBuffer& StringBuffer::operator= (const StringBuffer& sb)
-    { return set(sb); }
+    { return assign(sb); }
 StringBuffer& StringBuffer::operator+= (const char* sc)
     { append(sc); return *this; }
 StringBuffer& StringBuffer::operator+= (const StringBuffer& s)
@@ -445,6 +460,8 @@ bool  StringBuffer::operator!= (const StringBuffer& s) const
 }
 
 
+BEGIN_NAMESPACE
+
 // Function operators
 StringBuffer operator+(const StringBuffer& x, const char *y)
 {
@@ -452,6 +469,8 @@ StringBuffer operator+(const StringBuffer& x, const char *y)
   result.append(y);
   return result;
 }
+
+END_NAMESPACE
 
 
 //size_t StringBuffer_memcount = 0;
@@ -485,67 +504,4 @@ void StringBuffer::freemem()
     size = 0;
 }
 
-/*
-* Create a StringBuffer with a sequence of len chars.
-* useful to have a string buffer directly from a SyncItem.getData(), SyncItem.getDataSize()
-*/
 
-StringBuffer::StringBuffer(const void* str, size_t len) {
-
-    size = 0;
-    s = 0;
-
-    // if the given string is null, leave this null,
-    // otherwise set it, even empty.
-    if (str && len > 0) {
-
-        getmem(len);
-        strncpy(s, (const char*)str, len);
-        s[len]=0;
-    }
-    else {  // empty string
-        getmem(1);
-        s[0] = 0;
-
-    }
-}
-
-
-#ifdef ENABLE_UNIT_TESTS
-
-class StringBufferTest : public CppUnit::TestFixture {
-    CPPUNIT_TEST_SUITE(StringBufferTest);
-    CPPUNIT_TEST(testSprintf);
-    CPPUNIT_TEST_SUITE_END();
-
-private:
-    void testSprintf() {
-        StringBuffer buf;
-
-        buf.sprintf("foo %s %d", "bar", 42);
-        CPPUNIT_ASSERT(buf == "foo bar 42");
-
-        buf = doSprintf("foo %s %d", "bar", 42);
-        CPPUNIT_ASSERT(buf == "foo bar 42");
-
-        for (unsigned long size = 1; size < (1<<10); size *= 2) {
-            buf.sprintf("%*s", (int)size, "");
-            CPPUNIT_ASSERT_EQUAL(size, buf.length());
-        }
-    }
-
-    StringBuffer doSprintf(const char* format, ...) {
-        va_list ap;
-        StringBuffer buf;
-
-        va_start(ap, format);
-        buf.vsprintf(format, ap);
-        va_end(ap);
-
-        return buf;
-    }
-};
-
-FUNAMBOL_TEST_SUITE_REGISTRATION(StringBufferTest);
-
-#endif

@@ -38,6 +38,9 @@
 
 #include "base/fscapi.h"
 #include "spds/constants.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 
 /*
@@ -46,44 +49,12 @@
  * connection with a sync server.
  * AccessConfig is a part of SyncManagerConfig (along with DeviceConfig
  * and an array of SyncSourceConfig).
- *
- * Class members:
- * --------------
- * username             : string for username
- * password             : string for password
- * useProxy             : Should the sync engine use a HTTP proxy?
- * proxyHost            : the host for proxy connection
- * proxyPort            : the port for proxy connection
- * proxyUsername        : the proxy username (if proxy needs authentication)
- * proxyPassword        : the proxy password (if proxy needs authentication)
- * beginTimestamp       : The beginSync timestamp
- * endTimestamp         : The endSync timestamp
- * firstTimeSyncMode    : The SyncMode that the sync engine should use
- *                        the first time a source is synced
- * serverNonce          : The server nonce value: from client to server
- * clientNonce          : The client nonce value: from server to client
- * serverID             : the server ID value
- * serverPWD            : the server password
- * clientAuthType       : the type of client authentication used by client
- * isServerAuthRequired : Does the server require authentication?
- * maxMsgSize           : The maximum message size (Byte) accepted for XML
- *                        messages received from server (server to client)
- * readBufferSize       : Specifies the value for the size of the buffer used
- *                        to store the incoming stream from server (byte)
- * userAgent            : The user agent string, will be attached to http
- *                        messages to identify the client on server side.
- *                        It shoud be a short description with the client
- *                        name plus its version
- * checkConn            : Do we need to check if the GPRS connection is available?          <-- **** still used? ****
- * responseTimeout      : The number of seconds of waiting response timeout
- * dirty                : The dirty flag, used to select which properties
- *                        have been modified. Not used by now (T.B.D)
  */
 class AccessConfig {
     private:
         char*           username            ;
         char*           password            ;
-        BOOL            useProxy            ;
+        bool            useProxy            ;
         char*           proxyHost           ;
         int             proxyPort           ;
         char*           proxyUsername       ;
@@ -98,13 +69,13 @@ class AccessConfig {
         char*           serverPWD           ;
         char*           clientAuthType      ;
         char*           serverAuthType      ;
-        BOOL            isServerAuthRequired;
+        bool            isServerAuthRequired;
         unsigned long   maxMsgSize          ;
         unsigned long   readBufferSize      ;
         char*           userAgent           ;
-        BOOL            checkConn           ;
+        bool            checkConn           ;
         unsigned int    responseTimeout     ;
-        BOOL            compression         ;
+        bool            compression         ;
 
         unsigned int dirty;
 
@@ -172,14 +143,14 @@ class AccessConfig {
         /**
          * Should the sync engine use a HTTP proxy?
          */
-        BOOL getUseProxy() const;
+        bool getUseProxy() const;
 
         /**
          * Sets if the sync engine should use a HTTP proxy to access the server.
          *
-         * @param useProxy FALSE for not use a proxy, TRUE otherwise
+         * @param useProxy false for not use a proxy, true otherwise
          */
-        void setUseProxy(BOOL useProxy);
+        void setUseProxy(bool useProxy);
 
         /**
          * Returns the proxyHost value.
@@ -260,9 +231,9 @@ class AccessConfig {
          */
         unsigned long getEndSync() const;
 
-        BOOL getServerAuthRequired() const;
+        bool getServerAuthRequired() const;
 
-        void setServerAuthRequired(BOOL v);
+        void setServerAuthRequired(bool v);
 
         const char*  getClientAuthType() const;
 
@@ -300,15 +271,15 @@ class AccessConfig {
 
         void setUserAgent(const char*  v);
 
-        void setCompression(BOOL  v);
+        void setCompression(bool  v);
 
-        BOOL  getCompression() const;
+        bool  getCompression() const;
 
-        //void setCompression(BOOL v);
+        //void setCompression(bool v);
 
-
-        void setCheckConn(BOOL v);
-        BOOL getCheckConn() const;
+        void setCheckConn(bool v);
+        /** @todo remove this, it is obsolete */
+        bool getCheckConn() const;
 
         void setResponseTimeout(unsigned int bufferSize)   ;
         unsigned int getResponseTimeout() const            ;
@@ -335,6 +306,9 @@ class AccessConfig {
         }
 
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

@@ -36,13 +36,19 @@
 #include "http/HTTPHeader.h"
 #include "http/TransportAgent.h"
 #include "base/util/utils.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 TransportAgent::TransportAgent() {
     timeout = DEFAULT_MAX_TIMEOUT;
     maxmsgsize = DEFAULT_MAX_MSG_SIZE;
     readBufferSize = DEFAULT_INTERNET_READ_BUFFER_SIZE;
     userAgent[0] = 0;
-    compression=FALSE;
+    compression = false;
+    SSLServerCertificates = "";
+    SSLVerifyServer = true;
+    SSLVerifyHost = true;
 }
 
 TransportAgent::TransportAgent(URL& newURL,
@@ -56,7 +62,10 @@ TransportAgent::TransportAgent(URL& newURL,
     this->maxmsgsize  = maxmsgsize;
     readBufferSize = DEFAULT_INTERNET_READ_BUFFER_SIZE;
     userAgent[0] = 0;
-    compression=FALSE;
+    compression = false;
+    SSLServerCertificates = "";
+    SSLVerifyServer = true;
+    SSLVerifyHost = true;
 }
 
 TransportAgent::~TransportAgent() {
@@ -103,11 +112,11 @@ const char* TransportAgent::getUserAgent() {
     return stringdup(userAgent);
 }
 
-void TransportAgent::setCompression(BOOL newCompression){
+void TransportAgent::setCompression(bool newCompression){
     compression = newCompression;
 }
 
-BOOL TransportAgent::getCompression(){
+bool TransportAgent::getCompression(){
     return compression;
 }
 

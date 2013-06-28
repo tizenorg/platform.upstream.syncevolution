@@ -36,6 +36,10 @@
 #include "examples/TestSyncSource.h"
 #include "base/util/utils.h"
 #include "base/Log.h"
+#include "base/util/StringBuffer.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 static int all      = -1;
 static int cnew     = -1;
@@ -72,6 +76,10 @@ int setAllItemsEmpty() {
 int setModifiedItems() {
 
     SyncItem item;
+                StringBuffer val; 
+                for (int ii = 0; ii<1; ii++){
+                    val.append("This is the updated item one");
+                }
 
     for (int i = 0; i < 4; ++i) {
 
@@ -79,19 +87,19 @@ int setModifiedItems() {
 
             case 0:
                 item.setKey(TEXT("item5"));
-                item.setData("This is a new item Four"  , 23*sizeof(char));
+                item.setData(val.c_str()  , (val.length())*sizeof(char));
                 newItems.add(item);
                 break;
 
             case 1:
                 item.setKey(TEXT("item1"));
-                item.setData("This is the updated item one"  , 28*sizeof(char));
+                item.setData(val.c_str()  , (val.length())*sizeof(char));
                 updatedItems.add(item);
                 break;
 
             case 2:
                 item.setKey(TEXT("item3"));
-                item.setData("This is the updated item Three", 30*sizeof(char));
+                item.setData(val.c_str()  , (val.length())*sizeof(char));
                 updatedItems.add(item);
                 break;
 
@@ -198,19 +206,25 @@ SyncItem* TestSyncSource::getNextDeletedItem() {
 }
 
 void TestSyncSource::setItemStatus(const WCHAR* key, int status) {
-    sprintf(logmsg, "key: %ls, status: %i", key, status);
-    LOG.debug(logmsg);
+    char* val = toMultibyte(key);
+    LOG.debug("key: %s, status: %i", val, status);
+    if(val){
+        delete [] val;
+        val = 0;
+    }
 }
 
 int TestSyncSource::addItem(SyncItem& item) {
-    sprintf(logmsg, "added item: %ls", item.getKey());
-    LOG.info(logmsg);
-
-    LOG.info("Data:");
+    char* val = toMultibyte( item.getKey() );
+    LOG.info("added item: %s", val);
+    if(val){
+        delete [] val;
+        val = 0;
+    }
     char *data = new char [item.getDataSize()];
     memcpy(data, item.getData(), item.getDataSize());
     data[item.getDataSize()] = 0;
-    LOG.info(data);
+    LOG.info("Data: %s", data);
     delete [] data;
 
     WCHAR *luid = new WCHAR[wcslen(item.getKey())+10];
@@ -221,33 +235,38 @@ int TestSyncSource::addItem(SyncItem& item) {
 }
 
 int TestSyncSource::updateItem(SyncItem& item) {
-    sprintf(logmsg, "updated item: %ls", item.getKey());
-    LOG.info(logmsg);
+    char* val = toMultibyte( item.getKey() );
+    LOG.info("updated item: %s", val);
+    if(val){
+        delete [] val;
+        val = 0;
+    }
 
-    LOG.info("Data:");
     char *data = new char [item.getDataSize()];
     memcpy(data, item.getData(), item.getDataSize());
     data[item.getDataSize()] = 0;
-    LOG.info(data);
+    LOG.info("Data: %s", data);
     delete [] data;
 
     return 200;
 }
 
 int TestSyncSource::deleteItem(SyncItem& item) {
-    sprintf(logmsg, "deleted item: %ls", item.getKey());
-    LOG.debug(logmsg);
+    char* val = toMultibyte( item.getKey() );
+    LOG.info("deleted item: %s", val);
+    if(val){
+        delete [] val;
+        val = 0;
+    }
     return 200;
 }
 
 int TestSyncSource::beginSync() {
-    sprintf(logmsg, "Begin sync TestSyncSource");
-    LOG.debug(logmsg);
+    LOG.debug("Begin sync TestSyncSource");
     return 0;
 }
 int TestSyncSource::endSync() {
-    sprintf(logmsg, "End sync TestSyncSource");
-    LOG.debug(logmsg);
+    LOG.debug("End sync TestSyncSource");
     return 0;
 }
 

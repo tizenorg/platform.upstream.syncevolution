@@ -37,6 +37,9 @@
 #include "spds/SyncSourceReport.h"
 #include "spds/SyncReport.h"
 #include "spds/ItemReport.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 const char* const SyncSourceReport::targets[] = {
     CLIENT,
@@ -87,13 +90,37 @@ SyncSourceReport::~SyncSourceReport() {
         sourceName = NULL;
     }
 
-    clientAddItems->clear();
-    clientModItems->clear();
-    clientDelItems->clear();
+    //clientAddItems->clear();
+    //clientModItems->clear();
+    //clientDelItems->clear();
 
-    serverAddItems->clear();
-    serverModItems->clear();
-    serverDelItems->clear();
+    //serverAddItems->clear();
+    //serverModItems->clear();
+    //serverDelItems->clear();
+    if (clientAddItems){
+        delete clientAddItems;
+        clientAddItems = NULL;
+    }
+    if (clientModItems){
+        delete clientModItems;
+        clientModItems = NULL;
+    }
+    if (clientDelItems){
+        delete clientDelItems;
+        clientDelItems = NULL;
+    }
+    if (serverAddItems){
+        delete serverAddItems;
+        serverAddItems = NULL;
+    }
+    if (serverModItems){
+        delete serverModItems;
+        serverModItems = NULL;
+    }
+    if (serverDelItems){
+        delete serverDelItems;
+        serverDelItems = NULL;
+    }
 }
 
 

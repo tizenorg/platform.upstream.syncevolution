@@ -34,13 +34,16 @@
  */
 #include "base/util/utils.h"
 #include "filter/WhereClause.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 
-WhereClause::WhereClause() : property(NULL), value(NULL), op(UNKNOWN), caseSensitive(TRUE) {
+WhereClause::WhereClause() : property(NULL), value(NULL), op(UNKNOWN), caseSensitive(true) {
     type = WHERE_CLAUSE;
 }
 
-WhereClause::WhereClause(const char* p, const char* v, WhereClauseOperator o, BOOL s) {
+WhereClause::WhereClause(const char* p, const char* v, WhereClauseOperator o, bool s) {
     type = WHERE_CLAUSE;
     property = NULL; if (p) property = stringdup(p);
     value = NULL; if (v) value = stringdup(v);
@@ -129,11 +132,11 @@ void WhereClause::setOperator(WhereClauseOperator o) {
     op = o;
 }
 
-BOOL WhereClause::isCaseSensitive() {
-    return (caseSensitive == TRUE);
+bool WhereClause::isCaseSensitive() {
+    return (caseSensitive == true);
 }
 
-void WhereClause::setCaseSensitive(BOOL s) {
+void WhereClause::setCaseSensitive(bool s) {
     caseSensitive = s;
 }
 

@@ -33,8 +33,11 @@
  * the words "Powered by Funambol".
  */
 
-
+#include "syncml/core/Mem.h"
 #include "syncml/core/MetInf.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 MetInf::MetInf() {
      set(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
@@ -62,19 +65,19 @@ MetInf::MetInf(const char*    format    ,
 
 MetInf::~MetInf() {
 
-	if (this->format)     { delete [] this->format;    this->format = NULL; }
+    if (this->format)     { delete [] this->format;    this->format = NULL; }
     if (this->type)       { delete [] this->type;      this->type = NULL; }
     if (this->mark)       { delete [] this->mark;      this->mark = NULL; }
     if (this->anchor)     { delete    this->anchor;    this->anchor = NULL; }
     if (this->version)    { delete [] this->version;   this->version = NULL; }
     if (this->nextNonce)  { delete    this->nextNonce; this->nextNonce = NULL; }
-	if (this->mem)        { delete    this->mem;       this->mem = NULL; }
+    if (this->mem)        { delete    this->mem;       this->mem = NULL; }
 
-    if (this->emi)        { this->emi->clear(); } //delete this->emi; this->emi = NULL;}
+    if (this->emi)        { /*this->emi->clear(); }*/ delete this->emi; this->emi = NULL;}
 
-	this->maxMsgSize = 0;
+    this->maxMsgSize = 0;
     this->maxObjSize = 0;
-	this->size       = 0;
+    this->size       = 0;
 
 }
 
@@ -100,7 +103,7 @@ void MetInf::set(  const char*  format   ,
     this->nextNonce  = nonce->clone();
     setMaxMsgSize(maxMsgSize);
     setMaxObjSize(maxObjSize);
-	this->mem        = mem->clone();
+    this->mem        = mem->clone();
 
 
     if (emi == NULL) {
@@ -128,10 +131,10 @@ ArrayList* MetInf::getEMI() {
  */
 void MetInf::setEMI(ArrayList* emi) {
     if (this->emi) {
-		this->emi->clear();
+        this->emi->clear();
     }
     if (emi) {
-	    this->emi = emi->clone();
+        this->emi = emi->clone();
     }
 
 }
@@ -151,10 +154,10 @@ long MetInf::getSize() {
  * @param size the new size value
  */
 void MetInf::setSize(long size) {
-	if (size)
-		this->size = size;
-	else
-		this->size = 0;
+    if (size)
+        this->size = size;
+    else
+        this->size = 0;
 
 }
 
@@ -197,7 +200,7 @@ void MetInf::setType(const char* type) {
      if (this->type) {
         delete [] this->type; this->type = NULL;
      }
-	 this->type = stringdup(type);
+     this->type = stringdup(type);
 }
 
 /**
@@ -236,9 +239,9 @@ Anchor* MetInf::getAnchor() {
  * @param anchor the new anchor value
  */
 void MetInf::setAnchor(Anchor* anchor) {
-	if (this->anchor) {
-		delete this->anchor; this->anchor = NULL;
-	}
+    if (this->anchor) {
+        delete this->anchor; this->anchor = NULL;
+    }
     this->anchor = anchor->clone();
 }
 
@@ -258,9 +261,9 @@ NextNonce* MetInf::getNextNonce() {
  * @param nextNonce the new nextNonce value
  */
 void MetInf::setNextNonce(NextNonce* nextNonce) {
-	if (this->nextNonce) {
-		delete this->nextNonce; this->nextNonce = NULL;
-	}
+    if (this->nextNonce) {
+        delete this->nextNonce; this->nextNonce = NULL;
+    }
     this->nextNonce = nextNonce->clone();
 
 }
@@ -272,7 +275,7 @@ void MetInf::setNextNonce(NextNonce* nextNonce) {
  * @return mem
  */
 Mem* MetInf::getMem() {
-	return mem;
+    return mem;
 }
 
 /**
@@ -281,9 +284,9 @@ Mem* MetInf::getMem() {
  * @param mem the new mem value
  */
 void MetInf::setMem(Mem* mem) {
-	if (this->mem) {
-		delete this->mem; this->mem = NULL;
-	}
+    if (this->mem) {
+        delete this->mem; this->mem = NULL;
+    }
     this->mem = mem->clone();
 
 }
@@ -304,10 +307,10 @@ long MetInf::getMaxMsgSize() {
  * @param maxMsgSize the new maxMsgSize value
  */
  void MetInf::setMaxMsgSize(long maxMsgSize) {
-	if (maxMsgSize)
-		this->maxMsgSize = maxMsgSize;
-	else
-		this->maxMsgSize = 0;
+    if (maxMsgSize)
+        this->maxMsgSize = maxMsgSize;
+    else
+        this->maxMsgSize = 0;
 
 }
 
@@ -327,9 +330,9 @@ long MetInf::getMaxObjSize() {
  */
 void MetInf::setMaxObjSize(long maxObjSize) {
     if (maxObjSize)
-		this->maxObjSize = maxObjSize;
-	else
-		this->maxObjSize = 0;
+        this->maxObjSize = maxObjSize;
+    else
+        this->maxObjSize = 0;
 }
 
 /**
@@ -355,11 +358,12 @@ void MetInf::setVersion(const char* version) {
 
 MetInf* MetInf::clone() {
 
-	MetInf* ret = new MetInf();
-	ret->set(format, type, mark, size, anchor, version, nextNonce, maxMsgSize,
+    MetInf* ret = new MetInf();
+    ret->set(format, type, mark, size, anchor, version, nextNonce, maxMsgSize,
         maxObjSize, emi, mem);
-	return ret;
+    return ret;
 
 }
 
+END_NAMESPACE
 

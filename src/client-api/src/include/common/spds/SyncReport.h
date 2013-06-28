@@ -45,12 +45,15 @@
 #include "spds/SyncSource.h"
 #include "spds/constants.h"
 #include "spds/SyncSourceReport.h"
-#include "spds/SyncManagerConfig.h"
+#include "spds/AbstractSyncConfig.h"
 
 
 // To notify if status comes from Client or server
 #define CLIENT      "Client"
 #define SERVER      "Server"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 
 /**
@@ -95,7 +98,7 @@ public:
     SyncReport();
     SyncReport(SyncReport& sr);
     // Constructor passing a given configuration: setSyncSourceReports() is called.
-    SyncReport(SyncManagerConfig& config);
+    SyncReport(AbstractSyncConfig& config);
     virtual ~SyncReport();
 
     /**
@@ -134,7 +137,7 @@ public:
      *
      * @param config: the SyncManager config to get source number/names.
      */
-    void setSyncSourceReports(SyncManagerConfig& config);
+    void setSyncSourceReports(AbstractSyncConfig& config);
 
     /**
      * Appends a textual representation of the sync report at the end
@@ -144,7 +147,7 @@ public:
      * @param verbose  if true, then detailed information about each item is
      *                 printed, otherwise only a summary
      */
-    void toString(StringBuffer &str, BOOL verbose = FALSE);
+    void toString(StringBuffer &str, bool verbose = false);
 
     /**
      * Assign operator
@@ -154,6 +157,9 @@ public:
         return *this;
     }
 };
+
+
+END_NAMESPACE
 
 /** @} */
 /** @endcond */

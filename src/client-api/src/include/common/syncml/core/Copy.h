@@ -43,6 +43,9 @@
 #include "syncml/core/ModificationCommand.h"
 
 #define COPY_COMMAND_NAME "Copy"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 class Copy : public ModificationCommand {
 
@@ -68,7 +71,7 @@ class Copy : public ModificationCommand {
          *
          */
         Copy(CmdID* cmdID,
-             BOOL noResp,
+             bool noResp,
              Cred* cred,
              Meta* meta,
              ArrayList* items);
@@ -84,6 +87,9 @@ class Copy : public ModificationCommand {
 
         ArrayElement* clone();
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

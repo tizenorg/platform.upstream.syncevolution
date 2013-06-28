@@ -35,6 +35,9 @@
 
 #include "syncml/formatter/Formatter.h"
 #include "base/Log.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 #define EMPTY_VALUE  "__EMPTY__"
 
@@ -42,20 +45,18 @@
 * Returns a StringBuffer giving the tag and the value as long. To use for generic simple value
 */
 StringBuffer* Formatter::getValue(const char* tagName, long value, const char *params) {
-    if (!value)
+    if (!value) 
         return NULL;
 
-    char* t1 = new char[strlen(tagName) + 3 + (params ? strlen(params) + 1 : 0)]; // <  >  0 plus optional parameters
-    char* t2 = new char[strlen(tagName) + 5]; // </ > \n 0
-    sprintf(t1, "<%s%s%s>", tagName, params ? " " : "", params ? params : "");
-    sprintf(t2, "</%s>\n", tagName);
+    StringBuffer t1; // <  >  0 plus optional parameters
+    StringBuffer t2; // </ > \n 0
+    t1.sprintf("<%s%s%s>", tagName, params ? " " : "", params ? params : "");
+    t2.sprintf("</%s>\n", tagName);
 
     StringBuffer* s = new StringBuffer();
     s->append(t1);
     s->append(value);
     s->append(t2);
-    safeDel(&t1);
-    safeDel(&t2);
 
     return s;
 }
@@ -63,7 +64,7 @@ StringBuffer* Formatter::getValue(const char* tagName, long value, const char *p
 /*
 * Returns a StringBuffer giving the tag and the value as BOOL. If true return only the tag, nothing otherwise
 */
-StringBuffer* Formatter::getValue(const char* tagName, BOOL value, const char *params) {
+StringBuffer* Formatter::getValue(const char* tagName, bool value, const char *params) {
     if (!value)
         return NULL;
 
@@ -1062,12 +1063,11 @@ StringBuffer* Formatter::getSync(Sync* sync) {
     StringBuffer* noResp    = NULL;
     StringBuffer* target    = NULL;
     StringBuffer* source    = NULL;
-    StringBuffer* numberOfChanges    = NULL;
+    StringBuffer* numberOfChanges = NULL;
     StringBuffer* commonCommandList = NULL;
 
     StringBuffer* sequence = NULL;
     StringBuffer* atomic   = NULL;
-
 
     cmdID     = getCmdID   (sync->getCmdID());
     cred      = getCred    (sync->getCred());
@@ -1075,7 +1075,16 @@ StringBuffer* Formatter::getSync(Sync* sync) {
     noResp    = getValue   (NO_RESP, sync->getNoResp());
     source    = getSource  (sync->getSource());
     target    = getTarget  (sync->getTarget());
-    numberOfChanges = getValue(NUMBER_OF_CHANGES, sync->getNumberOfChanges());
+
+    if (sync->getNumberOfChanges() >= 0) {
+        numberOfChanges = new StringBuffer();
+        numberOfChanges->sprintf(
+            "<%s>%d</%s>",
+            NUMBER_OF_CHANGES,
+            sync->getNumberOfChanges(),
+            NUMBER_OF_CHANGES);
+    }
+
     commonCommandList = getCommonCommandList(sync->getCommands());
 
     sequence = getSpecificCommand(sync->getCommands(), SEQUENCE);
@@ -1802,7 +1811,7 @@ StringBuffer* Formatter::getDevInf(DevInf* devInf) {
     StringBuffer* devTyp    = NULL;
 
     StringBuffer* dataStores= NULL;     //DataStore[]
-    StringBuffer* ctCaps    = NULL;     // CTCap[]
+    //StringBuffer* ctCaps    = NULL;     // CTCap[]
     StringBuffer* exts      = NULL;         // Ext[]
 
     StringBuffer* utc                    = NULL;
@@ -1826,7 +1835,7 @@ StringBuffer* Formatter::getDevInf(DevInf* devInf) {
 
     dataStores = getDataStores(devInf->getDataStore());
     syncCap    = getSyncCap(devInf->getSyncCap());
-    ctCaps     = getCTCaps(devInf->getCTCap());
+    //ctCaps     = getCTCaps(devInf->getCTCap());
     exts       = getExts(devInf->getExt());
 
     // These elements are inserted empty if the boolean value is true.
@@ -1835,7 +1844,7 @@ StringBuffer* Formatter::getDevInf(DevInf* devInf) {
     supportNumberOfChanges  = getValue    (SUPPORT_NUMBER_OF_CHANGES, devInf->getSupportNumberOfChanges());
 
     if (NotZeroStringBufferLenght(15, verDTD, man, mod, oem, fwV, swV, hwV, devID, devTyp,
-                                      dataStores, syncCap, ctCaps, utc, supportLargeObjs, supportNumberOfChanges)) {
+                                      dataStores, syncCap, /*ctCaps,*/ utc, supportLargeObjs, supportNumberOfChanges)) {
         s = new StringBuffer();
         s->append(verDTD);
         s->append(man);
@@ -1850,7 +1859,7 @@ StringBuffer* Formatter::getDevInf(DevInf* devInf) {
         s->append(supportLargeObjs);
         s->append(supportNumberOfChanges);
         s->append(dataStores);
-        s->append(ctCaps);
+        //s->append(ctCaps);
         s->append(exts);
         s->append(syncCap);
 
@@ -1861,7 +1870,7 @@ StringBuffer* Formatter::getDevInf(DevInf* devInf) {
     ret = getValue((char *)DEV_INF, (char *)s->c_str(), (char *)DEVINF);
 
     deleteAllStringBuffer(16, &s, &verDTD, &man, &mod, &oem, &fwV, &swV, &hwV,
-                              &devID, &devTyp, &dataStores, &ctCaps, &exts, &utc,
+                              &devID, &devTyp, &dataStores, /*&ctCaps,*/ &exts, &utc,
                               &supportLargeObjs, &supportNumberOfChanges);
 
     return ret;
@@ -1989,6 +1998,7 @@ StringBuffer* Formatter::getDataStore(DataStore* dataStore) {
     StringBuffer*    rx             = NULL; // ContentTypeInfo[]
     StringBuffer*    txPref         = NULL;
     StringBuffer*    tx             = NULL; // ContentTypeInfo[]
+    StringBuffer*    ctCaps         = NULL;
     StringBuffer*    dsMem          = NULL;
     StringBuffer*    syncCap        = NULL;
 
@@ -2002,10 +2012,11 @@ StringBuffer* Formatter::getDataStore(DataStore* dataStore) {
     rx          = getContentTypeInfos(dataStore->getRx(), RX);
     txPref      = getContentTypeInfo(dataStore->getTxPref(), TX_PREF);
     tx          = getContentTypeInfos(dataStore->getTx(), TX);
+    ctCaps      = getCTCaps(dataStore->getCtCaps());
     dsMem       = getDSMem(dataStore->getDSMem());
     syncCap     = getSyncCap(dataStore->getSyncCap());
 
-    if (NotZeroStringBufferLenght(9, sourceRef, displayName, maxGUIDSize, rxPref, rx, txPref, tx, dsMem, syncCap)) {
+    if (NotZeroStringBufferLenght(9, sourceRef, displayName, maxGUIDSize, rxPref, rx, txPref, tx, ctCaps, dsMem, syncCap)) {
         s = new StringBuffer();
         s->append(sourceRef);
         s->append(displayName);
@@ -2016,12 +2027,13 @@ StringBuffer* Formatter::getDataStore(DataStore* dataStore) {
         s->append(rx);
         s->append(txPref);
         s->append(tx);
+        s->append(ctCaps);
         s->append(dsMem);
         s->append(syncCap);
     }
 
     ret = getValue(DATA_STORE, s);
-    deleteAllStringBuffer(10, &s, &sourceRef  ,&displayName, &maxGUIDSize, &rxPref, &rx, &txPref, &tx, &dsMem, &syncCap);
+    deleteAllStringBuffer(10, &s, &sourceRef  ,&displayName, &maxGUIDSize, &rxPref, &rx, &txPref, &tx, &ctCaps, &dsMem, &syncCap);
 
     return ret;
 }
@@ -2337,17 +2349,40 @@ StringBuffer* Formatter::getCTCaps(ArrayList* ctCaps) {
     return ret;
 }
 
-//
-// TBD
-//
+/**
+ * Returns a StringBuffer containing the string representation of the
+ * given CTCap
+ */
 StringBuffer* Formatter::getCTCap(CTCap* ctCap) {
 
-    if (!ctCap)
+    if (!ctCap){
         return NULL;
+    }
 
-    StringBuffer* ret = NULL;
+    StringBuffer* ctType    = getValue(CT_TYPE, ctCap->getCtType() );
+    StringBuffer* verCT     = getValue(VER_CT,  ctCap->getVerCT() );
+    ArrayList props  = ctCap->getProperties();
+    StringBuffer* properties = new StringBuffer();
+    StringBuffer* ret = new StringBuffer();
 
-    return ret;
+    Property *iterator = (Property*)props.front();
+    while (iterator) {
+        properties->append(getProperty(iterator));
+        iterator = (Property*)props.next();
+    }
+
+    ret->append(ctType);
+    ret->append(verCT);
+    ret->append(properties);
+
+    if (ctType) {
+        delete ctType; ctType = NULL;
+    }
+    if (verCT) {
+        delete verCT; verCT = NULL;
+    }
+
+    return getValue(CT_CAP, ret);
 }
 
 /**
@@ -2373,7 +2408,8 @@ StringBuffer* Formatter::getPropParam(PropParam* p) {
     if (enums) {
         StringBuffer* t = NULL;
         for(int i=0; i<enums->size(); ++i) {
-            t = getValue(VAL_ENUM, (char*)enums->get(i));
+            //t = getValue(VAL_ENUM, (char*)enums->get(i));
+            t = getValue(VAL_ENUM, ((StringBuffer*)enums->get(i))->c_str());
             valEnums.append(t);
             delete t; t = NULL;
         }
@@ -2438,7 +2474,8 @@ StringBuffer* Formatter::getProperty(Property* p) {
     if (enums) {
         StringBuffer* t = NULL;
         for(int i=0; i<enums->size(); ++i) {
-            t = getValue(VAL_ENUM, (char*)enums->get(i));
+            //t = getValue(VAL_ENUM, (char*)enums->get(i));
+            t = getValue(VAL_ENUM, ((StringBuffer*)enums->get(i))->c_str());
             valEnums.append(t);
             delete t; t = NULL;
         }

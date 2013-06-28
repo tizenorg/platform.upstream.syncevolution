@@ -42,6 +42,9 @@
 #include "base/util/utils.h"
 #include "base/base64.h"
 #include "syncml/core/Meta.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 class Authentication {
 
@@ -50,7 +53,7 @@ class Authentication {
         char*  data;
         char*  username;
         char*  password;
-        BOOL encode;
+        bool encode;
         char*  deviceId;
         char*  syncMLVerProto;
         char*  principalId;
@@ -98,7 +101,7 @@ class Authentication {
          */
         Authentication(const char*  type,
                        const char*  data,
-                       BOOL encode);
+                       bool encode);
 
         /**
          * Creates a new Authentication object with the given data
@@ -266,6 +269,9 @@ class Authentication {
         Authentication* clone();
 
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

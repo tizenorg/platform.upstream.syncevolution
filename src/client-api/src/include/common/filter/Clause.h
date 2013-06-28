@@ -38,6 +38,9 @@
 /** @cond DEV */
 
 #include "base/util/ArrayElement.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 typedef enum {
     CLAUSE         = 0,
@@ -52,6 +55,9 @@ class Clause : public ArrayElement {
 
     // ------------------------------------------------------- Private interface
 private:
+	Clause(Clause &c){};
+
+	void operator=(Clause &c){}; 
 
     // ----------------------------------------------------- Protected interface
 protected:
@@ -66,6 +72,9 @@ public:
 
 };
 
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

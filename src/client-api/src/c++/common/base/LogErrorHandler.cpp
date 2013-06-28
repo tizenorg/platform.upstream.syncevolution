@@ -33,6 +33,9 @@
  * the words "Powered by Funambol".
  */
 #include "base/LogErrorHandler.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 LogErrorHandler::LogErrorHandler() {
 }
@@ -63,7 +66,7 @@ void LogErrorHandler::warning(int code, const char* msg) {
  * @return true if the synchronization must be stopped.
  */
 bool LogErrorHandler::error(int code, const char* msg) {
-    return FALSE;
+    return false;
 }
 
 /**

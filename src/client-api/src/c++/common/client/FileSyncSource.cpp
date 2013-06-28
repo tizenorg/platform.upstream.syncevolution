@@ -39,9 +39,12 @@
 #include "spds/FileData.h"
 
 #include "client/FileSyncSource.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 
-FileSyncSource::FileSyncSource(const WCHAR* name, SyncSourceConfig* sc) : SyncSource(name, sc) {
+FileSyncSource::FileSyncSource(const WCHAR* name, AbstractSyncSourceConfig* sc) : SyncSource(name, sc) {
     dir  = NULL;
     fileNode = NULL;
 
@@ -150,7 +153,7 @@ int FileSyncSource::beginSync() {
     return 0;
 }
 
-SyncItem* FileSyncSource::getFirst(ItemIteratorContainer& container, BOOL getData) {
+SyncItem* FileSyncSource::getFirst(ItemIteratorContainer& container, bool getData) {
     container.index = 0;
     if (container.index >= container.items.size()) {
         return NULL;
@@ -169,7 +172,7 @@ SyncItem* FileSyncSource::getFirst(ItemIteratorContainer& container, BOOL getDat
     }
 }
 
-SyncItem* FileSyncSource::getNext(ItemIteratorContainer& container, BOOL getData) {
+SyncItem* FileSyncSource::getNext(ItemIteratorContainer& container, bool getData) {
     container.index++;
     if (container.index >= container.items.size()) {
         return NULL;
@@ -200,7 +203,7 @@ void FileSyncSource::setItemStatus(const WCHAR* key, int status) {
     LOG.debug("item key: %" WCHAR_PRINTF ", status: %i", key, status);
 }
 
-
+int FileSyncSource::removeAllItems() {return 0; }
 
 //////////////////////////////////////////////////////////////////////////////////////////
 
@@ -214,9 +217,10 @@ int FileSyncSource::addItem(SyncItem& item) {
     size_t len = item.getDataSize();
 
     if (file.parse(data, len)) {
-        sprintf(lastErrorMsg, "Error parsing item from server");
+        setError(ERR_BAD_FILE_CONTENT, "Error parsing item from server");
+        LOG.error("%s", getLastErrorMsg());
         report->setLastErrorCode(ERR_BAD_FILE_CONTENT);
-        report->setLastErrorMsg(lastErrorMsg);
+        report->setLastErrorMsg(getLastErrorMsg());
         report->setState(SOURCE_ERROR);
         return STC_COMMAND_FAILED;
     }
@@ -229,9 +233,10 @@ int FileSyncSource::addItem(SyncItem& item) {
         char completeName[512];
         sprintf(completeName, "%s/%" WCHAR_PRINTF, dir, file.getName());
         if (!saveFile(completeName, file.getBody(), file.getSize(), true)) {
-            sprintf(lastErrorMsg, "Error saving file %" WCHAR_PRINTF, file.getName());
+            setErrorF(ERR_FILE_SYSTEM, "Error saving file %" WCHAR_PRINTF, file.getName());
+            LOG.error("%s", getLastErrorMsg());
             report->setLastErrorCode(ERR_FILE_SYSTEM);
-            report->setLastErrorMsg(lastErrorMsg);
+            report->setLastErrorMsg(getLastErrorMsg());
             report->setState(SOURCE_ERROR);
             return STC_COMMAND_FAILED;
         }
@@ -311,7 +316,7 @@ int FileSyncSource::endSync() {
         SyncItem* item;
 
         // reset information about deleted items
-        for (item = getFirst(deletedItems, FALSE); item; item = getNext(deletedItems, FALSE)) {
+        for (item = getFirst(deletedItems, false); item; item = getNext(deletedItems, false)) {
 			char *tmp = toMultibyte(item->getKey());
             fileNode->setPropertyValue(tmp, "");
 			delete [] tmp;
@@ -319,7 +324,7 @@ int FileSyncSource::endSync() {
         }
 
         // update information about each file that currently exists on the server
-        for (item = getFirst(allItems, FALSE); item; item = getNext(allItems, FALSE)) {
+        for (item = getFirst(allItems, false); item; item = getNext(allItems, false)) {
             char completeName[512];
             sprintf(completeName, "%s/%" WCHAR_PRINTF, dir, item->getKey());
             unsigned long modTime = getFileModTime(completeName);
@@ -340,15 +345,6 @@ void FileSyncSource::assign(FileSyncSource& s) {
     setDir(getDir());
 }
 
-ArrayElement* FileSyncSource::clone() {
-    FileSyncSource* s = new FileSyncSource(getName(), &(getConfig()));
-
-    s->assign(*this);
-
-    return s;
-}
-
-
 bool FileSyncSource::setItemData(SyncItem* syncItem) {
 
     bool ret = true;
@@ -361,9 +357,10 @@ bool FileSyncSource::setItemData(SyncItem* syncItem) {
     //
     sprintf(fileName, "%s/%" WCHAR_PRINTF, dir, syncItem->getKey());
     if (!readFile(fileName, &content, &len, true)) {
-        sprintf(lastErrorMsg, "Error opening the file '%s'", fileName);
+        setErrorF(ERR_FILE_SYSTEM, "Error opening the file '%s'", fileName);
+        LOG.error("%s", getLastErrorMsg());
         report->setLastErrorCode(ERR_FILE_SYSTEM);
-        report->setLastErrorMsg(lastErrorMsg);
+        report->setLastErrorMsg(getLastErrorMsg());
         report->setState(SOURCE_ERROR);
         return false;
     }
@@ -387,9 +384,10 @@ bool FileSyncSource::setItemData(SyncItem* syncItem) {
         return true;
     }
     else {
-        sprintf(lastErrorMsg, "Error bad file content: '%s'", fileName);
+        setErrorF(ERR_BAD_FILE_CONTENT, "Error bad file content: '%s'", fileName);
+        LOG.error("%s", getLastErrorMsg());
         report->setLastErrorCode(ERR_BAD_FILE_CONTENT);
-        report->setLastErrorMsg(lastErrorMsg);
+        report->setLastErrorMsg(getLastErrorMsg());
         report->setState(SOURCE_ERROR);
         return false;
     }

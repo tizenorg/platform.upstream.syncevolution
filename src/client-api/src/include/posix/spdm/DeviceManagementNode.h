@@ -37,10 +37,15 @@
 #define INCL_POSIX_DEVICE_MANAGEMENT_NODE
 /** @cond DEV */
 
+#include <string.h>
+
+#include "base/globalsdef.h"
 #include "base/fscapi.h"
 #include "base/util/ArrayElement.h"
 #include "spdm/ManagementNode.h"
+#include "base/util/StringBuffer.h"
 
+BEGIN_NAMESPACE
 
 /*
  * File-based implementation of ManagementNode.
@@ -51,10 +56,12 @@
  *
  * Comments look like:
  * \s*# <comment>
+
  */
 class DeviceManagementNode : public ManagementNode {
+protected:
     ArrayList *lines;
-    BOOL modified;
+    bool modified;
     char *prefix;
 
     class line : public ArrayElement {
@@ -75,14 +82,21 @@ class DeviceManagementNode : public ManagementNode {
     // change into directory which holds config file,
     // creating directories if necessary for writing
     //
-    // @return TRUE for success, FALSE for error - call returnFromDir() in both cases
-    BOOL gotoDir(BOOL read);
+    // @return true for success, false for error - call returnFromDir() in both cases
+    bool gotoDir(bool read);
 
     // return to original directory after a gotoDir()
     void returnFromDir();
 
     // copy content of "lines" to or from file
-    void update(BOOL read);
+    void update(bool read);
+    
+    int strnicmp( const char *a, const char *b, int len );
+
+private:
+    static StringBuffer configPath;
+    static StringBuffer configFile;
+    void lookupDir();
 
     public:
 
@@ -102,6 +116,22 @@ class DeviceManagementNode : public ManagementNode {
         DeviceManagementNode(const DeviceManagementNode &other);
         virtual ~DeviceManagementNode();
 
+        /**
+         * set the path to the configuration. Being a static this set the config path for all
+         * the DeviceManagementNode
+         *
+         * @param const StringBuffer& the new configPath
+         *
+         */
+        static void setConfigPath(const StringBuffer &p)        { configPath = p;       }
+        /**
+         * get the path to the configuration for all the management node
+         *
+         * @return stati const StringBuffer the path to the configuration
+         */
+        static const StringBuffer& getConfigPath()              { return configPath;    }
+        
+        static void setCompatibilityMode(bool mode);
 
         // ----------------------------------------------------- Virtual methods
 
@@ -140,6 +170,9 @@ class DeviceManagementNode : public ManagementNode {
 
 
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

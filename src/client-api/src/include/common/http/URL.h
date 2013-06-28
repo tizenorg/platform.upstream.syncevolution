@@ -39,6 +39,9 @@
     #include "base/fscapi.h"
     #include "base/constants.h"
     #include "http/constants.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
     class __declspec(dllexport) URL {
 
@@ -56,7 +59,7 @@
         void setURL(URL& url);
         void setURL(const char*  url);
 
-        BOOL isSecure();
+        bool isSecure();
 
         URL& operator= (URL& url);
         URL& operator= (const char*  url);
@@ -64,5 +67,8 @@
     protected:
         void setURL(const char* u, const char* p, const char* h, const char* r, unsigned int port);
     };
+
+END_NAMESPACE
+
 /** @endcond */
 #endif

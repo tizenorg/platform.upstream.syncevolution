@@ -38,6 +38,9 @@
 #include "base/errors.h"
 #include "base/Log.h"
 #include "spds/DefaultConfigFactory.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 
 DefaultConfigFactory::DefaultConfigFactory() {
@@ -54,7 +57,7 @@ AccessConfig* DefaultConfigFactory::getAccessConfig() {
     ac->setUsername             ("guest");
     ac->setPassword             ("guest");
     ac->setFirstTimeSyncMode    (SYNC_NONE);
-    ac->setUseProxy             (FALSE);
+    ac->setUseProxy             (false);
     ac->setProxyHost            ("");
     ac->setProxyPort            (8080);
     ac->setProxyUsername        ("");
@@ -62,7 +65,7 @@ AccessConfig* DefaultConfigFactory::getAccessConfig() {
     ac->setSyncURL              ("http://localhost:8080/funambol/ds");
     ac->setBeginSync            (0);
     ac->setEndSync              (0);
-    ac->setServerAuthRequired   (FALSE);
+    ac->setServerAuthRequired   (false);
     ac->setClientAuthType       ("syncml:auth-basic");
     ac->setServerAuthType       ("syncml:auth-basic");
     ac->setServerPWD            ("funambol");
@@ -72,9 +75,9 @@ AccessConfig* DefaultConfigFactory::getAccessConfig() {
     ac->setMaxMsgSize           (10000);
     ac->setReadBufferSize       (0);
     ac->setUserAgent            ("");
-    ac->setCheckConn            (TRUE);
+    ac->setCheckConn            (true);
     ac->setResponseTimeout      (0);
-    //ac->setEncryption           (FALSE);
+    //ac->setEncryption           (false);
 
     return ac;
 }
@@ -85,7 +88,6 @@ DeviceConfig* DefaultConfigFactory::getDeviceConfig() {
 
     DeviceConfig* dc = new DeviceConfig();
 
-    dc->setVerDTD               ("1.1");
     dc->setMan                  ("");
     dc->setMod                  ("");
     dc->setOem                  ("");
@@ -95,9 +97,9 @@ DeviceConfig* DefaultConfigFactory::getDeviceConfig() {
     dc->setDevID                ("funambol-client");
     dc->setDevType              ("workstation");
     dc->setDsV                  ("");
-    dc->setUtc                  (TRUE);
-    dc->setLoSupport            (FALSE);
-    dc->setNocSupport           (FALSE);
+    dc->setUtc                  (true);
+    dc->setLoSupport            (false);
+    dc->setNocSupport           (false);
     dc->setLogLevel             (LOG_LEVEL_INFO);
     dc->setMaxObjSize           (0);
     dc->setDevInfHash           ("");

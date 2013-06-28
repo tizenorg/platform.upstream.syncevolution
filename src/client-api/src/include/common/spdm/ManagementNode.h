@@ -41,6 +41,10 @@
 #include "base/util/ArrayElement.h"
 #include "base/util/ArrayList.h"
 #include "spdm/constants.h"
+#include "base/util/StringBuffer.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 /*
  * This class represents a management node, so that a configuration
@@ -55,6 +59,7 @@ class ManagementNode : public ArrayElement {
     protected:
         char *name;
         char *context;
+
         //
         // Children are dinamically allocated inside this class and given to
         // the list. The list will delete all created objects at descruction
@@ -81,6 +86,7 @@ class ManagementNode : public ArrayElement {
          *
          */
         ManagementNode(const char*  parent, const char*  name);
+
         /*
          * Constructor.
          *
@@ -92,7 +98,6 @@ class ManagementNode : public ArrayElement {
 
         /* Base class destructor */
         virtual ~ManagementNode();
-
 
         // ----------------------------------------------------- Virtual methods
 
@@ -116,12 +121,12 @@ class ManagementNode : public ArrayElement {
          *
          * @param child - the ManagementNode to add
          */
-		virtual void addChild(ManagementNode &child);
+        virtual void addChild(ManagementNode &child);
 
         /*
          * Returns how many children belong to this node (how many have been added)
          */
-		virtual int getChildrenCount();
+        virtual int getChildrenCount();
 
         /*
          * Returns the full node name in a newly allocated buffer,
@@ -139,7 +144,7 @@ class ManagementNode : public ArrayElement {
 
         /*
          * Find how many children are defined for this node in the underlying
-		 * config system.
+         * config system.
          */
         virtual int getChildrenMaxCount() = 0;
 
@@ -175,6 +180,9 @@ class ManagementNode : public ArrayElement {
         virtual ArrayElement* clone() = 0;
 
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

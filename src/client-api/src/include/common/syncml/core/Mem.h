@@ -41,12 +41,15 @@
 
 #include "base/fscapi.h"
 #include "syncml/core/Mem.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 class Mem {
 
      // ------------------------------------------------------------ Private data
     private:
-        BOOL    sharedMem;
+        bool    sharedMem;
         long    freeMem  ;
         long    freeID   ;
     public:
@@ -61,7 +64,7 @@ class Mem {
          * @param freeID number of available item IDs (>= 0)
          *
          */
-        Mem(BOOL sharedMem, long freeMem, long freeID);
+        Mem(bool sharedMem, long freeMem, long freeID);
 
          /**
          * Returns the memoryShared status
@@ -69,21 +72,21 @@ class Mem {
          * @return <i>true</i> if the datastore memory is shared, <i>false</i> otherwise
          *
          */
-        BOOL isSharedMem();
+        bool isSharedMem();
 
         /**
          * Sets the memoryShared status
          *
          * @param sharedMem the new memoryShared status
          */
-        void setSharedMem(BOOL sharedMem);
+        void setSharedMem(bool sharedMem);
 
         /**
          * Gets the Boolean shared memory property
          *
          * @return sharedMem the Boolean shared memory property
          */
-        BOOL getSharedMem();
+        bool getSharedMem();
 
         /**
          * Returns the freeMem property (in bytes)
@@ -121,6 +124,9 @@ class Mem {
         Mem* clone();
 
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

@@ -35,6 +35,9 @@
 
 
 #include "syncml/core/Exec.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 Exec::Exec() {
     COMMAND_NAME = new char[strlen(EXEC_COMMAND_NAME) + 1];
@@ -58,7 +61,7 @@ Exec::~Exec() {
  *
  */
 Exec::Exec(CmdID*   cmdID,
-           BOOL   noResp,
+           bool   noResp,
            Cred*  cred,
            ArrayList*  items) : ModificationCommand(cmdID, items) {
 

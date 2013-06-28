@@ -34,8 +34,8 @@
  */
 
 
-#ifndef INCL_AUTOTOOLS_ADAPTER
-#define INCL_AUTOTOOLS_ADAPTER
+#ifndef INCL_POSIX_ADAPTER
+#define INCL_POSIX_ADAPTER
 /** @cond DEV */
 
 
@@ -43,7 +43,9 @@
  * POSIX environment, configured and compiled with automake/autoconf
  */
 
+#ifdef HAVE_CONFIG_H
 #include <config.h>
+#endif
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -65,10 +67,6 @@
 # define __cdecl
 #endif
 
-#define BOOL int
-#define TRUE 1
-#define FALSE 0
-
 // Enable the fix for encoding when building for posix
 #define VOCL_ENCODING_FIX
 
@@ -83,14 +81,53 @@
 #define WCHAR_PRINTF "s"
 #define TEXT(_x) L##_x
 
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
+
 // FIXME: remove this and adapt VOCL.
 WCHAR *wcstok(WCHAR *s, const WCHAR *delim);
 
 inline int _wtoi(const WCHAR *s) { return (int)wcstol(s, NULL, 10); }
 
+END_NAMESPACE
+
 #define _wcsicmp wcscasecmp
 #define wcsicmp wcscasecmp
 #define snwprintf swprintf
+
+#ifdef MAC
+
+#   undef  _wcsicmp
+#   undef  wcsicmp
+
+inline int wcsicmp(const WCHAR * s1, const WCHAR * s2)
+{
+    const WCHAR * i1 = s1;
+    const WCHAR * i2 = s2;
+    
+    while (i1 != NULL && i2 != NULL)
+    {
+        if (*i1 > *i2)
+            return 1;
+        if (*i1 < *i2)
+            return -1;
+            
+        i1++;
+        i2++;
+    }
+    if (i1 == NULL && i2 == NULL)
+        return 0;
+    if (i1 == NULL)
+        return -1;
+    if (i2 == NULL)
+        return 1;
+    // Should never happen
+    return 0;
+}
+
+#   define _wcsicmp wcsicmp
+#endif
 
 #else
 

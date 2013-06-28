@@ -33,7 +33,10 @@
  * the words "Powered by Funambol".
  */
 #include "base/util/utils.h"
-#include <syncml/core/PropParam.h>
+#include "syncml/core/PropParam.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 
 PropParam::PropParam() {
@@ -151,8 +154,8 @@ void PropParam::setValEnums(ArrayList* p0) {
         delete this->valEnums; this->valEnums = NULL;
     }
 
-    if (valEnums) {
-        this->valEnums = valEnums->clone();
+    if (p0) {
+        this->valEnums = p0->clone();
     }
 
 }

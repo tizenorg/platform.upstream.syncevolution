@@ -34,6 +34,9 @@
  */
 
 #include "syncml/core/Alert.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 Alert::Alert() {
     initialize();
@@ -56,7 +59,7 @@ Alert::~Alert() {
 *
 */
 Alert::Alert( CmdID* cmdID,
-              BOOL noResp,
+              bool noResp,
               Cred* cred,
               int data,
               ArrayList* items) : ItemizedCommand(cmdID, items) {

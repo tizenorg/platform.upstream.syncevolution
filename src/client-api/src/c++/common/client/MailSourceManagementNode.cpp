@@ -39,6 +39,9 @@
 #include "base/util/utils.h"
 #include "spdm/constants.h"
 #include "client/MailSourceManagementNode.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 MailSourceManagementNode::MailSourceManagementNode(const char*  context,
                                                    const char*  name   )
@@ -56,7 +59,7 @@ MailSourceManagementNode::MailSourceManagementNode(const char*         context,
 MailSourceManagementNode::~MailSourceManagementNode() {
 }
 
-MailSyncSourceConfig& MailSourceManagementNode::getMailSourceConfig(BOOL refresh) {
+MailSyncSourceConfig& MailSourceManagementNode::getMailSourceConfig(bool refresh) {
     if (refresh) {
         char*  c = NULL;
         char* tmp;

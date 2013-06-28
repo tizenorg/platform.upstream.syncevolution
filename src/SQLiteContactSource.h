@@ -20,69 +20,61 @@
 #ifndef INCL_SQLITECONTACTSOURCE
 #define INCL_SQLITECONTACTSOURCE
 
-#include "SQLiteSyncSource.h"
+#include "TrackingSyncSource.h"
+#include "SQLiteUtil.h"
 
 #ifdef ENABLE_SQLITE
 
 /**
- * Specialization of SQLiteSyncSource for contacts
- * with a schema as used by Mac OS X.
+ * Uses SQLiteUtil for contacts with a schema inspired by the one used
+ * by Mac OS X.  That schema has hierarchical tables which is not
+ * supported by SQLiteUtil, therefore SQLiteContactSource uses a
+ * simplified schema where each contact consists of one row in the
+ * database table.
+ *
+ * The handling of the "N" and "ORG" property shows how mapping
+ * between one property and multiple different columns works.
+ *
+ * Properties which can occur more than once per contact like address,
+ * email and phone numbers are not supported. They would have to be
+ * stored in additional tables.
+ *
+ * Change tracking is done by implementing a modification date as part
+ * of each contact and using that as the revision string required by
+ * TrackingSyncSource, which then takes care of change tracking.
+ *
+ * The database file is created automatically if the database ID is
+ * file:///<path>.
  */
-class SQLiteContactSource : public SQLiteSyncSource
+class SQLiteContactSource : public TrackingSyncSource
 {
   public:
-    SQLiteContactSource( const string name, SyncSourceConfig *sc, const string &changeId, const string &id ) :
-    SQLiteSyncSource( name, sc, changeId, id)
+    SQLiteContactSource(const EvolutionSyncSourceParams &params) :
+        TrackingSyncSource(params)
         {}
-    virtual ~SQLiteContactSource() {}
 
  protected:
     /* implementation of EvolutionSyncSource interface */
     virtual void open();
-    virtual SyncItem *createItem( const string &uid, SyncState state );
-    virtual void exportData(ostream &out);
+    virtual void close();
+    virtual sources getSyncBackends();
+    virtual SyncItem *createItem(const string &uid);
     virtual string fileSuffix() { return "vcf"; }
-    virtual const char *getMimeType() { return "text/x-vcard:2.1"; }
-    virtual const char *getMimeVersion() { return "2.1"; }
-    virtual const char *getSupportedTypes() { return "text/vcard:3.0,text/x-vcard:2.1"; }
-    virtual ArrayElement* clone() { new SQLiteContactSource(getName(), &getConfig(), m_changeId, m_id); }
-    virtual void beginSyncThrow(bool needAll,
-                                bool needPartial,
-                                bool deleteLocal);
-
-    virtual void endSyncThrow();
-    virtual int addItemThrow(SyncItem& item);
-    virtual int updateItemThrow(SyncItem& item);
-    virtual int deleteItemThrow(SyncItem& item);
-
+    virtual const char *getMimeType() const { return "text/x-vcard"; }
+    virtual const char *getMimeVersion() const { return "2.1"; }
+    virtual const char *getSupportedTypes()const { return "text/vcard:3.0,text/x-vcard:2.1"; }
     virtual void logItem(const string &uid, const string &info, bool debug = false);
-    virtual void logItem(SyncItem &item, const string &info, bool debug = false);
+    virtual void logItem(const SyncItem &item, const string &info, bool debug = false);
 
-    /* implementation of SQLiteSyncSource interface */
-    virtual const char *getDefaultSchema();
-    virtual const Mapping *getConstMapping();
+    /* implementation of TrackingSyncSource interface */
+    virtual void listAllItems(RevisionMap_t &revisions);
+    virtual InsertItemResult insertItem(const string &uid, const SyncItem &item);
+    virtual void deleteItem(const string &uid);
+    virtual void flush();
 
  private:
-    /** constant key values defined by tables in the database, queried during open() */
-    key_t m_addrCountryCode,
-        m_addrCity,
-        m_addrStreet,
-        m_addrState,
-        m_addrZIP,
-        m_addrCountry,
-        m_typeMobile,
-        m_typeHome,
-        m_typeWork;
-
-    /** same as deleteItemThrow() but works with the uid directly */
-    virtual int deleteItemThrow(const string &uid);
-
-    /**
-     * inserts the contact under a specific UID (if given) or
-     * adds under a new UID
-     */
-    virtual int insertItemThrow(SyncItem &item, const char *uid, const string &creationTime);
-
+    /** encapsulates access to database */
+    SQLiteUtil m_sqlite;
 };
 
 #endif // ENABLE_SQLITE

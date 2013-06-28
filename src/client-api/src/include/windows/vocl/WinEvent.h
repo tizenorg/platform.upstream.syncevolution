@@ -47,6 +47,16 @@
 #include "vocl/VObject.h"
 
 
+typedef list<wstring>               exceptionList;
+typedef exceptionList::iterator     exceptionsIterator;
+typedef list<WinRecipient>          recipientList;
+
+#define MAX_DAYLIGHT_PROPS          6      // Max 6 "DAYLIGHT" properties for infinite recurrences.
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
+
+
 /**
  * Rapresents an event object for Windows Clients.
  * The object can be filled passing a vCalendar, or filling
@@ -62,18 +72,6 @@ private:
     /// The recurrence pattern object, containing recurring properties.
     WinRecurrence recPattern;
 
-    /// List of occurrences dates to exclude (recurring exceptions to delete).
-    list<wstring> excludeDate;
-    /// List of occurrences dates to include (recurring exceptions to add).
-    list<wstring> includeDate;
-
-    /// List of recipients (attendees) for this event.
-    list<WinRecipient> recipients;
-
-    //bool isRecurring;
-    //bool isAllday;
-
-
     /**
      * Checks the productID and version of VObject passed for vCalendar.
      * - 'productID' MUST be "VCALENDAR"
@@ -85,12 +83,58 @@ private:
     bool checkVCalendarTypeAndVersion(VObject* vo);
 
     /**
-     * Utility to safe-retrieve the property value inside VObject 'vo'.
-     * @param vo           : VObject to read from
-     * @param propertyName : the property name requested
-     * @return               the property value (NULL if not found)
+     * Adds the timezone properties (TZ and DAYLIGHT) into the passed VObject. 
+     * Used from Client to Server. Example of formatted vProperties added:
+     *     TZ:-0800
+     *     DAYLIGHT:TRUE;-0900;20080406T020000;20081026T020000;Pacific Standard Time;Pacific Daylight Time
+     *     DAYLIGHT:TRUE;-0900;20090405T020000;20091025T020000;Pacific Standard Time;Pacific Daylight Time
+     * When using timezone properties, recurrence data is in local time.
      */
-    WCHAR* getVObjectPropertyValue(VObject* vo, const WCHAR* propertyName);
+    void addTimezone(VObject* vo);
+
+    /**
+     * Parse the timezone properties (TZ and DAYLIGHT) from the passed VObject
+     * and fills the 'tzInfo' timezone structure. Used from Server to Client.
+     * When using timezone properties, recurrence data is expected in local time.
+     * @return  true if timezone properties found
+     */
+    bool parseTimezone(VObject* vo);
+
+
+protected:
+
+    /// List of occurrences dates to exclude (recurring exceptions to delete).
+    exceptionList excludeDate;
+    /// List of occurrences dates to include (recurring exceptions to add).
+    exceptionList includeDate;
+
+    /// List of recipients (attendees) for this event.
+    recipientList recipients;
+
+
+    /**
+     * The timezone structure for this event.
+     * It can be set/get using getTimezone() and setTimezone() methods.
+     * If the timezone is set, it will be formatted following vCalendar 1.0 specs
+     * when calling toString() method ("TZ" and "DAYLIGHT" properties). 
+     * @note Recurring properties will be in local time if timezone is used.
+     */
+    TIME_ZONE_INFORMATION tzInfo;
+
+    /// true if this event has a timezone information, and uses it.
+    bool useTimezone;
+
+    //bool isRecurring;
+    //bool isAllday;
+
+
+    /**
+     * Retrieves the interval when the recurrence occurrs, in years.
+     * It checks the "Start" property and the "PatternEndDate" property.
+     * @param yearBegin  [IN-OUT] the year when recurrence begins
+     * @param yearEnd    [IN-OUT] the year when recurrence ends
+     */
+    void getIntervalOfRecurrence(int* yearBegin, int*yearEnd);
 
 
 public:
@@ -112,7 +156,7 @@ public:
      * @param dataString  input vCalendar string to be parsed
      * @return            0 if no errors
      */
-    int parse(const wstring dataString);
+    virtual int parse(const wstring dataString);
 
     /**
      * Format and return a vCalendar string from the propertyMap.
@@ -120,22 +164,46 @@ public:
      * as they don't have a correspondence in propertyMap.
      * @return  the vCalendar string formatted, reference to internal wstring
      */
-    wstring& toString();
-
+    virtual wstring& toString();
 
 
     /// Returns a pointer to the (internally owned) WinRecurrence.
-    WinRecurrence* getRecPattern();
+    virtual WinRecurrence* getRecPattern();
 
     /// Returns a pointer to the list (internally owned) of exclude dates.
-    list<wstring>* getExcludeDates();
+    exceptionList* getExcludeDates();
 
     /// Returns a pointer to the list (internally owned) of include dates.
-    list<wstring>* getIncludeDates();
+    exceptionList* getIncludeDates();
 
     /// Returns a pointer to the list (internally owned) of recipients.
-    list<WinRecipient>* getRecipients();
+    recipientList* getRecipients();
+
+
+    /**
+     * Returns a pointer to the timezone information for this event, NULL if
+     * timezone is not used (not set).
+     */
+    const TIME_ZONE_INFORMATION* getTimezone();
+
+    /// Copies the given timezone for this event. 'useTimezone' is set to true.
+    void setTimezone(const TIME_ZONE_INFORMATION* tz);
+
+    /// Returns true if this event has a timezone information, and uses it.
+    bool hasTimezone();
+
+
+    /**
+     * Return the crc value of the internal map with all values.
+     * It uses only the values of the map not the key.
+     * Overrides method of WinItem, to include recurring properties 
+     * and event exceptions in the crc.
+     */
+    long getCRC();
 };
+
+
+END_NAMESPACE
 
 /** @} */
 /** @endcond */

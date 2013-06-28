@@ -42,6 +42,9 @@
 #include "syncml/core/ItemizedCommand.h"
 
 #define PUT_COMMAND_NAME "Put"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 class Put : public ItemizedCommand {
 
@@ -68,7 +71,7 @@ class Put : public ItemizedCommand {
          *
          */
         Put( CmdID* cmdID,
-                    BOOL noResp,
+                    bool noResp,
                     char*  lang,
                     Cred* cred,
                     Meta* meta,
@@ -103,6 +106,9 @@ class Put : public ItemizedCommand {
          ArrayElement* clone();
 
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

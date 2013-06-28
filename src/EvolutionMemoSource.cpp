@@ -29,12 +29,13 @@ using namespace std;
 
 #include <common/base/Log.h>
 
-SyncItem *EvolutionMemoSource::createItem( const string &uid, SyncState state )
+SyncItem *EvolutionMemoSource::createItem(const string &luid)
 {
-    logItem( uid, "extracting from EV" );
-        
-    eptr<icalcomponent> comp(retrieveItem(uid));
-    auto_ptr<SyncItem> item(new SyncItem(uid.c_str()));
+    logItem( luid, "extracting from EV" );
+
+    ItemID id = ItemID::parseLUID(luid);
+    eptr<icalcomponent> comp(retrieveItem(id));
+    auto_ptr<SyncItem> item(new SyncItem(luid.c_str()));
 
     item->setData("", 0);
     icalcomponent *cal = icalcomponent_get_first_component(comp, ICAL_VCALENDAR_COMPONENT);
@@ -73,12 +74,11 @@ SyncItem *EvolutionMemoSource::createItem( const string &uid, SyncState state )
     }
     item->setDataType("text/plain");
     item->setModificationTime(0);
-    item->setState(state);
 
     return item.release();
 }
 
-int EvolutionMemoSource::insertItem(SyncItem& item, bool update)
+EvolutionCalendarSource::InsertItemResult EvolutionMemoSource::insertItem(const string &luid, const SyncItem &item)
 {
     const char *type = item.getDataType();
 
@@ -89,10 +89,14 @@ int EvolutionMemoSource::insertItem(SyncItem& item, bool update)
         !strcasecmp(type, "raw") ||
         !strcasecmp(type, "text/x-vcalendar") ||
         !strcasecmp(type, "text/calendar")) {
-        return EvolutionCalendarSource::insertItem(item, update);
+        return EvolutionCalendarSource::insertItem(luid, item);
     }
     
-    bool fallback = false;
+    bool update = !luid.empty();
+    bool merged = false;
+    string newluid = luid;
+    string modTime;
+
     eptr<char> text;
     text.set((char *)malloc(item.getDataSize() + 1), "copy of item");
     memcpy(text, item.getData(), item.getDataSize());
@@ -139,7 +143,6 @@ int EvolutionMemoSource::insertItem(SyncItem& item, bool update)
 
     GError *gerror = NULL;
     char *uid = NULL;
-    int status = STC_OK;
 
     if (!update) {
         if(!e_cal_create_object(m_calendar, subcomp, &uid, &gerror)) {
@@ -149,37 +152,35 @@ int EvolutionMemoSource::insertItem(SyncItem& item, bool update)
                 // Should never happen for plain text journal entries because
                 // they have no embedded ID, but who knows...
                 logItem(item, "exists already, updating instead");
-                fallback = true;
+                merged = true;
                 g_clear_error(&gerror);
             } else {
                 throwError( "storing new memo item", gerror );
             }
         } else {
-            if (uid) {
-                item.setKey(uid);
-            }
+            ItemID id(uid, "");
+            newluid = id.getLUID();
+            modTime = getItemModTime(id);
         }
     }
 
-    if (update || fallback) {
+    if (update || merged) {
+        ItemID id = ItemID::parseLUID(newluid);
+
         // ensure that the component has the right UID
-        if (update && item.getKey() && item.getKey()[0]) {
-            icalcomponent_set_uid(subcomp, item.getKey());
+        if (update && !id.m_uid.empty()) {
+            icalcomponent_set_uid(subcomp, id.m_uid.c_str());
         }
-        
+
         if (!e_cal_modify_object(m_calendar, subcomp, CALOBJ_MOD_ALL, &gerror)) {
             throwError(string("updating memo item ") + item.getKey(), gerror);
         }
-        string uid = getCompUID(subcomp);
-        if (uid.size()) {
-            item.setKey(uid.c_str());
-        }
-        if (fallback) {
-            status = STC_CONFLICT_RESOLVED_WITH_MERGE;
-        }
+        ItemID newid = getItemID(subcomp);
+        newluid = newid.getLUID();
+        modTime = getItemModTime(newid);
     }
 
-    return status;
+    return InsertItemResult(newluid, modTime, merged);
 }
 
 #endif /* ENABLE_ECAL */

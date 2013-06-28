@@ -57,8 +57,8 @@
  * Do not access these variable directly anymore, they will be hidden
  * in the future. Use the access methods instead.
  */
-extern int  lastErrorCode;
-extern char lastErrorMsg[];
+//extern int  lastErrorCode;
+//extern char lastErrorMsg[];
 
 /**
  * Reset the error message and code.
@@ -69,6 +69,11 @@ void resetError();
  * Set error message and code.
  */
 void setError(int errorCode, const char *errorMessage);
+
+/**
+ * Set error message and code.
+ */
+void setErrorF(int errorCode, const char *msgFormat, ...);
 
 /**
  * Retrieve the last error code.

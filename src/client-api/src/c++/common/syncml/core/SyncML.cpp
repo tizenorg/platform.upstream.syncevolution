@@ -35,6 +35,9 @@
 
 
 #include "syncml/core/SyncML.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 
 SyncML::SyncML() {
@@ -128,7 +131,7 @@ void SyncML::setSyncBody(SyncBody* body) {
 *
 * @return lastMessage
 */
-BOOL SyncML::isLastMessage() {
+bool SyncML::isLastMessage() {
     return body->isFinalMsg();
 }
 
@@ -139,5 +142,5 @@ BOOL SyncML::isLastMessage() {
 *
 */
 void SyncML::setLastMessage() {
-    body->setFinalMsg(TRUE);
+    body->setFinalMsg(true);
 }

@@ -41,6 +41,9 @@
 #include "base/util/utils.h"
 #include "spds/SyncItem.h"
 #include "spds/DataTransformerFactory.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 const char* const SyncItem::encodings::plain = "bin";
 const char* const SyncItem::encodings::escaped = "b64";
@@ -98,7 +101,7 @@ SyncItem::~SyncItem() {
     }
 }
 
-const char* SyncItem::getDataEncoding() {
+const char* SyncItem::getDataEncoding() const {
     return encoding;
 }
 
@@ -140,13 +143,13 @@ int SyncItem::changeDataEncoding(const char* enc, const char* encryption, const 
     if (strcmp(encodings::encodingString(encoding), encodings::plain)) {
         if (!strcmp(encoding, encodings::escaped) ||
             !strcmp(encoding, encodings::des)) {
-            res = transformData("b64", FALSE, credentialInfo);
+            res = transformData("b64", false, credentialInfo);
             if (res) {
                 return res;
             }
         }
         if (!strcmp(encoding, encodings::des)) {
-            res = transformData("des", FALSE, credentialInfo);
+            res = transformData("des", false, credentialInfo);
             if (res) {
                 return res;
             }
@@ -157,14 +160,14 @@ int SyncItem::changeDataEncoding(const char* enc, const char* encryption, const 
     // now convert to new encoding
     if (strcmp(encodings::encodingString(encoding), encodings::encodingString(encToUse))) {
         if (!strcmp(encToUse, encodings::des)) {
-            res = transformData("des", TRUE, credentialInfo);
+            res = transformData("des", true, credentialInfo);
             if (res) {
                 return res;
             }
         }
         if (!strcmp(encToUse, encodings::escaped) ||
             !strcmp(encToUse, encodings::des)) {
-            res = transformData("b64", TRUE, credentialInfo);
+            res = transformData("b64", true, credentialInfo);
             if (res) {
                 return res;
             }
@@ -176,7 +179,7 @@ int SyncItem::changeDataEncoding(const char* enc, const char* encryption, const 
     return ERR_NONE;
 }
 
-int SyncItem::transformData(const char* name, BOOL encode, const char* password)
+int SyncItem::transformData(const char* name, bool encode, const char* password)
 {
     char* buffer = NULL;
     DataTransformer *dt = encode ?
@@ -186,7 +189,7 @@ int SyncItem::transformData(const char* name, BOOL encode, const char* password)
     int res = ERR_NONE;
 
     if (dt == NULL) {
-        res = lastErrorCode;
+        res = getLastErrorCode();
         goto exit;
     }
 
@@ -194,7 +197,7 @@ int SyncItem::transformData(const char* name, BOOL encode, const char* password)
     info.password = password;
     buffer = dt->transform((char*)getData(), info);
     if (!buffer) {
-        res = lastErrorCode;
+        res = getLastErrorCode();
         goto exit;
     }
     // danger, transformer may or may not have manipulated the data in place
@@ -222,7 +225,7 @@ int SyncItem::transformData(const char* name, BOOL encode, const char* password)
  *
  * @param key - buffer where the key will be stored
  */
-const WCHAR* SyncItem::getKey() {
+const WCHAR* SyncItem::getKey() const {
         return key;
     }
 
@@ -252,7 +255,7 @@ void SyncItem::setKey(const WCHAR* itemKey) {
  * is a milliseconds timestamp since a reference time (which is
  * platform specific).
  */
-long SyncItem::getModificationTime() {
+long SyncItem::getModificationTime() const {
     return lastModificationTime;
 }
 
@@ -278,8 +281,9 @@ void* SyncItem::setData(const void* itemData, long dataSize) {
 
     data = new char[size + 1];
     if (data == NULL) {
-        lastErrorCode = ERR_NOT_ENOUGH_MEMORY;
-        sprintf(lastErrorMsg, ERRMSG_NOT_ENOUGH_MEMORY, (int)dataSize);
+        //lastErrorCode = ERR_NOT_ENOUGH_MEMORY;
+        //sprintf(lastErrorMsg, ERRMSG_NOT_ENOUGH_MEMORY, (int)dataSize);
+        setErrorF(ERR_NOT_ENOUGH_MEMORY, ERRMSG_NOT_ENOUGH_MEMORY, (int)dataSize);
         return NULL;
     }
 
@@ -296,14 +300,14 @@ void* SyncItem::setData(const void* itemData, long dataSize) {
 /*
  * Returns the SyncItem data buffer. It is deleted in the destructor.
  */
-void* SyncItem::getData() {
+void* SyncItem::getData() const {
     return data;
 }
 
 /*
  * Returns the SyncItem data size.
  */
-long SyncItem::getDataSize() {
+long SyncItem::getDataSize() const {
     return size;
 }
 
@@ -328,7 +332,7 @@ void SyncItem::setDataType(const WCHAR* mimeType) {
  * Returns the SyncItem data mime type.
  *
  */
-const WCHAR* SyncItem::getDataType() {
+const WCHAR* SyncItem::getDataType() const {
     return type;
 }
 
@@ -344,7 +348,7 @@ void SyncItem::setState(SyncState newState) {
 /*
  * Gets the SyncItem state
  */
-SyncState SyncItem::getState() {
+SyncState SyncItem::getState() const {
     return state;
 }
 
@@ -353,7 +357,7 @@ SyncState SyncItem::getState() {
  *
  * @return the taregtParent property value
  */
-const WCHAR* SyncItem::getTargetParent() {
+const WCHAR* SyncItem::getTargetParent() const {
     return targetParent;
 }
 
@@ -374,7 +378,7 @@ void SyncItem::setTargetParent(const WCHAR* parent) {
  *
  * @return the sourceParent property value
  */
-const WCHAR* SyncItem::getSourceParent() {
+const WCHAR* SyncItem::getSourceParent() const {
     return sourceParent;
 }
 

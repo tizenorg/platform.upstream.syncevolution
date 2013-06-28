@@ -38,6 +38,7 @@
 /** @cond DEV */
 
     #include "base/fscapi.h"
+    #include "base/util/StringBuffer.h"
 
     #include "http/URL.h"
     #include "http/Proxy.h"
@@ -58,6 +59,9 @@
     // incoming stram from server. It is expressed in byte
     //
     #define DEFAULT_INTERNET_READ_BUFFER_SIZE  4096
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
     /*
      * This class is the transport agent responsible for messages exchange
@@ -75,7 +79,10 @@
         unsigned int maxmsgsize;
         unsigned int readBufferSize;
         char userAgent[128];
-        BOOL compression;
+        bool compression;
+        StringBuffer SSLServerCertificates;
+        bool SSLVerifyServer;
+        bool SSLVerifyHost;
 
     public:
         TransportAgent();
@@ -132,8 +139,8 @@
 
         virtual void setUserAgent(const char*  ua);
 
-        virtual void setCompression(BOOL newCompression);
-        virtual BOOL getCompression();
+        virtual void setCompression(bool newCompression);
+        virtual bool getCompression();
 
         virtual const char* getUserAgent();
 
@@ -142,6 +149,33 @@
          */
         virtual unsigned int getReadBufferSize();
 
+        /**
+         * A platform specific string specifying the location of the
+         * certificates used to authenticate the server. When empty, the
+         * system's default location will be searched.
+         */
+        virtual const char* getSSLServerCertificates() const { return SSLServerCertificates.c_str(); }
+        virtual void setSSLServerCertificates(const char *value) { SSLServerCertificates = value ? value : ""; }
+
+        /**
+         * Enabled by default: the client refuses to establish the
+         * connection unless the server presents a valid
+         * certificate. Disabling this option considerably reduces the
+         * security of SSL (man-in-the-middle attacks become possible) and
+         * is not recommended.
+         */
+        virtual bool getSSLVerifyServer() const { return SSLVerifyServer; }
+        virtual void setSSLVerifyServer(bool value) { SSLVerifyServer = value; }
+
+        /**
+         * Enabled by default: the client refuses to establish the
+         * connection unless the server's certificate matches its host
+         * name. In cases where the certificate still seems to be valid it
+         * might make sense to disable this option and allow such
+         * connections.
+         */
+        virtual bool getSSLVerifyHost() const { return SSLVerifyHost; }
+        virtual void setSSLVerifyHost(bool value) { SSLVerifyHost = value; }
 
         /*
          * Sends the given SyncML message to the server specified
@@ -153,6 +187,9 @@
         virtual char*  sendMessage(const char*  msg) = 0;
 
     };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

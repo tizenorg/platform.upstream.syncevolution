@@ -44,6 +44,9 @@
 #include "syncml/core/ContentTypeInfo.h"
 #include "syncml/core/DSMem.h"
 #include "syncml/core/SyncCap.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 
 class DataStore : public ArrayElement {
@@ -57,6 +60,7 @@ class DataStore : public ArrayElement {
         ArrayList*       rx; // ContentTypeInfo[]
         ContentTypeInfo* txPref;
         ArrayList*       tx; // ContentTypeInfo[]
+        ArrayList*       ctCaps;
         DSMem*           dsMem;
         SyncCap*         syncCap;
 
@@ -96,6 +100,7 @@ class DataStore : public ArrayElement {
                   ArrayList* rx,
                   ContentTypeInfo* txPref,
                   ArrayList* tx,
+                  ArrayList* ct_Caps,
                   DSMem* dsMem,
                   SyncCap* syncCap);
 
@@ -224,9 +229,27 @@ class DataStore : public ArrayElement {
          */
         void setSyncCap(SyncCap* syncCap);
 
+        /**
+         * Gets an array of CtCaps corresponds to &lt;CTCap&gt; element
+         *
+         * @return an array of CTCaps corresponds to &lt;CTCap&gt; element
+         */
+        ArrayList* getCtCaps();
+
+        /**
+         * Sets an array of CtCaps
+         *
+         * @param Ct_Caps an array of Ctcaps
+         */
+        void setCtCaps(ArrayList* Ct_Caps);
+
+
         ArrayElement* clone();
 
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

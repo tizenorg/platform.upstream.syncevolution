@@ -158,20 +158,7 @@ template<class T> typedef ref<T, true> iphoneref;
  */
 class AddressBookSource : public EvolutionSyncSource
 {
-  public:
-    /**
-     * Creates a new Evolution address book source.
-     *
-     * @param    changeId    is used to track changes in the Evolution backend;
-     *                       not specifying it implies that always all items are returned
-     * @param    id          identifies the backend; not specifying it makes this instance
-     *                       unusable for anything but listing backend databases
-     */
-    AddressBookSource(const string &name,
-                      SyncSourceConfig *sc,
-                      const string &changeId = string(""),
-                      const string &id = string(""),
-                      const string &configPath = string(""));
+    AddressBookSource(const EvolutionSyncSourceParams &params, bool asVCard30);
     AddressBookSource(const AddressBookSource &other);
     virtual ~AddressBookSource() { close(); }
 
@@ -191,13 +178,8 @@ class AddressBookSource : public EvolutionSyncSource
     virtual const char *getMimeVersion() { return m_asVCard30 ? "3.0" : "2.1"; }
     virtual const char *getSupportedTypes() { return m_asVCard30 ? "text/vcard:3.0" : "text/x-vcard:2.1"; }
    
-    virtual SyncItem *createItem(const string &uid, SyncState state) { return createItem(uid, state, m_asVCard30); }
-    virtual SyncItem *createItem(const string &uid, SyncState state, bool asVCard30);
-    
-    //
-    // implementation of SyncSource
-    //
-    virtual ArrayElement *clone() { return new AddressBookSource(*this); }
+    virtual SyncItem *createItem(const string &uid) { return createItem(uid, m_asVCard30); }
+    virtual SyncItem *createItem(const string &uid, bool asVCard30);
     
   protected:
     //
@@ -211,7 +193,7 @@ class AddressBookSource : public EvolutionSyncSource
     virtual int updateItemThrow(SyncItem& item);
     virtual int deleteItemThrow(SyncItem& item);
     virtual void logItem(const string &uid, const string &info, bool debug = false);
-    virtual void logItem(SyncItem &item, const string &info, bool debug = false);
+    virtual void logItem(const SyncItem &item, const string &info, bool debug = false);
 
     /** insert item, optionally replacing the one with the specified uid */
     virtual int insertItem(SyncItem &item, const char *uid);

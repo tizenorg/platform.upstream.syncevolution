@@ -34,6 +34,17 @@
  */
 
 #include "event/ManageListener.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
+
+class DestroyManageListener{
+public:
+    DestroyManageListener() {           };
+    ~DestroyManageListener(){ delete &(ManageListener::getInstance());}
+};
+
+DestroyManageListener destroyManageListener;
 
 /* Static Variables */
 

@@ -42,6 +42,9 @@
 #include "syncml/core/ModificationCommand.h"
 
 #define ADD_COMMAND_NAME "Add"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 class Add : public ModificationCommand {
 
@@ -68,7 +71,7 @@ class Add : public ModificationCommand {
          *
          */
         Add(CmdID* cmdID,
-                   BOOL noResp,
+                   bool noResp,
                    Cred* cred,
                    Meta* meta,
                    ArrayList* items);
@@ -85,6 +88,9 @@ class Add : public ModificationCommand {
         ArrayElement* clone();
 
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

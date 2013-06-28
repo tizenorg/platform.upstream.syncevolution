@@ -36,14 +36,17 @@
 
 //
 // @author Stefano Fornari @ Funambol
-// @version $Id: Name.h,v 1.4.2.1 2007/11/28 14:26:36 toccy Exp $
+// @version $Id: Name.h,v 1.7 2008-04-11 08:17:13 marco_garatti Exp $
 //
 
 #ifndef INCL_PIM_NAME
 #define INCL_PIM_NAME
 /** @cond DEV */
 
-#include "vCardProperty.h"
+#include "vocl/vCard/vCardProperty.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 class Name {
 
@@ -173,6 +176,9 @@ class Name {
          */
         Name* clone();
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

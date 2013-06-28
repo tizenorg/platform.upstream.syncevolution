@@ -35,6 +35,9 @@
 
 
 #include "syncml/core/Atomic.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 Atomic::Atomic() {
     COMMAND_NAME = new char[strlen(ATOMIC_COMMAND_NAME) + 1];
@@ -61,7 +64,7 @@ Atomic::~Atomic() {
 * @param commands an array of abstract command - NOT NULL
 */
 Atomic::Atomic( CmdID*     cmdID,
-                BOOL       noResp,
+                bool       noResp,
                 Meta*      meta,
                 ArrayList* commands) : AbstractCommand(cmdID) {
 
@@ -91,18 +94,18 @@ ArrayList* Atomic::getCommands() {
 *
 */
 void Atomic::setCommands(ArrayList* commands) {
-     BOOL err = FALSE;
+     bool err = false;
     if (commands == NULL) {
         // TBD
-        err = TRUE;
+        err = true;
     }
     for (int i = 0; i < commands->size(); i++) {
         if (commands->get(i) == NULL) {
             // TBD
-            err = TRUE;
+            err = true;
         }
     }
-    if (err == FALSE) {
+    if (err == false) {
         this->commands->clear();
         this->commands = commands->clone();
     }

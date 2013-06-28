@@ -36,15 +36,19 @@
 
 #include "syncml/core/SyncBody.h"
 #include "base/Log.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 SyncBody::SyncBody() {
     initialize();
+    commands = new ArrayList();
 }
 SyncBody::~SyncBody() {
     if(commands) {
-        commands->clear();  //delete commands; commands = NULL;
+        /*commands->clear();*/  delete commands; commands = NULL;
     }
-    finalMsg = FALSE;
+    finalMsg = false;
 }
 
 /**
@@ -60,7 +64,7 @@ SyncBody::~SyncBody() {
 *
 */
 SyncBody::SyncBody(ArrayList* commands   , // AbstractCommand[]
-                   BOOL       finalMsg) {
+                   bool       finalMsg) {
 
         initialize();
         setCommands(commands);
@@ -68,8 +72,8 @@ SyncBody::SyncBody(ArrayList* commands   , // AbstractCommand[]
 }
 
 void SyncBody::initialize() {
-    finalMsg = FALSE;
-    commands = new ArrayList();
+    finalMsg = false;
+    commands = NULL;//new ArrayList();
 }
 
 /**
@@ -91,19 +95,23 @@ ArrayList* SyncBody::getCommands() {
 *
 */
 void SyncBody::setCommands(ArrayList* commands) {
-    BOOL err = FALSE;
+    bool err = false;
     if (commands == NULL) {
         LOG.error("SyncBody::setCommands: null command list");
-        err = TRUE;
+        err = true;
     }
     for (int i = 0; i < commands->size(); i++) {
         if (commands->get(i) == NULL) {
             LOG.error("SyncBody::setCommands: command %d is null.", i);
-            err = TRUE;
+            err = true;
         }
     }
-    if (err == FALSE) {
-        this->commands->clear();
+    if (err == false) {
+        //this->commands->clear();
+        if (this->commands == NULL){
+            delete this->commands;
+            this->commands = NULL;
+        }
         this->commands = commands->clone();
     }
 }
@@ -113,12 +121,8 @@ void SyncBody::setCommands(ArrayList* commands) {
 *
 * @param finalMsg the Boolean value of finalMsg property
 */
-void SyncBody::setFinalMsg(BOOL finalMsg) {
-      if ((finalMsg == NULL) || (finalMsg != TRUE && finalMsg != FALSE)) {
-        this->finalMsg = NULL;
-    } else {
-        this->finalMsg = finalMsg;
-    }
+void SyncBody::setFinalMsg(bool finalMsg) {
+    this->finalMsg = finalMsg;
 }
 
 /**
@@ -127,7 +131,7 @@ void SyncBody::setFinalMsg(BOOL finalMsg) {
 * @return true if this is the final message being sent, otherwise false
 *
 */
-BOOL SyncBody::isFinalMsg() {
+bool SyncBody::isFinalMsg() {
     return (finalMsg != NULL);
 }
 
@@ -137,7 +141,7 @@ BOOL SyncBody::isFinalMsg() {
 * @return true if this is the final message being sent, otherwise null
 *
 */
-BOOL SyncBody::getFinalMsg() {
+bool SyncBody::getFinalMsg() {
     return finalMsg;
 }
 

@@ -35,6 +35,9 @@
 
 
 #include "spds/SyncReport.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 //--------------------------------------------------- Constructor & Destructor
 
@@ -47,7 +50,7 @@ SyncReport::SyncReport(SyncReport& sr) {
     assign(sr);
 }
 
-SyncReport::SyncReport(SyncManagerConfig& config) {
+SyncReport::SyncReport(AbstractSyncConfig& config) {
     initialize();
     setSyncSourceReports(config);
 }
@@ -68,7 +71,7 @@ SyncReport::~SyncReport() {
 //------------------------------------------------------------- Public Methods
 
 // Create ssReport array from config.
-void SyncReport::setSyncSourceReports(SyncManagerConfig& config) {
+void SyncReport::setSyncSourceReports(AbstractSyncConfig& config) {
 
     if (ssReport) {
         delete [] ssReport;
@@ -78,13 +81,13 @@ void SyncReport::setSyncSourceReports(SyncManagerConfig& config) {
     // create one report for each configured sync source, even
     // if it is not active: it is set to inactive below and needs
     // to be activated if it is actually part of the sync
-    ssReportCount = config.getSyncSourceConfigsCount();
+    ssReportCount = config.getAbstractSyncSourceConfigsCount();
     if (ssReportCount) {
         ssReport = new SyncSourceReport[ssReportCount];
 
-        SyncSourceConfig* sc = NULL;
+        AbstractSyncSourceConfig* sc = NULL;
         for (unsigned int i=0; i<ssReportCount; i++) {
-            sc = config.getSyncSourceConfig(i);
+            sc = config.getAbstractSyncSourceConfig(i);
             ssReport[i].setSourceName(sc->getName());
             ssReport[i].setState(SOURCE_INACTIVE);
         }
@@ -147,7 +150,7 @@ void SyncReport::initialize() {
     ssReport       = NULL;
 }
 
-void SyncReport::toString(StringBuffer &str, BOOL verbose) {
+void SyncReport::toString(StringBuffer &str, bool verbose) {
     StringBuffer tmp;
 
     str += "===========================================================\n";

@@ -44,6 +44,9 @@
     #include "spds/SyncStatus.h"
 
     #include <string.h>
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
     typedef enum {
         SYNC_STATE_NEW     = 'N',
@@ -97,7 +100,7 @@
          *
          * @param key - buffer where the key will be stored
          */
-        const WCHAR* getKey();
+        const WCHAR* getKey() const;
 
         /*
          * Changes the SyncItem key. The key must not be longer than DIM_KEY
@@ -120,7 +123,7 @@
          * is a milliseconds timestamp since a reference time (which is
          * platform specific).
          */
-        long getModificationTime();
+        long getModificationTime() const;
 
         /*
          * Sets the SyncItem content data. The passed data is copied into an
@@ -157,13 +160,13 @@
          * There is guaranteed to be a nul-byte after the data which
          * is not included in the data size.
          */
-        void* getData();
+        void* getData() const;
 
         /*
          * Returns the amount of bytes stored in the item,
          * excluding the implicit nul-byte after the real data.
          */
-        long getDataSize();
+        long getDataSize() const;
 
          /*
          * Sets the SyncItem data size without changing the data buffer.
@@ -191,7 +194,7 @@
          * Note that for incoming items the client library automatically converts
          * to plain encoding unless the server uses an unknown encoding.
          */
-        const char* getDataEncoding();
+        const char* getDataEncoding() const;
 
         /**
          * Changes the encoding and the data currently stored in the item.
@@ -221,7 +224,7 @@
         /*
          * Returns the SyncItem data mime type.
          */
-        const WCHAR* getDataType();
+        const WCHAR* getDataType() const;
 
         /*
          * Sets the SyncItem state
@@ -233,14 +236,14 @@
         /*
          * Gets the SyncItem state
          */
-        SyncState getState();
+        SyncState getState() const;
 
        /**
          * Returns the SyncItem targetParent
          *
          * @return the SyncItem target parent
          */
-        const WCHAR* getTargetParent();
+        const WCHAR* getTargetParent() const;
 
         /**
          * Sets the SyncItem targetParent
@@ -255,7 +258,7 @@
          *
          * @return the SyncItem source parent
          */
-        const WCHAR* getSourceParent();
+        const WCHAR* getSourceParent() const;
 
         /**
          * Sets the SyncItem sourceParent
@@ -287,7 +290,7 @@
             }
 
             /** returns true if and only if the encoding is one of the supported ones */
-            static const BOOL isSupported(const char* encoding) {
+            static const bool isSupported(const char* encoding) {
                 const char* enc = encodingString(encoding);
                 return !strcmp(enc, plain) ||
                     !strcmp(enc, escaped) ||
@@ -297,8 +300,11 @@
 
       private:
         /** encode or decode the item's data with the named transformation */
-        int transformData(const char* name, BOOL encode, const char* password);
+        int transformData(const char* name, bool encode, const char* password);
     };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

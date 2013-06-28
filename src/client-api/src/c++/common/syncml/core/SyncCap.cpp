@@ -35,6 +35,9 @@
 
 
 #include "syncml/core/SyncCap.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 
 SyncCap::SyncCap() {
@@ -42,7 +45,8 @@ SyncCap::SyncCap() {
 }
 SyncCap::~SyncCap() {
     if (syncType) {
-        syncType->clear();  //delete syncType; syncType = NULL;
+        syncType->clear();  //
+        delete syncType; syncType = NULL;
     }
 }
 

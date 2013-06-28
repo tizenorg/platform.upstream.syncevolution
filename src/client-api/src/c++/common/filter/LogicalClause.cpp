@@ -35,6 +35,9 @@
 
 
 #include "filter/LogicalClause.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 
 LogicalClause::LogicalClause() {
@@ -74,7 +77,7 @@ void LogicalClause::setOperands(ArrayList& ops) {
     operands = ops.clone();
 }
 
-BOOL LogicalClause::isUnaryOperator() {
+bool LogicalClause::isUnaryOperator() {
     return (op == NOT);
 }
 

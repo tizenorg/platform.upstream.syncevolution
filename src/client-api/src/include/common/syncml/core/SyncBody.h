@@ -41,6 +41,9 @@
 #include "base/fscapi.h"
 #include "base/util/ArrayList.h"
 #include "syncml/core/AbstractCommand.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 
 class SyncBody {
@@ -48,7 +51,7 @@ class SyncBody {
      // ------------------------------------------------------------ Private data
     private:
         ArrayList* commands;
-        BOOL finalMsg;
+        bool finalMsg;
         void initialize();
     public:
 
@@ -68,7 +71,7 @@ class SyncBody {
          *
          */
         SyncBody(ArrayList* commands   , // AbstractCommand[]
-                 BOOL       finalMsg);
+                 bool       finalMsg);
 
 
         /**
@@ -93,7 +96,7 @@ class SyncBody {
          *
          * @param finalMsg the Boolean value of finalMsg property
          */
-        void setFinalMsg(BOOL finalMsg);
+        void setFinalMsg(bool finalMsg);
 
         /**
          * Gets the value of finalMsg property
@@ -101,7 +104,7 @@ class SyncBody {
          * @return true if this is the final message being sent, otherwise false
          *
          */
-        BOOL isFinalMsg();
+        bool isFinalMsg();
 
         /**
          * Gets the value of finalMsg property
@@ -109,10 +112,13 @@ class SyncBody {
          * @return true if this is the final message being sent, otherwise null
          *
          */
-        BOOL getFinalMsg();
+        bool getFinalMsg();
 
         SyncBody* clone();
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

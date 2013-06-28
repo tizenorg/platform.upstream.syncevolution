@@ -34,11 +34,25 @@
  */
 
 #include "http/TransportAgentFactory.h"
-#include "http/CurlTransportAgent.h"
 
+#ifndef MAC
+#include "http/CurlTransportAgent.h"
+#else
+#include "http/MacTransportAgent.h"
+#endif
+
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 TransportAgent* TransportAgentFactory::getTransportAgent(
         URL& url, Proxy& proxy, unsigned int timeout, unsigned int maxmsgsize)
 {
+    #ifdef MAC
+    return new MacTransportAgent(url, proxy, timeout);
+    #else
     return new CurlTransportAgent(url, proxy, timeout);
+    #endif
 }
+
+END_NAMESPACE

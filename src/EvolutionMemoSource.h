@@ -33,28 +33,17 @@
 class EvolutionMemoSource : public EvolutionCalendarSource
 {
   public:
-    EvolutionMemoSource(ECalSourceType type,
-                        const string &name,
-                        SyncSourceConfig *sc,
-                        const string &changeId,
-                        const string &id) :
-        EvolutionCalendarSource(type, name, sc, changeId, id) {}
+    EvolutionMemoSource(const EvolutionSyncSourceParams &params) :
+        EvolutionCalendarSource(E_CAL_SOURCE_TYPE_JOURNAL, params) {}
     
     //
     // implementation of EvolutionSyncSource
     //
-    virtual SyncItem *createItem( const string &uid, SyncState state );
-    virtual const char *getMimeType() { return "text/plain"; }
-    virtual const char *getMimeVersion() { return "1.0"; }
-    virtual const char *getSupportedTypes() { return "text/plain:1.0"; }
-
-    //
-    // implementation of SyncSource
-    //
-    virtual ArrayElement *clone() { return new EvolutionMemoSource(*this); }
-
-  private:
-    virtual int insertItem(SyncItem &item, bool update);
+    virtual SyncItem *createItem(const string &uid);
+    virtual InsertItemResult insertItem(const string &luid, const SyncItem &item);
+    virtual const char *getMimeType() const { return "text/plain"; }
+    virtual const char *getMimeVersion() const { return "1.0"; }
+    virtual const char *getSupportedTypes() const { return "text/plain:1.0"; }
 };
 
 #endif // ENABLE_ECAL

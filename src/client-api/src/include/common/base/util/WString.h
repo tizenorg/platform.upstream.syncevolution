@@ -38,6 +38,9 @@
 /** @cond DEV */
 
 #include "base/util/ArrayElement.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 class ArrayList;
 class StringBuffer;
@@ -60,7 +63,7 @@ class WString: public ArrayElement {
 
         WString& append(const WCHAR*);
 
-        WString& append(unsigned long u, BOOL sign = TRUE);
+        WString& append(unsigned long u, bool sign = true);
 
         WString& append(WString& s);
 
@@ -202,6 +205,9 @@ class WString: public ArrayElement {
 };
 
 WString operator+(const WString& x, const WCHAR *y);
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

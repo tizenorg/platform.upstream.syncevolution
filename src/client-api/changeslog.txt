@@ -1,12 +1,87 @@
-Funambol SDK C++ 6.5.3
------------------------
+2008-04-07
+   - magi: * added 
+                CacheSyncSource.h, CacheSyncSource.cpp
+                KeyValueStore.h
+                ArrayListKeyValueStore.h, ArrayListKeyValueStore.cpp
+                Enumeration.h
+                ArrayListEnumeration.h
+                PropertyFile.h, PropertyFile.cpp
+                BriefcaseCacheSyncSource.h, BriefcaseCacheSyncSource.cpp
+                BriefcaseClient.cpp
+                These are to try the cache sync source that keeps track about the changes on the
+                items based on the crc of the content of the items
+            
+            * updated the Makefile.am to compile all new stuff
+            * updated windadapter and posixadapter 
+            * applied Patrick's patch on SyncItem (the const get methods)
+            * updated SyncSource interface
+                                    
+
+2008-04-02
+   - toccy: first add of base classes and adapters for new Symbian client.
+
+2008-02-13
+    - toccy: * 'lastErrorMsg' is now a StringBuffer
+             * 'lastErrorMsg' and 'lastErrorCode' are no more global, 
+                they must be accessed only by provided get/set methods.
+             * removed char[] in log.cpp, using StringBuffer, 'logmsg' is now deprecated
+
+2008-01-29
+    - toccy: windows/http/GPRSConnection.cpp:
+             revised the function to estabilish GPRS connection, used by WM clients.
+
+2008-01-04
+    - teo: added CtCap.
+           Now we pass to the formatter an ArrayList of CtCap to handle different capabilities.
+           In SyncSourceConfig there's a new method called addCtCap to add an element to the 
+           ArrayList of CtCap.
+           This method has 4 parameters CtType VerCt an arraylist of properties and an int with 
+           3 status to handle the FieldLevel param (FLEVEL_DISABLED, FLEVEL_ENABLED, 
+           FLEVEL_UNDEFINED)
+           CtCype VerCt and FieldLevel are optional. 
+           If one of this parameters is not set the method use the default one setted 
+           in the configuration. 
+
+getCtCaps returns a reference to the ArrayList of CtCaps 
+
+2008-01-03
+    - teo: removed a bug related to the creation and the destruction of the operands arraylist
+           in ClauseUtils.cpp.
+           
+           removed all the embedded tests in client.cpp.
+           all the tests in the old client.cpp are moved in the corrisponding class and corrected to 
+           work properly with the cppunit framework
+
+    - toccy: Added support for timezones, for SIF events, under Windows branch (windows/vocl).
+             SIF version upgraded to "1.1"
+
+2008-01-02
+    - toccy: Added support for timezones, for vCalendar 1.0, under Windows branch (windows/vocl).
+             From Client to Server, recurring events are sent out with timezone informations 
+             if the Client fills the tzInfo structure.
+             From Server to Client, events without timezones are still accepted (like before).
+
+2007-12-21
+    - toccy: merged differences from "b_v65"
+
+2007-12-06
+    - toccy: windows/vocl/WinNote: added parser and formatter for vNote 1.1
 
 2007-11-28
-    - toccy: Updated headers of source files with AGPL license
+  - Changed headers of source files (AGPL)
 
+2007-11-15
+    - gazza: unit test refactoring
 
-Funambol SDK C++ 6.5.2
------------------------
+2007-11-15
+    - teo:   syncml parser unit tests
+    - gazza: code refactoring - indirection of SyncManager members 'commands' 
+             and 'mappings' reduced of one level.
+
+2007-11-08
+    - gazza: Unit tests updated - the testcases are under test, under the same
+             folder structure of the sources. The windows solution and the
+             unix makefile have been updated accordingly.
 
 2007-11-07
     - toccy: WinTransportAgent - added support for http status codes 402 & 403
@@ -35,15 +110,21 @@ Funambol SDK C++ 6.5.0
 -----------------------
 
 2007-08-08
-    - toccy: Improved vCalendar parser/formatter (WinEvent.cpp) to handle all supported properties
+    - toccy: Improved vCalendar parser/formatter (WinEvent.cpp) to handle all
+             supported properties
+    - gazza: Removed old Palm defines from the header files.
+             Minor fixes for Posix build.
+             Uncompress in WinTransportAgent more robust when some headers
+             are cut by proxies.
 
 2007-08-03
-    - magi:  Added WinContactSif class. It is used to handle the SIF properties in a different
-             way. So it is possible to handle also other likes Photo.
+    - magi:  Added WinContactSif class. It is used to handle the SIF properties
+             in a different way. So it is possible to handle also other likes
+             Photo.
              Commented code in the Converter class for the b64 binary handling
              Added in Property class the way to set a property without any conversion
-             WinContact: added photo handling in vacard. Modified the returned value in
-             toString method        
+             WinContact: added photo handling in vacard. Modified the returned
+                         value in toString method        
              WinItem: added the crc encode function
              
 2007-07-24
@@ -52,23 +133,29 @@ Funambol SDK C++ 6.5.0
              and decremented everytime there's an add or a remove.
              The method add is also improved when there is an add in the last 
              element (a sort of pushback)
-             Removed the remove method now there's only the method removeElementAt(index)
-             in SyncSourceReport in the SyncSourceReport::addItem method was removed a for 
-             cycle that check if there is a element clone of the one to add. 
+             Removed the remove method now there's only the method
+             removeElementAt(index) in SyncSourceReport in the
+             SyncSourceReport::addItem method was removed a for cycle that
+             check if there is a element clone of the one to add. 
              This for cycle is very negative for the performance and useless.
              
 2007-07-19
     - toccy: improved parser/formatter of vCard for windows clients (WinContact)
 
 2007-07-11
-    - toccy: first add: WinObject classes used by Windows clients to manage vCard and vCal
-    - toccy: added 'stringUtils.cpp' and 'timeUtils' utils functions for Windows system
+    - toccy: first add: WinObject classes used by Windows clients to manage
+             vCard and vCal
+    - toccy: added 'stringUtils.cpp' and 'timeUtils' utils functions for
+             Windows system
 
 2007-06-22
     - toccy: win32 and winmobile source files has been unified under 'windows' dir.
-             WinTransportAgent reworked to be used both by Win32 and Winmobile plugins.
-    - toccy: devinfo is sent with informations for all sources, not only the ones currently synchronized.
-             So it will not be sent again if we add/remove a source from synchronization.
+             WinTransportAgent reworked to be used both by Win32 and Winmobile
+             plugins.
+    - toccy: devinfo is sent with informations for all sources, not only the
+             ones currently synchronized.
+             So it will not be sent again if we add/remove a source from
+             synchronization.
 
 
 Funambol SDK C++ 6.0.9

@@ -34,11 +34,13 @@
  */
 
 #include "client/FILEClient.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 
 
 int main(int argc, char** argv) {
-
 
     //
     // get argv if exists -> path of folder to sync
@@ -46,10 +48,11 @@ int main(int argc, char** argv) {
     char* dir = stringdup("test");
 
     // Init LOG
-    Log(0, LOG_PATH, LOG_NAME);
-	LOG.reset(LOG_TITLE);
-    LOG.setLevel(LOG_LEVEL);
-
+    LOG.setLogName(LOG_NAME);
+    LOG.setLogPath(LOG_PATH);
+    LOG.reset(LOG_TITLE);
+    LOG.setLevel(LOG_LEVEL_DEBUG);
+    
     //
     // Create the configuration.
     //
@@ -114,7 +117,7 @@ void createConfig(DMTClientConfig& config) {
     DeviceConfig* dc = DefaultConfigFactory::getDeviceConfig();
     dc->setDevID    (DEVICE_ID);
     dc->setMan      ("Funambol");
-    dc->setLoSupport(TRUE);
+    dc->setLoSupport(true);
     dc->setSwv      (SW_VERSION);  // So next time won't be generated, we always save config at the end.
     config.setDeviceConfig(*dc);
     delete dc;

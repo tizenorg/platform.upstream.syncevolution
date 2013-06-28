@@ -19,7 +19,7 @@
 
 #include "EvolutionSyncClient.h"
 #include "EvolutionSyncSource.h"
-#include <EvolutionClientConfig.h>
+#include "SyncEvolutionUtil.h"
 
 #include <posix/base/posixlog.h>
 
@@ -33,6 +33,10 @@
 #include <stdexcept>
 using namespace std;
 
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/algorithm/string/replace.hpp>
+#include <boost/foreach.hpp>
+
 #include <sys/stat.h>
 #include <pwd.h>
 #include <unistd.h>
@@ -42,14 +46,14 @@ using namespace std;
 SourceList *EvolutionSyncClient::m_sourceListPtr;
 
 EvolutionSyncClient::EvolutionSyncClient(const string &server,
-                                         bool doLogging, const set<string> &sources,
-                                         const string &configRoot ) :
+                                         bool doLogging,
+                                         const set<string> &sources) :
+    EvolutionSyncConfig(server),
     m_server(server),
     m_sources(sources),
     m_doLogging(doLogging),
-    m_configPath(configRoot + server),
-    m_quiet(false),
-    m_syncMode(SYNC_NONE)
+    m_syncMode(SYNC_NONE),
+    m_quiet(false)
 {
 }
 
@@ -57,38 +61,6 @@ EvolutionSyncClient::~EvolutionSyncClient()
 {
 }
 
-/// remove all files in the given directory and the directory itself
-static void rmBackupDir(const string &dirname)
-{
-    DIR *dir = opendir(dirname.c_str());
-    if (!dir) {
-        EvolutionSyncClient::throwError(dirname + ": " + strerror(errno));
-    }
-    vector<string> entries;
-    struct dirent *entry;
-    while ((entry = readdir(dir)) != NULL) {
-        entries.push_back(entry->d_name);
-    }
-    closedir(dir);
-
-    for (vector<string>::iterator it = entries.begin();
-         it != entries.end();
-         ++it) {
-        string path = dirname + "/" + *it;
-        if (unlink(path.c_str())
-            && errno != ENOENT
-#ifdef EISDIR
-            && errno != EISDIR
-#endif
-            ) {
-            EvolutionSyncClient::throwError(path + ": " + strerror(errno));
-        }
-    }
-
-    if (rmdir(dirname.c_str())) {
-        EvolutionSyncClient::throwError(dirname + ": " + strerror(errno));
-    }
-}
 
 // this class owns the logging directory and is responsible
 // for redirecting output at the start and end of sync (even
@@ -221,7 +193,10 @@ public:
             FILE *file = fopen(m_logfile.c_str(), "w");
             if (file) {
                 fclose(file);
-                setLogFile(m_logfile.c_str(), true);
+#ifdef POSIX_LOG
+                POSIX_LOG.
+#endif
+                    setLogFile(NULL, m_logfile.c_str(), true);
             } else {
                 LOG.error("creating log file %s failed", m_logfile.c_str());
             }
@@ -248,19 +223,14 @@ public:
 
     /** find all entries in a given directory, return as sorted array */
     void getLogdirs(const string &logdir, vector<string> &entries) {
-        DIR *dir = opendir(logdir.c_str());
-        if (!dir) {
-            EvolutionSyncClient::throwError(m_logdir + ": " + strerror(errno));
-        }
-        struct dirent *entry;
-        while ((entry = readdir(dir)) != NULL) {
-            if (strlen(entry->d_name) >= m_prefix.size() &&
-                !m_prefix.compare(0, m_prefix.size(), entry->d_name, m_prefix.size())) {
-                entries.push_back(entry->d_name);
+        ReadDir dir(logdir);
+        for (ReadDir::const_iterator it = dir.begin();
+             it != dir.end();
+             ++it) {
+            if (boost::starts_with(*it, m_prefix)) {
+                entries.push_back(*it);
             }
         }
-        closedir(dir);
-                
         sort(entries.begin(), entries.end());
     }
 
@@ -271,14 +241,14 @@ public:
             vector<string> entries;
             getLogdirs(m_logdir, entries);
 
-            unsigned int deleted = 0;
+            int deleted = 0;
             for (vector<string>::iterator it = entries.begin();
-                 it != entries.end() && entries.size() - deleted > m_maxlogdirs;
+                 it != entries.end() && (int)entries.size() - deleted > m_maxlogdirs;
                  ++it, ++deleted) {
                 string path = m_logdir + "/" + *it;
                 string msg = "removing " + path;
                 LOG.info(msg.c_str());
-                rmBackupDir(path);
+                rm_r(path);
             }
         }
     }
@@ -291,12 +261,18 @@ public:
           
         if (all) {
             if (m_logfile.size()) {
-                setLogFile("-", false);
+#ifdef POSIX_LOG
+                POSIX_LOG.
+#endif
+                    setLogFile(NULL, "-", false);
             }
             LOG.setLevel(m_oldLogLevel);
         } else {
             if (m_logfile.size()) {
-                setLogFile(m_logfile.c_str(), false);
+#ifdef POSIX_LOG
+                POSIX_LOG.
+#endif
+                    setLogFile(NULL, m_logfile.c_str(), false);
             }
         }
     }
@@ -309,13 +285,13 @@ public:
 // this class owns the sync sources and (together with
 // a logdir) handles writing of per-sync files as well
 // as the final report (
-class SourceList : public list<EvolutionSyncSource *> {
+class SourceList : public vector<EvolutionSyncSource *> {
     LogDir m_logdir;     /**< our logging directory */
     bool m_prepared;     /**< remember whether syncPrepare() dumped databases successfully */
     bool m_doLogging;    /**< true iff additional files are to be written during sync */
     SyncClient &m_client; /**< client which holds the sync report after a sync */
     bool m_reportTodo;   /**< true if syncDone() shall print a final report */
-    arrayptr<SyncSource *> m_sourceArray;  /** owns the array that is expected by SyncClient::sync() */
+    boost::scoped_array<SyncSource *> m_sourceArray;  /** owns the array that is expected by SyncClient::sync() */
     const bool m_quiet;  /**< avoid redundant printing to screen */
     string m_previousLogdir; /**< remember previous log dir before creating the new one */
 
@@ -468,8 +444,9 @@ public:
                     }
                 }
 
-                // scan for error messages
                 string logfile = m_logdir.getLogfile();
+#ifndef LOG_HAVE_SET_LOGGER
+                // scan for error messages
                 if (!m_quiet && logfile.size()) {
                     ifstream in;
                     in.open(m_logdir.getLogfile().c_str());
@@ -478,13 +455,14 @@ public:
                         getline(in, line);
                         if (line.find("[ERROR]") != line.npos) {
                             success = false;
-                            cout << line << "\n";
+                           cout << line << "\n";
                         } else if (line.find("[INFO]") != line.npos) {
                             cout << line << "\n";
                         }
                     }
                     in.close();
                 }
+#endif
 
                 cout << flush;
                 cerr << flush;
@@ -571,17 +549,27 @@ public:
 
     /** returns current sources as array as expected by SyncClient::sync(), memory owned by this class */
     SyncSource **getSourceArray() {
-        m_sourceArray = new SyncSource *[size() + 1];
+        m_sourceArray.reset(new SyncSource *[size() + 1]);
 
         int index = 0;
         for (iterator it = begin();
              it != end();
              ++it) {
-            ((SyncSource **)m_sourceArray)[index] = *it;
+            m_sourceArray[index] = *it;
             index++;
         }
-        ((SyncSource **)m_sourceArray)[index] = 0;
-        return m_sourceArray;
+        m_sourceArray[index] = 0;
+        return &m_sourceArray[0];
+    }
+
+    /** returns names of active sources */
+    set<string> getSources() {
+        set<string> res;
+
+        BOOST_FOREACH(SyncSource *source, *this) {
+            res.insert(source->getName());
+        }
+        return res;
     }
    
     ~SourceList() {
@@ -592,11 +580,46 @@ public:
             delete *it;
         }
     }
+
+    /** find sync source by name */
+    EvolutionSyncSource *operator [] (const string &name) {
+        for (iterator it = begin();
+             it != end();
+             ++it) {
+            if (name == (*it)->getName()) {
+                return *it;
+            }
+        }
+        return NULL;
+    }
+
+    /** find by index */
+    EvolutionSyncSource *operator [] (int index) { return vector<EvolutionSyncSource *>::operator [] (index); }
 };
 
 void unref(SourceList *sourceList)
 {
     delete sourceList;
+}
+
+string EvolutionSyncClient::askPassword(const string &descr)
+{
+    char buffer[256];
+
+    printf("Enter password for %s: ",
+           descr.c_str());
+    fflush(stdout);
+    if (fgets(buffer, sizeof(buffer), stdin) &&
+        strcmp(buffer, "\n")) {
+        size_t len = strlen(buffer);
+        if (len && buffer[len - 1] == '\n') {
+            buffer[len - 1] = 0;
+        }
+        return buffer;
+    } else {
+        throwError(string("could not read password for ") + descr);
+        return "";
+    }
 }
 
 void EvolutionSyncClient::throwError(const string &error)
@@ -623,7 +646,13 @@ void EvolutionSyncClient::fatalError(void *object, const char *error)
     exit(1);
 }
 
-#if defined(HAVE_GLIB) && defined(HAVE_EDS)
+/*
+ * There have been segfaults inside glib in the background
+ * thread which ran the second event loop. Disabled it again,
+ * even though the synchronous EDS API calls will block then
+ * when EDS dies.
+ */
+#if 0 && defined(HAVE_GLIB) && defined(HAVE_EDS)
 # define RUN_GLIB_LOOP
 #endif
 
@@ -665,73 +694,69 @@ void EvolutionSyncClient::startLoopThread()
 #endif
 }
 
-void EvolutionSyncClient::initSources(SourceList &sourceList, EvolutionClientConfig &config, const string &url)
+AbstractSyncSourceConfig* EvolutionSyncClient::getAbstractSyncSourceConfig(const char* name) const
 {
-    SyncSourceConfig *sourceconfigs = config.getSyncSourceConfigs();
+    return m_sourceListPtr ? (*m_sourceListPtr)[name] : NULL;
+}
+
+AbstractSyncSourceConfig* EvolutionSyncClient::getAbstractSyncSourceConfig(unsigned int i) const
+{
+    return m_sourceListPtr ? (*m_sourceListPtr)[i] : NULL;
+}
+
+unsigned int EvolutionSyncClient::getAbstractSyncSourceConfigsCount() const
+{
+    return m_sourceListPtr ? m_sourceListPtr->size() : 0;
+}
+
+
+void EvolutionSyncClient::initSources(SourceList &sourceList)
+{
     set<string> unmatchedSources = m_sources;
-    for (int index = 0; index < config.getNumSources(); index++) {
-        ManagementNode &node(*config.getSyncSourceNode(index));
-        SyncSourceConfig &sc(sourceconfigs[index]);
+    list<string> configuredSources = getSyncSources();
+    for (list<string>::const_iterator it = configuredSources.begin();
+         it != configuredSources.end();
+         it++) {
+        const string &name(*it);
+        boost::shared_ptr<PersistentEvolutionSyncSourceConfig> sc(getSyncSourceConfig(name));
         
         // is the source enabled?
-        string sync = sc.getSync() ? sc.getSync() : "";
-        bool enabled = sync != "none";
-        SyncMode overrideMode = SYNC_NONE;
+        string sync = sc->getSync();
+        bool enabled = sync != "disabled";
+        bool overrideMode = false;
 
         // override state?
         if (m_sources.size()) {
-            if (m_sources.find(sc.getName()) != m_sources.end()) {
+            if (m_sources.find(sc->getName()) != m_sources.end()) {
                 if (!enabled) {
-                    overrideMode = SYNC_TWO_WAY;
+                    overrideMode = true;
                     enabled = true;
                 }
-                unmatchedSources.erase(sc.getName());
+                unmatchedSources.erase(sc->getName());
             } else {
                 enabled = false;
             }
         }
         
         if (enabled) {
-            // create it
-            string type = sc.getType() ? sc.getType() : "";
-            if (!type.size()) {
-                throwError(string(sc.getName()) + ": type not configured");
+            string url = getSyncURL();
+            boost::replace_first(url, "https://", "http://"); // do not distinguish between protocol in change tracking
+            string changeId = string("sync4jevolution:") + url + "/" + name;
+            EvolutionSyncSourceParams params(name,
+                                             getSyncSourceNodes(name),
+                                             changeId);
+            // the sync mode has to be set before instantiating the source
+            // because the client library reads the preferredSyncMode at that time:
+            // have to take a shortcut and set the property via its name
+            if (overrideMode) {
+                params.m_nodes.m_configNode->addFilter("sync", "two-way");
             }
             EvolutionSyncSource *syncSource =
-                EvolutionSyncSource::createSource(
-                                                  sc.getName(),
-                                                  &node,
-                                                  &sc,
-                                                  string("sync4jevolution:") + url + "/" + sc.getName(),
-                                                  EvolutionSyncSource::getPropertyValue(node, "evolutionsource"),
-                                                  type
-                                                  );
+                EvolutionSyncSource::createSource(params);
             if (!syncSource) {
-                throwError(string(sc.getName()) + ": type '" + type + "' unknown" );
+                throwError(name + ": type unknown" );
             }
             sourceList.push_back(syncSource);
-
-            // Update the backend configuration. The EvolutionClientConfig
-            // above prevents that these modifications overwrite the user settings.
-            sc.setType(syncSource->getMimeType());
-            sc.setVersion(syncSource->getMimeVersion());
-            sc.setSupportedTypes(syncSource->getSupportedTypes());
-            
-            if (overrideMode != SYNC_NONE) {
-                // disabled source selected via source name
-                syncSource->setPreferredSyncMode(overrideMode);
-            }
-            const string user(EvolutionSyncSource::getPropertyValue(node, "evolutionuser")),
-                passwd(EvolutionSyncSource::getPropertyValue(node, "evolutionpassword"));
-            syncSource->setAuthentication(user, passwd);
-            
-            // also open it; failing now is still safe
-            syncSource->open();    
-        } else {
-            // set type info: the Funambol server expects valid entries
-            sc.setType("text/x-vcard");
-            sc.setVersion("2.0");
-            sc.setSupportedTypes("text/x-vcard:2.0");
         }
     }
 
@@ -754,17 +779,9 @@ void EvolutionSyncClient::initSources(SourceList &sourceList, EvolutionClientCon
 int EvolutionSyncClient::sync()
 {
     int res = 1;
-    EvolutionClientConfig config(m_configPath.c_str());
     
-    if (!config.read() || !config.open()) {
-        throwError("reading configuration failed");
-    }
-
-    // remember for use by sync sources
-    string url = config.getAccessConfig().getSyncURL() ? config.getAccessConfig().getSyncURL() : "";
-    if (!url.size()) {
-        LOG.error("no syncURL configured - perhaps the server name \"%s\" is wrong?",
-                  m_server.c_str());
+    if (!exists()) {
+        LOG.error("No configuration for server \"%s\" found.", m_server.c_str());
         throwError("cannot proceed without configuration");
     }
 
@@ -773,49 +790,64 @@ int EvolutionSyncClient::sync()
     m_sourceListPtr = &sourceList;
 
     try {
-        arrayptr<char> logdir(config.getSyncMLNode()->readPropertyValue("logdir"));
-        arrayptr<char> maxlogdirs(config.getSyncMLNode()->readPropertyValue("maxlogdirs"));
-        arrayptr<char> loglevel(config.getSyncMLNode()->readPropertyValue("logLevel"));
-        sourceList.setLogdir(logdir, atoi(maxlogdirs), atoi(loglevel));
+        sourceList.setLogdir(getLogDir(),
+                             getMaxLogDirs(),
+                             getLogLevel());
 
         // dump some summary information at the beginning of the log
-        LOG.debug("SyncML server account: %s", config.getAccessConfig().getUsername());
-        LOG.debug("client: SyncEvolution %s", VERSION);
-        time_t now = time(NULL);
-        LOG.debug("current UTC date and time: %s", asctime(gmtime(&now)));
+#ifdef LOG_HAVE_DEVELOPER
+# define LOG_DEVELOPER developer
+#else
+# define LOG_DEVELOPER debug
+#endif
+        LOG.LOG_DEVELOPER("SyncML server account: %s", getUsername());
+        LOG.LOG_DEVELOPER("client: SyncEvolution %s for %s",
+                          getSwv(), getDevType());
 
-        initSources(sourceList, config, url);
+        // instantiate backends, but do not open them yet
+        initSources(sourceList);
 
-        // reconfigure with our fixed properties
-        DeviceConfig &dc(config.getDeviceConfig());
-        dc.setVerDTD("1.1");
-        dc.setMod("SyncEvolution");
-        dc.setSwv(VERSION);
-        dc.setMan("Patrick Ohly");
-        dc.setDevType("workstation");
-        dc.setUtc(1);
-        dc.setOem("Open Source");
-
-        // give derived class also a chance to update the configs
-        prepare(config, sourceList.getSourceArray());
+        // request all config properties once: throwing exceptions
+        // now is okay, whereas later it would lead to leaks in the
+        // not exception safe client library
+        EvolutionSyncConfig dummy;
+        set<string> activeSources = sourceList.getSources();
+        dummy.copy(*this, &activeSources);
 
         // start background thread if not running yet:
         // necessary to catch problems with Evolution backend
         startLoopThread();
 
+        // ask for passwords now
+        checkPassword(*this);
+        if (getUseProxy()) {
+            checkProxyPassword(*this);
+        }
+        BOOST_FOREACH(EvolutionSyncSource *source, sourceList) {
+            source->checkPassword(*this);
+        }
+
+        // open each source - failing now is still safe
+        BOOST_FOREACH(EvolutionSyncSource *source, sourceList) {
+            source->open();
+        }
+
+        // give derived class also a chance to update the configs
+        prepare(sourceList.getSourceArray());
+
         // ready to go: dump initial databases and prepare for final report
         sourceList.syncPrepare();
 
         // do it
-        res = SyncClient::sync(config, sourceList.getSourceArray());
+        res = SyncClient::sync(*this, sourceList.getSourceArray());
 
         // store modified properties: must be done even after failed
         // sync because the source's anchor might have been reset
-        config.save();
+        flush();
 
         if (res) {
-            if (lastErrorCode && lastErrorMsg[0]) {
-                throwError(lastErrorMsg);
+            if (getLastErrorCode() && getLastErrorMsg() && getLastErrorMsg()[0]) {
+                throwError(getLastErrorMsg());
             }
             // no error code/description?!
             throwError("sync failed without an error description, check log");
@@ -841,8 +873,7 @@ int EvolutionSyncClient::sync()
     return res;
 }
 
-void EvolutionSyncClient::prepare(SyncManagerConfig &config,
-                                  SyncSource **sources) {
+void EvolutionSyncClient::prepare(SyncSource **sources) {
     if (m_syncMode != SYNC_NONE) {
         for (SyncSource **source = sources;
              *source;
@@ -854,24 +885,22 @@ void EvolutionSyncClient::prepare(SyncManagerConfig &config,
 
 void EvolutionSyncClient::status()
 {
-    EvolutionClientConfig config(m_configPath.c_str());
-    if (!config.read() || !config.open()) {
-        throwError("reading configuration failed");
-    }
-
-    // remember for use by sync sources
-    string url = config.getAccessConfig().getSyncURL() ? config.getAccessConfig().getSyncURL() : "";
-    if (!url.size()) {
-        LOG.error("no syncURL configured - perhaps the server name \"%s\" is wrong?",
-                  m_server.c_str());
+    EvolutionSyncConfig config(m_server);
+    if (!exists()) {
+        LOG.error("No configuration for server \"%s\" found.", m_server.c_str());
         throwError("cannot proceed without configuration");
     }
 
     SourceList sourceList(m_server, false, *this, false);
-    initSources(sourceList, config, url);
+    initSources(sourceList);
+    BOOST_FOREACH(EvolutionSyncSource *source, sourceList) {
+        source->checkPassword(*this);
+    }
+    BOOST_FOREACH(EvolutionSyncSource *source, sourceList) {
+        source->open();
+    }
 
-    arrayptr<char> logdir(config.getSyncMLNode()->readPropertyValue("logdir"));
-    sourceList.setLogdir(logdir, 0, LOG_LEVEL_NONE);
+    sourceList.setLogdir(getLogDir(), 0, LOG_LEVEL_NONE);
     LOG.setLevel(LOG_LEVEL_INFO);
     string prevLogdir = sourceList.getPrevLogdir();
     bool found = access(prevLogdir.c_str(), R_OK|X_OK) == 0;
@@ -886,7 +915,7 @@ void EvolutionSyncClient::status()
         }
     } else {
         cerr << "Previous log directory not found.\n";
-        if (!logdir || !logdir[0]) {
+        if (!getLogDir() || !getLogDir()[0]) {
             cerr << "Enable the 'logdir' option and synchronize to use this feature.\n";
         }
     }

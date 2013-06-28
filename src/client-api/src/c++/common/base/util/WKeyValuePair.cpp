@@ -36,6 +36,9 @@
 
 #include "base/util/utils.h"
 #include "base/util/WKeyValuePair.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 WKeyValuePair::WKeyValuePair(const WCHAR* key, const WCHAR* value) {
     k = (key  ) ? wstrdup(key  ) : NULL;
@@ -64,7 +67,7 @@ const WCHAR* WKeyValuePair::getValue() {
 void WKeyValuePair::setValue(const WCHAR* value) {
     if (v) delete[] v; v = NULL;
 
-    k = (value) ? wstrdup(value) : NULL;
+    v = (value) ? wstrdup(value) : NULL;
 }
 
 ArrayElement* WKeyValuePair::clone() {

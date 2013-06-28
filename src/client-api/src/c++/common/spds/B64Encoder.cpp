@@ -35,6 +35,9 @@
 
 #include "base/base64.h"
 #include "spds/B64Encoder.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 B64Encoder::B64Encoder() : DataTransformer(DT_B64) {
 }
@@ -51,7 +54,7 @@ char* B64Encoder::transform(char* data, TransformationInfo& info) {
 
     info.size = b64_encode(b64, data, len);
     b64[info.size] = 0;
-    info.newReturnedData = TRUE;
+    info.newReturnedData = true;
 
     return b64;
 }

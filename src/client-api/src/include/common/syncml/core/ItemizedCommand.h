@@ -44,6 +44,9 @@
 #include "syncml/core/Item.h"
 #include "syncml/core/CmdID.h"
 #include "syncml/core/AbstractCommand.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 class ItemizedCommand : public AbstractCommand {
 
@@ -88,9 +91,10 @@ class ItemizedCommand : public AbstractCommand {
         ArrayList* getItems();
 
         /**
-         * Sets an array of Item object
-         *
-         * @param items an array of Item object
+         * Sets an array of Item object. If the array of Item object is null this method
+         * creates a new arraylist.
+         * 
+         * @param items an array of Item object.
          */
         void setItems(ArrayList* items);
 
@@ -118,6 +122,9 @@ class ItemizedCommand : public AbstractCommand {
 
         virtual ArrayElement* clone() = 0;
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

@@ -34,6 +34,9 @@
  */
 
 #include "syncml/core/Sync.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 Sync::Sync() {
 
@@ -47,7 +50,7 @@ Sync::~Sync() {
     if (COMMAND_NAME)   { delete [] COMMAND_NAME; COMMAND_NAME = NULL; }
     if (target)         { delete target; target = NULL; }
     if (source)         { delete source; source = NULL; }
-    if (commands)       { commands->clear(); } //delete commands; commands = NULL;         }
+    if (commands)       { /*commands->clear(); }*/ delete commands; commands = NULL;         }
     numberOfChanges = 0;
 }
 
@@ -69,7 +72,7 @@ Sync::~Sync() {
 *
 */
 Sync::Sync(CmdID* cmdID,
-        BOOL noResp,
+        bool noResp,
         Cred* cred,
         Target* target,
         Source* source,
@@ -97,7 +100,7 @@ void Sync::initialize() {
     target = NULL;
     source = NULL;
     commands = new ArrayList();
-    numberOfChanges = 0;
+    numberOfChanges = -1;
 }
 
 /**
@@ -166,19 +169,23 @@ ArrayList* Sync::getCommands() {
 *
 */
 void Sync::setCommands(ArrayList* commands) {
-    BOOL err = FALSE;
+    bool err = false;
     if (commands == NULL) {
         // TBD
-        err = TRUE;
+        err = true;
     }
     for (int i = 0; i < commands->size(); i++) {
         if (commands->get(i) == NULL) {
             // TBD
-            err = TRUE;
+            err = true;
         }
     }
-    if (err == FALSE) {
-        this->commands->clear();
+    if (err == false) {
+        //this->commands->clear();
+        if ( this->commands ){
+            delete this->commands;
+            this->commands = NULL;
+        }
         this->commands = commands->clone();
     }
 }

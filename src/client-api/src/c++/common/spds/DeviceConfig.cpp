@@ -38,11 +38,13 @@
 #include "base/util/utils.h"
 #include "spds/DeviceConfig.h"
 #include "spdm/constants.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 
 DeviceConfig::DeviceConfig() {
 
-    verDTD          = NULL;
     man             = NULL;
     mod             = NULL;
     oem             = NULL;
@@ -52,9 +54,9 @@ DeviceConfig::DeviceConfig() {
     devID           = NULL;
     devType         = NULL;
     dsV             = NULL;
-    utc             = TRUE;
-    loSupport       = FALSE;
-    nocSupport      = FALSE;
+    utc             = true;
+    loSupport       = false;
+    nocSupport      = false;
     logLevel        = LOG_LEVEL_INFO;
     maxObjSize      = 0;
     devInfHash      = NULL;
@@ -67,7 +69,6 @@ DeviceConfig::DeviceConfig(DeviceConfig& s) {
 
 DeviceConfig::~DeviceConfig() {
 
-    safeDelete(&verDTD    );
     safeDelete(&man       );
     safeDelete(&mod       );
     safeDelete(&oem       );
@@ -106,13 +107,6 @@ void DeviceConfig::set(char** buf, const char* v) {
  *      buffer so that the caller is assured that the
  *      given address can be released after the call.
  */
-const char* DeviceConfig::getVerDTD() const {
-    return verDTD;
-}
-void DeviceConfig::setVerDTD(const char* v){
-	set(&verDTD, v);
-}
-
 const char* DeviceConfig::getMan() const {
     return man;
 }
@@ -176,24 +170,24 @@ void DeviceConfig::setDsV(const char* v){
 	set(&dsV, v);
 }
 
-BOOL DeviceConfig::getUtc() const {
+bool DeviceConfig::getUtc() const {
     return utc;
 }
-void DeviceConfig::setUtc(BOOL v) {
+void DeviceConfig::setUtc(bool v) {
     utc = v;
 }
 
-BOOL DeviceConfig::getLoSupport() const {
+bool DeviceConfig::getLoSupport() const {
     return loSupport;
 }
-void DeviceConfig::setLoSupport(BOOL v) {
+void DeviceConfig::setLoSupport(bool v) {
     loSupport = v;
 }
 
-BOOL DeviceConfig::getNocSupport() const {
+bool DeviceConfig::getNocSupport() const {
     return nocSupport;
 }
-void DeviceConfig::setNocSupport(BOOL v) {
+void DeviceConfig::setNocSupport(bool v) {
     nocSupport = v;
 }
 
@@ -227,7 +221,6 @@ void DeviceConfig::setDevInfHash(const char *v) {
  */
 void DeviceConfig::assign(const DeviceConfig& s) {
 
-    setVerDTD       (s.getVerDTD()        );
     setMan          (s.getMan()           );
     setMod          (s.getMod()           );
     setOem          (s.getOem()           );

@@ -36,8 +36,9 @@
 
 #include "base/fscapi.h"
 #include "base/util/StringBuffer.h"
-#include "base/Log.h"
+#include "base/globalsdef.h"
 
+BEGIN_NAMESPACE
 
 static const char b64_tbl[] =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -78,7 +79,7 @@ input[], int n)
  * @param len src length
  *
  */
-int __cdecl b64_encode(char *dest, void *src, int len)
+int b64_encode(char *dest, void *src, int len)
 {
         int outsz = 0;
 
@@ -120,9 +121,9 @@ input[], int *n)
                 return;
 
         if (input[1] == b64_pad) {
-            lastErrorCode = ERR_UNSPECIFIED;
-            sprintf(lastErrorMsg, ERRMSG_B64_ORPHANED_BITS);
-            LOG.debug(lastErrorMsg);
+            //lastErrorCode = ERR_UNSPECIFIED;
+            //sprintf(lastErrorMsg, ERRMSG_B64_ORPHANED_BITS);
+            setError(ERR_UNSPECIFIED, ERRMSG_B64_ORPHANED_BITS);
             return;
         }
 
@@ -130,9 +131,9 @@ input[], int *n)
         t2 = strchr(b64_tbl, input[1]);
 
         if ((t1 == NULL) || (t2 == NULL)) {
-            lastErrorCode = ERR_UNSPECIFIED;
-            sprintf(lastErrorMsg, ERRMSG_B64_GARBAGE);
-            LOG.debug(lastErrorMsg);
+            //lastErrorCode = ERR_UNSPECIFIED;
+            //sprintf(lastErrorMsg, ERRMSG_B64_GARBAGE);
+            setError(ERR_UNSPECIFIED, ERRMSG_B64_GARBAGE);
         }
 
         output[(*n)++] = ((t1 - b64_tbl) << 2) | ((t2 - b64_tbl) >> 4);
@@ -143,9 +144,9 @@ input[], int *n)
         t1 = strchr(b64_tbl, input[2]);
 
         if (t1 == NULL) {
-            lastErrorCode = ERR_UNSPECIFIED;
-            sprintf(lastErrorMsg, ERRMSG_B64_GARBAGE);
-            LOG.debug(lastErrorMsg);
+            //lastErrorCode = ERR_UNSPECIFIED;
+            //sprintf(lastErrorMsg, ERRMSG_B64_GARBAGE);
+            setError(ERR_UNSPECIFIED, ERRMSG_B64_GARBAGE);
             return;
         }
 
@@ -157,9 +158,9 @@ input[], int *n)
         t2 = strchr((const char *)b64_tbl, input[3]);
 
         if (t2 == NULL) {
-            lastErrorCode = ERR_UNSPECIFIED;
-            sprintf(lastErrorMsg, ERRMSG_B64_GARBAGE);
-            LOG.debug(lastErrorMsg);
+            //lastErrorCode = ERR_UNSPECIFIED;
+            //sprintf(lastErrorMsg, ERRMSG_B64_GARBAGE);
+            setError(ERR_UNSPECIFIED, ERRMSG_B64_GARBAGE);
             return;
         }
 
@@ -191,3 +192,6 @@ void * b64_decode(int & len, const char *src)
     dest[len] = 0;
     return (void *)dest;
 }
+
+END_NAMESPACE
+

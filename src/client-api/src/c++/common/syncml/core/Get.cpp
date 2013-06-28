@@ -35,6 +35,9 @@
 
 
 #include "syncml/core/Get.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 
 Get::Get() {
@@ -64,7 +67,7 @@ Get::~Get() {
 *
 */
 Get::Get(CmdID* cmdID,
-         BOOL noResp,
+         bool noResp,
          char* lang,
          Cred* cred,
          Meta* meta,

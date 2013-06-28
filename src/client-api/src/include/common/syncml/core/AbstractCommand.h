@@ -44,6 +44,9 @@
 #include "syncml/core/CmdID.h"
 #include "syncml/core/Meta.h"
 #include "syncml/core/Cred.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 
 
@@ -58,7 +61,7 @@ class AbstractCommand : public ArrayElement {
     protected:
 
         CmdID*   cmdID ;
-        BOOL noResp;
+        bool noResp;
         Meta*    meta;
         Cred*    credential;
 
@@ -68,7 +71,7 @@ class AbstractCommand : public ArrayElement {
     public:
     AbstractCommand();
 
-    AbstractCommand(CmdID* cmdID, BOOL noResp);
+    AbstractCommand(CmdID* cmdID, bool noResp);
 
     /**
      * Create a new AbstractCommand object with the given commandIdentifier
@@ -86,9 +89,9 @@ class AbstractCommand : public ArrayElement {
      * @param noResponse true if the command doesn't require a response
      * @param meta the Meta object
      */
-     AbstractCommand(CmdID* cmdID, BOOL noResp, Meta* meta);
+     AbstractCommand(CmdID* cmdID, bool noResp, Meta* meta);
 
-     void set(CmdID* cmdID, BOOL noResp);
+     void set(CmdID* cmdID, bool noResp);
 
      virtual ~AbstractCommand();
 
@@ -112,9 +115,9 @@ class AbstractCommand : public ArrayElement {
      *
      * @return true if the command doesn't require a response, false otherwise
      */
-     BOOL isNoResp();
+     bool isNoResp();
 
-     BOOL getNoResp();
+     bool getNoResp();
 
     /**
      * Sets noResp true if no response is required
@@ -122,7 +125,7 @@ class AbstractCommand : public ArrayElement {
      * @param noResp is true if no response is required
      *
      */
-     void setNoResp(BOOL noResp);
+     void setNoResp(bool noResp);
 
     /**
      * Gets Credential object
@@ -164,6 +167,9 @@ class AbstractCommand : public ArrayElement {
     virtual ArrayElement* clone() = 0;
 
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

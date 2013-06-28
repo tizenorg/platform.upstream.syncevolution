@@ -37,37 +37,85 @@
 #define INCL_BASE_STRING_BUFFER
 /** @cond DEV */
 
+#include "base/globalsdef.h"
+#include "base/fscapi.h"
 #include "base/util/ArrayElement.h"
 
-#include <stdarg.h>
+BEGIN_NAMESPACE
 
 class ArrayList;
 
 /**
- * Awful implementation of a StringBuffer!
+ * Portable char string implementation.
+ *
+ * Characteristic:
+ * <li> methods and operators similar to std::string
+ * <li> based only on c-library
+ * <li> a StringBuffer can be empty or null, and the two states can be tested
+ *   separately (keeping the same semantic of a char buf null or "".
  */
 class StringBuffer: public ArrayElement {
     public:
         // Constant value for an invalid pos (returned by find and rfind)
         static const size_t npos;
 
-        StringBuffer(const char*  str = NULL, size_t len = npos);
+        /**
+         * Creates a new StringBuffer with the given initial value.
+         * The default is NULL, thus creating a string wiith a null internal
+         * pointer.
+         * Possible calls are:
+         * <li> Stringbuffer s; // construct a string with NULL value
+         * <li> Stringbuffer s(""); // construct a string with empty value
+         * <li> Stringbuffer s("string"); // construct a string containing "string"
+         * <li> Stringbuffer s(buf, len); // construct a string with the content of buf and lenght len.
+         *
+         * In the latter example, buf may or may not be null-terminated.
+         *
+         */
+        StringBuffer(const char* str = NULL, size_t len = npos);
 
+        /**
+         * Copy constructor.
+         */
         StringBuffer(const StringBuffer &sb);
-
-        StringBuffer(const void* str, size_t len);
-
+        
+        /**
+         * Destructor
+         */
         ~StringBuffer();
-
+    
+        /**
+         * Append a char string to the StringBuffer. See also operator+=
+         */
         StringBuffer& append(const char* );
 
-        StringBuffer& append(unsigned long u, BOOL sign = TRUE);
+        StringBuffer& append(unsigned long u, bool sign = true);
 
+        /**
+         * Append the content of another StringBuffer to this one. See also operator+=
+         */
         StringBuffer& append(StringBuffer& s);
 
+        /**
+         * Append the content of another StringBuffer to this one. See also operator+=
+         */
         StringBuffer& append(StringBuffer* str);
 
-        StringBuffer& set(const char* );
+        /**
+         * Assign a new value to this StringBuffer. See also operator=
+         */
+        StringBuffer& assign(const char* );
+
+        /** @deprecated use assign instead */
+        StringBuffer& set(const char* other) { return assign(other);};
+
+        /**
+         * Convert the Wide char string wc, using the  given encoding, and assign
+         * the converted char string to this StringBuffer.
+         * If WCHAR size is equal to char (i.e. wide chars are not used in the build,
+         * no conversion is made and the value of wc is assigned to the StringBuffer.
+         */
+        StringBuffer& convert(const WCHAR* wc, const char *encoding = 0);
 
         /**
          * Executes a sprintf(), overwriting the current string buffer
@@ -86,7 +134,7 @@ class StringBuffer: public ArrayElement {
          * buffer and enlarging it as necessary. The parameters are
          * that of a normal vsprintf().
          */
-        StringBuffer& vsprintf(const char* format, va_list ap)
+        StringBuffer& vsprintf(const char* format, PLATFORM_VA_LIST ap)
 #ifdef __GNUC__
             /* enables GCC checking of format <-> parameter mismatches */
             __attribute__ ((format (printf, 2, 0)))
@@ -100,10 +148,14 @@ class StringBuffer: public ArrayElement {
         StringBuffer& reset();
 
         /**
-         * Get the char array, same as the cast operator
+         * @deprecated user c_str() instead.
          */
-        const char*  getChars() const;
-        inline const char*  c_str() const { return s; };
+        const char*  getChars() const { return c_str(); };
+
+        /**
+         * Return a const pointer to the internal char buffer.
+         */
+        const char*  c_str() const { return s; };
 
         /**
          * Find the first occurrence of substring str, starting from pos.
@@ -233,6 +285,9 @@ class StringBuffer: public ArrayElement {
 };
 
 StringBuffer operator+(const StringBuffer& x, const char *y);
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

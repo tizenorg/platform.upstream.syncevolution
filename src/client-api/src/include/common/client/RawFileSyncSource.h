@@ -40,6 +40,9 @@
 /** @{ */
 
 #include "client/FileSyncSource.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 /**
  * In contrast to the FileSyncSource this class does not
@@ -53,7 +56,7 @@
  */
 class RawFileSyncSource : public FileSyncSource {
   public:
-    RawFileSyncSource(const WCHAR* name, SyncSourceConfig* sc);
+    RawFileSyncSource(const WCHAR* name, AbstractSyncSourceConfig* sc);
 
     int addItem(SyncItem& item);
     int updateItem(SyncItem& item);
@@ -62,6 +65,9 @@ class RawFileSyncSource : public FileSyncSource {
     bool setItemData(SyncItem* syncItem);
 };
 
+
+
+END_NAMESPACE
 
 /** @} */
 /** @endcond */

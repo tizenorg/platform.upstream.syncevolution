@@ -42,6 +42,9 @@
 #include "syncml/core/ModificationCommand.h"
 
 #define EXEC_COMMAND_NAME "Exec"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 class Exec : public ModificationCommand {
 
@@ -67,7 +70,7 @@ class Exec : public ModificationCommand {
          *
          */
         Exec(CmdID* cmdID,
-             BOOL   noResp,
+             bool   noResp,
              Cred*  cred,
              ArrayList*  items);
 
@@ -89,6 +92,9 @@ class Exec : public ModificationCommand {
         ArrayElement* clone();
 
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

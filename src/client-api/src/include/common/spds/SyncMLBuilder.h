@@ -43,6 +43,9 @@
 #include "syncml/core/TagNames.h"
 #include "syncml/core/ObjectDel.h"
 #include "syncml/formatter/Formatter.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 class SyncMLBuilder {
 
@@ -59,7 +62,7 @@ class SyncMLBuilder {
         /*
          * Convert the SyncML object into an xml message
          */
-        SyncML*  prepareSyncML(ArrayList* commands, BOOL final);
+        SyncML*  prepareSyncML(ArrayList* commands, bool final);
 
         /*
         * Set init parameters.
@@ -219,6 +222,9 @@ class SyncMLBuilder {
         ComplexData* getComplexData(SyncItem* syncItem, long &syncItemOffset, long maxBytes, long &sentBytes);
 
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

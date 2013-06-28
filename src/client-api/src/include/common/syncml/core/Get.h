@@ -42,6 +42,9 @@
 #include "syncml/core/ItemizedCommand.h"
 
 #define GET_COMMAND_NAME "Get"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 class Get : public ItemizedCommand {
 
@@ -67,7 +70,7 @@ class Get : public ItemizedCommand {
          *
          */
         Get(CmdID* cmdID,
-            BOOL noResp,
+            bool noResp,
             char*  lang,
             Cred* cred,
             Meta* meta,
@@ -100,6 +103,9 @@ class Get : public ItemizedCommand {
 
 
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

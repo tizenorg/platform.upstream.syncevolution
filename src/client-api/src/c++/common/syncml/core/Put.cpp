@@ -34,6 +34,9 @@
  */
 
 #include "syncml/core/Put.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 Put::Put() {
     lang = NULL;
@@ -61,7 +64,7 @@ Put::~Put() {
 *
 */
 Put::Put(CmdID* cmdID,
-         BOOL noResp,
+         bool noResp,
          char* lang,
          Cred* cred,
          Meta* meta,

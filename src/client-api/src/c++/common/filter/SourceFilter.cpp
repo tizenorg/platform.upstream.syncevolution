@@ -35,25 +35,28 @@
 
 #include "base/util/utils.h"
 #include "filter/SourceFilter.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 
-SourceFilter::SourceFilter() : clause(NULL), type(NULL), inclusive(FALSE) {
+SourceFilter::SourceFilter() : clause(NULL), type(NULL), inclusive(false) {
 }
 
 SourceFilter::~SourceFilter() {
     if (clause) delete clause;
 }
 
-void SourceFilter::setInclusive(BOOL i) {
+void SourceFilter::setInclusive(bool i) {
     inclusive = i;
 }
 
-BOOL SourceFilter::isInclusive() {
-    return (inclusive == TRUE);
+bool SourceFilter::isInclusive() {
+    return (inclusive == true);
 }
 
-BOOL SourceFilter::isExclusive() {
-    return (inclusive == FALSE);
+bool SourceFilter::isExclusive() {
+    return (inclusive == false);
 }
 
 /*

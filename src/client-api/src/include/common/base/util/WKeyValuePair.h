@@ -34,12 +34,15 @@
  */
 
 
-#ifndef INCL_KEY_VALUE_PAIR
-#define INCL_KEY_VALUE_PAIR
+#ifndef INCL_WKEY_VALUE_PAIR
+#define INCL_WKEY_VALUE_PAIR
 /** @cond DEV */
 
 #include "base/fscapi.h"
 #include "base/util/ArrayElement.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 /**
  * This class is an ArrayElement that keeps a key-value pair.
@@ -85,6 +88,9 @@ class WKeyValuePair : public ArrayElement {
         WCHAR* k;
         WCHAR* v;
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

@@ -36,6 +36,9 @@
 #include "base/fscapi.h"
 #include "event/FireEvent.h"
 #include "event/ManageListener.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 
 //
@@ -46,7 +49,7 @@ bool fireSyncEvent(const char* msg, int type) {
     ManageListener& manage = ManageListener::getInstance();
     SyncListener* listener = manage.getSyncListener();
     if(listener == NULL) {
-        return FALSE;
+        return false;
     }
 
     unsigned long timestamp = (unsigned long)time(NULL);
@@ -76,10 +79,10 @@ bool fireSyncEvent(const char* msg, int type) {
           listener->syncError(event);
           break;
       default:
-          return FALSE;
+          return false;
     }
 
-    return TRUE;
+    return true;
 }
 
 
@@ -91,7 +94,7 @@ bool fireTransportEvent(unsigned long size, int type) {
     ManageListener& manage = ManageListener::getInstance();
     TransportListener* listener = manage.getTransportListener();
     if(listener == NULL) {
-        return FALSE;
+        return false;
     }
 
     unsigned long timestamp = (unsigned long)time(NULL);
@@ -115,10 +118,10 @@ bool fireTransportEvent(unsigned long size, int type) {
           listener->receivingData(event);
           break;
         default:
-          return FALSE;
+          return false;
     }
 
-    return TRUE;
+    return true;
 }
 
 
@@ -130,7 +133,7 @@ bool fireSyncSourceEvent(const char* sourceURI, const char* sourceName, SyncMode
     ManageListener& manage = ManageListener::getInstance();
     SyncSourceListener* listener = manage.getSyncSourceListener();
     if(listener == NULL) {
-        return FALSE;
+        return false;
     }
 
     unsigned long timestamp = (unsigned long)time(NULL);
@@ -153,10 +156,10 @@ bool fireSyncSourceEvent(const char* sourceURI, const char* sourceName, SyncMode
           listener->syncSourceTotalServerItems(event);
           break;
       default:
-          return FALSE;
+          return false;
     }
 
-    return TRUE;
+    return true;
 }
 
 
@@ -168,7 +171,7 @@ bool fireSyncItemEvent(const char* sourceURI, const char* sourcename, const WCHA
     ManageListener& manage = ManageListener::getInstance();
     SyncItemListener* listener = manage.getSyncItemListener();
     if(listener == NULL) {
-        return FALSE;
+        return false;
     }
 
     unsigned long timestamp = (unsigned long)time(NULL);
@@ -195,10 +198,10 @@ bool fireSyncItemEvent(const char* sourceURI, const char* sourcename, const WCHA
           listener->itemUpdatedByClient(event);
           break;
         default:
-          return FALSE;
+          return false;
     }
 
-    return TRUE;
+    return true;
 }
 
 
@@ -210,7 +213,7 @@ bool fireSyncStatusEvent(const char* command, int statusCode, const char* name, 
     ManageListener& manage = ManageListener::getInstance();
     SyncStatusListener* listener = manage.getSyncStatusListener();
     if(listener == NULL) {
-        return FALSE;
+        return false;
     }
 
     unsigned long timestamp = (unsigned long)time(NULL);
@@ -225,9 +228,9 @@ bool fireSyncStatusEvent(const char* command, int statusCode, const char* name, 
             listener->statusReceived(event);
             break;
         default:
-            return FALSE;
+            return false;
     }
 
-    return TRUE;
+    return true;
 }
 

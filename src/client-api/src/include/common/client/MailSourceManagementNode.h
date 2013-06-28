@@ -40,6 +40,9 @@
 #include "spdm/constants.h"
 #include "spdm/DeviceManagementNode.h"
 #include "spds/MailSyncSourceConfig.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 
 class MailSourceManagementNode : public DeviceManagementNode {
@@ -60,12 +63,12 @@ class MailSourceManagementNode : public DeviceManagementNode {
 
         /**
          * Returns the mail configuration object from the cached value (if
-         * refresh is FALSE) or reading it from the DMT store (if refresh is
-         * TRUE);
+         * refresh is false) or reading it from the DMT store (if refresh is
+         * true);
          *
          * @param refresh should the node be read from the DMT ?
          */
-        MailSyncSourceConfig& getMailSourceConfig(BOOL refresh);
+        MailSyncSourceConfig& getMailSourceConfig(bool refresh);
 
         /**
          * Sets the given mail source configuration object to the internal
@@ -81,6 +84,9 @@ class MailSourceManagementNode : public DeviceManagementNode {
     private:
         MailSyncSourceConfig config;
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

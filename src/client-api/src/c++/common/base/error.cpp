@@ -34,30 +34,35 @@
  */
 
 #include "base/fscapi.h"
+#include "base/util/StringBuffer.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 int  lastErrorCode = ERR_NONE;
-char lastErrorMsg[DIM_ERROR_MESSAGE];
+StringBuffer lastErrorMsg;
+
 
 // Reset error message and code
 void resetError() {
     lastErrorCode = ERR_NONE;
-    strcpy(lastErrorMsg, "");
+    lastErrorMsg = "";
 }
 
 // Set error message and code
 void setError(int errorCode, const char *errorMessage) {
     lastErrorCode = errorCode;
-    strcpy(lastErrorMsg, errorMessage);
+    lastErrorMsg = errorMessage;
 }
 
 // Set error message and code
 void setErrorF(int errorCode, const char *msgFormat, ...) {
     lastErrorCode = errorCode;
 
-    va_list argList;
-    va_start(argList, msgFormat);
-    vsprintf(lastErrorMsg, msgFormat, argList);
-    va_end(argList);
+    PLATFORM_VA_LIST argList;
+    PLATFORM_VA_START(argList, msgFormat);
+    lastErrorMsg.vsprintf(msgFormat, argList);
+    PLATFORM_VA_END(argList);
 }
 
 // Retrieve last error code
@@ -67,5 +72,5 @@ int getLastErrorCode() {
 
 // Retrieve last error message
 const char *getLastErrorMsg() {
-    return lastErrorMsg;
+    return lastErrorMsg.c_str();
 }

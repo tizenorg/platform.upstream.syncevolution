@@ -20,6 +20,11 @@
 #ifndef INCL_EVOLUTIONSYNCSOURCE
 #define INCL_EVOLUTIONSYNCSOURCE
 
+#include "config.h"
+#include "SyncEvolutionConfig.h"
+#include "EvolutionSmartPtr.h"
+
+#include <boost/shared_ptr.hpp>
 #include <string>
 #include <vector>
 #include <set>
@@ -34,6 +39,131 @@ using namespace std;
 #include <spds/SyncSource.h>
 #include <spdm/ManagementNode.h>
 #include <base/Log.h>
+
+class EvolutionSyncSource;
+
+/**
+ * This set of parameters always has to be passed when constructing
+ * EvolutionSyncSource instances.
+ */
+struct EvolutionSyncSourceParams {
+    /**
+     * @param    name        the name needed by SyncSource
+     * @param    nodes       a set of config nodes to be used by this source
+     * @param    changeId    is used to track changes in the Evolution backend:
+     *                       a unique string constructed from an ID for SyncEvolution
+     *                       and the URL/database we synchronize against
+     */
+    EvolutionSyncSourceParams(const string &name,
+                              const SyncSourceNodes &nodes,
+                              const string &changeId) :
+    m_name(name),
+        m_nodes(nodes),
+        m_changeId(stripChangeId(changeId))
+    {}
+
+    const string m_name;
+    const SyncSourceNodes m_nodes;
+    const string m_changeId;
+
+    /** remove special characters from change ID */
+    static string stripChangeId(const string changeId) {
+        string strippedChangeId = changeId;
+        size_t offset = 0;
+        while (offset < strippedChangeId.size()) {
+            switch (strippedChangeId[offset]) {
+            case ':':
+            case '/':
+            case '\\':
+                strippedChangeId.erase(offset, 1);
+                break;
+            default:
+                offset++;
+            }
+        }
+        return strippedChangeId;
+    }
+};
+
+/**
+ * The SyncEvolution core has no knowledge of existing SyncSource
+ * implementations. Implementations have to register themselves
+ * by instantiating this class exactly once with information
+ * about themselves.
+ *
+ * It is also possible to add configuration options. For that define a
+ * derived class. In its constructor use
+ * EvolutionSyncSourceConfig::getRegistry()
+ * resp. EvolutionSyncConfig::getRegistry() to define new
+ * configuration properties. The advantage of registering them is that
+ * the user interface will automatically handle them like the
+ * predefined ones. The namespace of these configuration options
+ * is shared by all sources and the core.
+ *
+ * For properties with arbitrary names use the
+ * SyncSourceNodes::m_trackingNode.
+ */
+class RegisterSyncSource
+{
+ public:
+    /**
+     * Users select a SyncSource and its data format via the "type"
+     * config property. Backends have to add this kind of function to
+     * the SourceRegistry_t in order to be considered by the
+     * SyncSource creation mechanism.
+     *
+     * The function will be called to check whether the backend was
+     * meant by the user. It should return a new instance which will
+     * be freed by the caller or NULL if it does not support the
+     * selected type.
+     * 
+     * Inactive sources should return the special InactiveSource
+     * pointer value if they recognize without a doubt that the user
+     * wanted to instantiate them: for example, an inactive
+     * EvolutionContactSource will return NULL for "addressbook" but
+     * InactiveSource for "evolution-contacts".
+     */
+    typedef EvolutionSyncSource *(*Create_t)(const EvolutionSyncSourceParams &params);
+
+    /** special return value of Create_t, not a real sync source! */
+    static EvolutionSyncSource *const InactiveSource;
+
+    /**
+     * @param shortDescr     a few words identifying the data to be synchronized,
+     *                       e.g. "Evolution Calendar"
+     * @param enabled        true if the sync source can be instantiated,
+     *                       false if it was not enabled during compilation or is
+     *                       otherwise not functional
+     * @param create         factory function for sync sources of this type
+     * @param typeDescr      multiple lines separated by \n which get appended to
+     *                       the the description of the type property, e.g.
+     *                       "Evolution Memos = memo = evolution-memo\n"
+     *                       "   plain text in UTF-8 (default) = text/plain\n"
+     *                       "   iCalendar 2.0 = text/calendar\n"
+     *                       "   The later format is not tested because none of the\n"
+     *                       "   supported SyncML servers accepts it.\n"
+     * @param typeValues     the config accepts multiple names for the same internal
+     *                       type string; this list here is added to that list of
+     *                       aliases. It should contain at least one unique string
+     *                       the can be used to pick  this sync source among all
+     *                       SyncEvolution sync sources (testing, listing backends, ...).
+     *                       Example: Values() + (Aliases("Evolution Memos") + "evolution-memo")
+     */
+    RegisterSyncSource(const string &shortDescr,
+                       bool enabled,
+                       Create_t create,
+                       const string &typeDescr,
+                       const Values &typeValues);
+ public:
+    const string m_shortDescr;
+    bool m_enabled;
+    Create_t m_create;
+    const string m_typeDescr;
+    const Values m_typeValues;
+};
+    
+typedef list<const RegisterSyncSource *> SourceRegistry;
+
 
 /**
  * SyncEvolution accesses all sources through this interface.  This
@@ -56,36 +186,39 @@ using namespace std;
  * It also adds an Evolution specific interface:
  * - listing backend storages: getSyncBackends()
  */
-class EvolutionSyncSource : public SyncSource
+class EvolutionSyncSource : public SyncSource, public EvolutionSyncSourceConfig
 {
-  public:
+ public:
     /**
      * Creates a new Evolution sync source.
-     *
-     * @param    name        the named needed by SyncSource
-     * @param    sc          obligatory config for this source, must remain valid throughout the lifetime of the source
-     * @param    changeId    is used to track changes in the Evolution backend
-     * @param    id          identifies the backend; not specifying it makes this instance
-     *                       unusable for anything but listing backend databases
      */
-    EvolutionSyncSource( const string name, SyncSourceConfig *sc, const string &changeId, const string &id ) :
-        SyncSource( name.c_str(), sc ),
-        m_changeId( changeId ),
-        m_id( id ),
+    EvolutionSyncSource(const EvolutionSyncSourceParams &params) :
+        SyncSource(params.m_name.c_str(), NULL),
+        EvolutionSyncSourceConfig(params.m_name, params.m_nodes),
+        m_changeId( params.m_changeId ),
         m_allItems( *this, "existing", SYNC_STATE_NONE ),
         m_newItems( *this, "new", SYNC_STATE_NEW ),
         m_updatedItems( *this, "updated", SYNC_STATE_UPDATED ),
         m_deletedItems( *this, "deleted", SYNC_STATE_DELETED ),
-        m_hasFailed( false ),
-        m_isModified( false )
-        {}
+        m_isModified( false ),
+        m_hasFailed( false )
+        {
+            setConfig(this);
+        }
     virtual ~EvolutionSyncSource() {}
 
+    /**
+     * SyncSource implementations must register themselves here via
+     * RegisterSyncSource
+     */
+    static SourceRegistry &getSourceRegistry();
+
     struct source {
-        source( const string &name, const string &uri ) :
-            m_name( name ), m_uri( uri ) {}
+    source( const string &name, const string &uri, bool isDefault = false ) :
+        m_name( name ), m_uri( uri ), m_isDefault(isDefault) {}
         string m_name;
         string m_uri;
+        bool m_isDefault;
     };
     typedef vector<source> sources;
     
@@ -95,23 +228,6 @@ class EvolutionSyncSource : public SyncSource
      */
     virtual sources getSyncBackends() = 0;
 
-    /**
-     * Set credentials to be used during open.
-     */
-    virtual void setAuthentication(const string &user, const string &passwd) {
-        m_user = user;
-        m_passwd = passwd;
-    }
-          
-
-    /**
-     * Get credentials.
-     */
-    virtual void getAuthentication(string &user, string &passwd) {
-        user = m_user;
-        passwd = m_passwd;
-    }
-    
     /**
      * Actually opens the data source specified in the constructor,
      * will throw the normal exceptions if that fails. Should
@@ -125,10 +241,14 @@ class EvolutionSyncSource : public SyncSource
      * and store it in a new SyncItem. The caller must
      * free that item. May throw exceptions.
      *
+     * The information that has to be set in the new item is:
+     * - content
+     * - UID
+     * - mime type
+     *
      * @param uid      identifies the item
-     * @param state    the state of the item
      */
-    virtual SyncItem *createItem( const string &uid, SyncState state ) = 0;
+    virtual SyncItem *createItem(const string &uid) = 0;
 
     /**
      * closes the data source so that it can be reopened
@@ -150,20 +270,25 @@ class EvolutionSyncSource : public SyncSource
     virtual string fileSuffix() = 0;
 
     /**
-     * the actual type used by the source for items
+     * Returns the preferred mime type of the items handled by the sync source.
+     * Example: "text/x-vcard"
      */
-    virtual const char *getMimeType() = 0;
+    virtual const char *getMimeType() const = 0;
 
     /**
-     * the actual version of the mime specification
+     * Returns the version of the mime type used by client.
+     * Example: "2.1"
      */
-    virtual const char *getMimeVersion() = 0;
+    virtual const char *getMimeVersion() const = 0;
 
     /**
-     * supported data types for send and receive,
-     * in the format "type1:version1,type2:version2,..."
+     * A string representing the source types (with versions) supported by the SyncSource.
+     * The string must be formatted as a sequence of "type:version" separated by commas ','.
+     * For example: "text/x-vcard:2.1,text/vcard:3.0".
+     * The version can be left empty, for example: "text/x-s4j-sifc:".
+     * Supported types will be sent as part of the DevInf.
      */
-    virtual const char *getSupportedTypes() = 0;
+    virtual const char* getSupportedTypes() const = 0;
     
     /**
      * resets the lists of all/new/updated/deleted items
@@ -175,9 +300,6 @@ class EvolutionSyncSource : public SyncSource
      */
     bool hasFailed() { return m_hasFailed; }
     void setFailed(bool failed) { m_hasFailed = failed; }
-
-    /** convenience function: copies item's data into string */
-    static string getData(SyncItem& item);
 
     /**
      * convenience function: gets property as string class
@@ -194,34 +316,32 @@ class EvolutionSyncSource : public SyncSource
     static void handleException();
 
     /**
-     * factory function for a EvolutionSyncSources that provides the
-     * given mime type; for the other parameters see constructor
+     * factory function for a EvolutionSyncSource that provides the
+     * source type specified in the params.m_nodes.m_configNode
      *
      * @param error    throw a runtime error describing what the problem is if no matching source is found
      * @return NULL if no source can handle the given type
      */
-    static EvolutionSyncSource *createSource(
-        const string &name,
-        ManagementNode *node,
-        SyncSourceConfig *sc,
-        const string &changeId,
-        const string &id,
-        const string &mimeType,
-        bool error = true);
+    static EvolutionSyncSource *createSource(const EvolutionSyncSourceParams &params,
+                                             bool error = true);
 
     /**
-     * SyncSource backend modules have to provide this function under
-     * the "SyncEvolutionCreateSource" name (plan C name); it will then
-     * be called by the createSource() method.
+     * Factory function for a EvolutionSyncSource with the given name
+     * and handling the kind of data specified by "type" (e.g.
+     * "Evolution Contacts:text/x-vcard").
      *
-     * @return new sync source or NULL if the mime type is not supported
+     * The source is instantiated with dummy configuration nodes under
+     * the pseudo server name "testing". This function is used for
+     * testing sync sources, not for real syncs. If the prefix is set,
+     * then <prefix>_<name>_1 is used as database, just as in the
+     * Client::Sync and Client::Source tests. Otherwise the default
+     * database is used.
+     *
+     * @param error    throw a runtime error describing what the problem is if no matching source is found
+     * @return NULL if no source can handle the given type
      */
-    typedef EvolutionSyncSource *(*CreateSource_t)(
-        const string &name,
-        SyncSourceConfig *sc,
-        const string &changeId,
-        const string &id,
-        const string &mimeType);
+    static EvolutionSyncSource *createTestingSource(const string &name, const string &type, bool error,
+                                                    const char *prefix = getenv("CLIENT_TEST_EVOLUTION_PREFIX"));
 
     //
     // default implementation of SyncSource iterators
@@ -251,6 +371,41 @@ class EvolutionSyncSource : public SyncSource
     virtual int updateItem(SyncItem& item);
     virtual int deleteItem(SyncItem& item);
 
+    /**
+     * The client library invokes this call to delete all local
+     * items. SyncSources derived from EvolutionSyncSource should
+     * take care of that when beginSyncThrow() is called with
+     * deleteLocal == true and thus do not need to implement
+     * this method.
+     */
+    virtual int removeAllItems() { return 0; }
+
+    /**
+     * Disambiguate getName(): we have inherited it from both SyncSource and
+     * AbstractSyncSourceConfig. Both must return the same string.
+     */
+    const char *getName() { return SyncSource::getName(); }
+
+    /**
+     * source specific part of beginSync() - throws exceptions in case of error
+     *
+     * @param needAll           fill m_allItems
+     * @param needPartial       fill m_new/deleted/modifiedItems
+     * @param deleteLocal       erase all items
+     */
+    virtual void beginSyncThrow(bool needAll,
+                                bool needPartial,
+                                bool deleteLocal) = 0;
+
+    /**
+     * source specific part of endSync/setItemStatus/addItem/updateItem/deleteItem:
+     * throw exception in case of error
+     */
+    virtual void endSyncThrow() = 0;
+    virtual void setItemStatusThrow(const char *key, int status);
+    virtual int addItemThrow(SyncItem& item) = 0;
+    virtual int updateItemThrow(SyncItem& item) = 0;
+    virtual int deleteItemThrow(SyncItem& item) = 0;
 
   protected:
 #ifdef HAVE_EDS
@@ -278,34 +433,11 @@ class EvolutionSyncSource : public SyncSource
 #endif
                      );
 
-    /**
-     * source specific part of beginSync() - throws exceptions in case of error
-     *
-     * @param needAll           fill m_allItems
-     * @param needPartial       fill m_new/deleted/modifiedItems
-     * @param deleteLocal       erase all items
-     */
-    virtual void beginSyncThrow(bool needAll,
-                                bool needPartial,
-                                bool deleteLocal) = 0;
-
-    /**
-     * source specific part of endSync/setItemStatus/addItem/updateItem/deleteItem:
-     * throw exception in case of error
-     */
-    virtual void endSyncThrow() = 0;
-    virtual void setItemStatusThrow(const char *key, int status);
-    virtual int addItemThrow(SyncItem& item) = 0;
-    virtual int updateItemThrow(SyncItem& item) = 0;
-    virtual int deleteItemThrow(SyncItem& item) = 0;
-
-
     /** log a one-line info about an item */
     virtual void logItem(const string &uid, const string &info, bool debug = false) = 0;
-    virtual void logItem(SyncItem &item, const string &info, bool debug = false) = 0;
+    virtual void logItem(const SyncItem &item, const string &info, bool debug = false) = 0;
 
     const string m_changeId;
-    const string m_id;
 
     class itemList : public set<string> {
         const_iterator m_it;
@@ -342,7 +474,11 @@ class EvolutionSyncSource : public SyncSource
                 } else {
                     // retrieve item with all its data
                     try {
-                        return m_source.createItem( uid, m_state );
+                        cxxptr<SyncItem> item(m_source.createItem(uid));
+                        if (item) {
+                            item->setState(m_state);
+                        }
+                        return item.release();
                     } catch(...) {
                         EvolutionSyncSource::handleException();
                         return NULL;
@@ -392,9 +528,6 @@ class EvolutionSyncSource : public SyncSource
 
     /** keeps track of failure state */
     bool m_hasFailed;
-
-    /** user name/password set for this source, empty if none */
-    string m_user, m_passwd;
 };
 
 #endif // INCL_EVOLUTIONSYNCSOURCE

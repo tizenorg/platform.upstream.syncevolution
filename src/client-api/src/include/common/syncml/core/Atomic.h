@@ -43,6 +43,9 @@
 
 
 #define ATOMIC_COMMAND_NAME "Atomic"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 class Atomic : public AbstractCommand {
      // ------------------------------------------------------------ Private data
@@ -66,7 +69,7 @@ class Atomic : public AbstractCommand {
      * @param commands an array of abstract command - NOT NULL
      */
     Atomic(CmdID* cmdID,
-           BOOL noResp,
+           bool noResp,
            Meta* meta,
            ArrayList* commands); // AbstractCommand[]
 
@@ -94,6 +97,9 @@ class Atomic : public AbstractCommand {
     ArrayElement* clone();
 
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

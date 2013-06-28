@@ -44,6 +44,9 @@
     #include "spds/DataTransformer.h"
 
     #define DF_FORMATTERS "b64;des;"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 
     class DataTransformerFactory {
@@ -52,10 +55,13 @@
 
         static DataTransformer* getEncoder(const char*  name);
         static DataTransformer* getDecoder(const char*  name);
-        static BOOL isSupportedEncoder(const char*  name);
-        static BOOL isSupportedDecoder(const char*  name);
+        static bool isSupportedEncoder(const char*  name);
+        static bool isSupportedDecoder(const char*  name);
 
     };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

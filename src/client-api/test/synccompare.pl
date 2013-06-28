@@ -94,6 +94,11 @@ sub uppercase {
   return $text;
 }
 
+sub sortlist {
+  my $list = shift;
+  return join(",", sort(split(/,/, $list)));
+}
+
 # parameters: file handle with input, width to use for reformatted lines
 # returns list of lines without line breaks
 sub Normalize {
@@ -115,6 +120,9 @@ sub Normalize {
     # in calendar events the UID needs to be preserved to handle
     # meeting invitations/replies correctly
     s/((VCARD|VJOURNAL).*)^UID:[^\n]*\n/$1/msg;
+
+    # exact order of categories is irrelevant
+    s/^CATEGORIES:(\S+)/"CATEGORIES:" . sortlist($1)/mge;
 
     # expand <foo> shortcuts to TYPE=<foo>
     while (s/^(ADR|EMAIL|TEL)([^:\n]*);(HOME|OTHER|WORK|PARCEL|INTERNET|CAR|VOICE|CELL|PAGER)/$1;TYPE=$3/mg) {}
@@ -178,6 +186,14 @@ sub Normalize {
     # removed or added by servers
     s/^DESCRIPTION:(.*?)(\\n)+$/DESCRIPTION:$1/gm;
 
+    # VTIMEZONE and TZID do not have to be preserved verbatim as long
+    # as the replacement is still representing the same timezone.
+    # Reduce TZIDs which follow the Olson database pseudo-standard
+    # to their location part and strip the VTIMEZONE - makes the
+    # diff shorter, too.
+    s;^BEGIN:VTIMEZONE.*?^TZID:/[^/\n]*/[^/\n]*/(\S+).*^END:VTIMEZONE;BEGIN:VTIMEZONE\nTZID:$1 [...]\nEND:VTIMEZONE;gms;
+    s;TZID=/[^/\n]*/[^/\n]*/(.*)$;TZID=$1;gm;
+
     if ($scheduleworld || $egroupware || $synthesis || $addressbook || $funambol) {
       # does not preserve X-EVOLUTION-UI-SLOT=
       s/^(\w+)([^:\n]*);X-EVOLUTION-UI-SLOT=\d+/$1$2/mg;
@@ -198,11 +214,10 @@ sub Normalize {
     if ($funambol) {
       # only preserves ORG "Company";"Department", but loses "Office"
       s/^ORG:([^;:\n]+)(;[^;:\n]*)(;[^\n]*)/ORG:$1$2/mg;
-    }
-
-    if ($funambol) {
       # drops the second address line
       s/^ADR(.*?):([^;]*?);[^;]*?;/ADR$1:$2;;/mg;
+      # has no concept of "preferred" phone number
+      s/^(TEL.*);TYPE=PREF/$1/mg;
     }
 
     if ($addressbook) {
@@ -217,17 +232,24 @@ sub Normalize {
 
     if ($synthesis) {
       # does not preserve certain properties
-      s/^(FN|BDAY|X-MOZILLA-HTML|X-EVOLUTION-FILE-AS|X-AIM|NICKNAME|PHOTO|CALURI)(;[^:;\n]*)*:.*\r?\n?//gm;
+      s/^(FN|BDAY|X-MOZILLA-HTML|X-EVOLUTION-FILE-AS|X-AIM|NICKNAME|PHOTO|CALURI|SEQUENCE|TRANSP|ORGANIZER)(;[^:;\n]*)*:.*\r?\n?//gm;
       # default ADR is HOME
       s/^ADR;TYPE=HOME/ADR/gm;
       # only some parts of N are preserved
-      s/^N\:(.*)/@_ = split(\/(?<!\\);\/, $1); "N:$_[0];" . ($_[1] || "") . ";;" . ($_[3] || "")/gme;
+      s/^N((?:;[^;:]*)*)\:(.*)/@_ = split(\/(?<!\\);\/, $2); "N$1:$_[0];" . ($_[1] || "") . ";;" . ($_[3] || "")/gme;
       # this vcard contains too many ADR and PHONE entries - ignore it
       if (/This is a test case which uses almost all Evolution fields/) {
         next;
       }
       # breaks lines at semicolons, which adds white space
       while( s/^ADR:(.*); +/ADR:$1;/gm ) {}
+      # no attributes stored for ATTENDEEs
+      s/^ATTENDEE;.*?:/ATTENDEE:/msg;
+    }
+
+    if ($synthesis) {
+      # VALARM not supported
+      s/^BEGIN:VALARM.*?END:VALARM\r?\n?//msg;
     }
 
     if ($egroupware) {

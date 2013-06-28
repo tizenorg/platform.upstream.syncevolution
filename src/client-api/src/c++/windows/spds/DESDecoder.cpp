@@ -42,6 +42,9 @@
 
 #include "base/util/utils.h"
 #include "spds/DESDecoder.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 
 DESDecoder::DESDecoder() : DataTransformer(DT_DES) {
@@ -76,8 +79,9 @@ char* DESDecoder::transform(char* data, TransformationInfo& info) {
     );
 
     if (res == FALSE) {
-        lastErrorCode = ERR_DT_FAILURE;
-        sprintf(lastErrorMsg, ERRMSG_DT_FAILURE, GetLastError());
+        //lastErrorCode = ERR_DT_FAILURE;
+        //sprintf(lastErrorMsg, ERRMSG_DT_FAILURE, GetLastError());
+        setErrorF(ERR_DT_FAILURE, ERRMSG_DT_FAILURE, GetLastError());
         goto exit;
     }
 
@@ -91,8 +95,9 @@ char* DESDecoder::transform(char* data, TransformationInfo& info) {
     );
 
     if (res == FALSE) {
-        lastErrorCode = ERR_DT_FAILURE;
-        sprintf(lastErrorMsg, ERRMSG_DT_FAILURE, GetLastError());
+        //lastErrorCode = ERR_DT_FAILURE;
+        //sprintf(lastErrorMsg, ERRMSG_DT_FAILURE, GetLastError());
+        setErrorF(ERR_DT_FAILURE, ERRMSG_DT_FAILURE, GetLastError());
         goto exit;
     }
 
@@ -105,8 +110,9 @@ char* DESDecoder::transform(char* data, TransformationInfo& info) {
     );
 
     if (res == FALSE) {
-        lastErrorCode = ERR_DT_FAILURE;
-        sprintf(lastErrorMsg, ERRMSG_DT_FAILURE, GetLastError());
+        //lastErrorCode = ERR_DT_FAILURE;
+        //sprintf(lastErrorMsg, ERRMSG_DT_FAILURE, GetLastError());
+        setErrorF(ERR_DT_FAILURE, ERRMSG_DT_FAILURE, GetLastError());
         goto exit;
     }
 
@@ -120,8 +126,9 @@ char* DESDecoder::transform(char* data, TransformationInfo& info) {
     );
 
     if (res == FALSE) {
-        lastErrorCode = ERR_DT_FAILURE;
-        sprintf(lastErrorMsg, ERRMSG_DT_FAILURE, GetLastError());
+        //lastErrorCode = ERR_DT_FAILURE;
+        //sprintf(lastErrorMsg, ERRMSG_DT_FAILURE, GetLastError());
+        setErrorF(ERR_DT_FAILURE, ERRMSG_DT_FAILURE, GetLastError());
         goto exit;
     }
 
@@ -135,8 +142,9 @@ char* DESDecoder::transform(char* data, TransformationInfo& info) {
     );
 
     if (res == FALSE) {
-        lastErrorCode = ERR_DT_FAILURE;
-        sprintf(lastErrorMsg, ERRMSG_DT_FAILURE, GetLastError());
+        //lastErrorCode = ERR_DT_FAILURE;
+        //sprintf(lastErrorMsg, ERRMSG_DT_FAILURE, GetLastError());
+        setErrorF(ERR_DT_FAILURE, ERRMSG_DT_FAILURE, GetLastError());
         goto exit;
     }
 
@@ -150,8 +158,9 @@ char* DESDecoder::transform(char* data, TransformationInfo& info) {
     );
 
     if (res == FALSE) {
-        lastErrorCode = ERR_DT_FAILURE;
-        sprintf(lastErrorMsg, ERRMSG_DT_FAILURE, GetLastError());
+        //lastErrorCode = ERR_DT_FAILURE;
+        //sprintf(lastErrorMsg, ERRMSG_DT_FAILURE, GetLastError());
+        setErrorF(ERR_DT_FAILURE, ERRMSG_DT_FAILURE, GetLastError());
         goto exit;
     }
 
@@ -165,13 +174,14 @@ char* DESDecoder::transform(char* data, TransformationInfo& info) {
     );
 
     if (res == FALSE) {
-        lastErrorCode = ERR_DT_FAILURE;
-        sprintf(lastErrorMsg, ERRMSG_DT_FAILURE, GetLastError());
+        //lastErrorCode = ERR_DT_FAILURE;
+        //sprintf(lastErrorMsg, ERRMSG_DT_FAILURE, GetLastError());
+        setErrorF(ERR_DT_FAILURE, ERRMSG_DT_FAILURE, GetLastError());
         goto exit;
     }
 
     info.size = size;
-    info.newReturnedData = FALSE;
+    info.newReturnedData = false;
 
  exit:
 

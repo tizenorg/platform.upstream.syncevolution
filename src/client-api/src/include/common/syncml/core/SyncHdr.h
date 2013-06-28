@@ -48,6 +48,9 @@
 #include "syncml/core/Meta.h"
 
 #define SYNCHDR_COMMAND_NAME "SyncHdr"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 class SyncHdr {
 
@@ -61,7 +64,7 @@ class SyncHdr {
         Target*     target   ;
         Source*     source   ;
         char*     respURI  ;
-        BOOL        noResp   ;
+        bool        noResp   ;
         Cred*       cred     ;
         Meta*       meta     ;
 
@@ -93,7 +96,7 @@ class SyncHdr {
                 Target*      target,
                 Source*      source,
                 char*      respURI,
-                BOOL         noResp,
+                bool         noResp,
                 Cred*        cred,
                 Meta*        meta);
 
@@ -202,21 +205,21 @@ class SyncHdr {
          *
          * @return true if the command doesn't require a response, false otherwise
          */
-        BOOL isNoResp();
+        bool isNoResp();
 
         /**
          * Gets the Boolean value of noResp
          *
          * @return true if the command doesn't require a response, null otherwise
          */
-        BOOL getNoResp();
+        bool getNoResp();
 
         /**
          * Sets the noResponse property
          *
          * @param noResp the noResponse property
          */
-        void setNoResp(BOOL noResp);
+        void setNoResp(bool noResp);
 
         /**
          * Gets the Credential property
@@ -250,6 +253,9 @@ class SyncHdr {
 
         SyncHdr* clone();
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

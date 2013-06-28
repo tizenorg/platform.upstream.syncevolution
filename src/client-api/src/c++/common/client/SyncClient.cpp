@@ -41,6 +41,9 @@
 #include "syncml/core/CTTypeSupported.h"
 #include "syncml/core/CTCap.h"
 #include "syncml/core/CTPropParam.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 //--------------------------------------------------- Constructor & Destructor
 SyncClient::SyncClient() {
@@ -55,15 +58,18 @@ SyncClient::~SyncClient() {
 * Used to start the sync process. The argument is an array of SyncSources
 * that have to be synched with the sync process
 */
-int SyncClient::sync(SyncManagerConfig& config, SyncSource** sources) {
+int SyncClient::sync(AbstractSyncConfig& config, SyncSource** sources) {
 
     resetError();
     int ret = 0;
 
-    if (!config.getSyncSourceConfigsCount()) {
-        sprintf(lastErrorMsg, "Error in sync() - configuration not set correctly.");
-        LOG.error(lastErrorMsg);
-        return 1;
+    if (!config.getAbstractSyncSourceConfigsCount()) {
+        //sprintf(lastErrorMsg, "Error in sync() - configuration not set correctly.");
+        ret = 1;
+        setError(ret, "Error in sync() - configuration not set correctly.");
+        
+        LOG.error(getLastErrorMsg());
+        return ret;
     }
 
     //
@@ -85,7 +91,7 @@ int SyncClient::sync(SyncManagerConfig& config, SyncSource** sources) {
     SyncManager syncManager(config, syncReport);
 
     if ((ret = syncManager.prepareSync(sources))) {
-        LOG.error("Error in preparing sync: %s", lastErrorMsg);
+        LOG.error("Error in preparing sync: %s", getLastErrorMsg());
         goto finally;
     }
 
@@ -96,7 +102,7 @@ int SyncClient::sync(SyncManagerConfig& config, SyncSource** sources) {
     }
 
     if ((ret = syncManager.sync())) {
-        LOG.error("Error in syncing: %s", lastErrorMsg);
+        LOG.error("Error in syncing: %s", getLastErrorMsg());
         goto finally;
     }
 
@@ -107,15 +113,15 @@ int SyncClient::sync(SyncManagerConfig& config, SyncSource** sources) {
     }
 
     if ((ret = syncManager.endSync())) {
-        LOG.error("Error in ending sync: %s", lastErrorMsg);
+        LOG.error("Error in ending sync: %s", getLastErrorMsg());
         goto finally;
     }
 
 finally:
 
     // Update SyncReport with last error from sync
-    syncReport.setLastErrorCode(lastErrorCode);
-    syncReport.setLastErrorMsg(lastErrorMsg);
+    syncReport.setLastErrorCode(getLastErrorCode());
+    syncReport.setLastErrorMsg(getLastErrorMsg());
 
     return ret;
 }
@@ -132,8 +138,8 @@ finally:
  *                     from the configuration object (config).
  * @return:            0 on success, an error otherwise
  */
-int SyncClient::sync(SyncManagerConfig& config, char** sourceNames) {
-    SyncSourceConfig* sc = NULL;
+int SyncClient::sync(AbstractSyncConfig& config, char** sourceNames) {
+    AbstractSyncSourceConfig* sc = NULL;
     SyncSource **sources = NULL;
     const char* currName;
     int currSource = 0, numActive = 0, numSources = 0;
@@ -153,7 +159,7 @@ int SyncClient::sync(SyncManagerConfig& config, char** sourceNames) {
         }
     }
     else {
-        numSources = config.getSyncSourceConfigsCount();
+        numSources = config.getAbstractSyncSourceConfigsCount();
     }
 
     // make room for all potential sync sources
@@ -166,18 +172,18 @@ int SyncClient::sync(SyncManagerConfig& config, char** sourceNames) {
         // use only sources indicated in 'sourceNames' param
         if (sourceNames) {
             currName = sourceNames[currSource];
-            if (! (sc = config.getSyncSourceConfig(currName)) ) {
+            if (! (sc = config.getAbstractSyncSourceConfig(currName)) ) {
                 if (sources)
                     delete [] sources;
-                return lastErrorCode;
+                return getLastErrorCode();
             }
         }
         // use all available sources from config
         else {
-            if (! (sc = config.getSyncSourceConfig(currSource)) ) {
+            if (! (sc = config.getAbstractSyncSourceConfig(currSource)) ) {
                 if (sources)
                     delete [] sources;
-                return lastErrorCode;
+                return getLastErrorCode();
             }
             currName = sc->getName();
         }

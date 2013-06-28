@@ -38,6 +38,9 @@
 /** @cond DEV */
 
 #include "filter/LogicalClause.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 class SourceFilter {
 
@@ -45,7 +48,7 @@ class SourceFilter {
 private:
 
     LogicalClause* clause;
-    BOOL inclusive;
+    bool inclusive;
     char*  type;
 
     // ----------------------------------------------------- Protected interface
@@ -73,21 +76,21 @@ public:
      *
      * @param i
      */
-    void setInclusive(BOOL i);
+    void setInclusive(bool i);
 
 
     /*
      * isInclusive
      *
      */
-    BOOL isInclusive();
+    bool isInclusive();
 
 
     /*
      * isExclusive
      *
      */
-    BOOL isExclusive();
+    bool isExclusive();
 
 
     /*
@@ -127,6 +130,9 @@ public:
 
 };
 
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

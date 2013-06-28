@@ -37,6 +37,9 @@
 
 #include "base/util/utils.h"
 #include "spds/MailSyncSourceConfig.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 
 MailSyncSourceConfig::MailSyncSourceConfig() {
@@ -145,7 +148,7 @@ void MailSyncSourceConfig::assign(const MailSyncSourceConfig& sc) {
     setEncoding      (sc.getEncoding      ());
     setVersion       (sc.getVersion       ());
     setSupportedTypes(sc.getSupportedTypes());
-    setCtCap         (sc.getCtCap         ());
+    //setCtCap         (sc.getCtCap         ());
     setEncryption    (sc.getEncryption    ());
 
     setDownloadAge(sc.getDownloadAge());

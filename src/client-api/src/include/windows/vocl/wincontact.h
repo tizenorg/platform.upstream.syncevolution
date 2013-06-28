@@ -42,6 +42,9 @@
 
 #include "vocl/VObject.h"
 #include "vocl/WinItem.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 using namespace std;
 
@@ -101,7 +104,7 @@ public:
      * as they don't have a correspondence in propertyMap.
      * @return  the vCard string formatted, reference to internal wstring
      */
-    virtual wstring toString();
+    virtual wstring& toString();
 
 
     /// Returns the picture type ("JPEG", "GIF", ...)
@@ -109,8 +112,15 @@ public:
 
     /// Sets the picture type
     void setPhotoType(const wstring type) { photoType = type; }
+
+
+    /// Utility: returns "FileAs" property value.
+    wstring& getName();
     
 };
+
+END_NAMESPACE
+
 /** @} */
 /** @endcond */
 #endif

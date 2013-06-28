@@ -38,6 +38,9 @@
 
 #include "base/util/ArrayList.h"
 #include "filter/Clause.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 typedef enum {
     NOT = 0,
@@ -114,7 +117,7 @@ public:
      * isUnaryOperator
      *
      */
-    BOOL isUnaryOperator();
+    bool isUnaryOperator();
 
     /*
      * Creates a new instance of this Clause
@@ -126,6 +129,9 @@ public:
 
 };
 
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

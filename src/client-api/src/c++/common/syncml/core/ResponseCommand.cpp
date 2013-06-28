@@ -35,6 +35,9 @@
 
 
 #include "syncml/core/ResponseCommand.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 ResponseCommand::ResponseCommand() {
     msgRef     = NULL;
@@ -46,8 +49,8 @@ ResponseCommand::ResponseCommand() {
 ResponseCommand::~ResponseCommand()  {
     if (msgRef)     { delete [] msgRef;     msgRef    = NULL; }
     if (cmdRef)     { delete [] cmdRef;     cmdRef    = NULL; }
-    if (targetRef)  { targetRef->clear();   } //delete targetRef; targetRef = NULL; }
-    if (sourceRef)  { sourceRef->clear();   } //delete sourceRef; sourceRef = NULL; }
+    if (targetRef)  { /*targetRef->clear();   }*/ delete targetRef; targetRef = NULL; }
+    if (sourceRef)  { /*sourceRef->clear();   }*/ delete sourceRef; sourceRef = NULL; }
 
 }
 

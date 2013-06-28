@@ -46,6 +46,9 @@
 #include "spds/DeviceConfig.h"
 #include "spds/SyncSourceConfig.h"
 #include "spdm/ManagementNode.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 class DMTree;
 
@@ -70,11 +73,11 @@ class DMTClientConfig : public SyncManagerConfig {
         DMTClientConfig();
 
         /* top level functions */
-        virtual BOOL readAccessConfig(ManagementNode& n);
+        virtual bool readAccessConfig(ManagementNode& n);
         virtual void saveAccessConfig(ManagementNode& n);
-        virtual BOOL readDeviceConfig(ManagementNode& n);
+        virtual bool readDeviceConfig(ManagementNode& n);
         virtual void saveDeviceConfig(ManagementNode& n);
-        virtual BOOL readSourceConfig(int i, ManagementNode& n);
+        virtual bool readSourceConfig(int i, ManagementNode& n);
         virtual void saveSourceConfig(int i, ManagementNode& n);
 
         /**
@@ -89,7 +92,7 @@ class DMTClientConfig : public SyncManagerConfig {
          * @param syncMLNode     the "spds/syncml" node
          * @param authNode       the "spds/syncml/auth" node
          */
-        virtual BOOL readAuthConfig(ManagementNode& syncMLNode,
+        virtual bool readAuthConfig(ManagementNode& syncMLNode,
                                     ManagementNode& authNode);
         /**
          * Same as readAccessConfig() for saving the settings.
@@ -107,7 +110,7 @@ class DMTClientConfig : public SyncManagerConfig {
          * @param syncMLNode     the "spds/syncml" node
          * @param connNode       the "spds/syncml/conn" node
          */
-        virtual BOOL readConnConfig(ManagementNode& syncMLNode,
+        virtual bool readConnConfig(ManagementNode& syncMLNode,
                                     ManagementNode& connNode);
         /**
          * Same as readAccessConfig() for saving connection
@@ -126,7 +129,7 @@ class DMTClientConfig : public SyncManagerConfig {
          * @param syncMLNode     the "spds/syncml" node
          * @param extNode        the "spds/syncml/ext" node
          */
-        virtual BOOL readExtAccessConfig(ManagementNode& syncMLNode,
+        virtual bool readExtAccessConfig(ManagementNode& syncMLNode,
                                          ManagementNode& extNode);
         /**
          * Same as readAccessConfig() for saving additional access
@@ -144,7 +147,7 @@ class DMTClientConfig : public SyncManagerConfig {
          * @param syncMLNode     the "spds/syncml" node
          * @param devInfoNode    the "spds/syncml/devinfo" node
          */
-        virtual BOOL readDevInfoConfig(ManagementNode& syncMLNode,
+        virtual bool readDevInfoConfig(ManagementNode& syncMLNode,
                                        ManagementNode& devInfoNode);
         /**
          * Same as readAccessConfig() for saving device information.
@@ -162,7 +165,7 @@ class DMTClientConfig : public SyncManagerConfig {
          * @param syncMLNode     the "spds/syncml" node
          * @param devDetailNode  the "spds/syncml/devdetail" node
          */
-        virtual BOOL readDevDetailConfig(ManagementNode& syncMLNode,
+        virtual bool readDevDetailConfig(ManagementNode& syncMLNode,
                                          ManagementNode& devDetailNode);
         /**
          * Same as readAccessConfig() for saving additional device
@@ -181,7 +184,7 @@ class DMTClientConfig : public SyncManagerConfig {
          * @param syncMLNode     the "spds/syncml" node
          * @param extNode        the "spds/syncml/ext" node
          */
-        virtual BOOL readExtDevConfig(ManagementNode& syncMLNode,
+        virtual bool readExtDevConfig(ManagementNode& syncMLNode,
                                       ManagementNode& extNode);
         /**
          * Same as readAccessConfig() for saving some more additional
@@ -201,7 +204,7 @@ class DMTClientConfig : public SyncManagerConfig {
          * @param sourcesNode    the "spds/sources" node
          * @param sourceNode     the "spds/sources/<source name>" node
          */
-        virtual BOOL readSourceVars(int i,
+        virtual bool readSourceVars(int i,
                                     ManagementNode& sourcesNode,
                                     ManagementNode& sourceNode);
 
@@ -226,7 +229,7 @@ class DMTClientConfig : public SyncManagerConfig {
          * @param sourcesNode    the "spds/sources" node
          * @param sourceNode     the "spds/sources/<source name>" node
          */
-        virtual BOOL readSourceConfig(int i,
+        virtual bool readSourceConfig(int i,
                                       ManagementNode& sourcesNode,
                                       ManagementNode& sourceNode);
 
@@ -249,19 +252,19 @@ class DMTClientConfig : public SyncManagerConfig {
 
         ~DMTClientConfig();
 
-        SyncSourceConfig* getSyncSourceConfig(const char* name, BOOL refresh = FALSE);
-        SyncSourceConfig* getSyncSourceConfig(unsigned int i,   BOOL refresh = FALSE);
+        SyncSourceConfig* getSyncSourceConfig(const char* name, bool refresh = false);
+        SyncSourceConfig* getSyncSourceConfig(unsigned int i,   bool refresh = false);
 
-        virtual BOOL read();
-        virtual BOOL save();
+        virtual bool read();
+        virtual bool save();
 
         /**
          * Opens the configuration backend associated with the root context.
          * Calling on an open config does nothing.
          *
-         * @return TRUE for success
+         * @return true for success
          */
-        virtual BOOL open();
+        virtual bool open();
 
         /**
          * Provides access to the "syncml" configuration node,
@@ -297,6 +300,9 @@ class DMTClientConfig : public SyncManagerConfig {
          */
         virtual void close();
 };
+
+
+END_NAMESPACE
 
 /** @} */
 /** @endcond */

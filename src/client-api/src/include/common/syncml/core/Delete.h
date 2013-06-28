@@ -42,14 +42,17 @@
 #include "syncml/core/ModificationCommand.h"
 
 #define DELETE_COMMAND_NAME "Delete"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 class Delete : public ModificationCommand {
 
      // ------------------------------------------------------------ Private data
     private:
         char*  COMMAND_NAME;
-        BOOL archive;
-        BOOL sftDel;
+        bool archive;
+        bool sftDel;
 
     // ---------------------------------------------------------- Public data
     public:
@@ -72,9 +75,9 @@ class Delete : public ModificationCommand {
          *
          */
         Delete(CmdID* cmdID,
-               BOOL noResp,
-               BOOL archive,
-               BOOL sftDel,
+               bool noResp,
+               bool archive,
+               bool sftDel,
                Cred* cred,
                Meta* meta,
                ArrayList* items);
@@ -91,21 +94,21 @@ class Delete : public ModificationCommand {
          *
          * @return true if the deleted data should be archived
          */
-        BOOL isArchive();
+        bool isArchive();
 
         /**
          * Gets the Boolean archive property
          *
          * @return archive the Boolean archive property
          */
-        BOOL getArchive();
+        bool getArchive();
 
         /**
          * Sets the archive property
          *
          * @param archive the Boolean archive object
          */
-        void setArchive(BOOL archive);
+        void setArchive(bool archive);
 
         /**
          * Gets the SftDel property
@@ -113,16 +116,19 @@ class Delete : public ModificationCommand {
          * @return <b>true</b>  if this is a "Soft delete"
          *         <b>false</b> if this is a "hard delete"
          */
-        BOOL isSftDel();
+        bool isSftDel();
 
-        BOOL getSftDel();
+        bool getSftDel();
 
 
-        void setSftDel(BOOL sftDel);
+        void setSftDel(bool sftDel);
 
         ArrayElement* clone();
 
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

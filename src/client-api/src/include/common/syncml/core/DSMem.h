@@ -39,6 +39,9 @@
 /** @cond DEV */
 
 #include "base/fscapi.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 
 class DSMem {
@@ -46,7 +49,7 @@ class DSMem {
      // ------------------------------------------------------------ Private data
     private:
 
-        BOOL    sharedMem;
+        bool    sharedMem;
         long    maxMem   ;
         long    maxID    ;
     // ---------------------------------------------------------- Protected data
@@ -64,28 +67,28 @@ class DSMem {
          *              datastore
          *
          */
-        DSMem(BOOL sharedMem, long maxMem, long maxID);
+        DSMem(bool sharedMem, long maxMem, long maxID);
 
         /**
          * Returns the memoryShared status
          *
          * @return <i>true</i> if the datastore memory is shared, <i>false</i> otherwise
          */
-        BOOL isSharedMem();
+        bool isSharedMem();
 
         /**
          * Sets the memoryShared status
          *
          * @param sharedMem the new memoryShared status
          */
-        void setSharedMem(BOOL sharedMem);
+        void setSharedMem(bool sharedMem);
 
         /**
          * Gets Boolean shared memory
          *
          * @return sharedMem the Boolean sharedMem
          */
-        BOOL getSharedMem();
+        bool getSharedMem();
 
         /**
          * Gets the maximum memory size in bytes
@@ -118,6 +121,9 @@ class DSMem {
 
         DSMem* clone();
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

@@ -38,6 +38,9 @@
 
 #include "base/fscapi.h"
 #include "base/util/ArrayList.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 class Property : public ArrayElement {
 
@@ -48,7 +51,7 @@ private:
     char*  dataType;
     long maxOccur;
     long maxSize;
-    BOOL noTruncate;  // -1 undefined, 0 FALSE, 1 TRUE
+    bool noTruncate;
     ArrayList* valEnums;
     char*  displayName;
     ArrayList* propParams;
@@ -74,16 +77,18 @@ public:
     /*
      * Property constructor
      *
-     * @param p0
-     * @param p1
-     * @param p2
-     * @param p3
-     * @param p4
-     * @param p5
-     * @param p6
-     * @param p7
+     * @param propName
+     * @param dataType
+     * @param maxOccur
+     * @param maxSize
+     * @param noTruncate
+     * @param valEnums
+     * @param displayName
+     * @param propParams
      */
-    Property(char*  p0, char*  p1, long p2, long p3, BOOL p4, ArrayList* p5, char*  p6, ArrayList* p7);
+    Property(char*  propName, char*  dataType, long maxOccur, 
+        long maxSize, bool noTruncate, ArrayList* valEnums, 
+        char*  displayName, ArrayList* propParams);
 
 
     /*
@@ -157,21 +162,21 @@ public:
      *
      * @param p0
      */
-    void setNoTruncate(BOOL p0);
+    void setNoTruncate(bool p0);
 
 
     /*
      * isNoTruncate
      *
      */
-    BOOL isNoTruncate();
+    bool isNoTruncate();
 
 
     /*
      * getNoTruncate
      *
      */
-    BOOL getNoTruncate();
+    bool getNoTruncate();
 
 
     /*
@@ -229,6 +234,9 @@ public:
 
 };
 
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

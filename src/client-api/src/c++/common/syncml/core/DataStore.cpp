@@ -35,6 +35,9 @@
 
 #include "base/util/utils.h"
 #include "syncml/core/DataStore.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 DataStore::DataStore() {
     initialize();
@@ -45,9 +48,9 @@ DataStore::~DataStore() {
    if(displayName )   { delete [] displayName    ;  displayName     = NULL; }
    maxGUIDSize = 0;
    if(rxPref      )   { delete    rxPref         ;  rxPref          = NULL; }
-   if(rx          )   { rx->clear(); } //delete rx; rx = NULL;                  }
+   if(rx          )   { /*rx->clear();*/  delete rx; rx = NULL;                  }
    if(txPref      )   { delete    txPref         ;  txPref          = NULL; }
-   if(tx          )   { tx->clear(); }//delete tx; tx = NULL;                  }
+   if(tx          )   { /*tx->clear();*/  delete tx; tx = NULL;                  }
    if(dsMem       )   { delete    dsMem          ;  dsMem           = NULL; }
    if(syncCap     )   { delete    syncCap        ;  syncCap         = NULL; }
 }
@@ -69,6 +72,7 @@ DataStore::~DataStore() {
  *                  to the content type preferred - NOT NULL
  * @param tx an array of the relative info trasmitted to the content type
  *           supported - NOT NULL
+ * @param ctCaps an array of the relative CtCaps
  * @param dsMem the datastore memory info
  * @param syncCap the synchronization capabilities - NOT NULL
  *
@@ -80,6 +84,7 @@ DataStore::DataStore(SourceRef* sourceRef,
                       ArrayList* rx,
                       ContentTypeInfo* txPref,
                       ArrayList* tx,
+                      ArrayList* ct_Caps,
                       DSMem* dsMem,
                       SyncCap* syncCap) {
 
@@ -91,6 +96,7 @@ DataStore::DataStore(SourceRef* sourceRef,
         setTxPref(txPref);
         setTx(tx);
         setSyncCap(syncCap);
+        setCtCaps(ct_Caps);
         setDisplayName(displayName);
         setDSMem(dsMem);
 }
@@ -100,9 +106,10 @@ void DataStore::initialize() {
     displayName     = NULL;
     maxGUIDSize     = 0;
     rxPref          = NULL;
-    rx              = new ArrayList();
+    rx              = NULL; //new ArrayList();
     txPref          = NULL;
-    tx              = new ArrayList();
+    tx              = NULL; //new ArrayList();
+    ctCaps          = NULL; //new ArrayList();
     dsMem           = NULL;
     syncCap         = NULL;
 }
@@ -271,6 +278,24 @@ void DataStore::setTx(ArrayList* txCTI) {
 }
 
 /**
+* Gets an array of CtCaps corresponds to &lt;CTCap&gt; element
+*
+* @return an array of CTCaps corresponds to &lt;CTCap&gt; element
+*/
+ArrayList* DataStore::getCtCaps(){
+    return ctCaps;
+}
+
+/**
+* Sets an array of CtCaps
+*
+* @param Ct_Caps an array of Ctcaps
+*/
+void DataStore::setCtCaps(ArrayList* ct_Caps){
+    ctCaps = ct_Caps;
+}
+
+/**
  * Gets the datastore memory information.
  *
  * @return the datastore memory information.
@@ -327,6 +352,7 @@ ArrayElement* DataStore::clone() {
                                     rx          ,
                                     txPref      ,
                                     tx          ,
+                                    ctCaps      ,
                                     dsMem       ,
                                     syncCap     );
     return ret;

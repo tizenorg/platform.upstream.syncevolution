@@ -38,14 +38,17 @@
 #include "base/util/utils.h"
 #include "spds/AccessConfig.h"
 #include "spdm/constants.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 
 AccessConfig::AccessConfig() {
 
-    useProxy = FALSE;
+    useProxy = false;
     proxyPort = 8080;
     firstTimeSyncMode = SYNC_SLOW;
-    dirty = FALSE;
+    dirty = false;
 
     username   = NULL;
     password   = NULL;
@@ -60,14 +63,15 @@ AccessConfig::AccessConfig() {
     serverPWD             = NULL;
     clientAuthType        = NULL;
     serverAuthType        = NULL;
-    isServerAuthRequired  = FALSE;
+    isServerAuthRequired  = false;
     maxMsgSize            = 0;
     readBufferSize        = 0;
     userAgent             = NULL;
     proxyUsername         = NULL;
     proxyPassword         = NULL;
-    checkConn             = FALSE;
+    checkConn             = false;
     responseTimeout       = 0;
+    compression           = false;
 }
 
 AccessConfig::AccessConfig(AccessConfig& s) {
@@ -91,11 +95,11 @@ AccessConfig::~AccessConfig() {
     safeDelete(&proxyPassword       );
 }
 
-BOOL AccessConfig::getServerAuthRequired() const {
+bool AccessConfig::getServerAuthRequired() const {
     return isServerAuthRequired;
 }
 
-void AccessConfig::setServerAuthRequired(BOOL v) {
+void AccessConfig::setServerAuthRequired(bool v) {
     isServerAuthRequired = v;
 
     dirty |= DIRTY_SERVERAUTH_REQUIRED;
@@ -198,11 +202,11 @@ void AccessConfig::setFirstTimeSyncMode(SyncMode v) {
     dirty |= DIRTY_FIRST_TIME_SYNC_MODE;
 }
 
-BOOL AccessConfig::getUseProxy() const {
+bool AccessConfig::getUseProxy() const {
     return useProxy;
 }
 
-void AccessConfig::setUseProxy(BOOL v) {
+void AccessConfig::setUseProxy(bool v) {
     useProxy = v;
 
     dirty |= DIRTY_USE_PROXY;
@@ -260,10 +264,10 @@ void AccessConfig::setResponseTimeout(unsigned int v) {
     responseTimeout = v;
 }
 
-BOOL AccessConfig::getCheckConn() const {
+bool AccessConfig::getCheckConn() const {
     return checkConn;
 }
-void AccessConfig::setCheckConn(BOOL v) {
+void AccessConfig::setCheckConn(bool v) {
     checkConn = v;
 }
 
@@ -377,7 +381,7 @@ void AccessConfig::assign(const AccessConfig& s) {
     dirty = s.getDirty();
 }
 
-void AccessConfig::setCompression(BOOL v){
+void AccessConfig::setCompression(bool v){
         compression= v;
 }
 
@@ -392,7 +396,7 @@ void AccessConfig::setCompression(BOOL v){
 
 
 
-BOOL AccessConfig::getCompression() const{
+bool AccessConfig::getCompression() const{
     return compression;
 }
 

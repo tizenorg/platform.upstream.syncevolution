@@ -35,25 +35,23 @@
 
 
 #include "syncml/core/Mem.h"
+#include "base/globalsdef.h"
 
-Mem::Mem(BOOL sharedMem, long freeMem, long freeID) {
+BEGIN_NAMESPACE
+
+Mem::Mem(bool sharedMem, long freeMem, long freeID) {
     this->freeMem = 0;
     this->freeID  = 0;
     this->sharedMem = NULL;
 
     setFreeMem(freeMem);
     setFreeID(freeID);
-    if ((sharedMem == NULL) || (sharedMem != TRUE && sharedMem != FALSE)) {
-        this->sharedMem = NULL;
-    } else {
-        this->sharedMem = sharedMem;
-    }
-
+    this->sharedMem = sharedMem;
 }
 
 Mem::~Mem() {}
 
-BOOL Mem::isSharedMem() {
+bool Mem::isSharedMem() {
     return (sharedMem != NULL);
 }
 
@@ -62,12 +60,8 @@ BOOL Mem::isSharedMem() {
  *
  * @param sharedMem the new memoryShared status
  */
-void Mem::setSharedMem(BOOL sharedMem) {
-    if ((sharedMem == NULL) || (sharedMem != TRUE && sharedMem != FALSE)) {
-        this->sharedMem = NULL;
-    } else {
-        this->sharedMem = sharedMem;
-    }
+void Mem::setSharedMem(bool sharedMem) {
+    this->sharedMem = sharedMem;
 }
 
 /**
@@ -75,7 +69,7 @@ void Mem::setSharedMem(BOOL sharedMem) {
  *
  * @return sharedMem the Boolean shared memory property
  */
-BOOL Mem::getSharedMem() {
+bool Mem::getSharedMem() {
 
     return sharedMem;
 }
@@ -134,3 +128,6 @@ Mem* Mem::clone() {
     return ret;
 
 }
+
+END_NAMESPACE
+

@@ -33,12 +33,15 @@
  * the words "Powered by Funambol".
  */
 
-
+#include "syncml/core/Mem.h"
 #include "syncml/core/Meta.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 Meta::Meta() {
         this->metInf = NULL;
-		set(
+        set(
             NULL,
             NULL,
             NULL,
@@ -55,9 +58,9 @@ Meta::Meta() {
 
 Meta::~Meta() {
 
-	if (metInf) {
-		delete metInf; metInf = NULL;
-	}
+    if (metInf) {
+        delete metInf; metInf = NULL;
+    }
 }
 
 
@@ -99,12 +102,12 @@ MetInf* Meta::getMetInf() {
 
 
 void Meta::setMetInf(MetInf* metInf) {
-	if (this->metInf) {
-		delete this->metInf; this->metInf = NULL;
-	}
-	if (metInf) {
-		this->metInf = metInf->clone();
-	}
+    if (this->metInf) {
+            delete this->metInf; this->metInf = NULL;
+    }
+    if (metInf) {
+        this->metInf = metInf->clone();
+    }
 }
 
 MetInf* Meta::getNullMetInf() {
@@ -329,3 +332,5 @@ Meta* Meta::clone() {
     return ret;
 
 }
+
+END_NAMESPACE

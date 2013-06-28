@@ -38,11 +38,17 @@
 #define INCL_CONTACT_VERSION_30
 /** @cond DEV */
 
-#include "Contact.h"
+#include "vocl/vCard/Contact.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 class Contact30 : public Contact {
 public:
     Contact30();
 };
+
+END_NAMESPACE
+
 /** @endcond */
 #endif

@@ -33,11 +33,14 @@
  * the words "Powered by Funambol".
  */
 
-#include "base/Log.h"
+#include "base/posixlog.h"
 #include "base/messages.h"
 #include "http/constants.h"
 #include "http/errors.h"
 #include "http/CurlTransportAgent.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 /*
  * This is the libcurl implementation of the TransportAgent object
@@ -73,15 +76,15 @@ CurlTransportAgent::CurlTransportAgent(URL& newURL, Proxy& newProxy, unsigned in
     easyhandle = CurlInit::easy_init();
     if (easyhandle) {
         curl_easy_setopt(easyhandle, CURLOPT_DEBUGFUNCTION, debugCallback);
-        curl_easy_setopt(easyhandle, CURLOPT_VERBOSE, LOG.getLevel() ? TRUE : FALSE);
-        curl_easy_setopt(easyhandle, CURLOPT_NOPROGRESS, TRUE);
+        curl_easy_setopt(easyhandle, CURLOPT_VERBOSE, LOG.getLevel() ? true : false);
+        curl_easy_setopt(easyhandle, CURLOPT_NOPROGRESS, true);
         curl_easy_setopt(easyhandle, CURLOPT_WRITEFUNCTION, receiveData);
         curl_easy_setopt(easyhandle, CURLOPT_WRITEDATA, this);
         curl_easy_setopt(easyhandle, CURLOPT_READFUNCTION, sendData);
         curl_easy_setopt(easyhandle, CURLOPT_READDATA, this);
         curl_easy_setopt(easyhandle, CURLOPT_ERRORBUFFER, this->curlerrortxt );
-        curl_easy_setopt(easyhandle, CURLOPT_AUTOREFERER, TRUE);
-        curl_easy_setopt(easyhandle, CURLOPT_FOLLOWLOCATION, TRUE);
+        curl_easy_setopt(easyhandle, CURLOPT_AUTOREFERER, true);
+        curl_easy_setopt(easyhandle, CURLOPT_FOLLOWLOCATION, true);
         if (proxy.host[0]) {
             curl_easy_setopt(easyhandle, CURLOPT_PROXY, proxy.host);
             if (proxy.port) {
@@ -140,25 +143,27 @@ size_t CurlTransportAgent::sendData(void *buffer, size_t size, size_t nmemb, voi
     agent->sent += curr;
     return curr;
 }
-
 int CurlTransportAgent::debugCallback(CURL *easyhandle, curl_infotype type, char *data, size_t size, void *unused)
 {
-    BOOL isData = type == CURLINFO_DATA_IN || type == CURLINFO_DATA_OUT;
+    bool isData = type == CURLINFO_DATA_IN || type == CURLINFO_DATA_OUT;
 
-    if (LOG.getLevel() >= LOG_LEVEL_DEBUG && !isData ||
-        LOG.getLevel() > LOG_LEVEL_DEBUG) {
-        char *buffer = new char[30 + size];
-        sprintf(buffer, "libcurl %s%.*s",
-                type == CURLINFO_TEXT ? "info: " :
-                type == CURLINFO_HEADER_IN ? "header in: " :
-                type == CURLINFO_HEADER_OUT ? "header out:\n" :
-                type == CURLINFO_DATA_IN ? "data in:\n" :
-                type == CURLINFO_DATA_OUT ? "data out:\n" :
-                "???",
-                (size > 0 && data[size-1] == '\n') ? (int)size - 1 : (int)size,
-                data);
-        LOG.debug(buffer);
-        delete [] buffer;
+    if (LOG.getLevel() >= LOG_LEVEL_DEBUG &&
+        !isData) {
+        POSIX_LOG.setPrefix(type == CURLINFO_TEXT ? "libcurl info: " :
+                            type == CURLINFO_HEADER_IN ? "header in: " :
+                            type == CURLINFO_HEADER_OUT ? "header out: " :
+                            NULL);
+        // ignore trailing line break, LOG.debug() will add it automatically
+        int logsize = (int)size;
+        if (logsize >= 2 && data[logsize - 2] == '\r' && data[logsize - 1] == '\n') {
+            logsize -= 2;
+        } else if (logsize >= 1 && data[logsize -1] == '\n') {
+            logsize -= 1;
+        }
+        LOG.debug("%.*s",
+                  logsize,
+                  data);
+        POSIX_LOG.setPrefix(NULL);
     }
     return 0;
 }
@@ -172,12 +177,18 @@ int CurlTransportAgent::debugCallback(CURL *easyhandle, curl_infotype type, char
  */
 char* CurlTransportAgent::sendMessage(const char* msg) {
     if (!easyhandle) {
-        lastErrorCode = ERR_NETWORK_INIT;
-        strcpy(lastErrorMsg, "libcurl error init error");
+        setError(ERR_NETWORK_INIT, "libcurl error init error");
+        LOG.error("%s", getLastErrorMsg());
         return NULL;
     }
 
+    size_t size = strlen(msg);
+
+
     LOG.debug("Requesting resource %s at %s:%d", url.resource, url.host, url.port);
+    POSIX_LOG.setPrefix("data out: ");
+    LOG.debug("=== %d bytes ===\n%s", (int)size, msg);
+    POSIX_LOG.setPrefix(NULL);
 
     curl_slist *slist=NULL;
     char *response = NULL;
@@ -190,20 +201,34 @@ char* CurlTransportAgent::sendMessage(const char* msg) {
     received = 0;
     responsebuffer[0] = 0;
     // todo? url.resource
-    if ((code = curl_easy_setopt(easyhandle, CURLOPT_POST, TRUE)) ||
+    const char *certificates = getSSLServerCertificates();
+    if ((code = curl_easy_setopt(easyhandle, CURLOPT_POST, true)) ||
         (code = curl_easy_setopt(easyhandle, CURLOPT_URL, url.fullURL)) ||
         (code = curl_easy_setopt(easyhandle, CURLOPT_POSTFIELDS, msg)) ||
-        (code = curl_easy_setopt(easyhandle, CURLOPT_POSTFIELDSIZE, strlen(msg))) ||
+        (code = curl_easy_setopt(easyhandle, CURLOPT_POSTFIELDSIZE, size)) ||
         (code = curl_easy_setopt(easyhandle, CURLOPT_HTTPHEADER, slist)) ||
+        /*
+         * slightly cheating here: when CURLOPT_CAINFO was set before, we don't unset it because
+         * we don't know what the default is
+         */
+        (certificates[0] && (code = curl_easy_setopt(easyhandle, CURLOPT_CAINFO, certificates))) ||
+        (code = curl_easy_setopt(easyhandle, CURLOPT_SSL_VERIFYPEER, (long)SSLVerifyServer)) ||
+        (code = curl_easy_setopt(easyhandle, CURLOPT_SSL_VERIFYHOST, (long)(SSLVerifyHost ? 2 : 0))) ||
         (code = curl_easy_perform(easyhandle))) {
         delete [] responsebuffer;
-        lastErrorCode = ERR_HTTP;
-        sprintf(lastErrorMsg, "libcurl error %d, %.250s", code, curlerrortxt);
+        setErrorF(ERR_HTTP, "libcurl error %d, %.250s", code, curlerrortxt);
+        LOG.error("%s", getLastErrorMsg());
     } else {
         response = responsebuffer;
-        LOG.debug(response);
-        LOG.debug("Response read");
+
+        POSIX_LOG.setPrefix("data in: ");
+        LOG.debug("=== %d bytes ===\n%s",
+                  (int)strlen(response),
+                  response);
     }
+    POSIX_LOG.setPrefix(NULL);
+
+
     responsebuffer = NULL;
     responsebuffersize = 0;
 

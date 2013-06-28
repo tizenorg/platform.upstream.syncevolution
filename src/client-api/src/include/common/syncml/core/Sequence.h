@@ -44,6 +44,9 @@
 
 
 #define SEQUENCE_COMMAND_NAME "Sequence"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 class Sequence : public AbstractCommand {
 
@@ -67,7 +70,7 @@ class Sequence : public AbstractCommand {
          *
          */
         Sequence(CmdID*       cmdID ,
-                        BOOL         noResp,
+                        bool         noResp,
                         Meta*        meta  ,
                         ArrayList*   commands);  // AbstractCommand[]
 
@@ -96,6 +99,9 @@ class Sequence : public AbstractCommand {
 
         ArrayElement* clone();
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

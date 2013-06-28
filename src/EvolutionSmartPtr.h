@@ -33,23 +33,47 @@
 
 #include <stdexcept>
 #include <string>
+#include <memory>
+using namespace std;
 
-void inline unref( char *pointer ) { free( pointer ); }
+#include <boost/scoped_array.hpp>
+#include <boost/shared_ptr.hpp>
+
+template<class T> class EvolutionUnrefFree {
+ public:
+    static void unref(T *pointer) { free(pointer); }
+};
+
+class EvolutionUnref {
+ public:
+    /**
+     * C character string - beware, Funambol C++ client library strings must
+     * be returned with delete [], use boost::scoped_array
+     */
+    static void unref(char *pointer) { free(pointer); }
+
 #ifdef HAVE_EDS
-void inline unref( GObject *pointer ) { g_object_unref( pointer ); }
+    static void unref(GObject *pointer) { g_object_unref(pointer); }
+    /** free a list of GObject and the objects */
+    static void unref(GList *pointer) {
+        if (pointer) {
+            GList *next = pointer;
+            do {
+                g_object_unref(G_OBJECT(next->data));
+                next = next->next;
+            } while (next);
+            g_list_free(pointer);
+        }
+    }
 #ifdef ENABLE_EBOOK
-void inline unref( EBookQuery *pointer ) { e_book_query_unref( pointer ); }
+    static void unref(EBookQuery *pointer) { e_book_query_unref(pointer); }
 #endif
 #ifdef ENABLE_ECAL
-void inline unref( icalcomponent *pointer ) { icalcomponent_free( pointer ); }
-void inline unref( icaltimezone *pointer ) { icaltimezone_free( pointer, 1 ); }
-#endif
-#if 0
-void inline unref( EBook *pointer ) { g_object_unref( pointer ); }
-void inline unref( EContact *pointer ) { g_object_unref( pointer ); }
+    static void unref(icalcomponent *pointer) { icalcomponent_free(pointer); }
+    static void unref(icaltimezone *pointer) { icaltimezone_free(pointer, 1); }
 #endif
 #endif
-template <class T> void unref(T *pointer) { delete pointer; }
+};
 
 /**
  * a smart pointer implementation for objects for which
@@ -57,13 +81,7 @@ template <class T> void unref(T *pointer) { delete pointer; }
  * trying to store a NULL pointer raises an exception,
  * unreferencing valid objects is done automatically
  */
-template<class T, class base = T> class eptr {
-    /** do not allow copy construction */
-    eptr( const eptr &other) {};
-
-    /** do not allow copying */
-    void operator = ( const eptr &other ) {}
-
+template<class T, class base = T, class R = EvolutionUnref > class eptr {
  protected:
     T *m_pointer;
     
@@ -84,6 +102,17 @@ template<class T, class base = T> class eptr {
         set( NULL );
     }
 
+    /** assignment and copy construction transfer ownership to the copy */
+    eptr(eptr &other) {
+        m_pointer = other.m_pointer;
+        other.m_pointer = NULL;
+    }
+    eptr & operator = (eptr &other) {
+        m_pointer = other.m_pointer;
+        other.m_pointer = NULL;
+        return *this;
+    }
+
     /**
      * store another object in this pointer, replacing any which was
      * referenced there before;
@@ -92,7 +121,7 @@ template<class T, class base = T> class eptr {
     void set( T *pointer, const char *objectName = NULL )
     {
         if (m_pointer) {
-            unref( (base *)m_pointer );
+            R::unref((base *)m_pointer);
         }
         if (!pointer && objectName) {
             throw std::runtime_error(std::string("Error allocating ") + objectName);
@@ -100,7 +129,15 @@ template<class T, class base = T> class eptr {
         m_pointer = pointer;
     }
 
-    eptr<T, base> &operator = ( T *pointer ) { set( pointer ); return *this; }
+    /**
+     * transfer ownership over the pointer to caller and stop tracking it:
+     * pointer tracked by smart pointer is set to NULL and the original
+     * pointer is returned
+     */
+    T *release() { T *res = m_pointer; m_pointer = NULL; return res; }
+
+    eptr<T, base, R> &operator = ( T *pointer ) { set( pointer ); return *this; }
+    T *get() { return m_pointer; }
     T *operator-> () { return m_pointer; }
     T &operator* ()  { return *m_pointer; }
     operator T * () { return m_pointer; }
@@ -108,37 +145,33 @@ template<class T, class base = T> class eptr {
     operator bool () { return m_pointer != NULL; }
 };
 
-/**
- * a eptr for C++ arrays: everything is unref'ed via delete []
- */
-template <class T> class arrayptr : public eptr<T> {
-    void unref( T *pointer) { delete [] pointer; }
-    
-  public:
-    arrayptr(T *pointer = NULL, const char *objectName = NULL) :
-        eptr<T>(pointer, objectName)
-    {}
-    ~arrayptr()
-    {
-        set(NULL);
-    }
-    arrayptr<T> &operator = ( T *pointer ) { set( pointer ); return *this; }
+template <class T> class CxxUnref {
+ public:
+    static void unref(T *pointer) { delete pointer; }
+};
 
-    /**
-     * has to be duplicated, base class does not pick up our unref()
-     * above otherwise
-     */
-    void set( T *pointer, const char *objectName = NULL )
+/** eptr for normal C++ objects */
+template <class T> class cxxptr : public eptr<T, T, CxxUnref<T> > {
+ public:
+    cxxptr(T *pointer = NULL, const char *objectName = NULL) :
+        eptr<T, T, CxxUnref<T> > (pointer, objectName)
     {
-        if (this->m_pointer) {
-            unref(this->m_pointer);
-        }
-        if (!pointer && objectName) {
-            throw std::runtime_error(std::string("Error allocating ") + objectName);
-        }
-        this->m_pointer = pointer;
-    }
-        
+    };
+};
+
+template <class T> class ArrayUnref {
+ public:
+    static void unref(T *pointer) { delete [] pointer; }
+};
+    
+
+/** eptr for array of objects or types */
+template <class T> class arrayptr : public eptr<T, T, ArrayUnref<T> > {
+ public:
+    arrayptr(T *pointer = NULL, const char *objectName = NULL) :
+        eptr<T, T, ArrayUnref<T> > (pointer, objectName)
+    {
+    };
 };
 
 #endif

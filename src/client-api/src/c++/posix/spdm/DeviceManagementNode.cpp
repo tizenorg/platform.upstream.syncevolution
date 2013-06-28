@@ -37,7 +37,6 @@
 
 #include "base/util/utils.h"
 #include "base/fscapi.h"
-#include "spdm/spdmutils.h"
 #include "spdm/constants.h"
 #include "spdm/ManagementNode.h"
 #include "spdm/DeviceManagementNode.h"
@@ -47,30 +46,59 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <dirent.h>
+#include "base/globalsdef.h"
 
-static inline BOOL isNode(struct dirent *entry) {
+USE_NAMESPACE
+
+#define CONFIG_DIR      ".config"
+#define SYNC4J_DIR      ".sync4j"
+
+//static StringBuffer DeviceManagementNode::defaultPath;
+
+static inline bool isNode(struct dirent *entry) {
     struct stat buf;
     return (!stat(entry->d_name, &buf) && S_ISDIR(buf.st_mode) &&
         strcmp(entry->d_name, ".") && strcmp(entry->d_name, ".."));
 }
 
+StringBuffer DeviceManagementNode::configPath; 
+StringBuffer DeviceManagementNode::configFile("config.ini"); 
+
 DeviceManagementNode::DeviceManagementNode(const char* parent, const char *leafName) : ManagementNode(parent, leafName)  {
     lines = new ArrayList;
-    modified = FALSE;
+    modified = false;
     cwdfd = -1;
-    update(TRUE);
+    lookupDir();
+    update(true);
 }
 
 DeviceManagementNode::DeviceManagementNode(const char *node)
     : ManagementNode(node)
 {
     lines = new ArrayList;
-    modified = FALSE;
+    modified = false;
     cwdfd = -1;
-    update(TRUE);
+    lookupDir();
+    update(true);
 }
 
-DeviceManagementNode::DeviceManagementNode(const DeviceManagementNode &other) : ManagementNode(other) {
+void DeviceManagementNode::setCompatibilityMode(bool mode){
+    
+    if(mode){
+        StringBuffer val(getenv("HOME"));
+        val += "/.sync4j/";
+        setConfigPath( val );
+        configFile = "config.txt";
+    }else{
+        StringBuffer val;
+        setConfigPath( val );
+    }
+
+}
+
+DeviceManagementNode::DeviceManagementNode(const DeviceManagementNode &other)
+    : ManagementNode(other) {
+
     lines = other.lines->clone();
     cwdfd = -1;
     modified = other.modified;
@@ -78,51 +106,71 @@ DeviceManagementNode::DeviceManagementNode(const DeviceManagementNode &other) : 
 
 DeviceManagementNode::~DeviceManagementNode() {
     if (modified) {
-        update(FALSE);
+        update(false);
     }
     delete lines;
-    if (cwdfd) {
+    if (cwdfd > 0) {
         close(cwdfd);
     }
 }
 
-BOOL DeviceManagementNode::gotoDir(BOOL read) {
-    BOOL success = TRUE;
+bool checkConfigurationPath(StringBuffer path){
 
+    int val = chdir(path);
+    if (val == 0){
+        return true;
+    }else{
+        return false;
+    }
+}
+
+void DeviceManagementNode::lookupDir() {
+    
+    if (configPath.empty()){    
+        // This is the config home set by the user, nothing to append to it
+        StringBuffer configHome(getenv("XDG_CONFIG_HOME"));
+        // This is the home og the user
+        StringBuffer userHome(getenv("HOME"));
+        if (configHome.empty()){
+            configHome = userHome + "/.config";
+        }
+        setConfigPath(configHome);
+        configFile = "config.ini";
+    }
+}
+
+
+bool DeviceManagementNode::gotoDir(bool read) {
+    bool success = true;
     returnFromDir();
     cwdfd = open(".", O_RDONLY);
-
-    char *curr = getenv("HOME");
-    if (curr) {
-        chdir(curr);
-    }
-    char *dirs = new char[strlen(context) + strlen(name) + 30];
-    sprintf(dirs, ".sync4j/%s/%s", context, name);
-    curr = dirs;
+   
+    chdir( getConfigPath() );
+    StringBuffer dirs;
+    dirs = dirs + context + "/" + name;
+    char* ccurr = strdup( dirs.c_str() );
     do {
-        char *nextdir = strchr(curr, '/');
+        char *nextdir = strchr(ccurr, '/');
         if (nextdir) {
             *nextdir = 0;
             nextdir++;
         }
-        if (*curr) {
-            if (chdir(curr)) {
+        if (*ccurr) {
+            if (chdir(ccurr)) {
                 if (errno == ENOENT) {
                     if (!read) {
-                        mkdir(curr, 0777);
+                        mkdir(ccurr, 0777);
                     } else {
-                        // failed
-                        success = FALSE;
+                       // failed
+                        success = false;
                         break;
                     }
                 }
-                chdir(curr);
+                chdir(ccurr);
             }
         }
-        curr = nextdir;
-    } while (curr);
-    delete [] dirs;
-
+        ccurr = nextdir;
+    } while (ccurr);
     return success;
 }
 
@@ -134,16 +182,18 @@ void DeviceManagementNode::returnFromDir() {
     }
 }
 
-void DeviceManagementNode::update(BOOL read) {
+void DeviceManagementNode::update(bool read) {
     if (!read && !modified) {
         // no work to be done
         return;
     }
 
     if (gotoDir(read)) {
-        FILE *file = read ?
-            fopen("config.txt", "r") :
-            fopen("config.txt.tmp", "w");
+        FILE *file = 0;
+        StringBuffer tmpConfig = configFile.c_str();
+        tmpConfig += ".tmp"; 
+        file = read ? fopen( configFile.c_str(), "r") : 
+                      fopen( tmpConfig.c_str(), "w");
         if (read) {
             char buffer[512];
 
@@ -152,7 +202,7 @@ void DeviceManagementNode::update(BOOL read) {
                 while (fgets(buffer, sizeof(buffer), file)) {
                     char *eol = strchr(buffer, '\n');
                     if (eol) {
-                        *eol = 0;
+                    *eol = 0;
                     }
                     line newline(buffer);
                     lines->add(newline);
@@ -162,7 +212,7 @@ void DeviceManagementNode::update(BOOL read) {
             if (file) {
                 int i = 0;
 
-                while (TRUE) {
+                while (true) {
                     line *curr = (line *)lines->get(i);
                     if (!curr) {
                         break;
@@ -173,7 +223,9 @@ void DeviceManagementNode::update(BOOL read) {
                 }
                 fflush(file);
                 if (!ferror(file)) {
-                    rename("config.txt.tmp", "config.txt");
+                    StringBuffer tmpConfig = configFile;
+                    tmpConfig += ".tmp"; 
+                    rename( tmpConfig.c_str(), configFile.c_str());
                 }
             }
         }
@@ -184,7 +236,7 @@ void DeviceManagementNode::update(BOOL read) {
     returnFromDir();
 }
 
-static int strnicmp( const char *a, const char *b, int len ) {
+int DeviceManagementNode::strnicmp( const char *a, const char *b, int len ) {
     while (--len >= 0) {
         if (toupper(*a) != toupper(*b)) {
             return 1;
@@ -205,7 +257,7 @@ static int strnicmp( const char *a, const char *b, int len ) {
 char* DeviceManagementNode::readPropertyValue(const char* property) {
     int i = 0;
 
-    while (TRUE) {
+    while (true) {
         line *curr = (line *)lines->get(i);
         if (!curr) {
             break;
@@ -247,7 +299,7 @@ char* DeviceManagementNode::readPropertyValue(const char* property) {
 int DeviceManagementNode::getChildrenMaxCount() {
     int count = 0;
 
-    if (gotoDir(TRUE)) {
+    if (gotoDir(true)) {
         DIR *dir = opendir(".");
         if (dir) {
             struct dirent *entry;
@@ -270,7 +322,7 @@ char **DeviceManagementNode::getChildrenNames() {
 
     int size = getChildrenMaxCount();
     if (size) {
-        if (gotoDir(TRUE)) {
+        if (gotoDir(true)) {
             DIR *dir = opendir(".");
             if (dir) {
                 struct dirent *entry;
@@ -302,7 +354,7 @@ char **DeviceManagementNode::getChildrenNames() {
 void DeviceManagementNode::setPropertyValue(const char* property, const char* newvalue) {
     int i = 0;
 
-    while (TRUE) {
+    while (true) {
         line *curr = (line *)lines->get(i);
         if (!curr) {
             break;
@@ -328,7 +380,7 @@ void DeviceManagementNode::setPropertyValue(const char* property, const char* ne
                     strcpy(newstr + (value - start), newvalue);
                     curr->setLine(newstr);
                     delete [] newstr;
-                    modified = TRUE;
+                    modified = true;
                 }
                 return;
             }
@@ -341,7 +393,7 @@ void DeviceManagementNode::setPropertyValue(const char* property, const char* ne
     sprintf(newstr, "%s = %s", property, newvalue);
     line newline(newstr);
     lines->add(newline);
-    modified = TRUE;
+    modified = true;
     delete [] newstr;
 }
 

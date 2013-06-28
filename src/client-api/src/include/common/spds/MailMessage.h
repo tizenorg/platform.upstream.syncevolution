@@ -40,6 +40,9 @@
 #include "base/util/StringBuffer.h"
 #include "base/util/BasicTime.h"
 #include "spds/BodyPart.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 /**
  * This class is represent a mail message, and can parse/format
@@ -158,7 +161,12 @@ class MailMessage : public ArrayElement {
 
         bool operator==(MailMessage& that);
 
+        static StringBuffer decodeHeader(StringBuffer line);
+
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

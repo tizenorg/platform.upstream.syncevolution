@@ -46,15 +46,18 @@
 #include "spds/constants.h"
 #include "spds/SyncItem.h"
 #include "spds/SyncStatus.h"
-#include "spds/SyncSourceConfig.h"
+#include "spds/AbstractSyncSourceConfig.h"
 #include "spds/SyncSourceReport.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 /**
  * This is the main API that a SyncML client developer needs to implement
  * to let the sync engine access the client's data. Each client may provide
  * access to one or more sources.
  */
-class SyncSource : public ArrayElement {
+class SyncSource {
 
 private:
     SyncMode      syncMode;
@@ -70,7 +73,7 @@ private:
     SourceFilter* filter;
 
 protected:
-    SyncSourceConfig& config;
+    AbstractSyncSourceConfig* config;
     SyncSourceReport* report;
 
     /**
@@ -91,9 +94,12 @@ public:
      *               for unit testing outside of the sync framework;
      *               the sync source then references a global config
      *               instance to avoid crashes, but modifying that config
-     *               will not make much sense.
+     *               will not make much sense. The pointer may also be
+     *               set directly after creating the SyncSource, which
+     *               is useful when a derived class creates the config
+     *               in its own constructor.
      */
-    SyncSource(const WCHAR* name, SyncSourceConfig* sc);
+    SyncSource(const WCHAR* name, AbstractSyncSourceConfig* sc);
 
     // Destructor
     virtual ~SyncSource();
@@ -124,15 +130,18 @@ public:
      * synchronization starts.
      *********************************************************/
 
-    /** read-only access to configuration */
-    const SyncSourceConfig& getConfig() const {
-        return config;
-    }
-    /** read-write access to configuration */
-    SyncSourceConfig& getConfig() {
-        return config;
-    }
+    /**
+     * use this directly after constructing the source when passing
+     * the configuration to the constructor directly is not possible
+     */
+    void setConfig(AbstractSyncSourceConfig* sc);
 
+    /** read-only access to configuration */
+    const AbstractSyncSourceConfig& getConfig() const;
+    /** read-write access to configuration */
+    AbstractSyncSourceConfig& getConfig();
+
+    
 
     /**
      * Return pointer to report object.
@@ -252,8 +261,50 @@ public:
      *
      * @param key      the local key of the item
      * @param status   the SyncML status returned by the server
+     * @deprecated
+     * @since          SyncML API v7
      */
-    virtual void setItemStatus(const WCHAR* key, int status) = 0;
+    virtual void setItemStatus(const WCHAR* key, int status) {
+    };
+
+    /**
+     * called by the sync engine with the status returned by the
+     * server for a certain item that the client sent to the server.
+     * It contains also the proper command associated to the item.
+     *
+     * @param key      the local key of the item
+     * @param status   the SyncML status returned by the server
+     * @param command  the SyncML command associated to the item
+     
+     */
+    virtual void setItemStatus(const WCHAR* key, int status, const char* command) {
+        setItemStatus(key, status);
+    }
+    
+    /**
+    * Indicates that all the server status of the current package 
+    * of the client items has been processed by the engine.
+    * This signal can be useful to update the modification arrays
+    */
+    virtual void serverStatusPackageEnded();    
+    
+    /**
+    * Indicates that all the client status of the current package 
+    * of the server items that has been processed by the client and 
+    * are going to be sent to the server.
+    * This signal can be useful to update the modification arrays
+    */
+    virtual void clientStatusPackageEnded(); 
+    
+    /**
+     * Removes all the item of the sync source. It is called 
+     * by the engine in the case of a refresh from server to clean      
+     * all the client items before receiving the server ones.
+     * It is called after the beginSync() method.
+     *
+     *@return 0 if the remote succeded.
+     */
+    virtual int removeAllItems() = 0;
 
     /**
      * Return the key of the first SyncItem of all.
@@ -348,12 +399,13 @@ public:
      * @param item    the item as sent by the server
      */
     virtual int deleteItem(SyncItem& item) = 0;
-
-    /**
-     * ArrayElement implementation
-     */
-    virtual ArrayElement* clone() = 0;
+ 
+               
+    
 };
+
+
+END_NAMESPACE
 
 /** @} */
 /** @endcond */

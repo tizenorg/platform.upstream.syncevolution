@@ -36,10 +36,12 @@
 #include "base/fscapi.h"
 #include "base/Log.h"
 #include "base/util/utils.h"
-#include "spdm/spdmutils.h"
 #include "spdm/constants.h"
 #include "spdm/ManagementNode.h"
 #include "spdm/DeviceManagementNode.h"
+#include "base/globalsdef.h"
+
+USE_NAMESPACE
 
 #ifdef _WIN32_WCE
 #define HKEY_DM_ROOT   HKEY_LOCAL_MACHINE
@@ -95,8 +97,9 @@ char* DeviceManagementNode::readPropertyValue(const char* prop) {
             );
 
     if (key == 0) {
-        lastErrorCode = ERR_INVALID_CONTEXT;
-        sprintf(lastErrorMsg, "Invalid context path: %ls", fullContext);
+        //lastErrorCode = ERR_INVALID_CONTEXT;
+        //sprintf(lastErrorMsg, "Invalid context path: %ls", fullContext);
+        setErrorF(ERR_INVALID_CONTEXT, "Invalid context path: %ls", fullContext);
         goto finally;
     }
 
@@ -157,8 +160,9 @@ int DeviceManagementNode::getChildrenMaxCount() {
             );
 
     if (key == 0) {
-        lastErrorCode = ERR_INVALID_CONTEXT;
-        sprintf(lastErrorMsg, "Invalid context path: %s", fullContext);
+        //lastErrorCode = ERR_INVALID_CONTEXT;
+        //sprintf(lastErrorMsg, "Invalid context path: %s", fullContext);
+        setErrorF(ERR_INVALID_CONTEXT, "Invalid context path: %s", fullContext);
 
         goto finally;
     }
@@ -207,8 +211,9 @@ char **DeviceManagementNode::getChildrenNames() {
             );
 
     if (key == 0) {
-        lastErrorCode = ERR_INVALID_CONTEXT;
-        sprintf(lastErrorMsg, "Invalid context path: %s", fullContext);
+        //lastErrorCode = ERR_INVALID_CONTEXT;
+        //sprintf(lastErrorMsg, "Invalid context path: %s", fullContext);
+        setErrorF(ERR_INVALID_CONTEXT, "Invalid context path: %s", fullContext);
         goto finally;
     }
 
@@ -231,8 +236,9 @@ char **DeviceManagementNode::getChildrenNames() {
                 break;
             }
             else {
-                lastErrorCode = GetLastError();
-                strcpy(lastErrorMsg, "Error enumerating children nodes");
+                //lastErrorCode = GetLastError();
+                //strcpy(lastErrorMsg, "Error enumerating children nodes");
+                setError(GetLastError(), "Error enumerating children nodes"); 
                 goto finally;
             }
         }
@@ -280,8 +286,9 @@ void DeviceManagementNode::setPropertyValue(const char* prop, const char* value)
 
 
     if (key == 0) {
-        lastErrorCode = ERR_INVALID_CONTEXT;
-        sprintf(lastErrorMsg, "Invalid context path: %s", fullContext);
+        //lastErrorCode = ERR_INVALID_CONTEXT;
+        //sprintf(lastErrorMsg, "Invalid context path: %s", fullContext);
+        setErrorF(ERR_INVALID_CONTEXT, "Invalid context path: %s", fullContext);
         goto finally;
     }
 
