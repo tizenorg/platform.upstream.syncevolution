@@ -7,8 +7,8 @@ synchronize personal information management data
 ------------------------------------------------
 
 :Manual section: 1
-:Version: 1.2.99.3
-:Date: 2012-07-24
+:Version: 1.2.99.4
+:Date: 2012-08-07
 
 
 SYNOPSIS
@@ -749,11 +749,13 @@ dumpData (TRUE, unshared)
    before and after a sync session (always enabled if printChanges is enabled)
 
 maxlogdirs (10, shared)
-   Unless this option is set, SyncEvolution will never delete
-   anything in the "logdir". If set, the oldest directories and
-   all their content will be removed after a successful sync
-   to prevent the number of log directories from growing beyond
-   the given limit.
+   Controls how many session directories are kept at most in the logdir.
+   Unless set to zero, SyncEvolution will remove old directories and
+   all their content to prevent the number of log directories from
+   growing beyond the given limit. It tries to be intelligent and will
+   remove sessions in which nothing interesting happened (no errors,
+   no data changes) in favor of keeping sessions where something
+   happened, even if those sessions are older.
 
 autoSync (0, unshared)
    Controls automatic synchronization. Currently,
