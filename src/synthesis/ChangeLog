@@ -5676,7 +5676,60 @@
 	Initial Commit by Synthesis AG for Open Source libsynthesis
 	3.2.0.25 and libsmltk
 
-tead of
+t/test-dbus.py:
+
+	test-dbus: Use non-deprecated unittest assert/fail methods. part
+	II
+
+2011-06-28  Chris Kühl  <chrisk@openismus.com>
+
+	* test/test-dbus.py:
+
+	test-dbus: Catch missing source exception and trigger test
+	failure
+
+2011-06-27  Chris Kühl  <chrisk@openismus.com>
+
+	* test/test-dbus.py:
+
+	test-dbus: Remove redundant directory mapping documentation
+
+2011-06-27  Chris Kühl  <chrisk@openismus.com>
+
+	* test/test-dbus.py:
+
+	test-dbus: Fix typos
+
+2011-06-27  Chris Kühl  <chrisk@openismus.com>
+
+	* test/test-dbus.py:
+
+	test-dbus: Update term 'type' to be its non-ambiguous version
+
+2011-06-27  Chris Kühl  <chrisk@openismus.com>
+
+	* test/test-dbus.py:
+
+	test-dbus: Updated term 'evolutionSource' to 'database'
+
+2011-06-27  Chris Kühl  <chrisk@openismus.com>
+
+	* test/test-dbus.py:
+
+	test-dbus: Make method name consistent (setupFiles -> setUpFiles)
+
+2011-06-27  Chris Kühl  <chrisk@openismus.com>
+
+	* test/test-dbus.py:
+
+	test-dbus: Use non-deprecated unittest assert/fail methods.
+
+2011-06-27  Chris Kühl  <chrisk@openismus.com>
+
+	* src/dbus/interfaces/syncevo-server-full.xml:
+	* src/dbus/interfaces/syncevo-session-full.xml:
+
+	dbus: Updated wording to use 'database' instead of
 	'evolutionSource'
 
 2011-08-22  Chris Kühl  <chrisk@openismus.com>
