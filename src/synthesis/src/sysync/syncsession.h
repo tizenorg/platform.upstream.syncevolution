@@ -493,6 +493,7 @@ public:
   // - session continuation and status
   void nextMessageRequest(void);
   bool sessionMustContinue(void);
+  virtual void essentialStatusReceived(void) { /* NOP here */ };
   void delayExecUntilNextRequest(TSmlCommand *aCommand);
   bool delayedSyncEndsPending(void) { return fDelayedExecSyncEnds>0; };
   // - continue interrupted or prevented issue in next package

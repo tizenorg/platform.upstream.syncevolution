@@ -1873,20 +1873,34 @@ static void decodeValue(
   } // quoted printable
   else if (aEncoding==enc_base64 || aEncoding==enc_b) {
     // Decode b64
-    // - find end of property value
+    // - find start of property value
     p = skipfolded(aText,aMimeMode,false); // get unfolded start point (in case value starts with folding sequence
+    // - find end of property value
     q=p;
     while (*q) {
       if (aStructSep!=0 && (*q==aStructSep || *q==aAltSep))
         break; // structure separator terminates B64 as well (colon, semicolon and comma never appear in B64)
       if (isLineEndChar(*q)) {
         // end of line. Check if this is folding or end of property
-        const char *r=skipfolded(q,aMimeMode,false);
+        cAppCharP r=skipfolded(q,aMimeMode,false);
         if (r==q) {
-          // no folding skipped -> this is the end of the property
-          break;
+          // no folding skipped -> this appears to be the end of the property
+          // Now for ill-encoded vCard 2.1 which chop B64 into lines, but do not prefix continuation
+          // lines with some whitespace, make sure the next line contains a colon
+          // - skip that line end
+          while (isLineEndChar(*r)) r++;
+          // - examine next line
+          bool eob64 = false;
+          for (cAppCharP r2=r; *r2 && !isLineEndChar(*r2); r2++) {
+          	if (*r2==':' || *r2==';') {
+            	eob64 = true;
+              break;
+            }
+          }
+          if (eob64) break; // q is end of B64 string -> go decode it
+          // there's more to the b64 string at r, continue looking for end
         }
-        // skip folding
+        // skip to continuation of B64 string
         q=r;
       }
       else
@@ -2777,6 +2791,11 @@ sInt16 TMimeDirProfileHandler::generateProperty(
     encodeValues(encoding,fDefaultOutCharset,elemtext,proptext,fDoNotFoldContent);
     // - fold, copy and terminate (CRLF) property into aString output
     finalizeProperty(proptext.c_str(),aString,aMimeMode,fDoNotFoldContent,encoding==enc_quoted_printable);
+    // - special case: base64 (but not B) encoded value must have an extra CRLF even if folding is
+    //   disabled, so we need to insert it here (because non-folding mode eliminates it from being
+    //   generated automatically in encodeValues/finalizeProperty)
+    if (fDoNotFoldContent && encoding==enc_base64)
+			aString.append("\x0D\x0A"); // extra CRLF terminating a base64 encoded property (note, base64 only occurs in mimo_old)
     // - property generated
     return GENPROP_NONEMPTY;
   }
@@ -3840,7 +3859,7 @@ bool TMimeDirProfileHandler::parseProperty(
       #endif
       break; // all available values read
     }
-    // skip separatore
+    // skip separator
     p++;
     // get value(list) unfolded
     decodeValue(encoding,charset,aMimeMode,aPropP->numValues > 1 || valuelist ? aPropP->valuesep : 0,aPropP->altvaluesep,p,val);

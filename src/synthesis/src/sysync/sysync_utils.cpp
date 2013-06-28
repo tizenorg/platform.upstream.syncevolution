@@ -802,7 +802,9 @@ void appendEncoded(
         }
         if (aEncoding!=enc_b) {
           // make sure it ends with a newline for "base64" (but NOT for "b" as used in RFC2047)
-          aString+= aSoftBreaksAsCR ? "\r" : "\x0D\x0A";
+          // Note: when used in vCard2.1, that newline is part of the property and show as an
+          //       empty line in the vCard.
+          aString += aSoftBreaksAsCR ? "\r" : "\x0D\x0A";
         }
       }
       break;

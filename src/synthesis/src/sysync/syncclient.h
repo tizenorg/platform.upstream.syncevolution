@@ -323,9 +323,12 @@ protected:
   TClientEngineState fEngineState;
   #endif // ENGINEINTERFACE_SUPPORT
   // - client side consecutive Alert 222, used to detect endless loop
-  uInt32 fOutgoingAlertRequests;
+  uInt32 fOutgoingAlert222Count;
   // Loop detecting time frame to avoid wrong detection of "keep-alive" message
-  lineartime_t fOutgoingAlertStart;
+  lineartime_t fLastOutgoingAlert222;
+	// - called when essential status was received resets clien side Alert 222 loop detector
+  //   because receiving essential status means real session progress
+  virtual void essentialStatusReceived(void) { fOutgoingAlert222Count = 0; };
 public:
   // - can be cleared to suppress automatic use of DS 1.2 SINCE/BEFORE filters
   //   (e.g. for date range in func_SetDaysRange())

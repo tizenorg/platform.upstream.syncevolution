@@ -1328,8 +1328,8 @@ bool TAlertCommand::issue(
 
 bool TAlertCommand::statusEssential(void)
 {
-	// Alert 222 status is not essential in lenient mode
-  return !(fAlertCode==222 && fSessionP->fLenientMode);
+	// Alert 222 status is not essential
+  return !(fAlertCode==222);
 } // TAlertCommand::statusEssential
 
  
@@ -3331,7 +3331,7 @@ bool TGetCommand::issue(
 
 bool TGetCommand::statusEssential(void)
 {
-	// Alert 222 status is not essential in lenient mode
+	// get status is not essential in lenient mode
   return !(fSessionP->fLenientMode);
 } // TGetCommand::statusEssential
 

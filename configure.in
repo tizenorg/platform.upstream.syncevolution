@@ -1,7 +1,7 @@
 dnl -*- mode: Autoconf; -*-
 dnl Invoke autogen.sh to produce a configure script.
 
-AC_INIT([syncevolution], [0.9+0.9.1beta1])
+AC_INIT([syncevolution], [0.9+0.9.1beta2])
 AM_INIT_AUTOMAKE([tar-ustar])
 AC_CONFIG_MACRO_DIR([m4])
 define([SYNTHESISSRC_REPO], [])
@@ -729,6 +729,7 @@ dnl --enable-evolution-compatibility
 if test "$enable_evolution_compatibility" == "yes"; then
    AC_DEFINE(EVOLUTION_COMPATIBILITY, 1, [avoid hard dependency on Evolution shared objects])
 fi
+AM_CONDITIONAL([ENABLE_EVOLUTION_COMPATIBILITY], [test "$enable_evolution_compatibility" == "yes"])
 
 dnl --enable-developer-mode
 if test "$enable_developer_mode" == "yes"; then

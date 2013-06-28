@@ -611,8 +611,8 @@ void TSyncClient::InternalResetSession(void)
   // will be cleared to suppress automatic use of DS 1.2 SINCE/BEFORE filters
   // (e.g. for date range in func_SetDaysRange())
   fServerHasSINCEBEFORE = true;
-	// no outgoing alert 222 sent so far
-  fOutgoingAlertRequests = 0;
+  // no outgoing alert 222 sent so far
+  fOutgoingAlert222Count = 0;
 } // TSyncClient::InternalResetSession
 
 
@@ -1126,16 +1126,19 @@ localstatus TSyncClient::NextMessage(bool &aDone)
        * It is still valid for the server to use ALERT222 to "keep-alive" the
        * connection.
        * Therefore the loop detection criteria is:
-       * 5 adjecent alerts within 20 seconds
+       * - Nothing to send except the 222 Alert (!fNeedToAnswer)
+       * - 5 adjacent 222 alerts within 20 seconds
+       * - no status for an actual sync op command received (fOutgoingAlert222Count will be reset by those)
+       *   because a server sending pending status in small chunks could also trigger the detector otherwise
        */
       if (!fNeedToAnswer) {
         dummyAlert = true;
-        if (fOutgoingAlertRequests++ == 0) {
+        if (fOutgoingAlert222Count++ == 0) {
         	// start of 222 loop detection time
-          fOutgoingAlertStart = getSystemNowAs(TCTX_UTC);
-        } else if (fOutgoingAlertRequests > 5) {
+          fLastOutgoingAlert222 = getSystemNowAs(TCTX_UTC);
+        } else if (fOutgoingAlert222Count > 5) {
           lineartime_t curTime = getSystemNowAs(TCTX_UTC);
-          if (curTime - fOutgoingAlertStart < 20*secondToLinearTimeFactor) {
+          if (curTime - fLastOutgoingAlert222 < 20*secondToLinearTimeFactor) {
             PDEBUGPRINTFX(DBG_ERROR,(
               "Warning: More than 5 consecutive Alert 222 within 20 seconds- "
               "looks like endless loop, abort session"
@@ -1143,7 +1146,7 @@ localstatus TSyncClient::NextMessage(bool &aDone)
             AbortSession(400, false);
             return getAbortReasonStatus();
           } else {
-            fOutgoingAlertRequests = 0;
+            fOutgoingAlert222Count = 0;
           }
         }
       }
@@ -1161,7 +1164,7 @@ localstatus TSyncClient::NextMessage(bool &aDone)
   }
   // We send a response with no dummy alert, so reset the alert detector
   if (!dummyAlert) {
-    fOutgoingAlertRequests = 0;
+    fOutgoingAlert222Count = 0;
   }
 
   // send custom end-of session puts

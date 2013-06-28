@@ -285,7 +285,7 @@ public:
     uInt32 aInMsgID,     // message ID in which command is being issued
     bool aNoResp=false // issue without wanting response
   ); // returns false, because command can be deleted immediately after issue()
-  virtual bool statusEssential(void);
+  virtual bool statusEssential(void); // depends on alert code if it is essential
   // - add a String Item
   void addItemString(const char *aItemString); // item string to be added
   // - add an Item
@@ -585,7 +585,7 @@ public:
     uInt32 aInMsgID,     // message ID in which command is being issued
     bool aNoResp=true  // status does not want response by default
   ); // returns true if command must be put to the waiting-for-status queue. If false, command can be deleted
-  virtual bool statusEssential(void);
+  virtual bool statusEssential(void); // can be essential or not
   // - handle status received for previously issued command
   //   returns true if done, false if command must be kept in the status queue
   virtual bool handleStatus(TStatusCommand *aStatusCmdP);
