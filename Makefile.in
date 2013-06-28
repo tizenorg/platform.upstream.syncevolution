@@ -2366,10 +2366,11 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 
 @COND_GIO_GDBUS_TRUE@src_gdbusxx_libgdbussyncevo_la_LDFLAGS = $(src_gdbus_version_info)
 @COND_GIO_GDBUS_TRUE@src_gdbusxx_libgdbussyncevo_la_LIBADD = $(GLIB_LIBS) $(DBUS_LIBS)
-@COND_GIO_GDBUS_TRUE@src_gdbusxx_libgdbussyncevo_la_CXXFLAGS = $(GLIB_CFLAGS) $(DBUS_CFLAGS)
+@COND_GIO_GDBUS_TRUE@src_gdbusxx_libgdbussyncevo_la_CXXFLAGS = $(GLIB_CFLAGS) $(DBUS_CFLAGS) $(SYNCEVO_WFLAGS)
+@COND_GIO_GDBUS_TRUE@src_gdbusxx_libgdbussyncevo_la_CPPFLAGS = $(BOOST_CPPFLAGS)
 @COND_GIO_GDBUS_TRUE@src_gdbusxx_example_SOURCES = src/gdbusxx/test/example.cpp
-@COND_GIO_GDBUS_TRUE@src_gdbusxx_example_CPPFLAGS = -I$(top_srcdir)/src/gdbusxx/
-@COND_GIO_GDBUS_TRUE@src_gdbusxx_example_CXXFLAGS = $(GLIB_CFLAGS) $(DBUS_CFLAGS)
+@COND_GIO_GDBUS_TRUE@src_gdbusxx_example_CPPFLAGS = -I$(top_srcdir)/src/gdbusxx/ $(BOOST_CPPFLAGS)
+@COND_GIO_GDBUS_TRUE@src_gdbusxx_example_CXXFLAGS = $(GLIB_CFLAGS) $(DBUS_CFLAGS) $(SYNCEVO_WFLAGS)
 @COND_GIO_GDBUS_TRUE@src_gdbusxx_example_LDADD = src/gdbusxx/libgdbussyncevo.la $(GLIB_LIBS) $(DBUS_LIBS)
 @COND_GIO_GDBUS_FALSE@@ENABLE_MODULES_TRUE@src_gdbus_version_info = -version-info 0:0:0
 @COND_GIO_GDBUS_FALSE@src_gdbus_libgdbussyncevo_la_SOURCES = \
@@ -2387,10 +2388,11 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_GIO_GDBUS_FALSE@src_gdbus_libgdbussyncevo_la_LIBADD = @GLIB_LIBS@ @DBUS_LIBS@
 @COND_GIO_GDBUS_FALSE@src_gdbus_libgdbussyncevo_la_CFLAGS = @GLIB_CFLAGS@ @DBUS_CFLAGS@ $(SYNCEVO_WFLAGS)
 @COND_GIO_GDBUS_FALSE@src_gdbus_libgdbussyncevo_la_CXXFLAGS = @GLIB_CFLAGS@ @DBUS_CFLAGS@ $(SYNCEVO_WFLAGS)
+@COND_GIO_GDBUS_FALSE@src_gdbus_libgdbussyncevo_la_CPPFLAGS = $(BOOST_CPPFLAGS)
 @COND_GIO_GDBUS_FALSE@src_gdbus_example_SOURCES = src/gdbus/test/example.cpp
 @COND_GIO_GDBUS_FALSE@src_gdbus_example_CXXFLAGS = @GLIB_CFLAGS@ @DBUS_CFLAGS@ $(SYNCEVO_WFLAGS)
 @COND_GIO_GDBUS_FALSE@src_gdbus_example_LDADD = src/gdbus/libgdbussyncevo.la @GLIB_LIBS@ @DBUS_LIBS@
-@COND_GIO_GDBUS_FALSE@src_gdbus_example_CPPFLAGS = -I$(top_srcdir)/src/gdbus
+@COND_GIO_GDBUS_FALSE@src_gdbus_example_CPPFLAGS = -I$(top_srcdir)/src/gdbus $(BOOST_CPPFLAGS)
 @COND_CORE_TRUE@src_syncevo_configs_xmldir = $(datadir)/syncevolution/xml
 @COND_CORE_TRUE@dist_src_syncevo_configs_xml_SCRIPTS = src/syncevo/configs/update-samples.pl
 
@@ -5656,36 +5658,36 @@ src/dbus/glib/src_dbus_glib_libsyncevo_dbus_la-syncevo-marshal.lo: src/dbus/glib
 @am__fastdepCC_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_glib_libsyncevo_dbus_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_glib_libsyncevo_dbus_la_CFLAGS) $(CFLAGS) -c -o src/dbus/glib/src_dbus_glib_libsyncevo_dbus_la-syncevo-marshal.lo `test -f 'src/dbus/glib/syncevo-marshal.c' || echo '$(srcdir)/'`src/dbus/glib/syncevo-marshal.c
 
 src/gdbus/src_gdbus_libgdbussyncevo_la-debug.lo: src/gdbus/debug.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(src_gdbus_libgdbussyncevo_la_CFLAGS) $(CFLAGS) -MT src/gdbus/src_gdbus_libgdbussyncevo_la-debug.lo -MD -MP -MF src/gdbus/$(DEPDIR)/src_gdbus_libgdbussyncevo_la-debug.Tpo -c -o src/gdbus/src_gdbus_libgdbussyncevo_la-debug.lo `test -f 'src/gdbus/debug.c' || echo '$(srcdir)/'`src/gdbus/debug.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_gdbus_libgdbussyncevo_la_CPPFLAGS) $(CPPFLAGS) $(src_gdbus_libgdbussyncevo_la_CFLAGS) $(CFLAGS) -MT src/gdbus/src_gdbus_libgdbussyncevo_la-debug.lo -MD -MP -MF src/gdbus/$(DEPDIR)/src_gdbus_libgdbussyncevo_la-debug.Tpo -c -o src/gdbus/src_gdbus_libgdbussyncevo_la-debug.lo `test -f 'src/gdbus/debug.c' || echo '$(srcdir)/'`src/gdbus/debug.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) src/gdbus/$(DEPDIR)/src_gdbus_libgdbussyncevo_la-debug.Tpo src/gdbus/$(DEPDIR)/src_gdbus_libgdbussyncevo_la-debug.Plo
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='src/gdbus/debug.c' object='src/gdbus/src_gdbus_libgdbussyncevo_la-debug.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(src_gdbus_libgdbussyncevo_la_CFLAGS) $(CFLAGS) -c -o src/gdbus/src_gdbus_libgdbussyncevo_la-debug.lo `test -f 'src/gdbus/debug.c' || echo '$(srcdir)/'`src/gdbus/debug.c
+@am__fastdepCC_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_gdbus_libgdbussyncevo_la_CPPFLAGS) $(CPPFLAGS) $(src_gdbus_libgdbussyncevo_la_CFLAGS) $(CFLAGS) -c -o src/gdbus/src_gdbus_libgdbussyncevo_la-debug.lo `test -f 'src/gdbus/debug.c' || echo '$(srcdir)/'`src/gdbus/debug.c
 
 src/gdbus/src_gdbus_libgdbussyncevo_la-mainloop.lo: src/gdbus/mainloop.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(src_gdbus_libgdbussyncevo_la_CFLAGS) $(CFLAGS) -MT src/gdbus/src_gdbus_libgdbussyncevo_la-mainloop.lo -MD -MP -MF src/gdbus/$(DEPDIR)/src_gdbus_libgdbussyncevo_la-mainloop.Tpo -c -o src/gdbus/src_gdbus_libgdbussyncevo_la-mainloop.lo `test -f 'src/gdbus/mainloop.c' || echo '$(srcdir)/'`src/gdbus/mainloop.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_gdbus_libgdbussyncevo_la_CPPFLAGS) $(CPPFLAGS) $(src_gdbus_libgdbussyncevo_la_CFLAGS) $(CFLAGS) -MT src/gdbus/src_gdbus_libgdbussyncevo_la-mainloop.lo -MD -MP -MF src/gdbus/$(DEPDIR)/src_gdbus_libgdbussyncevo_la-mainloop.Tpo -c -o src/gdbus/src_gdbus_libgdbussyncevo_la-mainloop.lo `test -f 'src/gdbus/mainloop.c' || echo '$(srcdir)/'`src/gdbus/mainloop.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) src/gdbus/$(DEPDIR)/src_gdbus_libgdbussyncevo_la-mainloop.Tpo src/gdbus/$(DEPDIR)/src_gdbus_libgdbussyncevo_la-mainloop.Plo
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='src/gdbus/mainloop.c' object='src/gdbus/src_gdbus_libgdbussyncevo_la-mainloop.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(src_gdbus_libgdbussyncevo_la_CFLAGS) $(CFLAGS) -c -o src/gdbus/src_gdbus_libgdbussyncevo_la-mainloop.lo `test -f 'src/gdbus/mainloop.c' || echo '$(srcdir)/'`src/gdbus/mainloop.c
+@am__fastdepCC_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_gdbus_libgdbussyncevo_la_CPPFLAGS) $(CPPFLAGS) $(src_gdbus_libgdbussyncevo_la_CFLAGS) $(CFLAGS) -c -o src/gdbus/src_gdbus_libgdbussyncevo_la-mainloop.lo `test -f 'src/gdbus/mainloop.c' || echo '$(srcdir)/'`src/gdbus/mainloop.c
 
 src/gdbus/src_gdbus_libgdbussyncevo_la-object.lo: src/gdbus/object.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(src_gdbus_libgdbussyncevo_la_CFLAGS) $(CFLAGS) -MT src/gdbus/src_gdbus_libgdbussyncevo_la-object.lo -MD -MP -MF src/gdbus/$(DEPDIR)/src_gdbus_libgdbussyncevo_la-object.Tpo -c -o src/gdbus/src_gdbus_libgdbussyncevo_la-object.lo `test -f 'src/gdbus/object.c' || echo '$(srcdir)/'`src/gdbus/object.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_gdbus_libgdbussyncevo_la_CPPFLAGS) $(CPPFLAGS) $(src_gdbus_libgdbussyncevo_la_CFLAGS) $(CFLAGS) -MT src/gdbus/src_gdbus_libgdbussyncevo_la-object.lo -MD -MP -MF src/gdbus/$(DEPDIR)/src_gdbus_libgdbussyncevo_la-object.Tpo -c -o src/gdbus/src_gdbus_libgdbussyncevo_la-object.lo `test -f 'src/gdbus/object.c' || echo '$(srcdir)/'`src/gdbus/object.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) src/gdbus/$(DEPDIR)/src_gdbus_libgdbussyncevo_la-object.Tpo src/gdbus/$(DEPDIR)/src_gdbus_libgdbussyncevo_la-object.Plo
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='src/gdbus/object.c' object='src/gdbus/src_gdbus_libgdbussyncevo_la-object.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(src_gdbus_libgdbussyncevo_la_CFLAGS) $(CFLAGS) -c -o src/gdbus/src_gdbus_libgdbussyncevo_la-object.lo `test -f 'src/gdbus/object.c' || echo '$(srcdir)/'`src/gdbus/object.c
+@am__fastdepCC_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_gdbus_libgdbussyncevo_la_CPPFLAGS) $(CPPFLAGS) $(src_gdbus_libgdbussyncevo_la_CFLAGS) $(CFLAGS) -c -o src/gdbus/src_gdbus_libgdbussyncevo_la-object.lo `test -f 'src/gdbus/object.c' || echo '$(srcdir)/'`src/gdbus/object.c
 
 src/gdbus/src_gdbus_libgdbussyncevo_la-watch.lo: src/gdbus/watch.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(src_gdbus_libgdbussyncevo_la_CFLAGS) $(CFLAGS) -MT src/gdbus/src_gdbus_libgdbussyncevo_la-watch.lo -MD -MP -MF src/gdbus/$(DEPDIR)/src_gdbus_libgdbussyncevo_la-watch.Tpo -c -o src/gdbus/src_gdbus_libgdbussyncevo_la-watch.lo `test -f 'src/gdbus/watch.c' || echo '$(srcdir)/'`src/gdbus/watch.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_gdbus_libgdbussyncevo_la_CPPFLAGS) $(CPPFLAGS) $(src_gdbus_libgdbussyncevo_la_CFLAGS) $(CFLAGS) -MT src/gdbus/src_gdbus_libgdbussyncevo_la-watch.lo -MD -MP -MF src/gdbus/$(DEPDIR)/src_gdbus_libgdbussyncevo_la-watch.Tpo -c -o src/gdbus/src_gdbus_libgdbussyncevo_la-watch.lo `test -f 'src/gdbus/watch.c' || echo '$(srcdir)/'`src/gdbus/watch.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) src/gdbus/$(DEPDIR)/src_gdbus_libgdbussyncevo_la-watch.Tpo src/gdbus/$(DEPDIR)/src_gdbus_libgdbussyncevo_la-watch.Plo
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='src/gdbus/watch.c' object='src/gdbus/src_gdbus_libgdbussyncevo_la-watch.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(src_gdbus_libgdbussyncevo_la_CFLAGS) $(CFLAGS) -c -o src/gdbus/src_gdbus_libgdbussyncevo_la-watch.lo `test -f 'src/gdbus/watch.c' || echo '$(srcdir)/'`src/gdbus/watch.c
+@am__fastdepCC_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_gdbus_libgdbussyncevo_la_CPPFLAGS) $(CPPFLAGS) $(src_gdbus_libgdbussyncevo_la_CFLAGS) $(CFLAGS) -c -o src/gdbus/src_gdbus_libgdbussyncevo_la-watch.lo `test -f 'src/gdbus/watch.c' || echo '$(srcdir)/'`src/gdbus/watch.c
 
 src/gnome-bluetooth/src_gnome_bluetooth_libgbtsyncevolution_la-syncevolution.lo: src/gnome-bluetooth/syncevolution.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_gnome_bluetooth_libgbtsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(src_gnome_bluetooth_libgbtsyncevolution_la_CFLAGS) $(CFLAGS) -MT src/gnome-bluetooth/src_gnome_bluetooth_libgbtsyncevolution_la-syncevolution.lo -MD -MP -MF src/gnome-bluetooth/$(DEPDIR)/src_gnome_bluetooth_libgbtsyncevolution_la-syncevolution.Tpo -c -o src/gnome-bluetooth/src_gnome_bluetooth_libgbtsyncevolution_la-syncevolution.lo `test -f 'src/gnome-bluetooth/syncevolution.c' || echo '$(srcdir)/'`src/gnome-bluetooth/syncevolution.c
@@ -6747,20 +6749,20 @@ src/dbus/server/src_dbus_server_libsyncevodbusserver_la-main.lo: src/dbus/server
 @am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_server_libsyncevodbusserver_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) $(CXXFLAGS) -c -o src/dbus/server/src_dbus_server_libsyncevodbusserver_la-main.lo `test -f 'src/dbus/server/main.cpp' || echo '$(srcdir)/'`src/dbus/server/main.cpp
 
 src/gdbus/src_gdbus_libgdbussyncevo_la-gdbus-cxx-bridge.lo: src/gdbus/gdbus-cxx-bridge.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(src_gdbus_libgdbussyncevo_la_CXXFLAGS) $(CXXFLAGS) -MT src/gdbus/src_gdbus_libgdbussyncevo_la-gdbus-cxx-bridge.lo -MD -MP -MF src/gdbus/$(DEPDIR)/src_gdbus_libgdbussyncevo_la-gdbus-cxx-bridge.Tpo -c -o src/gdbus/src_gdbus_libgdbussyncevo_la-gdbus-cxx-bridge.lo `test -f 'src/gdbus/gdbus-cxx-bridge.cpp' || echo '$(srcdir)/'`src/gdbus/gdbus-cxx-bridge.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_gdbus_libgdbussyncevo_la_CPPFLAGS) $(CPPFLAGS) $(src_gdbus_libgdbussyncevo_la_CXXFLAGS) $(CXXFLAGS) -MT src/gdbus/src_gdbus_libgdbussyncevo_la-gdbus-cxx-bridge.lo -MD -MP -MF src/gdbus/$(DEPDIR)/src_gdbus_libgdbussyncevo_la-gdbus-cxx-bridge.Tpo -c -o src/gdbus/src_gdbus_libgdbussyncevo_la-gdbus-cxx-bridge.lo `test -f 'src/gdbus/gdbus-cxx-bridge.cpp' || echo '$(srcdir)/'`src/gdbus/gdbus-cxx-bridge.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/gdbus/$(DEPDIR)/src_gdbus_libgdbussyncevo_la-gdbus-cxx-bridge.Tpo src/gdbus/$(DEPDIR)/src_gdbus_libgdbussyncevo_la-gdbus-cxx-bridge.Plo
 @am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/gdbus/gdbus-cxx-bridge.cpp' object='src/gdbus/src_gdbus_libgdbussyncevo_la-gdbus-cxx-bridge.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(src_gdbus_libgdbussyncevo_la_CXXFLAGS) $(CXXFLAGS) -c -o src/gdbus/src_gdbus_libgdbussyncevo_la-gdbus-cxx-bridge.lo `test -f 'src/gdbus/gdbus-cxx-bridge.cpp' || echo '$(srcdir)/'`src/gdbus/gdbus-cxx-bridge.cpp
+@am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_gdbus_libgdbussyncevo_la_CPPFLAGS) $(CPPFLAGS) $(src_gdbus_libgdbussyncevo_la_CXXFLAGS) $(CXXFLAGS) -c -o src/gdbus/src_gdbus_libgdbussyncevo_la-gdbus-cxx-bridge.lo `test -f 'src/gdbus/gdbus-cxx-bridge.cpp' || echo '$(srcdir)/'`src/gdbus/gdbus-cxx-bridge.cpp
 
 src/gdbusxx/src_gdbusxx_libgdbussyncevo_la-gdbus-cxx-bridge.lo: src/gdbusxx/gdbus-cxx-bridge.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(src_gdbusxx_libgdbussyncevo_la_CXXFLAGS) $(CXXFLAGS) -MT src/gdbusxx/src_gdbusxx_libgdbussyncevo_la-gdbus-cxx-bridge.lo -MD -MP -MF src/gdbusxx/$(DEPDIR)/src_gdbusxx_libgdbussyncevo_la-gdbus-cxx-bridge.Tpo -c -o src/gdbusxx/src_gdbusxx_libgdbussyncevo_la-gdbus-cxx-bridge.lo `test -f 'src/gdbusxx/gdbus-cxx-bridge.cpp' || echo '$(srcdir)/'`src/gdbusxx/gdbus-cxx-bridge.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_gdbusxx_libgdbussyncevo_la_CPPFLAGS) $(CPPFLAGS) $(src_gdbusxx_libgdbussyncevo_la_CXXFLAGS) $(CXXFLAGS) -MT src/gdbusxx/src_gdbusxx_libgdbussyncevo_la-gdbus-cxx-bridge.lo -MD -MP -MF src/gdbusxx/$(DEPDIR)/src_gdbusxx_libgdbussyncevo_la-gdbus-cxx-bridge.Tpo -c -o src/gdbusxx/src_gdbusxx_libgdbussyncevo_la-gdbus-cxx-bridge.lo `test -f 'src/gdbusxx/gdbus-cxx-bridge.cpp' || echo '$(srcdir)/'`src/gdbusxx/gdbus-cxx-bridge.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/gdbusxx/$(DEPDIR)/src_gdbusxx_libgdbussyncevo_la-gdbus-cxx-bridge.Tpo src/gdbusxx/$(DEPDIR)/src_gdbusxx_libgdbussyncevo_la-gdbus-cxx-bridge.Plo
 @am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/gdbusxx/gdbus-cxx-bridge.cpp' object='src/gdbusxx/src_gdbusxx_libgdbussyncevo_la-gdbus-cxx-bridge.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(src_gdbusxx_libgdbussyncevo_la_CXXFLAGS) $(CXXFLAGS) -c -o src/gdbusxx/src_gdbusxx_libgdbussyncevo_la-gdbus-cxx-bridge.lo `test -f 'src/gdbusxx/gdbus-cxx-bridge.cpp' || echo '$(srcdir)/'`src/gdbusxx/gdbus-cxx-bridge.cpp
+@am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_gdbusxx_libgdbussyncevo_la_CPPFLAGS) $(CPPFLAGS) $(src_gdbusxx_libgdbussyncevo_la_CXXFLAGS) $(CXXFLAGS) -c -o src/gdbusxx/src_gdbusxx_libgdbussyncevo_la-gdbus-cxx-bridge.lo `test -f 'src/gdbusxx/gdbus-cxx-bridge.cpp' || echo '$(srcdir)/'`src/gdbusxx/gdbus-cxx-bridge.cpp
 
 src/syncevo/src_syncevo_libsyncevolution_la-ConfigFilter.lo: src/syncevo/ConfigFilter.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -MT src/syncevo/src_syncevo_libsyncevolution_la-ConfigFilter.lo -MD -MP -MF src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-ConfigFilter.Tpo -c -o src/syncevo/src_syncevo_libsyncevolution_la-ConfigFilter.lo `test -f 'src/syncevo/ConfigFilter.cpp' || echo '$(srcdir)/'`src/syncevo/ConfigFilter.cpp
