@@ -72,7 +72,7 @@ class TSyncAppBase;
 
 
 // settings key implementation base class
-class TSettingsKeyImpl
+class TSettingsKeyImpl : noncopyable
 {
 public:
   TSettingsKeyImpl(TEngineInterface *aEngineInterfaceP);
@@ -463,9 +463,11 @@ protected:
 
 
 // Common Engine Interface
-class TEngineInterface
-#ifndef SIMPLE_LINKING
-  : public TEngineModuleBase
+class TEngineInterface :
+#ifdef SIMPLE_LINKING
+  noncopyable
+#else
+  public TEngineModuleBase
 #endif
 {
   #ifndef SIMPLE_LINKING

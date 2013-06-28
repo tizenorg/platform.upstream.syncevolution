@@ -27,7 +27,7 @@ class TSyncSession;
 class TSyncAppBase;
 
 
-class TSyncDataStore
+class TSyncDataStore : noncopyable
 {
 private:
   void init(TSyncSession *aSessionP); // internal init

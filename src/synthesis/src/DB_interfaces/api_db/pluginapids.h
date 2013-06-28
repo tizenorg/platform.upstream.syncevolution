@@ -388,7 +388,7 @@ private:
 #ifdef STREAMFIELD_SUPPORT
 
 // proxy for loading blobs
-class TApiBlobProxy : public TBlobProxy
+class TApiBlobProxy : public TBlobProxy, noncopyable
 {
   typedef TBlobProxy inherited;
 public:

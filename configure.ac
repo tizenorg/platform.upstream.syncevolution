@@ -25,7 +25,7 @@ SE_CHECK_FOR_STABLE_RELEASE
 
 # Minimum version of libsynthesis as defined in its
 # configure script and thus .pc files:
-define([SYNTHESIS_MIN_VERSION], [3.4.0.16.8])
+define([SYNTHESIS_MIN_VERSION], [3.4.0.16.9])
 
 # Line above is patched by gen-autotools.sh. Handle
 # both "yes" and "no".
@@ -555,6 +555,8 @@ if test $enable_dbus_service = "yes"; then
                         # to go to the start of the link line).
                         DBUS_PIM_PLUGIN_LIBS='$(BOOST_LDFLAGS) $(BOOST_LOCALE_LIB)'
                         DBUS_PIM_PLUGIN_LDFLAGS=
+                        # We need to call ICU directly for the Han->Latin transformation.
+                        PKG_CHECK_MODULES(ICU, [icu-uc])
                         ;;
                 esac
                 AC_SUBST(DBUS_PIM_PLUGIN_CFLAGS)
@@ -831,7 +833,7 @@ if test $SYNTHESIS_SRC != "no-synthesis-source"; then
     export PKG_CONFIG_PATH=$SYNTHESIS_SUBDIR:$PKG_CONFIG_PATH
     PKG_CHECK_MODULES([WITH_SYNTHESIS_SRC], [synthesis >= SYNTHESIS_MIN_VERSION],
                       [],
-                      [AC_MSG_ERROR([need at least libsynthesis >= SYNTHESIS_MIN_VERSION; the latest libsynthesis for SyncEvolution is the one from http://meego.gitorious.org/meego-middleware/libsynthesis])])
+                      [AC_MSG_ERROR([need at least libsynthesis >= SYNTHESIS_MIN_VERSION; the latest libsynthesis for SyncEvolution is the one from http://cgit.freedesktop.org/SyncEvolution/])])
 
 fi
 

@@ -61,7 +61,8 @@ extern const char * const comparisonModeNames[numEQmodes];
 class TLocalEngineDS;
 class TSyncAppBase;
 
-class TSyncItem
+class TSyncItem :
+  noncopyable
 {
 public:
   TSyncItem(TSyncItemType *aItemType=NULL);

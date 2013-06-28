@@ -15,6 +15,7 @@
 
 #include "generic_types.h"
 #include "sync_dbapidef.h"
+#include "sysync_noncopyable.h"
 
 // we need STL strings
 #include <string>
@@ -25,7 +26,8 @@ using namespace std;
 namespace sysync {
 
 // Engine module base
-class TEngineModuleBase
+class TEngineModuleBase :
+  noncopyable
 {
     SDK_Interface_Struct fCIBuffer; // used for fCI if the caller of Connect() doesn't set something
 

@@ -90,6 +90,9 @@ DBusSync::DBusSync(const SessionCommon::SyncParams &params,
                                     SYNC_NONE,
                                     0, 0, 0);
     }
+
+    // Forward the SourceSyncedSignal via D-Bus.
+    m_sourceSyncedSignal.connect(boost::bind(m_helper.emitSourceSynced, _1, _2));
 }
 
 DBusSync::~DBusSync()
@@ -220,19 +223,19 @@ void DBusSync::askPasswordAsync(const std::string &passwordName,
     }
 
     try {
-        SE_LOG_DEBUG(NULL, NULL, "asking parent for password");
+        SE_LOG_DEBUG(NULL, "asking parent for password");
         m_passwordSuccess = success;
         m_passwordFailure = failureException;
         m_helper.emitPasswordRequest(descr, key);
         if (!m_helper.connected()) {
-            SE_LOG_DEBUG(NULL, NULL, "password request failed, lost connection");
+            SE_LOG_DEBUG(NULL, "password request failed, lost connection");
             SE_THROW_EXCEPTION_STATUS(StatusException,
                                       StringPrintf("Could not get the '%s' password from user, no connection to UI.",
                                                    descr.c_str()),
                                       STATUS_PASSWORD_TIMEOUT);
         }
         if (SuspendFlags::getSuspendFlags().getState() != SuspendFlags::NORMAL) {
-            SE_LOG_DEBUG(NULL, NULL, "password request failed, was asked to terminate");
+            SE_LOG_DEBUG(NULL, "password request failed, was asked to terminate");
             SE_THROW_EXCEPTION_STATUS(StatusException,
                                       StringPrintf("Could not get the '%s' password from user, was asked to shut down.",
                                                    descr.c_str()),
@@ -254,7 +257,7 @@ void DBusSync::passwordResponse(bool timedOut, bool aborted, const std::string &
     std::swap(failureException, m_passwordFailure);
 
     if (success && failureException) {
-        SE_LOG_DEBUG(NULL, NULL, "password result: %s",
+        SE_LOG_DEBUG(NULL, "password result: %s",
                      timedOut ? "timeout or parent gone" :
                      aborted ? "user abort" :
                      password.empty() ? "empty password" :

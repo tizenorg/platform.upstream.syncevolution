@@ -92,7 +92,7 @@ template <class T> void MakeObj( T* &act )
 
 
 // ---------- list class --------------------------------------
-class TList
+class TList : noncopyable
 {
   public:
              TList() { next= NULL; }         // constructor

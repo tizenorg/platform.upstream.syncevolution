@@ -138,6 +138,22 @@ static TAccess* AssignedObject( cAppCharP name, bool is_jni )
   return d;
 } // AssignedObject
 
+static void FreeAssignedObject( TAccess* d )
+{
+  do {
+    #ifdef JNI_SUPPORT
+      if (d->fJNI) { TJNI_Methods* dj= static_cast<TJNI_Methods*>( d );
+                     delete        dj; break; } // JNI (Java)
+    #endif
+
+    if   (d->fLIB) { delete        d;  break; } // LIB direct
+
+    #ifdef PLUGIN_DLL
+                   { TDLL*         dd= static_cast<TDLL*>( d );
+                     delete        dd; break; } // DLL (C/C++)
+    #endif
+  } while (false);
+}
 
 
 // ------------------------------------------------------------------
@@ -147,7 +163,7 @@ TSyError ConnectModule( appPointer &aMod, cAppCharP aModName, bool is_jni )
   if     (!d)        return DB_Forbidden;
   if      (d->Connect       ( aModName,ModuleConnectionError ))
        { aMod=    d; return LOCERR_OK;   }
-  else { aMod= NULL; return DB_NotFound; }
+  else { aMod= NULL; FreeAssignedObject(d); return DB_NotFound; }
 } // ConnectModule
 
 
@@ -219,20 +235,7 @@ TSyError DisconnectModule( appPointer &aMod )
 
   if  (d==NULL)  return err;
   if (!d->Disconnect()) err= DB_NotFound;
-
-  do {
-    #ifdef JNI_SUPPORT
-      if (d->fJNI) { TJNI_Methods* dj= static_cast<TJNI_Methods*>( d );
-                     delete        dj; break; } // JNI (Java)
-    #endif
-
-    if   (d->fLIB) { delete        d;  break; } // LIB direct
-
-    #ifdef PLUGIN_DLL
-                   { TDLL*         dd= static_cast<TDLL*>( d );
-                     delete        dd; break; } // DLL (C/C++)
-    #endif
-  } while (false);
+  FreeAssignedObject(d);
 
   aMod= NULL; // no longer access
   return err;

@@ -29,7 +29,10 @@
 #include <phonenumbers/phonenumberutil.h>
 #include <phonenumbers/logger.h>
 #include <boost/locale.hpp>
-#include <boost/lexical_cast.hpp>
+
+#include <unicode/unistr.h>
+#include <unicode/translit.h>
+#include <unicode/bytestream.h>
 
 SE_GLIB_TYPE(EBookQuery, e_book_query)
 
@@ -44,20 +47,87 @@ SE_BEGIN_CXX
  *
  * The drawback of higher levels is that they are computationally more
  * expensive (transformation is slower and leads to longer transformed
- * strings, thus a longer string comparisons during compare) and may
- * end up comparing aspects that are irrelevant (like case).
+ * strings, thus a longer string comparisons during compare).
  *
- * The default here pays attention to accents, but ignores the case.
+ * The default here pays attention to accents, case, and
+ * punctuation. According to
+ * http://userguide.icu-project.org/collation/concepts, it is required
+ * for Japanese.
  */
-static const boost::locale::collator_base::level_type DEFAULT_COLLATION_LEVEL = boost::locale::collator_base::secondary;
+static const boost::locale::collator_base::level_type DEFAULT_COLLATION_LEVEL =
+    boost::locale::collator_base::quaternary;
 
-class CompareFirstLastBoost : public IndividualCompare {
+class CompareBoost : public IndividualCompare, private boost::noncopyable {
     std::locale m_locale;
     const boost::locale::collator<char> &m_collator;
+    std::auto_ptr<icu::Transliterator> m_trans;
+
+public:
+    CompareBoost(const std::locale &locale);
+
+    std::string transform(const char *string) const;
+    std::string transform(const std::string &string) const;
+};
+
+CompareBoost::CompareBoost(const std::locale &locale) :
+    m_locale(locale),
+    m_collator(std::use_facet< boost::locale::collator<char> >(m_locale))
+{
+    std::string language = std::use_facet<boost::locale::info>(m_locale).language();
+    if (language == "zh") {
+        // Hard-code Pinyin sorting for all Chinese countries.
+        //
+        // There are three different ways of sorting Chinese and Western names:
+        // 1. Sort Chinese characters in pinyin order, but separate from Latin
+        // 2. Sort them interleaved with Latin, by the first character.
+        // 3. Sort them fully interleaved with Latin.
+        // Source: Mark Davis, ICU, http://sourceforge.net/mailarchive/forum.php?thread_name=CAJ2xs_GEnN-u3%3D%2B7P5puaF1%2BU__fX-4tuA-kEybThN9xsw577Q%40mail.gmail.com&forum_name=icu-support
+        //
+        // Either 2 or 3 is what apparently more people expect. Implementing 2 is
+        // harder, whereas 3 fits into the "generate keys, compare keys" concept
+        // of IndividualCompare, so we kind of arbitrarily implement that.
+        SE_LOG_DEBUG(NULL, "enabling Pinyin");
+
+        UErrorCode status = U_ZERO_ERROR;
+        icu::Transliterator *trans = icu::Transliterator::createInstance("Han-Latin", UTRANS_FORWARD, status);
+        m_trans.reset(trans);
+        if (U_FAILURE(status)) {
+            SE_LOG_WARNING(NULL, "creating ICU Han-Latin Transliterator for Pinyin failed, error code %s; falling back to normal collation", u_errorName(status));
+            m_trans.reset();
+        } else if (!trans) {
+            SE_LOG_WARNING(NULL, "creating ICU Han-Latin Transliterator for Pinyin failed, no error code; falling back to normal collation");
+        }
+    }
+}
+
+std::string CompareBoost::transform(const char *string) const
+{
+    if (!string) {
+        return "";
+    }
+    return transform(std::string(string));
+}
+
+std::string CompareBoost::transform(const std::string &string) const
+{
+    if (m_trans.get()) {
+        // std::string result;
+        // m_trans->transliterate(icu::StringPiece(string), icu::StringByteSink<std::string>(&result));
+        icu::UnicodeString buffer(string.c_str());
+        m_trans->transliterate(buffer);
+        std::string result;
+        buffer.toUTF8String(result);
+        result = m_collator.transform(DEFAULT_COLLATION_LEVEL, result);
+        return result;
+    } else {
+        return m_collator.transform(DEFAULT_COLLATION_LEVEL, string);
+    }
+}
+
+class CompareFirstLastBoost : public CompareBoost {
 public:
     CompareFirstLastBoost(const std::locale &locale) :
-        m_locale(locale),
-        m_collator(std::use_facet< boost::locale::collator<char> >(m_locale))
+        CompareBoost(locale)
     {}
 
     virtual void createCriteria(FolksIndividual *individual, Criteria_t &criteria) const {
@@ -66,19 +136,16 @@ public:
         if (fn) {
             const char *family = folks_structured_name_get_family_name(fn);
             const char *given = folks_structured_name_get_given_name(fn);
-            criteria.push_back(given ? m_collator.transform(DEFAULT_COLLATION_LEVEL, given) : "");
-            criteria.push_back(family ? m_collator.transform(DEFAULT_COLLATION_LEVEL, family) : "");
+            criteria.push_back(transform(given));
+            criteria.push_back(transform(family));
         }
     }
 };
 
-class CompareLastFirstBoost : public IndividualCompare {
-    std::locale m_locale;
-    const boost::locale::collator<char> &m_collator;
+class CompareLastFirstBoost : public CompareBoost {
 public:
     CompareLastFirstBoost(const std::locale &locale) :
-        m_locale(locale),
-        m_collator(std::use_facet< boost::locale::collator<char> >(m_locale))
+        CompareBoost(locale)
     {}
 
     virtual void createCriteria(FolksIndividual *individual, Criteria_t &criteria) const {
@@ -87,25 +154,22 @@ public:
         if (fn) {
             const char *family = folks_structured_name_get_family_name(fn);
             const char *given = folks_structured_name_get_given_name(fn);
-            criteria.push_back(family ? m_collator.transform(DEFAULT_COLLATION_LEVEL, family) : "");
-            criteria.push_back(given ? m_collator.transform(DEFAULT_COLLATION_LEVEL, given) : "");
+            criteria.push_back(transform(family));
+            criteria.push_back(transform(given));
         }
     }
 };
 
-class CompareFullnameBoost : public IndividualCompare {
-    std::locale m_locale;
-    const boost::locale::collator<char> &m_collator;
+class CompareFullnameBoost : public CompareBoost {
 public:
     CompareFullnameBoost(const std::locale &locale) :
-        m_locale(locale),
-        m_collator(std::use_facet< boost::locale::collator<char> >(m_locale))
+        CompareBoost(locale)
     {}
 
     virtual void createCriteria(FolksIndividual *individual, Criteria_t &criteria) const {
         const char *fullname = folks_name_details_get_full_name(FOLKS_NAME_DETAILS(individual));
         if (fullname) {
-            criteria.push_back(m_collator.transform(DEFAULT_COLLATION_LEVEL, fullname));
+            criteria.push_back(transform(fullname));
         } else {
             FolksStructuredName *fn =
                 folks_name_details_get_structured_name(FOLKS_NAME_DETAILS(individual));
@@ -127,12 +191,16 @@ public:
                 APPEND(family);
                 APPEND(suffix);
 #undef APPEND
-                criteria.push_back(m_collator.transform(DEFAULT_COLLATION_LEVEL, buffer));
+                criteria.push_back(transform(buffer));
             }
         }
     }
 };
 
+/**
+ * Implements 'any-contains' and acts as utility base class
+ * for the other text comparison operators.
+ */
 class AnyContainsBoost : public IndividualFilter
 {
 public:
@@ -222,6 +290,81 @@ public:
         return boost::contains(tel, m_searchValueTel);
     }
 
+    bool isSearchText(const char *text) const
+    {
+        if (!text) {
+            return false;
+        }
+        switch (m_mode) {
+        case CASE_SENSITIVE:
+            return boost::equals(text, m_searchValue);
+            break;
+        case CASE_INSENSITIVE: {
+            std::string lower(boost::locale::fold_case(text, m_locale));
+            return boost::equals(lower, m_searchValueTransformed);
+            break;
+        }
+        }
+        // not reached
+        return false;
+    }
+
+    bool isSearchTel(const char *text) const
+    {
+        std::string tel = normalizePhoneText(text);
+        return boost::equals(tel, m_searchValueTel);
+    }
+
+    bool beginsWithSearchText(const char *text) const
+    {
+        if (!text) {
+            return false;
+        }
+        switch (m_mode) {
+        case CASE_SENSITIVE:
+            return boost::starts_with(text, m_searchValue);
+            break;
+        case CASE_INSENSITIVE: {
+            std::string lower(boost::locale::fold_case(text, m_locale));
+            return boost::starts_with(lower, m_searchValueTransformed);
+            break;
+        }
+        }
+        // not reached
+        return false;
+    }
+
+    bool beginsWithSearchTel(const char *text) const
+    {
+        std::string tel = normalizePhoneText(text);
+        return boost::starts_with(tel, m_searchValueTel);
+    }
+
+    bool endsWithSearchText(const char *text) const
+    {
+        if (!text) {
+            return false;
+        }
+        switch (m_mode) {
+        case CASE_SENSITIVE:
+            return boost::ends_with(text, m_searchValue);
+            break;
+        case CASE_INSENSITIVE: {
+            std::string lower(boost::locale::fold_case(text, m_locale));
+            return boost::ends_with(lower, m_searchValueTransformed);
+            break;
+        }
+        }
+        // not reached
+        return false;
+    }
+
+    bool endsWithSearchTel(const char *text) const
+    {
+        std::string tel = normalizePhoneText(text);
+        return boost::ends_with(tel, m_searchValueTel);
+    }
+
     virtual bool matches(const IndividualData &data) const
     {
         FolksIndividual *individual = data.m_individual.get();
@@ -252,16 +395,16 @@ public:
         }
         FolksEmailDetails *emailDetails = FOLKS_EMAIL_DETAILS(individual);
         GeeSet *emails = folks_email_details_get_email_addresses(emailDetails);
-        BOOST_FOREACH (FolksEmailFieldDetails *email, GeeCollCXX<FolksEmailFieldDetails *>(emails)) {
+        BOOST_FOREACH (FolksAbstractFieldDetails *email, GeeCollCXX<FolksAbstractFieldDetails *>(emails, ADD_REF)) {
             const gchar *value =
-                reinterpret_cast<const gchar *>(folks_abstract_field_details_get_value(FOLKS_ABSTRACT_FIELD_DETAILS(email)));
+                reinterpret_cast<const gchar *>(folks_abstract_field_details_get_value(email));
             if (containsSearchText(value)) {
                 return true;
             }
         }
         FolksPhoneDetails *phoneDetails = FOLKS_PHONE_DETAILS(individual);
         GeeSet *phones = folks_phone_details_get_phone_numbers(phoneDetails);
-        BOOST_FOREACH (FolksAbstractFieldDetails *phone, GeeCollCXX<FolksAbstractFieldDetails *>(phones)) {
+        BOOST_FOREACH (FolksAbstractFieldDetails *phone, GeeCollCXX<FolksAbstractFieldDetails *>(phones, ADD_REF)) {
             const gchar *value =
                 reinterpret_cast<const gchar *>(folks_abstract_field_details_get_value(phone));
             if (containsSearchTel(value)) {
@@ -279,6 +422,357 @@ private:
     Mode m_mode;
     // const bool (*m_contains)(const std::string &, const std::string &, const std::locale &);
 };
+
+class FilterFullName : public AnyContainsBoost
+{
+    bool (AnyContainsBoost::*m_operation)(const char *text) const;
+
+public:
+    FilterFullName(const std::locale &locale,
+                   const std::string &searchValue,
+                   Mode mode,
+                   bool (AnyContainsBoost::*operation)(const char *text) const) :
+        AnyContainsBoost(locale, searchValue, mode),
+        m_operation(operation)
+    {
+    }
+
+    virtual bool matches(const IndividualData &data) const
+    {
+        FolksIndividual *individual = data.m_individual.get();
+        FolksNameDetails *name = FOLKS_NAME_DETAILS(individual);
+        const char *fullname = folks_name_details_get_full_name(name);
+        return (this->*m_operation)(fullname);
+    }
+};
+
+class FilterNickname : public AnyContainsBoost
+{
+    bool (AnyContainsBoost::*m_operation)(const char *text) const;
+
+public:
+    FilterNickname(const std::locale &locale,
+                   const std::string &searchValue,
+                   Mode mode,
+                   bool (AnyContainsBoost::*operation)(const char *text) const) :
+        AnyContainsBoost(locale, searchValue, mode),
+        m_operation(operation)
+    {
+    }
+
+    virtual bool matches(const IndividualData &data) const
+    {
+        FolksIndividual *individual = data.m_individual.get();
+        FolksNameDetails *name = FOLKS_NAME_DETAILS(individual);
+        const char *fullname = folks_name_details_get_nickname(name);
+        return (this->*m_operation)(fullname);
+    }
+};
+
+class FilterFamilyName : public AnyContainsBoost
+{
+    bool (AnyContainsBoost::*m_operation)(const char *text) const;
+
+public:
+    FilterFamilyName(const std::locale &locale,
+                     const std::string &searchValue,
+                     Mode mode,
+                     bool (AnyContainsBoost::*operation)(const char *text) const) :
+        AnyContainsBoost(locale, searchValue, mode),
+        m_operation(operation)
+    {
+    }
+
+    virtual bool matches(const IndividualData &data) const
+    {
+        FolksIndividual *individual = data.m_individual.get();
+        FolksStructuredName *fn =
+            folks_name_details_get_structured_name(FOLKS_NAME_DETAILS(individual));
+        if (fn) {
+            const char *name = folks_structured_name_get_family_name(fn);
+            return (this->*m_operation)(name);
+        } else {
+            return false;
+        }
+    }
+};
+
+class FilterGivenName : public AnyContainsBoost
+{
+    bool (AnyContainsBoost::*m_operation)(const char *text) const;
+
+public:
+    FilterGivenName(const std::locale &locale,
+                    const std::string &searchValue,
+                    Mode mode,
+                    bool (AnyContainsBoost::*operation)(const char *text) const) :
+        AnyContainsBoost(locale, searchValue, mode),
+        m_operation(operation)
+    {
+    }
+
+    virtual bool matches(const IndividualData &data) const
+    {
+        FolksIndividual *individual = data.m_individual.get();
+        FolksStructuredName *fn =
+            folks_name_details_get_structured_name(FOLKS_NAME_DETAILS(individual));
+        if (fn) {
+            const char *name = folks_structured_name_get_given_name(fn);
+            return (this->*m_operation)(name);
+        } else {
+            return false;
+        }
+    }
+};
+
+class FilterAdditionalName : public AnyContainsBoost
+{
+    bool (AnyContainsBoost::*m_operation)(const char *text) const;
+
+public:
+    FilterAdditionalName(const std::locale &locale,
+                         const std::string &searchValue,
+                         Mode mode,
+                         bool (AnyContainsBoost::*operation)(const char *text) const) :
+        AnyContainsBoost(locale, searchValue, mode),
+        m_operation(operation)
+    {
+    }
+
+    virtual bool matches(const IndividualData &data) const
+    {
+        FolksIndividual *individual = data.m_individual.get();
+        FolksStructuredName *fn =
+            folks_name_details_get_structured_name(FOLKS_NAME_DETAILS(individual));
+        if (fn) {
+            const char *name = folks_structured_name_get_additional_names(fn);
+            return (this->*m_operation)(name);
+        } else {
+            return false;
+        }
+    }
+};
+
+class FilterEmails : public AnyContainsBoost
+{
+    bool (AnyContainsBoost::*m_operation)(const char *text) const;
+
+public:
+    FilterEmails(const std::locale &locale,
+                 const std::string &searchValue,
+                 Mode mode,
+                 bool (AnyContainsBoost::*operation)(const char *text) const) :
+        AnyContainsBoost(locale, searchValue, mode),
+        m_operation(operation)
+    {
+    }
+
+    virtual bool matches(const IndividualData &data) const
+    {
+        FolksIndividual *individual = data.m_individual.get();
+        FolksEmailDetails *emailDetails = FOLKS_EMAIL_DETAILS(individual);
+        GeeSet *emails = folks_email_details_get_email_addresses(emailDetails);
+        BOOST_FOREACH (FolksAbstractFieldDetails *email, GeeCollCXX<FolksAbstractFieldDetails *>(emails, ADD_REF)) {
+            const gchar *value =
+                reinterpret_cast<const gchar *>(folks_abstract_field_details_get_value(email));
+            if ((this->*m_operation)(value)) {
+                return true;
+            }
+        }
+        return false;
+    }
+};
+
+class FilterTel : public AnyContainsBoost
+{
+    bool (AnyContainsBoost::*m_operation)(const char *text) const;
+
+public:
+    FilterTel(const std::locale &locale,
+              const std::string &searchValue,
+              bool (AnyContainsBoost::*operation)(const char *text) const) :
+        AnyContainsBoost(locale, searchValue, CASE_SENSITIVE /* doesn't matter */),
+        m_operation(operation)
+    {
+    }
+
+    virtual bool matches(const IndividualData &data) const
+    {
+        FolksIndividual *individual = data.m_individual.get();
+        FolksPhoneDetails *phoneDetails = FOLKS_PHONE_DETAILS(individual);
+        GeeSet *phones = folks_phone_details_get_phone_numbers(phoneDetails);
+        BOOST_FOREACH (FolksAbstractFieldDetails *phone, GeeCollCXX<FolksAbstractFieldDetails *>(phones, ADD_REF)) {
+            const gchar *value =
+                reinterpret_cast<const gchar *>(folks_abstract_field_details_get_value(phone));
+            if ((this->*m_operation)(value)) {
+                return true;
+            }
+        }
+        return false;
+    }
+};
+
+class FilterAddr : public AnyContainsBoost
+{
+protected:
+    bool (AnyContainsBoost::*m_operation)(const char *text) const;
+
+public:
+    FilterAddr(const std::locale &locale,
+               const std::string &searchValue,
+               Mode mode,
+               bool (AnyContainsBoost::*operation)(const char *text) const) :
+        AnyContainsBoost(locale, searchValue, mode),
+        m_operation(operation)
+    {
+    }
+
+    virtual bool matches(const IndividualData &data) const
+    {
+        FolksIndividual *individual = data.m_individual.get();
+        FolksPostalAddressDetails *addressDetails = FOLKS_POSTAL_ADDRESS_DETAILS(individual);
+        GeeSet *addresses = folks_postal_address_details_get_postal_addresses(addressDetails);
+        BOOST_FOREACH (FolksPostalAddressFieldDetails *address, GeeCollCXX<FolksPostalAddressFieldDetails *>(addresses, ADD_REF)) {
+            const FolksPostalAddress *value =
+                reinterpret_cast<const FolksPostalAddress *>(folks_abstract_field_details_get_value(FOLKS_ABSTRACT_FIELD_DETAILS(address)));
+            if (matchesAddr(value)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    virtual bool matchesAddr(const FolksPostalAddress *addr) const = 0;
+};
+
+class FilterAddrPOBox : public FilterAddr
+{
+public:
+    FilterAddrPOBox(const std::locale &locale,
+                    const std::string &searchValue,
+                    Mode mode,
+                    bool (AnyContainsBoost::*operation)(const char *text) const) :
+        FilterAddr(locale, searchValue, mode, operation)
+    {
+    }
+
+    virtual bool matchesAddr(const FolksPostalAddress *addr) const
+    {
+        const char *attr = folks_postal_address_get_po_box(const_cast<FolksPostalAddress *>(addr));
+        return (this->*m_operation)(attr);
+    }
+};
+
+class FilterAddrExtension : public FilterAddr
+{
+public:
+    FilterAddrExtension(const std::locale &locale,
+                        const std::string &searchValue,
+                        Mode mode,
+                        bool (AnyContainsBoost::*operation)(const char *text) const) :
+        FilterAddr(locale, searchValue, mode, operation)
+    {
+    }
+
+    virtual bool matchesAddr(const FolksPostalAddress *addr) const
+    {
+        const char *attr = folks_postal_address_get_extension(const_cast<FolksPostalAddress *>(addr));
+        return (this->*m_operation)(attr);
+    }
+};
+
+class FilterAddrStreet : public FilterAddr
+{
+public:
+    FilterAddrStreet(const std::locale &locale,
+                     const std::string &searchValue,
+                     Mode mode,
+                     bool (AnyContainsBoost::*operation)(const char *text) const) :
+        FilterAddr(locale, searchValue, mode, operation)
+    {
+    }
+
+    virtual bool matchesAddr(const FolksPostalAddress *addr) const
+    {
+        const char *attr = folks_postal_address_get_street(const_cast<FolksPostalAddress *>(addr));
+        return (this->*m_operation)(attr);
+    }
+};
+
+class FilterAddrLocality : public FilterAddr
+{
+public:
+    FilterAddrLocality(const std::locale &locale,
+                       const std::string &searchValue,
+                       Mode mode,
+                       bool (AnyContainsBoost::*operation)(const char *text) const) :
+        FilterAddr(locale, searchValue, mode, operation)
+    {
+    }
+
+    virtual bool matchesAddr(const FolksPostalAddress *addr) const
+    {
+        const char *attr = folks_postal_address_get_locality(const_cast<FolksPostalAddress *>(addr));
+        return (this->*m_operation)(attr);
+    }
+};
+
+class FilterAddrRegion : public FilterAddr
+{
+public:
+    FilterAddrRegion(const std::locale &locale,
+                     const std::string &searchValue,
+                     Mode mode,
+                     bool (AnyContainsBoost::*operation)(const char *text) const) :
+        FilterAddr(locale, searchValue, mode, operation)
+    {
+    }
+
+    virtual bool matchesAddr(const FolksPostalAddress *addr) const
+    {
+        const char *attr = folks_postal_address_get_region(const_cast<FolksPostalAddress *>(addr));
+        return (this->*m_operation)(attr);
+    }
+};
+
+class FilterAddrPostalCode : public FilterAddr
+{
+public:
+    FilterAddrPostalCode(const std::locale &locale,
+                         const std::string &searchValue,
+                         Mode mode,
+                         bool (AnyContainsBoost::*operation)(const char *text) const) :
+        FilterAddr(locale, searchValue, mode, operation)
+    {
+    }
+
+    virtual bool matchesAddr(const FolksPostalAddress *addr) const
+    {
+        const char *attr = folks_postal_address_get_postal_code(const_cast<FolksPostalAddress *>(addr));
+        return (this->*m_operation)(attr);
+    }
+};
+
+class FilterAddrCountry : public FilterAddr
+{
+public:
+    FilterAddrCountry(const std::locale &locale,
+                      const std::string &searchValue,
+                      Mode mode,
+                      bool (AnyContainsBoost::*operation)(const char *text) const) :
+        FilterAddr(locale, searchValue, mode, operation)
+    {
+    }
+
+    virtual bool matchesAddr(const FolksPostalAddress *addr) const
+    {
+        const char *attr = folks_postal_address_get_country(const_cast<FolksPostalAddress *>(addr));
+        return (this->*m_operation)(attr);
+    }
+};
+
+
+
 
 /**
  * Search value must be a valid caller ID. The telephone numbers
@@ -370,7 +864,7 @@ public:
                             // to the search term.
                             e_book_query_field_test(E_CONTACT_TEL, E_BOOK_QUERY_EQUALS_NATIONAL_PHONE_NUMBER,
                                                     m_tel.c_str()),
-                            false);
+                            TRANSFER_REF);
         PlainGStr filter(e_book_query_to_string(query.get()));
         return filter.get();
     }
@@ -411,10 +905,28 @@ class PhoneNumberLogger : public i18n::phonenumbers::Logger
 public:
     virtual void WriteMessage(const std::string &msg)
     {
-        SE_LOG(level() == i18n::phonenumbers::LOG_FATAL ? SyncEvo::Logger::ERROR : SyncEvo::Logger::DEBUG,
-               NULL, getPrefix(), "%s", msg.c_str());
+        SE_LOG(getPrefix(),
+               level() == i18n::phonenumbers::LOG_FATAL ? SyncEvo::Logger::ERROR : SyncEvo::Logger::DEBUG,
+               "%s", msg.c_str());
     }
 };
+
+static AnyContainsBoost::Mode getFilterMode(const std::vector<LocaleFactory::Filter_t> &terms,
+                                            size_t start)
+{
+    AnyContainsBoost::Mode mode = AnyContainsBoost::CASE_INSENSITIVE;
+    for (size_t i = start; i < terms.size(); i++) {
+        const std::string flag = LocaleFactory::getFilterString(terms[i], "any-contains flag");
+        if (flag == "case-sensitive") {
+            mode = AnyContainsBoost::CASE_SENSITIVE;
+        } else if (flag == "case-insensitive") {
+            mode = AnyContainsBoost::CASE_INSENSITIVE;
+        } else {
+            SE_THROW("unsupported filter flag: " + flag);
+        }
+    }
+    return mode;
+}
 
 class LocaleFactoryBoost : public LocaleFactory
 {
@@ -449,9 +961,26 @@ public:
         gen.categories(boost::locale::collation_facet |
                        boost::locale::convert_facet |
                        boost::locale::information_facet);
-        // TODO: Check env vars, then append @collation=phonebook
-        // to get phonebook specific sorting.
-        return gen("");
+        // Hard-code "phonebook" collation for certain languages
+        // where we know that it is desirable. We could use it
+        // in all cases, except that ICU has a bug where it does not
+        // fall back properly to the base collation. See
+        // http://sourceforge.net/mailarchive/message.php?msg_id=30802924
+        // and http://bugs.icu-project.org/trac/ticket/10149
+        std::locale locale = gen("");
+        std::string name = std::use_facet<boost::locale::info>(locale).name();
+        std::string language = std::use_facet<boost::locale::info>(locale).language();
+        std::string country = std::use_facet<boost::locale::info>(locale).country();
+        SE_LOG_DEV(NULL, "PIM Manager running with locale %s = language %s in country %s",
+                   name.c_str(),
+                   language.c_str(),
+                   country.c_str());
+        if (language == "de" ||
+            language == "fi") {
+            SE_LOG_DEV(NULL, "enabling phonebook collation for language %s", language.c_str());
+            locale = gen(name + "@collation=phonebook");
+        }
+        return locale;
     }
 
     virtual boost::shared_ptr<IndividualCompare> createCompare(const std::string &order)
@@ -469,65 +998,110 @@ public:
         return res;
     }
 
-    virtual boost::shared_ptr<IndividualFilter> createFilter(const Filter_t &filter)
+    virtual boost::shared_ptr<IndividualFilter> createFilter(const Filter_t &filter, int level)
     {
-        int maxResults = -1;
         boost::shared_ptr<IndividualFilter> res;
-        BOOST_FOREACH (const Filter_t::value_type &term, filter) {
-            if (term.empty()) {
-                SE_THROW("boost locale factory: empty search term not supported");
-            }
-            // Check for flags.
-            if (term[0] == "limit") {
-                if (term.size() != 2) {
-                    SE_THROW("boost locale factory: 'limit' needs exactly one parameter");
-                }
-                maxResults = boost::lexical_cast<int>(term[1]);
-            } else if (term[0] == "any-contains") {
-                if (res) {
-                    SE_THROW("boost locale factory: already have a search filter, 'any-contains' not valid");
-                }
 
-                AnyContainsBoost::Mode mode = AnyContainsBoost::CASE_INSENSITIVE;
-                if (term.size() < 2) {
-                    SE_THROW("boost locale factory: any-contains search needs one parameter");
+        try {
+            const std::vector<Filter_t> &terms = getFilterArray(filter, "array of terms");
+
+            // Only handle arrays where the first entry is a string
+            // that we recognize. All other cases are handled by the generic
+            // LocaleFactory.
+            if (!terms.empty() &&
+                boost::get<std::string>(&terms[0])) {
+                const std::string &operation = getFilterString(terms[0], "operation name");
+
+                // Pick default operation. Will be replaced with
+                // telephone-specific operation once we know that the
+                // field is 'phones/value'.
+                bool (AnyContainsBoost::*func)(const char *text) const = NULL;
+                if (operation == "contains") {
+                    func = &AnyContainsBoost::containsSearchText;
+                } else if (operation == "is") {
+                    func = &AnyContainsBoost::isSearchText;
+                } else if (operation == "begins-with") {
+                    func = &AnyContainsBoost::beginsWithSearchText;
+                } else if (operation == "ends-with") {
+                    func = &AnyContainsBoost::endsWithSearchText;
                 }
-                for (size_t i = 2; i < term.size(); i++) {
-                    const std::string &flag = term[i];
-                    if (flag == "case-sensitive") {
-                        mode = AnyContainsBoost::CASE_SENSITIVE;
-                    } else if (flag == "case-insensitive") {
-                        mode = AnyContainsBoost::CASE_INSENSITIVE;
-                    } else {
-                        SE_THROW("boost locale factory: unknown flag for any-contains: " + flag);
+                if (func) {
+                    switch (terms.size()) {
+                    case 1:
+                        SE_THROW("missing field name and search value");
+                        break;
+                    case 2:
+                        SE_THROW("missing search value");
+                        break;
                     }
+                    const std::string &field = getFilterString(terms[1], "search field");
+                    const std::string &value = getFilterString(terms[2], "search string");
+                    if (field == "phones/value") {
+                        if (terms.size() > 3) {
+                            SE_THROW("Additional entries after 'phones/value' field filter not allowed.");
+                        }
+                        // Use the telephone specific functions.
+                        res.reset(new FilterTel(m_locale, value,
+                                                func == &AnyContainsBoost::containsSearchText ? &AnyContainsBoost::containsSearchTel :
+                                                func == &AnyContainsBoost::isSearchText ? &AnyContainsBoost::isSearchTel :
+                                                func == &AnyContainsBoost::beginsWithSearchText ? &AnyContainsBoost::beginsWithSearchTel :
+                                                func == &AnyContainsBoost::endsWithSearchText ? &AnyContainsBoost::endsWithSearchTel :
+                                                func));
+                    } else {
+                        AnyContainsBoost::Mode mode = getFilterMode(terms, 3);
+                        if (field == "full-name") {
+                            res.reset(new FilterFullName(m_locale, value, mode, func));
+                        } else if (field == "nickname") {
+                            res.reset(new FilterNickname(m_locale, value, mode, func));
+                        } else if (field == "structured-name/family") {
+                            res.reset(new FilterFamilyName(m_locale, value, mode, func));
+                        } else if (field == "structured-name/given") {
+                            res.reset(new FilterGivenName(m_locale, value, mode, func));
+                        } else if (field == "structured-name/additional") {
+                            res.reset(new FilterAdditionalName(m_locale, value, mode, func));
+                        } else if (field == "emails/value") {
+                            res.reset(new FilterEmails(m_locale, value, mode, func));
+                        } else if (field == "addresses/po-box") {
+                            res.reset(new FilterAddrPOBox(m_locale, value, mode, func));
+                        } else if (field == "addresses/extension") {
+                            res.reset(new FilterAddrExtension(m_locale, value, mode, func));
+                        } else if (field == "addresses/street") {
+                            res.reset(new FilterAddrStreet(m_locale, value, mode, func));
+                        } else if (field == "addresses/locality") {
+                            res.reset(new FilterAddrLocality(m_locale, value, mode, func));
+                        } else if (field == "addresses/region") {
+                            res.reset(new FilterAddrRegion(m_locale, value, mode, func));
+                        } else if (field == "addresses/postal-code") {
+                            res.reset(new FilterAddrPostalCode(m_locale, value, mode, func));
+                        } else if (field == "addresses/country") {
+                            res.reset(new FilterAddrCountry(m_locale, value, mode, func));
+                        } else {
+                            SE_THROW("Unknown field name: " + field);
+                        }
+                    }
+                } else if (operation == "any-contains") {
+                    if (terms.size() < 2) {
+                        SE_THROW("missing search value");
+                    }
+                    const std::string &value = getFilterString(terms[1], "search string");
+                    AnyContainsBoost::Mode mode = getFilterMode(terms, 2);
+                    res.reset(new AnyContainsBoost(m_locale, value, mode));
+                } else if (operation == "phone") {
+                    if (terms.size() != 2) {
+                        SE_THROW("'phone' filter needs exactly one parameter.");
+                    }
+                    const std::string &value = getFilterString(terms[1], "search string");
+                    res.reset(new PhoneStartsWith(m_locale, value));
                 }
-                res.reset(new AnyContainsBoost(m_locale, term[1], mode));
-            } else if (term[0] == "phone") {
-                if (res) {
-                    SE_THROW("boost locale factory: already have a search filter, 'phone' not valid");
-                }
-
-                if (filter.size() != 1) {
-                    SE_THROW(StringPrintf("boost locale factory: only filter with one term are supported (was given %ld)",
-                                          (long)filter.size()));
-                }
-                res.reset(new PhoneStartsWith(m_locale,
-                                              term[1]));
-            } else {
-                SE_THROW("boost locale factory: unknown search term: " + term[0]);
             }
+        } catch (const Exception &ex) {
+            handleFilterException(filter, level, &ex.m_file, ex.m_line);
+        } catch (...) {
+            handleFilterException(filter, level, NULL, 0);
         }
 
-        // May be empty (unfiltered). Create a filter which matches
-        // everything, because otherwise we end up using the FullView,
-        // which cannot apply a limit or later switch to a different
-        // search.
-        if (!res) {
-            res.reset(new MatchAll());
-        }
-        res->setMaxResults(maxResults);
-        return res;
+        // Let base class handle it if we didn't recognize the operation.
+        return res ? res : LocaleFactory::createFilter(filter, level);
     }
 
     virtual void precompute(FolksIndividual *individual, Precomputed &precomputed) const
@@ -537,7 +1111,7 @@ public:
         FolksPhoneDetails *phoneDetails = FOLKS_PHONE_DETAILS(individual);
         GeeSet *phones = folks_phone_details_get_phone_numbers(phoneDetails);
         precomputed.m_phoneNumbers.reserve(gee_collection_get_size(GEE_COLLECTION(phones)));
-        BOOST_FOREACH (FolksAbstractFieldDetails *phone, GeeCollCXX<FolksAbstractFieldDetails *>(phones)) {
+        BOOST_FOREACH (FolksAbstractFieldDetails *phone, GeeCollCXX<FolksAbstractFieldDetails *>(phones, ADD_REF)) {
             const gchar *value =
                 reinterpret_cast<const gchar *>(folks_abstract_field_details_get_value(phone));
             if (value) {
@@ -553,7 +1127,7 @@ public:
                     //
                     // We restore the right order by sorting, which puts the
                     // country code first, and then joining.
-                    GeeCollection *coll = folks_abstract_field_details_get_parameter_values(phone, "x-evolution-e164");
+                    GeeCollectionCXX coll(folks_abstract_field_details_get_parameter_values(phone, "x-evolution-e164"), TRANSFER_REF);
                     if (coll) {
                         std::vector<std::string> components;
                         components.reserve(2);

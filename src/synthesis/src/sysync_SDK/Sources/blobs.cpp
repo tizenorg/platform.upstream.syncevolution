@@ -231,8 +231,10 @@ TSyError TBlob::ReadBlob( string aBlobName, appPointer *blkPtr,
         *blkSize>BlobBlk) *blkSize= BlobBlk;
 
                          *blkPtr= malloc( *blkSize );
+    if (!*blkPtr) return LOCERR_OUTOFMEM;
     uInt32  rslt= fread( *blkPtr, 1,      *blkSize, fFile );
     *aLast= rslt!=*blkSize;
+    if (*aLast && ferror( fFile )) return DB_Error;
 
     // check if already finished
         fCurPos+= rslt;

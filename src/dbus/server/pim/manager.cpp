@@ -80,7 +80,8 @@ Manager::Manager(const boost::shared_ptr<Server> &server) :
                      MANAGER_IFACE),
     m_mainThread(g_thread_self()),
     m_server(server),
-    m_locale(LocaleFactory::createFactory())
+    m_locale(LocaleFactory::createFactory()),
+    emitSyncProgress(*this, "SyncProgress")
 {
 }
 
@@ -143,6 +144,7 @@ void Manager::init()
     add(this, &Manager::addContact, "AddContact");
     add(this, &Manager::modifyContact, "ModifyContact");
     add(this, &Manager::removeContact, "RemoveContact");
+    add(emitSyncProgress);
 
     // Ready, make it visible via D-Bus.
     activate();
@@ -300,7 +302,7 @@ void Manager::stop()
     // idle server has only two references to the main view:
     // one inside m_folks, one given back to us here.
     if (m_folks->getMainView().use_count() <= 2) {
-        SE_LOG_DEBUG(NULL, NULL, "restarting due to Manager.Stop()");
+        SE_LOG_DEBUG(NULL, "restarting due to Manager.Stop()");
         initFolks();
         initDatabases();
         initSorting(m_sortOrder);
@@ -435,7 +437,7 @@ class ViewResource : public Resource, public GDBusCXX::DBusObjectHelper
     {
         FolksIndividual *individual = data.m_individual.get();
         const char *id = folks_individual_get_id(individual);
-        SE_LOG_DEBUG(NULL, NULL, "handle change %s: %s, #%d, %s = %s",
+        SE_LOG_DEBUG(NULL, "handle change %s: %s, #%d, %s = %s",
                      getPath(),
                      &call == &m_contactsModified ? "modified" :
                      &call == &m_contactsAdded ? "added" :
@@ -454,7 +456,7 @@ class ViewResource : public Resource, public GDBusCXX::DBusObjectHelper
                 &call == &m_contactsModified &&
                 start >= m_lastChange.m_start &&
                 start < m_lastChange.m_start + (int)m_lastChange.m_ids.size()) {
-                SE_LOG_DEBUG(NULL, NULL, "handle change %s: redundant 'modified' signal, ignore",
+                SE_LOG_DEBUG(NULL, "handle change %s: redundant 'modified' signal, ignore",
                              getPath());
 
                 return;
@@ -464,7 +466,7 @@ class ViewResource : public Resource, public GDBusCXX::DBusObjectHelper
             m_pendingChange.m_call = &call;
             m_pendingChange.m_start = start;
             m_pendingChange.m_ids.push_back(id);
-            SE_LOG_DEBUG(NULL, NULL, "handle change %s: stored as pending change",
+            SE_LOG_DEBUG(NULL, "handle change %s: stored as pending change",
                          getPath());
             return;
         }
@@ -475,7 +477,7 @@ class ViewResource : public Resource, public GDBusCXX::DBusObjectHelper
                 // Modification, indices are unchanged.
                 if (start + 1 == m_pendingChange.m_start) {
                     // New modified element at the front.
-                    SE_LOG_DEBUG(NULL, NULL, "handle change %s: insert modification, #%d + %d and #%d => #%d + %d",
+                    SE_LOG_DEBUG(NULL, "handle change %s: insert modification, #%d + %d and #%d => #%d + %d",
                                  getPath(),
                                  m_pendingChange.m_start, pendingCount,
                                  start,
@@ -485,7 +487,7 @@ class ViewResource : public Resource, public GDBusCXX::DBusObjectHelper
                     return;
                 } else if (start == m_pendingChange.m_start + pendingCount) {
                     // New modified element at the end.
-                    SE_LOG_DEBUG(NULL, NULL, "handle change %s: append modification, #%d + %d and #%d => #%d + %d",
+                    SE_LOG_DEBUG(NULL, "handle change %s: append modification, #%d + %d and #%d => #%d + %d",
                                  getPath(),
                                  m_pendingChange.m_start, pendingCount,
                                  start,
@@ -495,7 +497,7 @@ class ViewResource : public Resource, public GDBusCXX::DBusObjectHelper
                 } else if (start >= m_pendingChange.m_start &&
                            start < m_pendingChange.m_start + pendingCount) {
                     // Element modified again => no change, except perhaps for the ID.
-                    SE_LOG_DEBUG(NULL, NULL, "handle change %s: modification of already modified contact, #%d + %d and #%d => #%d + %d",
+                    SE_LOG_DEBUG(NULL, "handle change %s: modification of already modified contact, #%d + %d and #%d => #%d + %d",
                                  getPath(),
                                  m_pendingChange.m_start, pendingCount,
                                  start,
@@ -511,7 +513,7 @@ class ViewResource : public Resource, public GDBusCXX::DBusObjectHelper
                     // Adding in the middle or at the end?
                     int end = m_pendingChange.m_start + pendingCount;
                     if (start == end) {
-                        SE_LOG_DEBUG(NULL, NULL, "handle change %s: increase count of 'added' individuals at end, #%d + %d and #%d new => #%d + %d",
+                        SE_LOG_DEBUG(NULL, "handle change %s: increase count of 'added' individuals at end, #%d + %d and #%d new => #%d + %d",
                                      getPath(),
                                      m_pendingChange.m_start, pendingCount,
                                      start,
@@ -519,7 +521,7 @@ class ViewResource : public Resource, public GDBusCXX::DBusObjectHelper
                         m_pendingChange.m_ids.push_back(id);
                         return;
                     } else if (start < end) {
-                        SE_LOG_DEBUG(NULL, NULL, "handle change %s: increase count of 'added' individuals in the middle, #%d + %d and #%d new => #%d + %d",
+                        SE_LOG_DEBUG(NULL, "handle change %s: increase count of 'added' individuals in the middle, #%d + %d and #%d new => #%d + %d",
                                      getPath(),
                                      m_pendingChange.m_start, pendingCount,
                                      start,
@@ -531,7 +533,7 @@ class ViewResource : public Resource, public GDBusCXX::DBusObjectHelper
                 } else {
                     // Adding directly before the previous start?
                     if (start + 1 == m_pendingChange.m_start) {
-                        SE_LOG_DEBUG(NULL, NULL, "handle change %s: reduce start and increase count of 'added' individuals, #%d + %d and #%d => #%d + %d",
+                        SE_LOG_DEBUG(NULL, "handle change %s: reduce start and increase count of 'added' individuals, #%d + %d and #%d => #%d + %d",
                                      getPath(),
                                      m_pendingChange.m_start, pendingCount,
                                      start,
@@ -547,7 +549,7 @@ class ViewResource : public Resource, public GDBusCXX::DBusObjectHelper
                 int newCount = m_pendingChange.m_ids.size() + 1;
                 if (start == m_pendingChange.m_start) {
                     // Removing directly at end.
-                    SE_LOG_DEBUG(NULL, NULL, "handle change %s: increase count of 'removed' individuals, #%d + %d and #%d => #%d + %d",
+                    SE_LOG_DEBUG(NULL, "handle change %s: increase count of 'removed' individuals, #%d + %d and #%d => #%d + %d",
                                  getPath(),
                                  m_pendingChange.m_start, pendingCount,
                                  start,
@@ -556,7 +558,7 @@ class ViewResource : public Resource, public GDBusCXX::DBusObjectHelper
                     return;
                 } else if (start + 1 == m_pendingChange.m_start) {
                     // Removing directly before the previous start.
-                    SE_LOG_DEBUG(NULL, NULL, "handle change %s: reduce start and increase count of 'removed' individuals, #%d + %d and #%d => #%d + %d",
+                    SE_LOG_DEBUG(NULL, "handle change %s: reduce start and increase count of 'removed' individuals, #%d + %d and #%d => #%d + %d",
                                  getPath(),
                                  m_pendingChange.m_start, pendingCount,
                                  start,
@@ -578,7 +580,7 @@ class ViewResource : public Resource, public GDBusCXX::DBusObjectHelper
             start == m_pendingChange.m_start &&
             1 == m_pendingChange.m_ids.size() &&
             m_pendingChange.m_ids.front() == id) {
-            SE_LOG_DEBUG(NULL, NULL, "handle change %s: removed individual was re-added => #%d modified",
+            SE_LOG_DEBUG(NULL, "handle change %s: removed individual was re-added => #%d modified",
                          getPath(),
                          start);
             m_pendingChange.m_call = &m_contactsModified;
@@ -600,7 +602,7 @@ class ViewResource : public Resource, public GDBusCXX::DBusObjectHelper
     {
         int count = m_pendingChange.m_ids.size();
         if (count) {
-            SE_LOG_DEBUG(NULL, NULL, "send change %s: %s, #%d + %d",
+            SE_LOG_DEBUG(NULL, "send change %s: %s, #%d + %d",
                          getPath(),
                          m_pendingChange.m_call == &m_contactsModified ? "modified" :
                          m_pendingChange.m_call == &m_contactsAdded ? "added" :
@@ -638,7 +640,7 @@ class ViewResource : public Resource, public GDBusCXX::DBusObjectHelper
     {
         if (required && !error.empty()) {
             // remove view because it is no longer needed
-            SE_LOG_DEBUG(NULL, NULL, "ViewAgent %s method call failed, deleting view: %s", method, error.c_str());
+            SE_LOG_DEBUG(NULL, "ViewAgent %s method call failed, deleting view: %s", method, error.c_str());
             boost::shared_ptr<ViewResource> r = self.lock();
             if (r) {
                 r->close();
@@ -760,14 +762,16 @@ public:
     }
 
     /** ViewControl.RefineSearch() */
-    void refineSearch(const LocaleFactory::Filter_t &filter)
+    void refineSearch(const std::vector<LocaleFactory::Filter_t> &filterArray)
     {
-        replaceSearch(filter, true);
+        replaceSearch(filterArray, true);
     }
 
-    void replaceSearch(const LocaleFactory::Filter_t &filter, bool refine)
+    void replaceSearch(const std::vector<LocaleFactory::Filter_t> &filterArray, bool refine)
     {
-        boost::shared_ptr<IndividualFilter> individualFilter = m_locale->createFilter(filter);
+        // Same as in Search().
+        LocaleFactory::Filter_t filter = filterArray;
+        boost::shared_ptr<IndividualFilter> individualFilter = m_locale->createFilter(filter, 0);
         m_view->replaceFilter(individualFilter, refine);
     }
 };
@@ -776,13 +780,25 @@ unsigned int ViewResource::m_counter;
 void Manager::search(const boost::shared_ptr< GDBusCXX::Result1<GDBusCXX::DBusObject_t> > &result,
                      const GDBusCXX::Caller_t &ID,
                      const boost::shared_ptr<GDBusCXX::Watch> &watch,
-                     const LocaleFactory::Filter_t &filter,
+                     const std::vector<LocaleFactory::Filter_t> &filterVector,
                      const GDBusCXX::DBusObject_t &agentPath)
 {
     // TODO: figure out a native, thread-safe API for this.
 
     // Start folks in parallel with asking for an ESourceRegistry.
     start();
+
+    // We use a std::vector as outer type to help Python decide how to
+    // send the empty list []. When we declare our parameter as
+    // variant instead of array of variants, as we do now, then the
+    // Python programmer has to use dbus.Array([], signature='s'),
+    // which breaks backwards compatibility (wasn't necessary earlier)
+    // and is not easy to use.
+    //
+    // But before we can pass the filter on, we need to turn it into
+    // a variant containing the vector.
+    LocaleFactory::Filter_t filter;
+    filter = filterVector;
 
     // We don't know for sure whether we'll need the ESourceRegistry.
     // Ask for it, just to be sure. If we need to hurry because we are
@@ -838,7 +854,7 @@ void Manager::doSearch(const ESourceRegistryCXX &registry,
     std::string ebookFilter;
     // Always use a filtered view. That way we can implement ReplaceView or RefineView
     // without having to switch from a FullView to a FilteredView.
-    boost::shared_ptr<IndividualFilter> individualFilter = m_locale->createFilter(filter);
+    boost::shared_ptr<IndividualFilter> individualFilter = m_locale->createFilter(filter, 0);
     ebookFilter = individualFilter->getEBookFilter();
     if (quiescent) {
         // Don't search via EDS directly because the unified
@@ -848,7 +864,7 @@ void Manager::doSearch(const ESourceRegistryCXX &registry,
     view = FilteredView::create(view, individualFilter);
     view->setName(StringPrintf("filtered view%u", ViewResource::getNextViewNumber()));
 
-    SE_LOG_DEBUG(NULL, NULL, "preparing %s: EDS search term is '%s', active address books %s",
+    SE_LOG_DEBUG(NULL, "preparing %s: EDS search term is '%s', active address books %s",
                  view->getName(),
                  ebookFilter.c_str(),
                  boost::join(m_enabledEBooks, " ").c_str());
@@ -1063,7 +1079,7 @@ void Manager::doSetPeer(const boost::shared_ptr<Session> &session,
     std::string context = StringPrintf("@%s%s", MANAGER_PREFIX, uid.c_str());
 
 
-    SE_LOG_DEBUG(NULL, NULL, "%s: creating config for protocol %s",
+    SE_LOG_DEBUG(NULL, "%s: creating config for protocol %s",
                  uid.c_str(),
                  protocol.c_str());
 
@@ -1175,7 +1191,7 @@ void Manager::doSetPeer(const boost::shared_ptr<Session> &session,
     }
 
     // Report success.
-    SE_LOG_DEBUG(NULL, NULL, "%s: created config for protocol %s",
+    SE_LOG_DEBUG(NULL, "%s: created config for protocol %s",
                  uid.c_str(),
                  protocol.c_str());
     result->done();
@@ -1280,7 +1296,7 @@ void Manager::doRemovePeer(const boost::shared_ptr<Session> &session,
                 }
             }
             if (found) {
-                syncSource->deleteDatabase(localDatabaseName);
+                syncSource->deleteDatabase(localDatabaseName, SyncSource::REMOVE_DATA_FORCE);
             }
         }
     }
@@ -1298,7 +1314,7 @@ void Manager::doRemovePeer(const boost::shared_ptr<Session> &session,
     result->done();
 }
 
-void Manager::syncPeer(const boost::shared_ptr<GDBusCXX::Result0> &result,
+void Manager::syncPeer(const boost::shared_ptr<GDBusCXX::Result1<SyncResult> > &result,
                        const std::string &uid)
 {
     checkPeerUID(uid);
@@ -1311,12 +1327,30 @@ void Manager::syncPeer(const boost::shared_ptr<GDBusCXX::Result0> &result,
                  boost::bind(&Manager::doSyncPeer, this, _1, result, uid));
 }
 
-static void doneSyncPeer(const boost::shared_ptr<GDBusCXX::Result0> &result,
-                         SyncMLStatus status)
+static Manager::SyncResult SyncReport2Result(const SyncReport &report)
+{
+    Manager::SyncResult result;
+    int added = 0, updated = 0, removed = 0;
+    if (!report.empty()) {
+        const SyncSourceReport &source = report.begin()->second;
+        added = source.getItemStat(SyncSourceReport::ITEM_LOCAL, SyncSourceReport::ITEM_ADDED, SyncSourceReport::ITEM_TOTAL);
+        updated = source.getItemStat(SyncSourceReport::ITEM_LOCAL, SyncSourceReport::ITEM_UPDATED, SyncSourceReport::ITEM_TOTAL);
+        removed = source.getItemStat(SyncSourceReport::ITEM_LOCAL, SyncSourceReport::ITEM_REMOVED, SyncSourceReport::ITEM_TOTAL);
+    }
+    result["modified"] = added || updated || removed;
+    result["added"] = added;
+    result["updated"] = updated;
+    result["removed"] = removed;
+    return result;
+}
+
+static void doneSyncPeer(const boost::shared_ptr<GDBusCXX::Result1<Manager::SyncResult> > &result,
+                         SyncMLStatus status,
+                         const SyncReport &report)
 {
     if (status == STATUS_OK ||
         status == STATUS_HTTP_OK) {
-        result->done();
+        result->done(SyncReport2Result(report));
     } else if (status == (SyncMLStatus)sysync::LOCERR_USERABORT) {
         result->failed(GDBusCXX::dbus_error(MANAGER_ERROR_ABORTED, "running sync aborted, probably by StopSync()"));
     } else {
@@ -1325,15 +1359,28 @@ static void doneSyncPeer(const boost::shared_ptr<GDBusCXX::Result0> &result,
 }
 
 void Manager::doSyncPeer(const boost::shared_ptr<Session> &session,
-                         const boost::shared_ptr<GDBusCXX::Result0> &result,
+                         const boost::shared_ptr<GDBusCXX::Result1<SyncResult> > &result,
                          const std::string &uid)
 {
+    // Keep client informed about progress.
+    emitSyncProgress(uid, "started", SyncResult());
+    session->m_doneSignal.connect(boost::bind(boost::ref(emitSyncProgress), uid, "done", SyncResult()));
+    session->m_sourceSynced.connect(boost::bind(&Manager::report2SyncProgress, m_self, uid, _1, _2));
     // After sync(), the session is tracked as the active sync session
     // by the server. It was removed from our own m_pending list by
     // doSession().
     session->sync("ephemeral", SessionCommon::SourceModes_t());
     // Relay result to caller when done.
-    session->m_doneSignal.connect(boost::bind(doneSyncPeer, result, _1));
+    session->m_doneSignal.connect(boost::bind(doneSyncPeer, result, _1, _2));
+}
+
+void Manager::report2SyncProgress(const std::string &uid,
+                                  const std::string &sourceName,
+                                  const SyncSourceReport &source)
+{
+    SyncReport report;
+    report.addSyncSourceReport("foo", source);
+    emitSyncProgress(uid, "modified", SyncReport2Result(report));
 }
 
 void Manager::stopSync(const boost::shared_ptr<GDBusCXX::Result0> &result,

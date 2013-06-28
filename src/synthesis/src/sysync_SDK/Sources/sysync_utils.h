@@ -16,6 +16,7 @@
 #define SYSYNC_UTILS_H
 
 #include "sysync_globs.h"
+#include "sysync_noncopyable.h"
 // include external utils in separate files
 #include "sysync_b64.h"
 #include "sysync_md5.h"

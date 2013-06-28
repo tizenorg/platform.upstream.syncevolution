@@ -53,14 +53,15 @@ class NetworkManagerClient;
 // TODO: avoid polluting namespace
 using namespace std;
 
+class ServerLogger;
+
 /**
  * Implements the main org.syncevolution.Server interface.
  *
  * The Server class is responsible for listening to clients and
  * spinning of sync sessions as requested by clients.
  */
-class Server : public GDBusCXX::DBusObjectHelper,
-               public LoggerBase
+class Server : public GDBusCXX::DBusObjectHelper
 {
     GMainLoop *m_loop;
     bool &m_shutdownRequested;
@@ -391,9 +392,10 @@ class Server : public GDBusCXX::DBusObjectHelper,
     // The level of detail for D-Bus logging signals.
     Logger::Level m_dbusLogLevel;
 
-    //records the parent logger, dbus server acts as logger to
-    //send signals to clients and put logs in the parent logger.
-    LoggerBase &m_parentLogger;
+    // Created in constructor and captures parent logger there,
+    // then pushed as default logger in activate().
+    boost::shared_ptr<ServerLogger> m_logger;
+    PushLogger<ServerLogger> m_pushLogger;
 
     /**
      * All active timeouts created by addTimeout().
@@ -653,34 +655,11 @@ public:
      */
     bool notificationsEnabled();
 
-    /**
-     * implement virtual method from LogStdout.
-     * Not only print the message in the console
-     * but also send them as signals to clients
-     */
-    virtual void messagev(Level level,
-                          const char *prefix,
-                          const char *file,
-                          int line,
-                          const char *function,
-                          const char *format,
-                          va_list args) {
-        messagev(level, prefix, file, line,
-                 function, format, args,
-                 getPath(),
-                 getProcessName());
-    }
-    void messagev(Level level,
-                  const char *prefix,
-                  const char *file,
-                  int line,
-                  const char *function,
-                  const char *format,
-                  va_list args,
-                  const std::string &dbusPath,
-                  const std::string &procname);
-
-    virtual bool isProcessSafe() const { return false; }
+    void message2DBus(const Logger::MessageOptions &options,
+                      const char *format,
+                      va_list args,
+                      const std::string &dbusPath,
+                      const std::string &procname);
 };
 
 // extensions to the D-Bus server, created dynamically by main()

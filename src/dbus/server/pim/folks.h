@@ -56,7 +56,6 @@ SE_GOBJECT_TYPE(FolksNoteFieldDetails)
 SE_GOBJECT_TYPE(FolksPostalAddressFieldDetails)
 SE_GOBJECT_TYPE(FolksPersona)
 SE_GOBJECT_TYPE(FolksLocation)
-SE_GOBJECT_TYPE(GeeCollection)
 SE_GOBJECT_TYPE(GeeHashSet)
 SE_GLIB_TYPE(GHashTable, g_hash_table)
 
@@ -188,6 +187,15 @@ class MatchAll : public IndividualFilter
 {
  public:
     virtual bool matches(const IndividualData &data) const { return true; }
+};
+
+/**
+ * A fake filter which just carries the maximum result parameter.
+ * Separate type because the dynamic_cast<> can be used to detect
+ * this special case.
+ */
+class ParamFilter : public MatchAll
+{
 };
 
 class FullView;

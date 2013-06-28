@@ -112,7 +112,7 @@ typedef enum {
 
 
 // enumeration element definition
-class TEnumerationDef {
+class TEnumerationDef : noncopyable {
 public:
   // constructor/destructor
   TEnumerationDef(const char *aEnumName, const char *aEnumVal, TEnumMode aMode, sInt16 aNameExtID=-1);
@@ -132,7 +132,7 @@ public:
 
 
 // conversion & storage definition
-class TConversionDef {
+class TConversionDef : noncopyable {
 public:
   // constructor/destructor
   TConversionDef();
@@ -154,7 +154,7 @@ public:
 
 
 // parameter definition
-class TParameterDefinition {
+class TParameterDefinition : noncopyable {
 public:
   // constructor/destructor
   TParameterDefinition(const char *aName, bool aDefault, bool aExtendsName, bool aShowNonEmpty, bool aShowInCTCap, TMimeDirMode aModeDep);
@@ -191,7 +191,7 @@ public:
 
 
 // property name extension by values of parameters
-class TPropNameExtension {
+class TPropNameExtension : noncopyable {
 public:
   // constructor/destructor
   TPropNameExtension(
@@ -238,7 +238,7 @@ public:
 
 
 // property definition
-class TPropertyDefinition {
+class TPropertyDefinition : noncopyable {
 public:
   // constructor/destructor
   TPropertyDefinition(const char* aName, sInt16 aNumVals, bool aMandatory, bool aShowInCTCap, bool aSuppressEmpty, uInt16 aDelayedProcessing, char aValuesep, char aAltValuesep, uInt16 aPropertyGroupID, bool aCanFilter, TMimeDirMode aModeDep, sInt16 aGroupFieldID, bool aAllowFoldAtSep);
@@ -322,7 +322,7 @@ typedef enum {
 
 
 // Profile level definition
-class TProfileDefinition {
+class TProfileDefinition : noncopyable {
 public:
   // constructor/destructor
   TProfileDefinition(

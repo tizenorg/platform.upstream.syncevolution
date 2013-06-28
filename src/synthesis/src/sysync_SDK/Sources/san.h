@@ -17,6 +17,7 @@
 // ---------- standalone definitions ------------------------------
 #include "generic_types.h" // some basic defs, which aren't available
 #include "syerror.h"       // error code definitions
+#include "sysync_noncopyable.h"
 
 #include <cstdio>         // used for printf calls
 #include <cstring>        // used for strcpy/strlen calls
@@ -87,7 +88,10 @@ enum Initiator {
  *              GetNthSync( 0, .. )' to get header params only ]
  *
  */
-class SanPackage {
+class SanPackage : noncopyable {
+  // for Klocwork, noncopyable alone was not enough
+  SanPackage & operator = (const SanPackage &);
+
   public:
     SanPackage(); // constructor
    ~SanPackage(); //  destructor

@@ -20,8 +20,13 @@
   #include <windows.h>
 #endif
 
-#ifdef ANDROID
+#if defined(ANDROID) || defined(LINUX)
   #include <pthread.h>
+#endif
+
+#if defined(LINUX)
+# include <sys/types.h>
+typedef unsigned long uIntArch; // Used for pid_t, pointers and pthread_t.
 #endif
 
 /*

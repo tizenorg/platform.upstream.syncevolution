@@ -156,7 +156,7 @@ SyncSource::Databases EvolutionCalendarSource::getDatabases()
             throwError("unable to access backend databases", gerror);
         }
     }
-    ESourceListCXX sources(tmp, false);
+    ESourceListCXX sources(tmp, TRANSFER_REF);
     bool first = true;
     for (GSList *g = sources ? e_source_list_peek_groups (sources) : NULL;
          g;
@@ -197,7 +197,7 @@ char *EvolutionCalendarSource::authenticate(const char *prompt,
 {
     std::string passwd = getPassword();
 
-    SE_LOG_DEBUG(this, NULL, "authentication requested, prompt \"%s\", key \"%s\" => %s",
+    SE_LOG_DEBUG(getDisplayName(), "authentication requested, prompt \"%s\", key \"%s\" => %s",
                  prompt, key,
                  !passwd.empty() ? "returning configured password" : "no password configured");
     return !passwd.empty() ? strdup(passwd.c_str()) : NULL;
@@ -240,7 +240,7 @@ void EvolutionCalendarSource::open()
     if (!e_cal_get_sources(&tmp, sourceType(), gerror)) {
         throwError("unable to access backend databases", gerror);
     }
-    ESourceListCXX sources(tmp, false);
+    ESourceListCXX sources(tmp, TRANSFER_REF);
 
     string id = getDatabaseID();    
     ESource *source = findSource(sources, id);
@@ -430,7 +430,7 @@ void EvolutionCalendarSource::listAllItems(RevisionMap_t &revisions)
 
 void EvolutionCalendarSource::close()
 {
-    m_calendar = NULL;
+    m_calendar.reset();
 }
 
 void EvolutionCalendarSource::readItem(const string &luid, std::string &item, bool raw)
@@ -501,7 +501,7 @@ EvolutionCalendarSource::InsertItemResult EvolutionCalendarSource::insertItem(co
         propstart = data.find("\nCATEGORIES", propstart + 1);
     }
     if (modified) {
-        SE_LOG_DEBUG(this, NULL, "after replacing , with \\, in CATEGORIES:\n%s", data.c_str());
+        SE_LOG_DEBUG(getDisplayName(), "after replacing , with \\, in CATEGORIES:\n%s", data.c_str());
     }
 
     eptr<icalcomponent> icomp(icalcomponent_new_from_string((char *)data.c_str()));
@@ -545,7 +545,7 @@ EvolutionCalendarSource::InsertItemResult EvolutionCalendarSource::insertItem(co
         const char *tzid = icaltimezone_get_tzid(zone);
         if (!tzid || !tzid[0]) {
             // cannot add a VTIMEZONE without TZID
-            SE_LOG_DEBUG(this, NULL, "skipping VTIMEZONE without TZID");
+            SE_LOG_DEBUG(getDisplayName(), "skipping VTIMEZONE without TZID");
         } else {
             gboolean success =
 #ifdef USE_EDS_CLIENT
@@ -819,7 +819,7 @@ EvolutionCalendarSource::ICalComps_t EvolutionCalendarSource::removeEvents(const
 
     // removes all events with that UID, including children
     GErrorCXX gerror;
-    if (
+    if (!uid.empty() && // e_cal_client_remove_object_sync() in EDS 3.8 aborts the process for empty UID, other versions cannot succeed, so skip the call.
 #ifdef USE_EDS_CLIENT
         !e_cal_client_remove_object_sync(m_calendar,
                                          uid.c_str(), NULL, CALOBJ_MOD_ALL,
@@ -832,7 +832,7 @@ EvolutionCalendarSource::ICalComps_t EvolutionCalendarSource::removeEvents(const
 #endif
         ) {
         if (IsCalObjNotFound(gerror)) {
-            SE_LOG_DEBUG(this, NULL, "%s: request to delete non-existant item ignored",
+            SE_LOG_DEBUG(getDisplayName(), "%s: request to delete non-existant item ignored",
                          uid.c_str());
             if (!ignoreNotFound) {
                 throwError(STATUS_NOT_FOUND, string("delete item: ") + uid);
@@ -858,7 +858,7 @@ void EvolutionCalendarSource::removeItem(const string &luid)
          * remove all items with the given uid and if we only wanted to
          * delete the parent, then recreate the children.
          */
-        ICalComps_t children = removeEvents(id.m_uid, true, false);
+        ICalComps_t children = removeEvents(id.m_uid, true, TRANSFER_REF);
 
         // recreate children
         bool first = true;
@@ -920,7 +920,7 @@ void EvolutionCalendarSource::removeItem(const string &luid)
             ;
         if (!item ||
             (!success && IsCalObjNotFound(gerror))) {
-            SE_LOG_DEBUG(this, NULL, "%s: request to delete non-existant item",
+            SE_LOG_DEBUG(getDisplayName(), "%s: request to delete non-existant item",
                          luid.c_str());
             throwError(STATUS_NOT_FOUND, string("delete item: ") + id.getLUID());
         } else if (!success) {
@@ -1034,7 +1034,7 @@ string EvolutionCalendarSource::retrieveItemAsString(const ItemID &id)
         if (!icalstr) {
             throwError(string("could not encode item as iCalendar: ") + id.getLUID());
         } else {
-            SE_LOG_DEBUG(this, NULL, "had to remove TZIDs because e_cal_get_component_as_string() failed for:\n%s", icalstr.get());
+            SE_LOG_DEBUG(getDisplayName(), "had to remove TZIDs because e_cal_get_component_as_string() failed for:\n%s", icalstr.get());
 	}
     }
 
@@ -1066,7 +1066,7 @@ string EvolutionCalendarSource::retrieveItemAsString(const ItemID &id)
         propstart = data.find("\nCATEGORIES", propstart + 1);
     }
     if (modified) {
-        SE_LOG_DEBUG(this, NULL, "after replacing \\, with , in CATEGORIES:\n%s", data.c_str());
+        SE_LOG_DEBUG(getDisplayName(), "after replacing \\, with , in CATEGORIES:\n%s", data.c_str());
     }
     
     return data;

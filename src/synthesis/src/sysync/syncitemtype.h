@@ -58,7 +58,7 @@ typedef void * TTypeVariantDescriptor;
 
 const uInt16 ity_syncitem = 0; // must be unique
 
-class TSyncItemType {
+class TSyncItemType : noncopyable {
 private:
   void init(
     TSyncSession *aSessionP,

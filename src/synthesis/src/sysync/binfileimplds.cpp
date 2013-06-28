@@ -713,7 +713,7 @@ localstatus TBinfileImplDS::changeLogPreflight(bool &aValidChangelog)
   TSyncItem *itemP = NULL;
   localid_out_t itemLocalID;
   uInt16 dataCRC = 0;
-  bool itemIsModified;
+  bool itemIsModified = false;
 
   // just in case: make sure we don't have a changelog loaded here
   forgetChangeLog();

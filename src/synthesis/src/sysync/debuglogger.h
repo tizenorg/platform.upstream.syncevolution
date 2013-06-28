@@ -18,7 +18,9 @@
 
 #include "generic_types.h"
 #include "platform_mutex.h"
+#include "platform_thread.h"
 #include "sysync.h"
+#include "sysync_noncopyable.h"
 
 namespace sysync {
 
@@ -106,7 +108,7 @@ public:
 
 
 /// @brief Debug output channel
-class TDbgOut {
+class TDbgOut : noncopyable {
   // construction/destruction
 private:
   bool fDestructed; // flag which will be set once destruct() has been called - by the outermost derivate's destructor
@@ -203,7 +205,7 @@ class TDebugLogger;
 class GZones;
 
 /// @brief Debug logger base class (without subthread handling)
-class TDebugLoggerBase {
+class TDebugLoggerBase : noncopyable {
 public:
   // constructor/destructor
   TDebugLoggerBase(GZones *aGZonesP);
@@ -218,7 +220,7 @@ public:
   /// @brief check if an output channel is already established other than with default values
   bool outputEstablished(void) { return fOutStarted; };
   /// @brief set debug options
-  void setOptions(const TDbgOptions *aDbgOptionsP) { fDbgOptionsP=aDbgOptionsP; };
+  virtual void setOptions(const TDbgOptions *aDbgOptionsP) { fDbgOptionsP = aDbgOptionsP; };
   /// @brief get debug options pointer
   const TDbgOptions *getOptions(void) { return fDbgOptionsP; };
   // @brief convenience version for getting time
@@ -361,6 +363,8 @@ public:
   virtual ~TDebugLogger();
   // methods
   #ifdef MULTI_THREAD_SUPPORT
+  /// @brief set debug options in this logger and all sub thread loggers
+  virtual void setOptions(const TDbgOptions *aDbgOptionsP);
   virtual void DebugPuts(TDBG_LOCATION_PROTO uInt32 aDbgMask, cAppCharP aText, stringSize aTextSize=0, bool aPreFormatted=false);
   virtual void DebugVPrintf(TDBG_LOCATION_PROTO uInt32 aDbgMask, cAppCharP aFormat, va_list aArgs);
   virtual void DebugVOpenBlock(TDBG_LOCATION_PROTO cAppCharP aBlockName, cAppCharP aBlockTitle, bool aCollapsed, cAppCharP aBlockFmt, va_list aArgs);
@@ -391,7 +395,7 @@ private:
   /// @brief find or create logger for subthread
   TDebugLoggerBase *getThreadLogger(bool aCreateNew=true);
   // Variables
-  uInt32 fMainThreadID;
+  uIntArch fMainThreadID;
   TSubThreadLog *fSubThreadLogs; // the linked list of active subthreads
   TDebugLoggerBase *fSilentLoggerP; // a silent (inactive) logger required for suppressed subthreads
   #endif

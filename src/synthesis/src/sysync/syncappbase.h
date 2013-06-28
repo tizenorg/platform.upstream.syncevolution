@@ -316,7 +316,7 @@ class TProfileConfig; // forward
 class TAgentConfig; // forward
 
 // root Config element
-class TRootConfig : public TRootConfigElement
+class TRootConfig : public TRootConfigElement, noncopyable
 {
   typedef TRootConfigElement inherited;
 public:
@@ -427,7 +427,7 @@ namespace sysync {
 /* TSyncAppBase is a global, singular object which is instantiated ONCE
  * per application.
  */
-class TSyncAppBase {
+class TSyncAppBase : noncopyable {
   friend class TDebugConfig;
 public:
   // constructors/destructors

@@ -162,7 +162,7 @@ typedef TItemField *TItemFieldP;
 typedef std::vector<TItemField *> TFieldArray;
 
 // array field, contains a list of fields of TItemFields
-class TArrayField : public TItemField
+class TArrayField : public TItemField, noncopyable
 {
   typedef TItemField inherited;
 public:

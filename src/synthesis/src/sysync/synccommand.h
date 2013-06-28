@@ -67,7 +67,7 @@ class TSyncAppBase;
 
 
 // abstract base command class
-class TSmlCommand
+class TSmlCommand : noncopyable
 {
 public:
   // constructor for ALL commands

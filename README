@@ -7,8 +7,8 @@ synchronize personal information management data
 ------------------------------------------------
 
 :Manual section: 1
-:Version: 1.3.99.3
-:Date: 2013-03-07
+:Version: 1.3.99.3+20130529+SE+b989f69+SYSYNC+3366831
+:Date: 2013-05-29
 
 
 SYNOPSIS
@@ -931,10 +931,21 @@ SyncMLVersion (no default, unshared)
    Instead or in adddition to the version, several keywords can
    be set in this property (separated by spaces or commas):
    
-   - NOCTCAP = avoid sending CtCap meta information
-   - NORESTART = disable the sync mode extension that SyncEvolution
+   - NOCTCAP - avoid sending CtCap meta information
+   - NORESTART - disable the sync mode extension that SyncEvolution
      client and server use to negotiate whether both sides support
      running multiple sync iterations in the same session
+   - REQUESTMAXTIME=<time> - override the rate at which the
+     SyncML server sends preliminary replies while preparing
+     local storages in the background. This helps to avoid timeouts
+     in the SyncML client. Depends on multithreading.
+     This SyncEvolution binary is thread-safe and thus this feature
+     is enabled by default for HTTP servers, with a delay of 2 minutes
+     between messages. Other servers (Bluetooth, local sync) should not
+     need preliminary replies and the feature is disabled, although
+     it can be enabled by setting the time explicitly.
+     <time> can be specified like other durations in the config,
+     for example as REQUESTMAXTIME=2m.
    
    Setting these flags should only be necessary as workaround for
    broken peers.

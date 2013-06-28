@@ -252,7 +252,7 @@ int Execute(const std::string &cmd, ExecuteFlags flags) throw()
             if (flags & EXECUTE_NO_STDOUT) {
                 fullcmd += " >/dev/null";
             }
-            SE_LOG_DEBUG(NULL, NULL, "running command via system(): %s", cmd.c_str());
+            SE_LOG_DEBUG(NULL, "running command via system(): %s", cmd.c_str());
             ret = system(fullcmd.c_str());
         } else {
             // Need to catch at least one of stdout or stderr. A
@@ -260,7 +260,7 @@ int Execute(const std::string &cmd, ExecuteFlags flags) throw()
             // are read after system() returns. But we want true
             // streaming of the output, so use fork()/exec() plus
             // reliable output redirection.
-            SE_LOG_DEBUG(NULL, NULL, "running command via fork/exec with output redirection: %s", cmd.c_str());
+            SE_LOG_DEBUG(NULL, "running command via fork/exec with output redirection: %s", cmd.c_str());
             LogRedirect io(flags);
             pid_t child = fork();
             switch (child) {
@@ -296,7 +296,7 @@ int Execute(const std::string &cmd, ExecuteFlags flags) throw()
             }
             case -1:
                 // error handling in parent when fork() fails
-                SE_LOG_ERROR(NULL, NULL, "%s: fork() failed: %s",
+                SE_LOG_ERROR(NULL, "%s: fork() failed: %s",
                              cmd.c_str(), strerror(errno));
                 break;
             default:
@@ -764,31 +764,42 @@ double Sleep(double seconds)
     SuspendFlags &s = SuspendFlags::getSuspendFlags();
     if (s.getState() == SuspendFlags::NORMAL) {
 #ifdef HAVE_GLIB
-        bool triggered = false;
-        GLibEvent timeout(g_timeout_add(seconds * 1000,
-                                        SleepTimeout,
-                                        &triggered),
-                          "glib timeout");
-        while (!triggered) {
-            if (s.getState() != SuspendFlags::NORMAL) {
-                break;
+        // Only use glib if we are the owner of the main context.
+        // Otherwise we would interfere (?) with that owner or
+        // depend on it to drive the context (?). The glib docs
+        // don't say anything about this; in practice, it was
+        // observed that with some versions of glib, a second
+        // thread just blocked here when the main thread was not
+        // processing glib events.
+        if (g_main_context_is_owner(g_main_context_default())) {
+            bool triggered = false;
+            GLibEvent timeout(g_timeout_add(seconds * 1000,
+                                            SleepTimeout,
+                                            &triggered),
+                              "glib timeout");
+            while (!triggered) {
+                if (s.getState() != SuspendFlags::NORMAL) {
+                    break;
+                }
+                g_main_context_iteration(NULL, true);
             }
-            g_main_context_iteration(NULL, true);
-        }
-        // done
-        return 0;
-#else
-        // Only works when abort or suspend requests are delivered via signal.
-        // Not the case when used inside helper processes; but those have
-        // and depend on glib.
-        timeval delay;
-        delay.tv_sec = floor(seconds);
-        delay.tv_usec = (seconds - (double)delay.tv_sec) * 1e6;
-        if (select(0, NULL, NULL, NULL, &delay) != -1) {
             // done
             return 0;
         }
 #endif
+
+        // Fallback when glib is not available or unusable (= outside the main thread).
+        // Busy loop to detect abort requests.
+	Timespec deadline = start + Timespec(floor(seconds), (seconds - floor(seconds)) * 1e9);
+	while (deadline > Timespec::monotonic()) {
+            timeval delay;
+            delay.tv_sec = 0;
+            delay.tv_usec = 1e5;
+            select(0, NULL, NULL, NULL, &delay);
+            if (s.getState() != SuspendFlags::NORMAL) {
+                break;
+            }
+        }
     }
 
     // not done normally, calculate remaining time
@@ -818,7 +829,7 @@ const char * const SYNTHESIS_PROBLEM = "error code from Synthesis engine ";
 const char * const SYNCEVOLUTION_PROBLEM = "error code from SyncEvolution ";
 
 SyncMLStatus Exception::handle(SyncMLStatus *status,
-                               Logger *logger,
+                               const std::string *logPrefix,
                                std::string *explanation,
                                Logger::Level level,
                                HandleExceptionFlags flags)
@@ -831,7 +842,7 @@ SyncMLStatus Exception::handle(SyncMLStatus *status,
     try {
         throw;
     } catch (const TransportException &ex) {
-        SE_LOG_DEBUG(logger, NULL, "TransportException thrown at %s:%d",
+        SE_LOG_DEBUG(logPrefix, "TransportException thrown at %s:%d",
                      ex.m_file.c_str(), ex.m_line);
         error = std::string(TRANSPORT_PROBLEM) + ex.what();
         new_status = SyncMLStatus(sysync::LOCERR_TRANSPFAIL);
@@ -842,7 +853,7 @@ SyncMLStatus Exception::handle(SyncMLStatus *status,
                              Status2String(new_status).c_str());
     } catch (const StatusException &ex) {
         new_status = ex.syncMLStatus();
-        SE_LOG_DEBUG(logger, NULL, "exception thrown at %s:%d",
+        SE_LOG_DEBUG(logPrefix, "exception thrown at %s:%d",
                      ex.m_file.c_str(), ex.m_line);
         error = StringPrintf("%s%s: %s",
                              SYNCEVOLUTION_PROBLEM,
@@ -852,7 +863,7 @@ SyncMLStatus Exception::handle(SyncMLStatus *status,
             level = Logger::DEBUG;
         }
     } catch (const Exception &ex) {
-        SE_LOG_DEBUG(logger, NULL, "exception thrown at %s:%d",
+        SE_LOG_DEBUG(logPrefix, "exception thrown at %s:%d",
                      ex.m_file.c_str(), ex.m_line);
         error = ex.what();
     } catch (const std::exception &ex) {
@@ -866,7 +877,7 @@ SyncMLStatus Exception::handle(SyncMLStatus *status,
     if (flags & HANDLE_EXCEPTION_NO_ERROR) {
         level = Logger::DEBUG;
     }
-    SE_LOG(level, logger, NULL, "%s", error.c_str());
+    SE_LOG(logPrefix, level, "%s", error.c_str());
     if (flags & HANDLE_EXCEPTION_FATAL) {
         // Something unexpected went wrong, can only shut down.
         ::abort();
@@ -1039,7 +1050,11 @@ ScopedEnvChange::~ScopedEnvChange()
 std::string getCurrentTime()
 {
     time_t seconds = time (NULL);
-    tm *data = localtime (&seconds);
+    tm tmbuffer;
+    tm *data = localtime_r(&seconds, &tmbuffer);
+    if (!data) {
+        return "???";
+    }
     arrayptr<char> buffer (new char [13]);
     strftime (buffer.get(), 13, "%y%m%d%H%M%S", data);
     return buffer.get();

@@ -22,7 +22,6 @@
 #define INCL_SYNCSOURCE
 
 #include <syncevo/SyncConfig.h>
-#include <syncevo/Logging.h>
 #include <syncevo/SyncML.h>
 #include <syncevo/Timespec.h>
 
@@ -987,7 +986,7 @@ public OperationWrapperSwitch<F, boost::function<F>::arity>
  * this base via different intermediate classes, therefore the
  * need to keep it abstract.
  */
-class SyncSourceBase : public Logger {
+class SyncSourceBase {
  public:
     virtual ~SyncSourceBase() {}
 
@@ -1095,21 +1094,6 @@ class SyncSourceBase : public Logger {
      * returned.
      */
     virtual string getNativeDatatypeName();
-
-    /**
-     * Logging utility code.
-     *
-     * Every sync source adds "<name>" as prefix to its output.
-     * All calls are redirected into SyncContext logger.
-     */
-    virtual void messagev(Level level,
-                          const char *prefix,
-                          const char *file,
-                          int line,
-                          const char *function,
-                          const char *format,
-                          va_list args);
-    virtual bool isProcessSafe() const { return true; }
 
     /**
      * return Synthesis API pointer, if one currently is available
@@ -1519,13 +1503,26 @@ class SyncSource : virtual public SyncSourceBase, public SyncSourceConfig, publi
     virtual Database createDatabase(const Database &database) { throwError("creating databases is not supported by backend " + getBackend()); return Database("", ""); }
 
     /**
+     * Removing a database primarily removes the meta data about the
+     * database. The data itself may still exist in a trash folder.
+     * The enum tells the deleteDatabase() call what the intention of
+     * the caller is.
+     */
+    enum RemoveData {
+        REMOVE_DATA_DEFAULT,    /**< do whatever makes most sense for the backend */
+        REMOVE_DATA_FORCE,      /**< force immediate purging of the data, fail if not possible */
+        REMOVE_DATA_KEEP        /**< keep data, only remove access to it */
+    };
+
+    /**
      * Removes a database. To map a "database" property to a uri,
      * instantiate the source with the desired config, open() it and
      * then call getDatabase().
      *
-     * @param uri    unique identifier for the database
+     * @param uri              unique identifier for the database
+     * @param removeData       describes what to do about the database content
      */
-    virtual void deleteDatabase(const std::string &uri) { throwError("deleting databases is not supported by backend " + getBackend()); }
+    virtual void deleteDatabase(const std::string &uri, RemoveData removeData) { throwError("deleting databases is not supported by backend " + getBackend()); }
 
     /**
      * Actually opens the data source specified in the constructor,
@@ -2514,8 +2511,8 @@ class SyncSourceBlob : public virtual SyncSourceBase
         sysync::memSize blksize = aBlkSize ? static_cast<sysync::memSize>(*aBlkSize) : 0,
             totsize = aTotSize ? static_cast<sysync::memSize>(*aTotSize) : 0;
         sysync::TSyError err = m_blob.ReadBlob(aID, aBlobID, aBlkPtr,
-                                               aBlkSize ? &blksize : NULL,
-                                               aTotSize ? &totsize : NULL,
+                                               &blksize,
+                                               &totsize,
                                                aFirst, aLast);
         if (aBlkSize) {
             *aBlkSize = blksize;

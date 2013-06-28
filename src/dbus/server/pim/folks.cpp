@@ -40,9 +40,9 @@ SE_BEGIN_CXX
 static void logResult(const GError *gerror, const char *operation)
 {
     if (gerror) {
-        SE_LOG_ERROR(NULL, NULL, "%s: %s", operation, gerror->message);
+        SE_LOG_ERROR(NULL, "%s: %s", operation, gerror->message);
     } else {
-        SE_LOG_DEBUG(NULL, NULL, "%s: done", operation);
+        SE_LOG_DEBUG(NULL, "%s: done", operation);
     }
 }
 
@@ -63,7 +63,7 @@ public:
         if (fn) {
             const char *family = folks_structured_name_get_family_name(fn);
             const char *given = folks_structured_name_get_given_name(fn);
-            SE_LOG_DEBUG(NULL, NULL, "criteria: formatted name: %s, %s",
+            SE_LOG_DEBUG(NULL, "criteria: formatted name: %s, %s",
                          family, given);
             if (m_firstLast) {
                 criteria.push_back(given ? given : "");
@@ -73,7 +73,7 @@ public:
                 criteria.push_back(given ? given : "");
             }
         } else {
-            SE_LOG_DEBUG(NULL, NULL, "criteria: no formatted");
+            SE_LOG_DEBUG(NULL, "criteria: no formatted");
         }
     }
 
@@ -94,7 +94,7 @@ void IndividualData::init(const IndividualCompare *compare,
                           const LocaleFactory *locale,
                           FolksIndividual *individual)
 {
-    m_individual = individual;
+    m_individual = FolksIndividualCXX(individual, ADD_REF);
     if (compare) {
         m_criteria.clear();
         compare->createCriteria(individual, m_criteria);
@@ -135,7 +135,7 @@ bool IndividualCompare::compare(const Criteria_t &a, const Criteria_t &b) const
 
 IndividualAggregator::IndividualAggregator(const boost::shared_ptr<LocaleFactory> &locale) :
     m_locale(locale),
-    m_databases(gee_hash_set_new(G_TYPE_STRING, (GBoxedCopyFunc) g_strdup, g_free, NULL, NULL, NULL, NULL, NULL, NULL), false)
+    m_databases(gee_hash_set_new(G_TYPE_STRING, (GBoxedCopyFunc) g_strdup, g_free, NULL, NULL, NULL, NULL, NULL, NULL), TRANSFER_REF)
 {
 }
 
@@ -169,7 +169,7 @@ std::string IndividualAggregator::dumpDatabases()
 {
     std::string res;
 
-    BOOST_FOREACH (const gchar *tmp, GeeStringCollection(GEE_COLLECTION(m_databases.get()))) {
+    BOOST_FOREACH (const gchar *tmp, GeeStringCollection(GEE_COLLECTION(m_databases.get()), ADD_REF)) {
         if (!res.empty()) {
             res += ", ";
         }
@@ -180,7 +180,7 @@ std::string IndividualAggregator::dumpDatabases()
 
 void IndividualAggregator::storePrepared()
 {
-    SE_LOG_DEBUG(NULL, NULL, "backend store is prepared");
+    SE_LOG_DEBUG(NULL, "backend store is prepared");
 
     // Have to hard-code the list of known backends that we don't want.
     SYNCEVO_GLIB_CALL_ASYNC(folks_backend_store_disable_backend,
@@ -214,10 +214,10 @@ void IndividualAggregator::storePrepared()
 
 void IndividualAggregator::backendsLoaded()
 {
-    SE_LOG_DEBUG(NULL, NULL, "backend store has loaded backends");
-    GeeCollectionCXX coll(folks_backend_store_list_backends(m_backendStore));
-    BOOST_FOREACH (FolksBackend *backend, GeeCollCXX<FolksBackend *>(coll.get())) {
-        SE_LOG_DEBUG(NULL, NULL, "folks backend: %s", folks_backend_get_name(backend));
+    SE_LOG_DEBUG(NULL, "backend store has loaded backends");
+    GeeCollectionCXX coll(folks_backend_store_list_backends(m_backendStore), TRANSFER_REF);
+    BOOST_FOREACH (FolksBackend *backend, GeeCollCXX<FolksBackend *>(coll)) {
+        SE_LOG_DEBUG(NULL, "folks backend: %s", folks_backend_get_name(backend));
     }
     m_eds =
         FolksBackendCXX::steal(folks_backend_store_dup_backend_by_name(m_backendStore, "eds"));
@@ -225,10 +225,10 @@ void IndividualAggregator::backendsLoaded()
         // Remember system store, for writing contacts.
         GeeMap *stores = folks_backend_get_persona_stores(m_eds);
         FolksPersonaStore *systemStore = static_cast<FolksPersonaStore *>(gee_map_get(stores, "system-address-book"));
-        m_systemStore = systemStore;
+        m_systemStore = FolksPersonaStoreCXX(systemStore, TRANSFER_REF);
 
         // Tell the backend which databases we want.
-        SE_LOG_DEBUG(NULL, NULL, "backends loaded: setting EDS persona stores: [%s]",
+        SE_LOG_DEBUG(NULL, "backends loaded: setting EDS persona stores: [%s]",
                      dumpDatabases().c_str());
         folks_backend_set_persona_stores(m_eds, GEE_SET(m_databases.get()));
 
@@ -243,7 +243,7 @@ void IndividualAggregator::backendsLoaded()
         // Execute delayed work.
         m_backendsLoadedSignal();
     } else {
-        SE_LOG_ERROR(NULL, NULL, "EDS backend not active?!");
+        SE_LOG_ERROR(NULL, "EDS backend not active?!");
     }
 }
 
@@ -256,11 +256,11 @@ void IndividualAggregator::setDatabases(std::set<std::string> &databases)
 
     if (m_eds) {
         // Backend is loaded, tell it about the change.
-        SE_LOG_DEBUG(NULL, NULL, "backends already loaded: setting EDS persona stores directly: [%s]",
+        SE_LOG_DEBUG(NULL, "backends already loaded: setting EDS persona stores directly: [%s]",
                      dumpDatabases().c_str());
         folks_backend_set_persona_stores(m_eds, GEE_SET(m_databases.get()));
     } else {
-        SE_LOG_DEBUG(NULL, NULL, "backends not loaded yet: setting EDS persona stores delayed: [%s]",
+        SE_LOG_DEBUG(NULL, "backends not loaded yet: setting EDS persona stores delayed: [%s]",
                      dumpDatabases().c_str());
     }
 }
@@ -505,9 +505,9 @@ void IndividualAggregator::doRunWithPersona(const boost::function<void (FolksPer
                                             const ErrorCb_t &onError) throw()
 {
     try {
-        GeeMap *personas = folks_persona_store_get_personas(m_systemStore);
         typedef GeeCollCXX< GeeMapEntryWrapper<const gchar *, FolksPersona *> > Coll;
-        BOOST_FOREACH (const Coll::value_type &entry, Coll(personas)) {
+        Coll personas(folks_persona_store_get_personas(m_systemStore), ADD_REF);
+        BOOST_FOREACH (const Coll::value_type &entry, personas) {
             // key seems to be <store id>:<persona ID>
             const gchar *key = entry.key();
             const gchar *colon = strchr(key, ':');
@@ -536,12 +536,12 @@ private:
         done = true;
         if (gerror) {
             failed = true;
-            SE_LOG_ERROR(NULL, NULL, "%s: %s", func, gerror->message);
+            SE_LOG_ERROR(NULL, "%s: %s", func, gerror->message);
         }
     }
 
     void open() {
-        FolksIndividualAggregatorCXX aggregator(folks_individual_aggregator_new(), false);
+        FolksIndividualAggregatorCXX aggregator(folks_individual_aggregator_new(), TRANSFER_REF);
         bool done = false, failed = false;
         SYNCEVO_GLIB_CALL_ASYNC(folks_individual_aggregator_prepare,
                                 boost::bind(asyncCB, _1,
@@ -559,36 +559,36 @@ private:
         }
 
         GeeMap *individuals = folks_individual_aggregator_get_individuals(aggregator);
-        SE_LOG_DEBUG(NULL, NULL, "%d individuals", gee_map_get_size(individuals));
+        typedef GeeCollCXX< GeeMapEntryWrapper<const gchar *, FolksIndividual *> > Coll;
+        Coll coll(individuals, ADD_REF);
+        SE_LOG_DEBUG(NULL, "%d individuals", gee_map_get_size(individuals));
 
-        GeeMapIteratorCXX it(gee_map_map_iterator(individuals), false);
+        GeeMapIteratorCXX it(gee_map_map_iterator(individuals), TRANSFER_REF);
         while (gee_map_iterator_next(it)) {
             PlainGStr id(reinterpret_cast<gchar *>(gee_map_iterator_get_key(it)));
             FolksIndividualCXX individual(reinterpret_cast<FolksIndividual *>(gee_map_iterator_get_value(it)),
-                                          false);
+                                          TRANSFER_REF);
             GValueStringCXX fullname;
             g_object_get_property(G_OBJECT(individual.get()), "full-name", &fullname);
-            SE_LOG_DEBUG(NULL, NULL, "map: id %s name %s = %s",
+            SE_LOG_DEBUG(NULL, "map: id %s name %s = %s",
                          id.get(),
                          fullname.toString().c_str(),
                          fullname.get());
         }
 
-        GeeIteratorCXX it2(gee_iterable_iterator(GEE_ITERABLE(individuals)), false);
+        GeeIteratorCXX it2(gee_iterable_iterator(GEE_ITERABLE(individuals)), TRANSFER_REF);
         while (gee_iterator_next(it2)) {
-            GeeMapEntryCXX entry(reinterpret_cast<GeeMapEntry *>(gee_iterator_get(it2)), false);
+            GeeMapEntryCXX entry(reinterpret_cast<GeeMapEntry *>(gee_iterator_get(it2)), TRANSFER_REF);
             gchar *id(reinterpret_cast<gchar *>(const_cast<gpointer>(gee_map_entry_get_key(entry))));
             FolksIndividual *individual(reinterpret_cast<FolksIndividual *>(const_cast<gpointer>(gee_map_entry_get_value(entry))));
             GValueStringCXX fullname;
             g_object_get_property(G_OBJECT(individual), "full-name", &fullname);
-            SE_LOG_DEBUG(NULL, NULL, "iterable: id %s name %s = %s",
+            SE_LOG_DEBUG(NULL, "iterable: id %s name %s = %s",
                          id,
                          fullname.toString().c_str(),
                          fullname.get());
         }
 
-        typedef GeeCollCXX< GeeMapEntryWrapper<const gchar *, FolksIndividual *> > Coll;
-        Coll coll(individuals);
         Coll::const_iterator curr = coll.begin();
         Coll::const_iterator end = coll.end();
         if (curr != end) {
@@ -597,30 +597,30 @@ private:
             GValueStringCXX fullname;
             g_object_get_property(G_OBJECT(individual), "full-name", &fullname);
 
-            SE_LOG_DEBUG(NULL, NULL, "first: id %s name %s = %s",
+            SE_LOG_DEBUG(NULL, "first: id %s name %s = %s",
                          id,
                          fullname.toString().c_str(),
                          fullname.get());
             ++curr;
         }
 
-        BOOST_FOREACH (Coll::value_type &entry, Coll(individuals)) {
+        BOOST_FOREACH (Coll::value_type &entry, coll) {
             const gchar *id = entry.key();
             FolksIndividual *individual(entry.value());
             // GValueStringCXX fullname;
             // g_object_get_property(G_OBJECT(individual), "full-name", &fullname);
             const gchar *fullname = folks_name_details_get_full_name(FOLKS_NAME_DETAILS(individual));
 
-            SE_LOG_DEBUG(NULL, NULL, "boost: id %s %s name %s",
+            SE_LOG_DEBUG(NULL, "boost: id %s %s name %s",
                          id,
                          fullname ? "has" : "has no",
                          fullname);
 
-            GeeSet *emails = folks_email_details_get_email_addresses(FOLKS_EMAIL_DETAILS(individual));
-            SE_LOG_DEBUG(NULL, NULL, "     %d emails", gee_collection_get_size(GEE_COLLECTION(emails)));
             typedef GeeCollCXX<FolksEmailFieldDetails *> EmailColl;
-            BOOST_FOREACH (FolksEmailFieldDetails *email, EmailColl(emails)) {
-                SE_LOG_DEBUG(NULL, NULL, "     %s",
+            EmailColl emails(folks_email_details_get_email_addresses(FOLKS_EMAIL_DETAILS(individual)), ADD_REF);
+            SE_LOG_DEBUG(NULL, "     %d emails", gee_collection_get_size(GEE_COLLECTION(emails.get())));
+            BOOST_FOREACH (FolksEmailFieldDetails *email, emails) {
+                SE_LOG_DEBUG(NULL, "     %s",
                              reinterpret_cast<const gchar *>(folks_abstract_field_details_get_value(FOLKS_ABSTRACT_FIELD_DETAILS(email))));
             }
         }
@@ -630,7 +630,7 @@ private:
 
     void gvalue() {
         GValueBooleanCXX b(true);
-        SE_LOG_DEBUG(NULL, NULL, "GValueBooleanCXX(true) = %s", b.toString().c_str());
+        SE_LOG_DEBUG(NULL, "GValueBooleanCXX(true) = %s", b.toString().c_str());
         GValueBooleanCXX b2(b);
         CPPUNIT_ASSERT_EQUAL(b.get(), b2.get());
         b2.set(false);
@@ -639,7 +639,7 @@ private:
         CPPUNIT_ASSERT_EQUAL(b.get(), b2.get());
 
         GValueStringCXX str("foo bar");
-        SE_LOG_DEBUG(NULL, NULL, "GValueStringCXX(\"foo bar\") = %s", str.toString().c_str());
+        SE_LOG_DEBUG(NULL, "GValueStringCXX(\"foo bar\") = %s", str.toString().c_str());
         CPPUNIT_ASSERT(!strcmp(str.get(), "foo bar"));
         GValueStringCXX str2(str);
         CPPUNIT_ASSERT(!strcmp(str.get(), str2.get()));

@@ -27,6 +27,7 @@
 #include <syncevo/SyncSource.h>
 #include <syncevo/util.h>
 #include <syncevo/SuspendFlags.h>
+#include <syncevo/ThreadSupport.h>
 
 #include <syncevo/SafeConfigNode.h>
 #include <syncevo/IniConfigNode.h>
@@ -267,12 +268,30 @@ public:
     }
 };
 
-// this class owns the logging directory and is responsible
+class LogDir;
+
+/**
+ * Helper class for LogDir: acts as proxy for logging into
+ * the LogDir's reports and log file.
+ */
+class LogDirLogger : public Logger
+{
+    Logger::Handle m_parentLogger;     /**< the logger which was active before we started to intercept messages */
+    boost::weak_ptr<LogDir> m_logdir;  /**< grants access to report and Synthesis engine */
+
+public:
+    LogDirLogger(const boost::weak_ptr<LogDir> &logdir);
+    virtual void remove() throw ();
+    virtual void messagev(const MessageOptions &options,
+                          const char *format,
+                          va_list args);
+};
+
+// This class owns the logging directory. It is responsible
 // for redirecting output at the start and end of sync (even
-// in case of exceptions thrown!)
-class LogDir : public LoggerBase, private boost::noncopyable, private LogDirNames {
+// in case of exceptions thrown!).
+class LogDir : private boost::noncopyable, private LogDirNames {
     SyncContext &m_client;
-    Logger &m_parentLogger;  /**< the logger which was active before we started to intercept messages */
     string m_logdir;         /**< configured backup root dir */
     int m_maxlogdirs;        /**< number of backup dirs to preserve, 0 if unlimited */
     string m_prefix;         /**< common prefix of backup dirs */
@@ -286,11 +305,18 @@ class LogDir : public LoggerBase, private boost::noncopyable, private LogDirName
                                   that this class still is the central point to ask
                                   for the name of the log file. */
     boost::scoped_ptr<SafeConfigNode> m_info;  /**< key/value representation of sync information */
+
+    // Access to m_report and m_client must be thread-safe as soon as
+    // LogDirLogger is active, because they are shared between main
+    // thread and any thread which might log errors.
+    friend class LogDirLogger;
     bool m_readonly;         /**< m_info is not to be written to */
     SyncReport *m_report;    /**< record start/end times here */
 
-public:
-    LogDir(SyncContext &client) : m_client(client), m_parentLogger(LoggerBase::instance()), m_info(NULL), m_readonly(false), m_report(NULL)
+    boost::weak_ptr<LogDir> m_self;
+    PushLogger<LogDirLogger> m_logger; /**< active logger */
+
+    LogDir(SyncContext &client) : m_client(client), m_info(NULL), m_readonly(false), m_report(NULL)
     {
         // Set default log directory. This will be overwritten with a user-specified
         // location later on, if one was selected by the user. SyncEvolution >= 0.9 alpha
@@ -310,6 +336,14 @@ public:
             path = "${XDG_CACHE_HOME}/syncevolution";
         }
         setLogdir(path);
+    }
+
+public:
+    static boost::shared_ptr<LogDir> create(SyncContext &client)
+    {
+        boost::shared_ptr<LogDir> logdir(new LogDir(client));
+        logdir->m_self = logdir;
+        return logdir;
     }
 
     /**
@@ -445,7 +479,11 @@ public:
             if (mode == SESSION_CREATE) {
                 // create unique directory name in the given directory
                 time_t ts = time(NULL);
-                struct tm *tm = localtime(&ts);
+                struct tm tmbuffer;
+                struct tm *tm = localtime_r(&ts, &tmbuffer);
+                if (!tm) {
+                    SE_THROW("localtime_r() failed");
+                }
                 stringstream base;
                 base << "-"
                      << setfill('0')
@@ -500,7 +538,7 @@ public:
                 m_path = m_logdir;
                 if (mkdir(m_path.c_str(), S_IRWXU) &&
                     errno != EEXIST) {
-                    SE_LOG_DEBUG(NULL, NULL, "%s: %s", m_path.c_str(), strerror(errno));
+                    SE_LOG_DEBUG(NULL, "%s: %s", m_path.c_str(), strerror(errno));
                     SyncContext::throwError(m_path, errno);
                 }
             }
@@ -508,35 +546,36 @@ public:
         }
 
         // update log level of default logger and our own replacement
-        Level level;
+        Logger::Level level;
         switch (logLevel) {
         case 0:
             // default for console output
-            level = INFO;
+            level = Logger::INFO;
             break;
         case 1:
-            level = ERROR;
+            level = Logger::ERROR;
             break;
         case 2:
-            level = INFO;
+            level = Logger::INFO;
             break;
         default:
             if (m_logfile.empty() || getenv("SYNCEVOLUTION_DEBUG")) {
                 // no log file or user wants to see everything:
                 // print all information to the console
-                level = DEBUG;
+                level = Logger::DEBUG;
             } else {
                 // have log file: avoid excessive output to the console,
                 // full information is in the log file
-                level = INFO;
+                level = Logger::INFO;
             }
             break;
         }
         if (mode != SESSION_USE_PATH) {
-            LoggerBase::instance().setLevel(level);
+            Logger::instance().setLevel(level);
         }
-        setLevel(level);
-        LoggerBase::pushLogger(this);
+        boost::shared_ptr<Logger> logger(new LogDirLogger(m_self));
+        logger->setLevel(level);
+        m_logger.reset(logger);
 
         time_t start = time(NULL);
         if (m_report) {
@@ -686,7 +725,7 @@ public:
                         }
                     }
                     if (!mustkeep) {
-                        SE_LOG_DEBUG(NULL, NULL, "removing %s", path.c_str());
+                        SE_LOG_DEBUG(NULL, "removing %s", path.c_str());
                         rm_r(path);
                         ++deleted;
                     }
@@ -706,6 +745,7 @@ public:
             if (!m_readonly) {
                 writeTimestamp("end", end);
                 if (m_report) {
+                    RecMutex::Guard guard = Logger::lock();
                     writeReport(*m_report);
                 }
                 m_info->flush();
@@ -714,57 +754,15 @@ public:
         }
     }
 
-    // remove redirection of logging (safe for destructor)
+    // Remove redirection of logging.
     void restore() {
-        if (&LoggerBase::instance() == this) {
-            LoggerBase::popLogger();
-        }
+        m_logger.reset();
     }
 
     ~LogDir() {
         restore();
     }
 
-
-    virtual void messagev(Level level,
-                          const char *prefix,
-                          const char *file,
-                          int line,
-                          const char *function,
-                          const char *format,
-                          va_list args)
-    {
-        // always to parent first (usually stdout):
-        // if the parent is a LogRedirect instance, then
-        // it'll flush its own output first, which ensures
-        // that the new output comes later (as desired)
-        {
-            va_list argscopy;
-            va_copy(argscopy, args);
-            m_parentLogger.messagev(level, prefix, file, line, function, format, argscopy);
-            va_end(argscopy);
-        }
-
-        if (m_report &&
-            (level <= ERROR /* ||
-                               (level == SHOW && isErrorString(format, args)) */) &&
-            m_report->getError().empty()) {
-            va_list argscopy;
-            va_copy(argscopy, args);
-            string error = StringPrintfV(format, argscopy);
-            va_end(argscopy);
-
-            m_report->setError(error);
-        }
-
-        if (m_client.getEngine().get()) {
-            va_list argscopy;
-            va_copy(argscopy, args);
-            // once to Synthesis log, with full debugging
-            m_client.getEngine().doDebug(level, prefix, file, line, function, format, argscopy);
-            va_end(argscopy);
-        }
-    }
 
 #if 0
     /**
@@ -797,8 +795,6 @@ public:
         return boost::starts_with(text, "[ERROR");
     }
 #endif
-
-    virtual bool isProcessSafe() const { return false; }
 
     /**
      * Compare two database dumps just based on their inodes.
@@ -912,9 +908,16 @@ private:
     void writeTimestamp(const string &key, time_t val, bool flush = true) {
         if (m_info) {
             char buffer[160];
-            struct tm tm;
+            struct tm tmbuffer, *tm;
             // be nice and store a human-readable date in addition the seconds since the epoch
-            strftime(buffer, sizeof(buffer), "%s, %Y-%m-%d %H:%M:%S %z", localtime_r(&val, &tm));
+            tm = localtime_r(&val, &tmbuffer);
+            if (tm) {
+                strftime(buffer, sizeof(buffer), "%s, %Y-%m-%d %H:%M:%S %z", tm);
+            } else {
+                // Less suitable fallback. Won't work correctly for 32
+                // bit long beyond 2038.
+                sprintf(buffer, "%lu", (long unsigned)val);
+            }
             m_info->setProperty(key, buffer);
             if (flush) {
                 m_info->flush();
@@ -922,6 +925,67 @@ private:
         }
     }
 };
+
+LogDirLogger::LogDirLogger(const boost::weak_ptr<LogDir> &logdir) :
+    m_parentLogger(Logger::instance()),
+    m_logdir(logdir)
+{
+}
+
+void LogDirLogger::remove() throw ()
+{
+    // Forget reference to LogDir. This prevents accessing it in
+    // future messagev() calls.
+    RecMutex::Guard guard = Logger::lock();
+    m_logdir.reset();
+}
+
+void LogDirLogger::messagev(const MessageOptions &options,
+                            const char *format,
+                            va_list args)
+{
+    // Protects ordering of log messages and access to shared
+    // variables like m_report and m_engine.
+    RecMutex::Guard guard = Logger::lock();
+
+    // always to parent first (usually stdout):
+    // if the parent is a LogRedirect instance, then
+    // it'll flush its own output first, which ensures
+    // that the new output comes later (as desired)
+    va_list argscopy;
+    va_copy(argscopy, args);
+    m_parentLogger.messagev(options, format, argscopy);
+    va_end(argscopy);
+
+    boost::shared_ptr<LogDir> logdir = m_logdir.lock();
+    if (logdir) {
+        if (logdir->m_report &&
+            options.m_level <= ERROR &&
+            logdir->m_report->getError().empty()) {
+            va_list argscopy;
+            va_copy(argscopy, args);
+            string error = StringPrintfV(format, argscopy);
+            va_end(argscopy);
+
+            logdir->m_report->setError(error);
+        }
+
+        if (logdir->m_client.getEngine().get()) {
+            va_list argscopy;
+            va_copy(argscopy, args);
+            // once to Synthesis log, with full debugging
+            logdir->m_client.getEngine().doDebug(options.m_level,
+                                                 options.m_prefix ? options.m_prefix->c_str() : NULL,
+                                                 options.m_file,
+                                                 options.m_line,
+                                                 options.m_function,
+                                                 format,
+                                                 argscopy);
+            va_end(argscopy);
+        }
+    }
+}
+
 
 const char* const LogDirNames::DIR_PREFIX = "SyncEvolution-";
 
@@ -991,7 +1055,7 @@ public:
 
 private:
     VirtualSyncSources_t m_virtualSources; /**< all configured virtual data sources (aka Synthesis <superdatastore>) */
-    LogDir m_logdir;     /**< our logging directory */
+    boost::shared_ptr<LogDir> m_logdir;     /**< our logging directory */
     SyncContext &m_client; /**< the context in which we were instantiated */
     set<string> m_prepared;   /**< remember for which source we dumped databases successfully */
     string m_intro;      /**< remembers the dumpLocalChanges() intro and only prints it again
@@ -1005,7 +1069,7 @@ private:
     /** create name in current (if set) or previous logdir */
     string databaseName(SyncSource &source, const string suffix, string logdir = "") {
         if (!logdir.size()) {
-            logdir = m_logdir.getLogdir();
+            logdir = m_logdir->getLogdir();
         }
         return logdir + "/" +
             source.getName() + "." + suffix;
@@ -1066,9 +1130,9 @@ public:
         // to search for previous backups of each source, if
         // necessary.
         SyncContext context(m_client.getContextName());
-        LogDir logdir(context);
+        boost::shared_ptr<LogDir> logdir(LogDir::create(context));
         vector<string> dirs;
-        logdir.previousLogdirs(dirs);
+        logdir->previousLogdirs(dirs);
 
         BOOST_FOREACH(SyncSource *source, *this) {
             if ((!excludeSource.empty() && excludeSource != source->getName()) ||
@@ -1078,7 +1142,7 @@ public:
 
             string dir = databaseName(*source, suffix);
             boost::shared_ptr<ConfigNode> node = ConfigNode::createFileNode(dir + ".ini");
-            SE_LOG_DEBUG(NULL, NULL, "creating %s", dir.c_str());
+            SE_LOG_DEBUG(NULL, "creating %s", dir.c_str());
             rm_r(dir);
             BackupReport dummy;
             if (source->getOperations().m_backupData) {
@@ -1116,7 +1180,7 @@ public:
                                                              dir, node);
                 source->getOperations().m_backupData(oldBackup, newBackup,
                                                      report ? source->*report : dummy);
-                SE_LOG_DEBUG(NULL, NULL, "%s created", dir.c_str());
+                SE_LOG_DEBUG(NULL, "%s created", dir.c_str());
 
                 // remember that we have dumped at the beginning of a sync
                 if (suffix == "before") {
@@ -1140,7 +1204,7 @@ public:
     }
 
     SourceList(SyncContext &client, bool doLogging) :
-        m_logdir(client),
+        m_logdir(LogDir::create(client)),
         m_client(client),
         m_doLogging(doLogging),
         m_reportTodo(true),
@@ -1150,37 +1214,37 @@ public:
     
     // call as soon as logdir settings are known
     void startSession(const string &logDirPath, int maxlogdirs, int logLevel, SyncReport *report) {
-        m_logdir.setLogdir(logDirPath);
-        m_previousLogdir = m_logdir.previousLogdir();
+        m_logdir->setLogdir(logDirPath);
+        m_previousLogdir = m_logdir->previousLogdir();
         if (m_doLogging) {
-            m_logdir.startSession(logDirPath, LogDir::SESSION_CREATE, maxlogdirs, logLevel, report);
+            m_logdir->startSession(logDirPath, LogDir::SESSION_CREATE, maxlogdirs, logLevel, report);
         } else {
             // Run debug session without paying attention to
             // the normal logdir handling. The log level here
             // refers to stdout. The log file will be as complete
             // as possible.
-            m_logdir.startSession(logDirPath, LogDir::SESSION_USE_PATH, 0, 1, report);
+            m_logdir->startSession(logDirPath, LogDir::SESSION_USE_PATH, 0, 1, report);
         }
     }
 
     /** read-only access to existing session, identified in logDirPath */
     void accessSession(const string &logDirPath) {
-        m_logdir.setLogdir(logDirPath);
-        m_previousLogdir = m_logdir.previousLogdir();
-        m_logdir.startSession(logDirPath, LogDir::SESSION_READ_ONLY, 0, 0, NULL);
+        m_logdir->setLogdir(logDirPath);
+        m_previousLogdir = m_logdir->previousLogdir();
+        m_logdir->startSession(logDirPath, LogDir::SESSION_READ_ONLY, 0, 0, NULL);
     }
 
 
     /** return log directory, empty if not enabled */
     const string &getLogdir() {
-        return m_logdir.getLogdir();
+        return m_logdir->getLogdir();
     }
 
     /** return previous log dir found in startSession() */
     const string &getPrevLogdir() const { return m_previousLogdir; }
 
     /** set directory for database files without actually redirecting the logging */
-    void setPath(const string &path) { m_logdir.setPath(path); }
+    void setPath(const string &path) { m_logdir->setPath(path); }
 
     /**
      * If possible (directory to compare against available) and enabled,
@@ -1204,7 +1268,7 @@ public:
 
         vector<string> dirs;
         if (oldSession.empty()) {
-            m_logdir.previousLogdirs(dirs);
+            m_logdir->previousLogdirs(dirs);
         }
 
         BOOST_FOREACH(SyncSource *source, *this) {
@@ -1215,7 +1279,7 @@ public:
 
             // dump only if not done before or changed
             if (m_intro != intro) {
-                SE_LOG_SHOW(NULL, NULL, "%s", intro.c_str());
+                SE_LOG_SHOW(NULL, "%s", intro.c_str());
                 m_intro = intro;
             }
 
@@ -1227,10 +1291,10 @@ public:
                      it != dirs.rend();
                      ++it) {
                     const string &sessiondir = *it;
-                    LogDir oldsession(m_client);
-                    oldsession.openLogdir(sessiondir);
+                    boost::shared_ptr<LogDir> oldsession(LogDir::create(m_client));
+                    oldsession->openLogdir(sessiondir);
                     SyncReport report;
-                    oldsession.readReport(report);
+                    oldsession->readReport(report);
                     if (report.find(source->getName()) != report.end())  {
                         // source was active in that session, use dump
                         // made there
@@ -1242,7 +1306,7 @@ public:
                 oldDir = databaseName(*source, oldSuffix, oldSession);
             }
             string newDir = databaseName(*source, newSuffix);
-            SE_LOG_SHOW(NULL, NULL, "*** %s ***", source->getDisplayName().c_str());
+            SE_LOG_SHOW(NULL, "*** %s ***", source->getDisplayName().c_str());
             string cmd = string("env CLIENT_TEST_COMPARISON_FAILED=10 " + config + " synccompare '" ) +
                 oldDir + "' '" + newDir + "'";
             int ret = Execute(cmd, EXECUTE_NO_STDERR);
@@ -1250,16 +1314,16 @@ public:
                     WIFEXITED(ret) ? WEXITSTATUS(ret) :
                     -1) {
             case 0:
-                SE_LOG_SHOW(NULL, NULL, "no changes");
+                SE_LOG_SHOW(NULL, "no changes");
                 break;
             case 10:
                 break;
             default:
-                SE_LOG_SHOW(NULL, NULL, "Comparison was impossible.");
+                SE_LOG_SHOW(NULL, "Comparison was impossible.");
                 break;
             }
         }
-        SE_LOG_SHOW(NULL, NULL, "\n");
+        SE_LOG_SHOW(NULL, "\n");
         return true;
     }
 
@@ -1273,11 +1337,11 @@ public:
             return;
         }
 
-        if (m_logdir.getLogfile().size() &&
+        if (m_logdir->getLogfile().size() &&
             m_doLogging &&
             (m_client.getDumpData() || m_client.getPrintChanges())) {
             // dump initial databases
-            SE_LOG_INFO(NULL, NULL, "creating complete data backup of source %s before sync (%s)",
+            SE_LOG_INFO(NULL, "creating complete data backup of source %s before sync (%s)",
                         sourceName.c_str(),
                         (m_client.getDumpData() && m_client.getPrintChanges()) ? "enabled with dumpData and needed for printChanges" :
                         m_client.getDumpData() ? "because it was enabled with dumpData" :
@@ -1309,7 +1373,7 @@ public:
             (m_client.getDumpData() ||
              (m_client.getPrintChanges() && m_reportTodo && !m_prepared.empty()))) {
             try {
-                SE_LOG_INFO(NULL, NULL, "creating complete data backup after sync (%s)",
+                SE_LOG_INFO(NULL, "creating complete data backup after sync (%s)",
                             (m_client.getDumpData() && m_client.getPrintChanges()) ? "enabled with dumpData and needed for printChanges" :
                             m_client.getDumpData() ? "because it was enabled with dumpData" :
                             m_client.getPrintChanges() ? "needed for printChanges" :
@@ -1330,30 +1394,30 @@ public:
             }
 
             // ensure that stderr is seen again
-            m_logdir.restore();
+            m_logdir->restore();
 
             // write out session status
-            m_logdir.endSession();
+            m_logdir->endSession();
 
             if (m_reportTodo) {
                 // haven't looked at result of sync yet;
                 // don't do it again
                 m_reportTodo = false;
 
-                string logfile = m_logdir.getLogfile();
+                string logfile = m_logdir->getLogfile();
                 if (status == STATUS_OK) {
-                    SE_LOG_SHOW(NULL, NULL, "\nSynchronization successful.");
+                    SE_LOG_SHOW(NULL, "\nSynchronization successful.");
                 } else if (logfile.size()) {
-                    SE_LOG_SHOW(NULL, NULL, "\nSynchronization failed, see %s for details.",
+                    SE_LOG_SHOW(NULL, "\nSynchronization failed, see %s for details.",
                                 logfile.c_str());
                 } else {
-                    SE_LOG_SHOW(NULL, NULL, "\nSynchronization failed.");
+                    SE_LOG_SHOW(NULL, "\nSynchronization failed.");
                 }
 
                 // pretty-print report
                 if (m_logLevel > LOGGING_QUIET) {
                     std::string procname = Logger::getProcessName();
-                    SE_LOG_SHOW(NULL, NULL, "\nChanges applied during synchronization%s%s%s:",
+                    SE_LOG_SHOW(NULL, "\nChanges applied during synchronization%s%s%s:",
                                 procname.empty() ? "" : " (",
                                 procname.c_str(),
                                 procname.empty() ? "" : ")");
@@ -1365,12 +1429,12 @@ public:
                     if (!slowSync.empty()) {
                         out << endl << slowSync;
                     }
-                    SE_LOG_SHOW(NULL, NULL, "%s", out.str().c_str());
+                    SE_LOG_SHOW(NULL, "%s", out.str().c_str());
                 }
 
                 // compare databases?
                 if (m_client.getPrintChanges()) {
-                    dumpLocalChanges(m_logdir.getLogdir(),
+                    dumpLocalChanges(m_logdir->getLogdir(),
                                      "before", "after", "",
                                      StringPrintf("\nData modified %s during synchronization:\n",
                                                   m_client.isLocalSync() ? m_client.getContextName().c_str() : "locally"),
@@ -1378,12 +1442,12 @@ public:
                 }
 
                 // now remove some old logdirs
-                m_logdir.expire();
+                m_logdir->expire();
             }
         } else {
             // finish debug session
-            m_logdir.restore();
-            m_logdir.endSession();
+            m_logdir->restore();
+            m_logdir->endSession();
         }
     }
 
@@ -1510,7 +1574,7 @@ string SyncContext::getUsedSyncURL() {
 static void CancelTransport(TransportAgent *agent, SuspendFlags &flags)
 {
     if (flags.getState() == SuspendFlags::ABORT) {
-        SE_LOG_DEBUG(NULL, NULL, "CancelTransport: cancelling because of SuspendFlags::ABORT");
+        SE_LOG_DEBUG(NULL, "CancelTransport: cancelling because of SuspendFlags::ABORT");
         agent->cancel();
     }
 }
@@ -1536,7 +1600,7 @@ boost::shared_ptr<TransportAgent> SyncContext::createTransportAgent(void *gmainl
     string url = getUsedSyncURL();
     m_retryInterval = getRetryInterval();
     m_retryDuration = getRetryDuration();
-    int timeout = m_serverMode ? m_retryDuration : m_retryInterval;
+    int timeout = m_serverMode ? m_retryDuration : min(m_retryInterval, m_retryDuration);
 
     if (m_localSync) {
         string peer = url.substr(strlen("local://"));
@@ -1575,7 +1639,7 @@ boost::shared_ptr<TransportAgent> SyncContext::createTransportAgent(void *gmainl
 
 void SyncContext::displayServerMessage(const string &message)
 {
-    SE_LOG_INFO(NULL, NULL, "message from server: %s", message.c_str());
+    SE_LOG_INFO(NULL, "message from server: %s", message.c_str());
 }
 
 void SyncContext::displaySyncProgress(sysync::TProgressEventEnum type,
@@ -1600,20 +1664,20 @@ void SyncContext::displaySourceProgress(sysync::TProgressEventEnum type,
         if (true || source.getFinalSyncMode() == SYNC_NONE) {
             // not active, suppress output
         } else if (extra2) {
-            SE_LOG_INFO(NULL, NULL, "%s: preparing %d/%d",
+            SE_LOG_INFO(NULL, "%s: preparing %d/%d",
                         source.getDisplayName().c_str(), extra1, extra2);
         } else {
-            SE_LOG_INFO(NULL, NULL, "%s: preparing %d",
+            SE_LOG_INFO(NULL, "%s: preparing %d",
                         source.getDisplayName().c_str(), extra1);
         }
         break;
     case sysync::PEV_DELETING:
         /* deleting (zapping datastore), extra1=progress, extra2=total */
         if (extra2) {
-            SE_LOG_INFO(NULL, NULL, "%s: deleting %d/%d",
+            SE_LOG_INFO(NULL, "%s: deleting %d/%d",
                         source.getDisplayName().c_str(), extra1, extra2);
         } else {
-            SE_LOG_INFO(NULL, NULL, "%s: deleting %d",
+            SE_LOG_INFO(NULL, "%s: deleting %d",
                         source.getDisplayName().c_str(), extra1);
         }
         break;
@@ -1624,7 +1688,7 @@ void SyncContext::displaySourceProgress(sysync::TProgressEventEnum type,
         // -1 is used for alerting a restore from backup. Synthesis won't use this
         bool peerIsClient = getPeerIsClient();
         if (extra1 != -1) {
-            SE_LOG_INFO(NULL, NULL, "%s: %s %s sync%s (%s)",
+            SE_LOG_INFO(NULL, "%s: %s %s sync%s (%s)",
                         source.getDisplayName().c_str(),
                         extra2 ? "resuming" : "starting",
                         extra1 == 0 ? "normal" :
@@ -1704,6 +1768,8 @@ void SyncContext::displaySourceProgress(sysync::TProgressEventEnum type,
                 source.recordFirstSync(extra1 == 2);
                 source.recordResumeSync(extra2 == 1);
             } else if (SyncMode(mode) != SYNC_NONE) {
+                // Broadcast statistics before moving into next cycle.
+                m_sourceSyncedSignal(source.getName(), source);
                 // may happen when the source is used in multiple
                 // SyncML sessions; only remember the initial sync
                 // mode in that case and count all following syncs
@@ -1712,14 +1778,14 @@ void SyncContext::displaySourceProgress(sysync::TProgressEventEnum type,
                 source.recordRestart();
             }
         } else {
-            SE_LOG_INFO(NULL, NULL, "%s: restore from backup", source.getDisplayName().c_str());
+            SE_LOG_INFO(NULL, "%s: restore from backup", source.getDisplayName().c_str());
             source.recordFinalSyncMode(SYNC_RESTORE_FROM_BACKUP);
         }
         break;
     }
     case sysync::PEV_SYNCSTART:
         /* sync started */
-        SE_LOG_INFO(NULL, NULL, "%s: started",
+        SE_LOG_INFO(NULL, "%s: started",
                     source.getDisplayName().c_str());
         break;
     case sysync::PEV_ITEMRECEIVED:
@@ -1727,10 +1793,10 @@ void SyncContext::displaySourceProgress(sysync::TProgressEventEnum type,
            extra2=number of expected changes (if >= 0) */
         if (source.getFinalSyncMode() == SYNC_NONE) {
         } else if (extra2 > 0) {
-            SE_LOG_INFO(NULL, NULL, "%s: received %d/%d",
+            SE_LOG_INFO(NULL, "%s: received %d/%d",
                         source.getDisplayName().c_str(), extra1, extra2);
         } else {
-            SE_LOG_INFO(NULL, NULL, "%s: received %d",
+            SE_LOG_INFO(NULL, "%s: received %d",
                         source.getDisplayName().c_str(), extra1);
         }
         break;
@@ -1739,10 +1805,10 @@ void SyncContext::displaySourceProgress(sysync::TProgressEventEnum type,
            extra2=number of expected items to be sent (if >=0) */
         if (source.getFinalSyncMode() == SYNC_NONE) {
         } else if (extra2 > 0) {
-            SE_LOG_INFO(NULL, NULL, "%s: sent %d/%d",
+            SE_LOG_INFO(NULL, "%s: sent %d/%d",
                         source.getDisplayName().c_str(), extra1, extra2);
         } else {
-            SE_LOG_INFO(NULL, NULL, "%s: sent %d",
+            SE_LOG_INFO(NULL, "%s: sent %d",
                         source.getDisplayName().c_str(), extra1);
         }
         break;
@@ -1752,7 +1818,7 @@ void SyncContext::displaySourceProgress(sysync::TProgressEventEnum type,
            extra3=# deleted */
         if (source.getFinalSyncMode() == SYNC_NONE) {
         } else if (source.getFinalSyncMode() != SYNC_NONE) {
-            SE_LOG_INFO(NULL, NULL, "%s: added %d, updated %d, removed %d",
+            SE_LOG_INFO(NULL, "%s: added %d, updated %d, removed %d",
                         source.getDisplayName().c_str(), extra1, extra2, extra3);
         }
         break;
@@ -1761,13 +1827,13 @@ void SyncContext::displaySourceProgress(sysync::TProgressEventEnum type,
            syncmode in extra2 (0=normal, 1=slow, 2=first time), 
            extra3=1 for resumed session) */
         if (source.getFinalSyncMode() == SYNC_NONE) {
-            SE_LOG_INFO(NULL, NULL, "%s: inactive", source.getDisplayName().c_str());
+            SE_LOG_INFO(NULL, "%s: inactive", source.getDisplayName().c_str());
         } else if(source.getFinalSyncMode() == SYNC_RESTORE_FROM_BACKUP) {
-            SE_LOG_INFO(NULL, NULL, "%s: restore done %s", 
+            SE_LOG_INFO(NULL, "%s: restore done %s", 
                         source.getDisplayName().c_str(),
                         extra1 ? "unsuccessfully" : "successfully" );
         } else {
-            SE_LOG_INFO(NULL, NULL, "%s: %s%s sync done %s",
+            SE_LOG_INFO(NULL, "%s: %s%s sync done %s",
                         source.getDisplayName().c_str(),
                         extra3 ? "resumed " : "",
                         extra2 == 0 ? "normal" :
@@ -1779,16 +1845,16 @@ void SyncContext::displaySourceProgress(sysync::TProgressEventEnum type,
         switch (extra1) {
         case 401:
             // TODO: reset cached password
-            SE_LOG_INFO(NULL, NULL, "authorization failed, check username '%s' and password", getSyncUsername().c_str());
+            SE_LOG_INFO(NULL, "authorization failed, check username '%s' and password", getSyncUsername().c_str());
             break;
         case 403:
-            SE_LOG_INFO(&source, NULL, "log in succeeded, but server refuses access - contact server operator");
+            SE_LOG_INFO(source.getDisplayName(), "log in succeeded, but server refuses access - contact server operator");
             break;
         case 407:
-            SE_LOG_INFO(NULL, NULL, "proxy authorization failed, check proxy username and password");
+            SE_LOG_INFO(NULL, "proxy authorization failed, check proxy username and password");
             break;
         case 404:
-            SE_LOG_INFO(&source, NULL, "server database not found, check URI '%s'", source.getURINonEmpty().c_str());
+            SE_LOG_INFO(source.getDisplayName(), "server database not found, check URI '%s'", source.getURINonEmpty().c_str());
             break;
         case 0:
             break;
@@ -1801,7 +1867,7 @@ void SyncContext::displaySourceProgress(sysync::TProgressEventEnum type,
             // because even "good" sources will get a bad status when the overall
             // session turns bad. We also don't have good explanations for the
             // status here.
-            SE_LOG_ERROR(&source, NULL, "%s", Status2String(SyncMLStatus(extra1)).c_str());
+            SE_LOG_ERROR(source.getDisplayName(), "%s", Status2String(SyncMLStatus(extra1)).c_str());
             break;
         }
         source.recordStatus(SyncMLStatus(extra1));
@@ -1897,24 +1963,10 @@ void SyncContext::displaySourceProgress(sysync::TProgressEventEnum type,
                            extra2);
         break;
     default:
-        SE_LOG_DEBUG(NULL, NULL, "%s: progress event %d, extra %d/%d/%d",
+        SE_LOG_DEBUG(NULL, "%s: progress event %d, extra %d/%d/%d",
                      source.getDisplayName().c_str(),
                      type, extra1, extra2, extra3);
     }
-}
-
-bool SyncContext::checkForAbort()
-{
-    SuspendFlags &flags(SuspendFlags::getSuspendFlags());
-    flags.printSignals();
-    return flags.getState() == SuspendFlags::ABORT;
-}
-
-bool SyncContext::checkForSuspend()
-{
-    SuspendFlags &flags(SuspendFlags::getSuspendFlags());
-    flags.printSignals();
-    return flags.getState() == SuspendFlags::SUSPEND;
 }
 
 void SyncContext::throwError(const string &error)
@@ -1952,7 +2004,7 @@ void SyncContext::throwError(const string &action, int error)
 
 void SyncContext::fatalError(void *object, const char *error)
 {
-    SE_LOG_ERROR(NULL, NULL, "%s", error);
+    SE_LOG_ERROR(NULL, "%s", error);
     if (m_activeContext && m_activeContext->m_sourceListPtr) {
         m_activeContext->m_sourceListPtr->syncDone(STATUS_FATAL, NULL);
     }
@@ -2366,7 +2418,45 @@ void SyncContext::getConfigXML(string &xml, string &configname)
             "  <server type='plugin'>\n"
             "    <plugin_module>SyncEvolution</plugin_module>\n"
             "    <plugin_sessionauth>yes</plugin_sessionauth>\n"
-            "    <plugin_deviceadmin>yes</plugin_deviceadmin>\n"
+            "    <plugin_deviceadmin>yes</plugin_deviceadmin>\n";
+
+        InitState<unsigned int> configrequestmaxtime = getRequestMaxTime();
+        unsigned int requestmaxtime;
+        if (configrequestmaxtime.wasSet()) {
+            // Explicitly set, use it regardless of the kind of sync.
+            // We allow this even if thread support was not available,
+            // because if a user enables it explicitly, it's probably
+            // for a good reason (= failing client), in which case
+            // risking multithreading issues is preferable.
+            requestmaxtime = configrequestmaxtime.get();
+        } else if (m_remoteInitiated || m_localSync) {
+            // We initiated the sync (local sync, Bluetooth). The client
+            // should not time out, so there is no need for intermediate
+            // message sending.
+            //
+            // To avoid potential problems and get a single log file,
+            // avoid it and multithreading by default.
+            requestmaxtime = 0;
+        } else {
+            // We were contacted by an HTTP client. Reply to client
+            // not later than 120 seconds while storage initializes
+            // in a background thread.
+#ifdef HAVE_THREAD_SUPPORT
+            requestmaxtime = 120; // default in seconds
+#else
+            requestmaxtime = 0;
+#endif
+        }
+        if (requestmaxtime) {
+            clientorserver <<
+                "    <multithread>yes</multithread>\n"
+                "    <requestmaxtime>" << requestmaxtime << "</requestmaxtime>\n";
+        } else {
+            clientorserver <<
+                "    <multithread>no</multithread>\n";
+        }
+
+        clientorserver <<
             "\n" <<
             sessioninitscript <<
             "    <sessiontimeout>300</sessiontimeout>\n"
@@ -2391,6 +2481,7 @@ void SyncContext::getConfigXML(string &xml, string &configname)
         clientorserver <<
             "  <client type='plugin'>\n"
             "    <binfilespath>$(binfilepath)</binfilespath>\n"
+            "    <multithread>no</multithread>\n"
             "    <defaultauth/>\n";
         if (getRefreshSync()) {
             clientorserver <<
@@ -2448,7 +2539,7 @@ void SyncContext::getConfigXML(string &xml, string &configname)
             "    <timestamp>yes</timestamp>\n"
             "    <timestampall>yes</timestampall>\n"
             "    <timedsessionlognames>no</timedsessionlognames>\n"
-            "    <subthreadmode>suppress</subthreadmode>\n"
+            "    <subthreadmode>separate</subthreadmode>\n"
             "    <logsessionstoglobal>yes</logsessionstoglobal>\n"
             "    <singlegloballog>yes</singlegloballog>\n";
         if (logging) {
@@ -2581,7 +2672,7 @@ void SyncContext::getConfigXML(string &xml, string &configname)
                 if (!subType.m_format.empty() && (
                     sourceType.m_format != subType.m_format ||
                     sourceType.m_forceFormat != subType.m_forceFormat)) {
-                    SE_LOG_WARNING(NULL, NULL, 
+                    SE_LOG_WARNING(NULL, 
                                    "Virtual data source \"%s\" and sub data source \"%s\" have different data format. Will use the format in virtual data source.",
                                    vSource->getDisplayName().c_str(), source.c_str());
                 }
@@ -2739,7 +2830,7 @@ SharedEngine SyncContext::createEngine()
 namespace {
     void GnutlsLogFunction(int level, const char *str)
     {
-        SE_LOG_DEBUG(NULL, "GNUTLS", "level %d: %s", level, str);
+        SE_LOG_DEBUG("GNUTLS", "level %d: %s", level, str);
     }
 }
 
@@ -2807,7 +2898,7 @@ void SyncContext::initEngine(bool logXML)
     try {
         m_engine.InitEngineXML(xml.c_str());
     } catch (const BadSynthesisResult &ex) {
-        SE_LOG_ERROR(NULL, NULL,
+        SE_LOG_ERROR(NULL,
                      "internal error, invalid XML configuration (%s):\n%s",
                      m_sourceListPtr && !m_sourceListPtr->empty() ?
                      "with datastores" :
@@ -2817,7 +2908,7 @@ void SyncContext::initEngine(bool logXML)
     }
     if (logXML &&
         getLogLevel() >= 5) {
-        SE_LOG_DEV(NULL, NULL, "Full XML configuration:\n%s", xml.c_str());
+        SE_LOG_DEV(NULL, "Full XML configuration:\n%s", xml.c_str());
     }
 }
 
@@ -2827,6 +2918,81 @@ void SyncContext::initEngine(bool logXML)
 extern "C" int (*SySync_ConsolePrintf)(FILE *stream, const char *format, ...);
 
 static int nopPrintf(FILE *stream, const char *format, ...) { return 0; }
+
+extern "C"
+{
+    extern int (*SySync_CondTimedWait)(pthread_cond_t *cond, pthread_mutex_t *mutex, bool &aTerminated, long aMilliSecondsToWait);
+}
+
+#ifdef HAVE_GLIB
+static gboolean timeout(gpointer data)
+{
+    // Call me again...
+    return true;
+}
+
+static int CondTimedWaitGLib(pthread_cond_t * /* cond */, pthread_mutex_t *mutex,
+                             bool &terminated, long milliSecondsToWait)
+{
+    int result = 0;
+
+    // return abstime ? pthread_cond_timedwait(cond, mutex, abstime) : pthread_cond_wait(cond, mutex);
+    try {
+        pthread_mutex_unlock(mutex);
+
+        SE_LOG_DEBUG(NULL, "wait for background thread: %lds", milliSecondsToWait);
+        SuspendFlags &flags = SuspendFlags::getSuspendFlags();
+
+        Timespec now = Timespec::system();
+        Timespec wait(milliSecondsToWait / 1000, milliSecondsToWait % 1000);
+        Timespec deadline = now + wait;
+
+        // We don't need to react to thread shutdown immediately (only
+        // called once per sync), so a relatively long check interval of
+        // one second is okay.
+        GLibEvent id(g_timeout_add_seconds(1, timeout, NULL), "timeout");
+
+        while (true) {
+            // Thread has terminated?
+            pthread_mutex_lock(mutex);
+            if (terminated) {
+                pthread_mutex_unlock(mutex);
+                SE_LOG_DEBUG(NULL, "background thread completed");
+                break;
+            }
+            pthread_mutex_unlock(mutex);
+
+            // Abort? Ignore when waiting for final thread shutdown, because
+            // in that case we just get called again.
+            if (milliSecondsToWait > 0 && flags.isAborted()) {
+                SE_LOG_DEBUG(NULL, "give up waiting for background thread, aborted");
+                // Signal error. libsynthesis then assumes that the thread still
+                // runs and enters its parallel message sending, which eventually
+                // returns control to us.
+                result = 1;
+                break;
+            }
+
+            // Timeout?
+            if (milliSecondsToWait > 0 && deadline <= Timespec::system()) {
+                SE_LOG_DEBUG(NULL, "give up waiting for background thread, timeout");
+                result = 1;
+                break;
+            }
+
+            // Check event loop with blocking. We'll return after one
+            // second.
+            g_main_context_iteration(NULL, true);
+        }
+    } catch (...) {
+        Exception::handle(HANDLE_EXCEPTION_FATAL);
+    }
+
+    pthread_mutex_lock(mutex);
+    return result;
+}
+
+#endif
 
 void SyncContext::initMain(const char *appname)
 {
@@ -2838,6 +3004,15 @@ void SyncContext::initMain(const char *appname)
 
     // redirect glib logging into our own logging
     g_log_set_default_handler(Logger::glogFunc, NULL);
+
+    // Only the main thread may use the default GMainContext.
+    // Anything else is unsafe, see https://mail.gnome.org/archives/gtk-list/2013-April/msg00040.html
+    // util.cpp:Sleep() checks this and uses the default context
+    // when called by the main thread, otherwise falls back to
+    // select().
+    g_main_context_acquire(NULL);
+
+    SySync_CondTimedWait = CondTimedWaitGLib;
 #endif
     if (atoi(getEnv("SYNCEVOLUTION_DEBUG", "0")) > 3) {
         SySync_ConsolePrintf = Logger::sysyncPrintf;
@@ -2861,7 +3036,7 @@ void SyncContext::initMain(const char *appname)
     // pulls it into the process by loading libecal.
     EDSAbiWrapperInit();
 
-    if (getenv("SYNCEVOLUTION_GNUTLS_DEBUG")) {
+    if (const char *gnutlsdbg = getenv("SYNCEVOLUTION_GNUTLS_DEBUG")) {
         // Enable libgnutls debugging without creating a hard dependency on it,
         // because we don't call it directly and might not even be linked against
         // it. Therefore check for the relevant symbols via dlsym().
@@ -2873,10 +3048,10 @@ void SyncContext::initMain(const char *appname)
         set_log_function = (typeof(set_log_function))dlsym(RTLD_DEFAULT, "gnutls_global_set_log_function");
 
         if (set_log_level && set_log_function) {
-            set_log_level(atoi(getenv("SYNCEVOLUTION_GNUTLS_DEBUG")));
+            set_log_level(atoi(gnutlsdbg));
             set_log_function(GnutlsLogFunction);
         } else {
-            SE_LOG_ERROR(NULL, NULL, "SYNCEVOLUTION_GNUTLS_DEBUG debugging not possible, log functions not found");
+            SE_LOG_ERROR(NULL, "SYNCEVOLUTION_GNUTLS_DEBUG debugging not possible, log functions not found");
         }
     }
 }
@@ -2910,9 +3085,9 @@ void SyncContext::checkConfig(const std::string &operation) const
     if (isConfigNeeded() &&
         (!exists() || peer.empty())) {
         if (peer.empty()) {
-            SE_LOG_INFO(NULL, NULL, "Configuration \"%s\" does not refer to a sync peer.", m_server.c_str());
+            SE_LOG_INFO(NULL, "Configuration \"%s\" does not refer to a sync peer.", m_server.c_str());
         } else {
-            SE_LOG_INFO(NULL, NULL, "Configuration \"%s\" does not exist.", m_server.c_str());
+            SE_LOG_INFO(NULL, "Configuration \"%s\" does not exist.", m_server.c_str());
         }
         throwError(StringPrintf("Cannot proceed with %s without a configuration.", operation.c_str()));
     }
@@ -2976,11 +3151,11 @@ SyncMLStatus SyncContext::sync(SyncReport *report)
 
         try {
             // dump some summary information at the beginning of the log
-            SE_LOG_DEV(NULL, NULL, "SyncML server account: %s", getSyncUsername().c_str());
-            SE_LOG_DEV(NULL, NULL, "client: SyncEvolution %s for %s", getSwv().c_str(), getDevType().c_str());
-            SE_LOG_DEV(NULL, NULL, "device ID: %s", getDevID().c_str());
-            SE_LOG_DEV(NULL, NULL, "%s", EDSAbiWrapperDebug());
-            SE_LOG_DEV(NULL, NULL, "%s", SyncSource::backendsDebug().c_str());
+            SE_LOG_DEV(NULL, "SyncML server account: %s", getSyncUsername().c_str());
+            SE_LOG_DEV(NULL, "client: SyncEvolution %s for %s", getSwv().c_str(), getDevType().c_str());
+            SE_LOG_DEV(NULL, "device ID: %s", getDevID().c_str());
+            SE_LOG_DEV(NULL, "%s", EDSAbiWrapperDebug());
+            SE_LOG_DEV(NULL, "%s", SyncSource::backendsDebug().c_str());
 
             // ensure that config can be modified (might have to be migrated first)
             prepareConfigForWrite();
@@ -3008,13 +3183,13 @@ SyncMLStatus SyncContext::sync(SyncReport *report)
              */
             ConfigPropertyRegistry& registry = SyncConfig::getRegistry();
             BOOST_FOREACH(const ConfigProperty *prop, registry) {
-                SE_LOG_DEBUG(NULL, NULL, "checking sync password %s", prop->getMainName().c_str());
+                SE_LOG_DEBUG(NULL, "checking sync password %s", prop->getMainName().c_str());
                 prop->checkPassword(getUserInterfaceNonNull(), m_server, *getProperties());
             }
             BOOST_FOREACH(SyncSource *source, sourceList) {
                 ConfigPropertyRegistry& registry = SyncSourceConfig::getRegistry();
                 BOOST_FOREACH(const ConfigProperty *prop, registry) {
-                    SE_LOG_DEBUG(NULL, NULL, "checking source %s password %s",
+                    SE_LOG_DEBUG(NULL, "checking source %s password %s",
                                  source->getName().c_str(),
                                  prop->getMainName().c_str());
                     prop->checkPassword(getUserInterfaceNonNull(), m_server, *getProperties(),
@@ -3061,6 +3236,7 @@ SyncMLStatus SyncContext::sync(SyncReport *report)
         // but some items failed, we report a "partial failure"
         // status.
         BOOST_FOREACH(SyncSource *source, sourceList) {
+            m_sourceSyncedSignal(source->getName(), *source);
             if (source->getStatus() == STATUS_OK &&
                 (source->getItemStat(SyncSource::ITEM_LOCAL,
                                      SyncSource::ITEM_ANY,
@@ -3129,7 +3305,7 @@ bool SyncContext::sendSAN(uint16_t version)
     if(serverId.empty()) {
         serverId = getDevID();
     }
-    SE_LOG_DEBUG(NULL, NULL, "starting SAN %u auth %s nonce %s session %u server %s",
+    SE_LOG_DEBUG(NULL, "starting SAN %u auth %s nonce %s session %u server %s",
                  version,
                  uauthb64.c_str(),
                  nonce.c_str(),
@@ -3174,7 +3350,7 @@ bool SyncContext::sendSAN(uint16_t version)
             mode = SA_TWO_WAY;
         }
         if (mode < SA_FIRST || mode > SA_LAST) {
-            SE_LOG_DEV (NULL, NULL, "Ignoring data source %s with an invalid sync mode", name.c_str());
+            SE_LOG_DEV(NULL, "Ignoring data source %s with an invalid sync mode", name.c_str());
             continue;
         }
         syncMode = mode;
@@ -3193,19 +3369,19 @@ bool SyncContext::sendSAN(uint16_t version)
             int contentTypeB = StringToContentType (sourceType.m_format, sourceType.m_forceFormat);
             if (contentTypeB == WSPCTC_UNKNOWN) {
                 contentTypeB = 0;
-                SE_LOG_DEBUG (NULL, NULL, "Unknown datasource mimetype, use 0 as default");
+                SE_LOG_DEBUG(NULL, "Unknown datasource mimetype, use 0 as default");
             }
-            SE_LOG_DEBUG(NULL, NULL, "SAN source %s uri %s type %u mode %d",
+            SE_LOG_DEBUG(NULL, "SAN source %s uri %s type %u mode %d",
                          name.c_str(),
                          uri.c_str(),
                          contentTypeB,
                          mode);
             if ( san.AddSync(mode, (uInt32) contentTypeB, uri.c_str())) {
-                SE_LOG_ERROR(NULL, NULL, "SAN: adding server alerted sync element failed");
+                SE_LOG_ERROR(NULL, "SAN: adding server alerted sync element failed");
             };
         } else {
             string mimetype = GetLegacyMIMEType(sourceType.m_format, sourceType.m_forceFormat);
-            SE_LOG_DEBUG(NULL, NULL, "SAN source %s uri %s type %s",
+            SE_LOG_DEBUG(NULL, "SAN source %s uri %s type %s",
                          name.c_str(),
                          uri.c_str(),
                          mimetype.c_str());
@@ -3222,21 +3398,21 @@ bool SyncContext::sendSAN(uint16_t version)
     size_t sanSize;
     if (!legacy) {
         if (san.GetPackage(buffer, sanSize)){
-            SE_LOG_ERROR (NULL, NULL, "SAN package generating failed");
+            SE_LOG_ERROR(NULL, "SAN package generating failed");
             return false;
         }
         //TODO log the binary SAN content
     } else {
-        SE_LOG_DEBUG(NULL, NULL, "SAN with overall sync mode %d", syncMode);
+        SE_LOG_DEBUG(NULL, "SAN with overall sync mode %d", syncMode);
         if (san.GetPackageLegacy(buffer, sanSize, alertedSources, syncMode, getWBXML())){
-            SE_LOG_ERROR (NULL, NULL, "SAN package generating failed");
+            SE_LOG_ERROR(NULL, "SAN package generating failed");
             return false;
         }
-        //SE_LOG_DEBUG (NULL, NULL, "SAN package content: %s", (char*)buffer);
+        //SE_LOG_DEBUG(NULL, "SAN package content: %s", (char*)buffer);
     }
 
     m_agent = createTransportAgent();
-    SE_LOG_INFO (NULL, NULL, "Server sending SAN");
+    SE_LOG_INFO(NULL, "Server sending SAN");
     m_serverAlerted = true;
     m_agent->setContentType(!legacy ? 
                            TransportAgent::m_contentTypeServerAlertedNotificationDS
@@ -3304,19 +3480,19 @@ SyncMLStatus SyncContext::doSync()
     // install signal handlers unless this was explicitly disabled
     bool catchSignals = getenv("SYNCEVOLUTION_NO_SYNC_SIGNALS") == NULL;
     if (catchSignals) {
-        SE_LOG_DEBUG(NULL, NULL, "sync is starting, catch signals");
+        SE_LOG_DEBUG(NULL, "sync is starting, catch signals");
         signalGuard = SuspendFlags::getSuspendFlags().activate();
     }
 
     // delay the sync for debugging purposes
-    SE_LOG_DEBUG(NULL, NULL, "ready to sync");
+    SE_LOG_DEBUG(NULL, "ready to sync");
     const char *delay = getenv("SYNCEVOLUTION_SYNC_DELAY");
     if (delay) {
         Sleep(atoi(delay));
     }
 
-    if (checkForSuspend() ||
-        checkForAbort()) {
+    SuspendFlags &flags = SuspendFlags::getSuspendFlags();
+    if (!flags.isNormal()) {
         return (SyncMLStatus)sysync::LOCERR_USERABORT;
     }
 
@@ -3349,14 +3525,13 @@ SyncMLStatus SyncContext::doSync()
             //by pass the exception if we will try again with legacy SANFormat
         }
 
-        if (checkForSuspend() ||
-            checkForAbort()) {
+        if (!flags.isNormal()) {
             return (SyncMLStatus)sysync::LOCERR_USERABORT;
         }
 
         if (! status) {
             if (sanFormat.empty()) {
-                SE_LOG_DEBUG (NULL, NULL, "Server Alerted Sync init with SANFormat %d failed, trying with legacy format", version);
+                SE_LOG_DEBUG(NULL, "Server Alerted Sync init with SANFormat %d failed, trying with legacy format", version);
                 version = 11;
                 if (!sendSAN (version)) {
                     // return a proper error code 
@@ -3369,8 +3544,7 @@ SyncMLStatus SyncContext::doSync()
         }
     }
 
-    if (checkForSuspend() ||
-        checkForAbort()) {
+    if (!flags.isNormal()) {
         return (SyncMLStatus)sysync::LOCERR_USERABORT;
     }
 
@@ -3492,7 +3666,7 @@ SyncMLStatus SyncContext::doSync()
         sysync::STEPCMD_CLIENTSTART;
     SharedSession session = m_engine.OpenSession(m_sessionID);
     SharedBuffer sendBuffer;
-    SessionSentinel sessionSentinel(*this, session);
+    std::auto_ptr<SessionSentinel> sessionSentinel(new SessionSentinel(*this, session));
 
     if (m_serverMode && !m_localSync) {
         m_engine.WriteSyncMLBuffer(session,
@@ -3514,7 +3688,7 @@ SyncMLStatus SyncContext::doSync()
     // parameter STEPCMD_ABORT -> abort session as soon as possible.
     bool aborting = false;
     int suspending = 0; 
-    time_t sendStart = 0, resendStart = 0;
+    Timespec sendStart, resendStart;
     int requestNum = 0;
     sysync::uInt16 previousStepCmd = stepCmd;
     do {
@@ -3525,8 +3699,8 @@ SyncMLStatus SyncContext::doSync()
             // GOTDATA state.
             // After exception occurs, stepCmd will be set to abort to force
             // aborting, must avoid to change it back to suspend cmd.
-            if (checkForSuspend() && stepCmd == sysync::STEPCMD_GOTDATA) {
-                SE_LOG_DEBUG(NULL, NULL, "suspending before SessionStep() in STEPCMD_GOTDATA as requested by user");
+            if (flags.isSuspended() && stepCmd == sysync::STEPCMD_GOTDATA) {
+                SE_LOG_DEBUG(NULL, "suspending before SessionStep() in STEPCMD_GOTDATA as requested by user");
                 stepCmd = sysync::STEPCMD_SUSPEND;
             }
 
@@ -3543,8 +3717,8 @@ SyncMLStatus SyncContext::doSync()
             if ((stepCmd == sysync::STEPCMD_RESENDDATA ||
                  stepCmd == sysync::STEPCMD_SENTDATA ||
                  stepCmd == sysync::STEPCMD_NEEDDATA) &&
-                checkForAbort()) {
-                SE_LOG_DEBUG(NULL, NULL, "aborting before SessionStep() in %s as requested by script",
+                flags.isAborted()) {
+                SE_LOG_DEBUG(NULL, "aborting before SessionStep() in %s as requested by script",
                              Step2String(stepCmd).c_str());
                 stepCmd = sysync::STEPCMD_ABORT;
             }
@@ -3553,7 +3727,7 @@ SyncMLStatus SyncContext::doSync()
             // let engine contine with its shutdown
             if (stepCmd == sysync::STEPCMD_ABORT) {
                 if (aborting) {
-                    SE_LOG_DEBUG(NULL, NULL, "engine already notified of abort request, reverting to %s",
+                    SE_LOG_DEBUG(NULL, "engine already notified of abort request, reverting to %s",
                                  Step2String(previousStepCmd).c_str());
                     stepCmd = previousStepCmd;
                 } else {
@@ -3563,7 +3737,7 @@ SyncMLStatus SyncContext::doSync()
             // same for suspending
             if (stepCmd == sysync::STEPCMD_SUSPEND) {
                 if (suspending) {
-                    SE_LOG_DEBUG(NULL, NULL, "engine already notified of suspend request, reverting to %s",
+                    SE_LOG_DEBUG(NULL, "engine already notified of suspend request, reverting to %s",
                                  Step2String(previousStepCmd).c_str());
                     stepCmd = previousStepCmd;
                     suspending++;
@@ -3579,18 +3753,18 @@ SyncMLStatus SyncContext::doSync()
                 // and wait for response.
             } else {
                 if (getLogLevel() > 4) {
-                    SE_LOG_DEBUG(NULL, NULL, "before SessionStep: %s", Step2String(stepCmd).c_str());
+                    SE_LOG_DEBUG(NULL, "before SessionStep: %s", Step2String(stepCmd).c_str());
                 }
                 m_engine.SessionStep(session, stepCmd, &progressInfo);
                 if (getLogLevel() > 4) {
-                    SE_LOG_DEBUG(NULL, NULL, "after SessionStep: %s", Step2String(stepCmd).c_str());
+                    SE_LOG_DEBUG(NULL, "after SessionStep: %s", Step2String(stepCmd).c_str());
                 }
                 reportStepCmd(stepCmd);
             }
 
             if (stepCmd == sysync::STEPCMD_SENDDATA &&
                 checkForScriptAbort(session)) {
-                SE_LOG_DEBUG(NULL, NULL, "aborting after SessionStep() in STEPCMD_SENDDATA as requested by script");
+                SE_LOG_DEBUG(NULL, "aborting after SessionStep() in STEPCMD_SENDDATA as requested by script");
 
                 // Catch outgoing message and abort if requested by script.
                 // Report which sources are affected, based on their status code.
@@ -3608,20 +3782,20 @@ SyncMLStatus SyncContext::doSync()
                                                                      sources);
                 if (!explanation.empty()) {
                     string sourceparam = boost::join(sources, " ");
-                    SE_LOG_ERROR(NULL, NULL,
+                    SE_LOG_ERROR(NULL,
                                  "Aborting because of unexpected slow sync for source(s): %s",
                                  sourceparam.c_str());
-                    SE_LOG_INFO(NULL, NULL, "%s", explanation.c_str());
+                    SE_LOG_INFO(NULL, "%s", explanation.c_str());
                 } else {
                     // we should not get here, but if we do, at least log something
-                    SE_LOG_ERROR(NULL, NULL, "aborting as requested by script");
+                    SE_LOG_ERROR(NULL, "aborting as requested by script");
                 }
                 stepCmd = sysync::STEPCMD_ABORT;
                 continue;
             } else if (stepCmd == sysync::STEPCMD_SENDDATA &&
-                       checkForAbort()) {
+                       flags.isAborted()) {
                 // Catch outgoing message and abort if requested by user.
-                SE_LOG_DEBUG(NULL, NULL, "aborting after SessionStep() in STEPCMD_SENDDATA as requested by user");
+                SE_LOG_DEBUG(NULL, "aborting after SessionStep() in STEPCMD_SENDDATA as requested by user");
                 stepCmd = sysync::STEPCMD_ABORT;
                 continue;
             } else if (suspending == 1) {
@@ -3709,8 +3883,8 @@ SyncMLStatus SyncContext::doSync()
                                          "contenttype");
                 m_agent->setContentType(s);
                 sessionKey.reset();
-                
-                sendStart = resendStart = time (NULL);
+
+                sendStart = resendStart = Timespec::monotonic();
                 requestNum ++;
                 // use GetSyncMLBuffer()/RetSyncMLBuffer() to access the data to be
                 // sent or have it copied into caller's buffer using
@@ -3721,8 +3895,8 @@ SyncMLStatus SyncContext::doSync()
                 break;
             }
             case sysync::STEPCMD_RESENDDATA: {
-                SE_LOG_INFO (NULL, NULL, "resend previous message, retry #%d", m_retries);
-                resendStart = time(NULL);
+                SE_LOG_INFO(NULL, "resend previous message, retry #%d", m_retries);
+                resendStart = Timespec::monotonic();
                 /* We are resending previous message, just read from the
                  * previous buffer */
                 m_agent->send(sendBuffer.get(), sendBuffer.size());
@@ -3732,7 +3906,7 @@ SyncMLStatus SyncContext::doSync()
             case sysync::STEPCMD_NEEDDATA:
                 if (!sendStart) {
                     // no message sent yet, record start of wait for data
-                    sendStart = time(NULL);
+                    sendStart = Timespec::monotonic();
                 }
                 switch (m_agent->wait()) {
                 case TransportAgent::ACTIVE:
@@ -3741,21 +3915,23 @@ SyncMLStatus SyncContext::doSync()
                     break;
                
                 case TransportAgent::TIME_OUT: {
-                    time_t duration = time(NULL) - sendStart;
+                    double duration = (Timespec::monotonic() - sendStart).duration();
                     // HTTP SyncML servers cannot resend a HTTP POST
                     // reply.  Other server transports could in theory
                     // resend, but don't have the necessary D-Bus APIs
                     // (MB #6370).
                     // Same if() as below for FAILED.
                     if (m_serverMode ||
-                        !m_retryInterval || duration > m_retryDuration || requestNum == 1) {
-                        SE_LOG_INFO(NULL, NULL,
+                        !m_retryInterval || duration + 0.1 >= m_retryDuration || requestNum == 1) {
+                        SE_LOG_INFO(NULL,
                                     "Transport giving up after %d retries and %ld:%02ldmin",
                                     m_retries,
-                                    (long)(duration / 60),
-                                    (long)(duration % 60));
+                                    (long)duration / 60,
+                                    (long)duration % 60);
                         SE_THROW_EXCEPTION(TransportException, "timeout, retry period exceeded");
                     }else {
+                        // Timeout must have been due to retryInterval having passed, resend
+                        // immediately.
                         m_retries ++;
                         stepCmd = sysync::STEPCMD_RESENDDATA;
                     }
@@ -3786,9 +3962,9 @@ SyncMLStatus SyncContext::doSync()
                         stepCmd = sysync::STEPCMD_GOTDATA; // we have received response data
                         break;
                     } else {
-                        SE_LOG_DEBUG(NULL, NULL, "unexpected content type '%s' in reply, %d bytes:\n%.*s",
+                        SE_LOG_DEBUG(NULL, "unexpected content type '%s' in reply, %d bytes:\n%.*s",
                                      contentType.c_str(), (int)replylen, (int)replylen, reply);
-                        SE_LOG_ERROR(NULL, NULL, "unexpected reply from server; might be a temporary problem, try again later");
+                        SE_LOG_ERROR(NULL, "unexpected reply from server; might be a temporary problem, try again later");
                       } //fall through to network failure case
                 }
                 /* If this is a network error, it usually failed quickly, retry
@@ -3799,37 +3975,43 @@ SyncMLStatus SyncContext::doSync()
                 case TransportAgent::FAILED: {
                     // Send might have failed because of abort or
                     // suspend request.
-                    if (checkForSuspend()) {
-                        SE_LOG_DEBUG(NULL, NULL, "suspending after TransportAgent::FAILED as requested by user");
+                    if (flags.isSuspended()) {
+                        SE_LOG_DEBUG(NULL, "suspending after TransportAgent::FAILED as requested by user");
                         stepCmd = sysync::STEPCMD_SUSPEND;
                         break;
-                    } else if (checkForAbort()) {
-                        SE_LOG_DEBUG(NULL, NULL, "aborting after TransportAgent::FAILED as requested by user");
+                    } else if (flags.isAborted()) {
+                        SE_LOG_DEBUG(NULL, "aborting after TransportAgent::FAILED as requested by user");
                         stepCmd = sysync::STEPCMD_ABORT;
                         break;
                     }
 
-                    time_t curTime = time(NULL);
-                    time_t duration = curTime - sendStart;
-                    // same if() as above for TIME_OUT
+                    Timespec curTime = Timespec::monotonic();
+                    double duration = (curTime - sendStart).duration();
+                    double resendDelay = m_retryInterval - (curTime - resendStart).duration();
+                    if (resendDelay < 0) {
+                        resendDelay = 0;
+                    }
+                    // Similar if() as above for TIME_OUT. In addition, we must check that
+                    // the next resend won't happen after the retryDuration, because then
+                    // we might as well give up now immediately. Include some fuzz factor
+                    // in case we woke up slightly too early.
                     if (m_serverMode ||
-                        !m_retryInterval || duration > m_retryDuration || requestNum == 1) {
-                        SE_LOG_INFO(NULL, NULL,
+                        !m_retryInterval || duration + resendDelay + 0.1 >= m_retryDuration || requestNum == 1) {
+                        SE_LOG_INFO(NULL,
                                     "Transport giving up after %d retries and %ld:%02ldmin",
                                     m_retries,
-                                    (long)(duration / 60),
-                                    (long)(duration % 60));
+                                    (long)duration / 60,
+                                    (long)duration % 60);
                         SE_THROW_EXCEPTION(TransportException, "transport failed, retry period exceeded");
                     } else {
-                        // retry send
-                        int leftTime = m_retryInterval - (curTime - resendStart);
-                        if (leftTime >0 ) {
-                            if (Sleep(leftTime) > 0) {
-                                if (checkForSuspend()) {
-                                    SE_LOG_DEBUG(NULL, NULL, "suspending after premature exit from sleep() caused by user suspend");
+                        // Resend after having ensured that the retryInterval is over.
+                        if (resendDelay > 0) {
+                            if (Sleep(resendDelay) > 0) {
+                                if (flags.isSuspended()) {
+                                    SE_LOG_DEBUG(NULL, "suspending after premature exit from sleep() caused by user suspend");
                                     stepCmd = sysync::STEPCMD_SUSPEND;
                                 } else {
-                                    SE_LOG_DEBUG(NULL, NULL, "aborting after premature exit from sleep() caused by user abort");
+                                    SE_LOG_DEBUG(NULL, "aborting after premature exit from sleep() caused by user abort");
                                     stepCmd = sysync::STEPCMD_ABORT;
                                 }
                                 break;
@@ -3844,12 +4026,12 @@ SyncMLStatus SyncContext::doSync()
                 case TransportAgent::CANCELED:
                     // Send might have failed because of abort or
                     // suspend request.
-                    if (checkForSuspend()) {
-                        SE_LOG_DEBUG(NULL, NULL, "suspending after TransportAgent::CANCELED as requested by user");
+                    if (flags.isSuspended()) {
+                        SE_LOG_DEBUG(NULL, "suspending after TransportAgent::CANCELED as requested by user");
                         stepCmd = sysync::STEPCMD_SUSPEND;
                         break;
-                    } else if (checkForAbort()) {
-                        SE_LOG_DEBUG(NULL, NULL, "aborting after TransportAgent::CANCELED as requested by user");
+                    } else if (flags.isAborted()) {
+                        SE_LOG_DEBUG(NULL, "aborting after TransportAgent::CANCELED as requested by user");
                         stepCmd = sysync::STEPCMD_ABORT;
                         break;
                     }
@@ -3873,26 +4055,26 @@ SyncMLStatus SyncContext::doSync()
             // loop until session done or aborted with error
         } catch (const BadSynthesisResult &result) {
             if (result.result() == sysync::LOCERR_USERABORT && aborting) {
-                SE_LOG_INFO(NULL, NULL, "Aborted as requested.");
+                SE_LOG_INFO(NULL, "Aborted as requested.");
                 stepCmd = sysync::STEPCMD_DONE;
             } else if (result.result() == sysync::LOCERR_USERSUSPEND && suspending) {
-                SE_LOG_INFO(NULL, NULL, "Suspended as requested.");
+                SE_LOG_INFO(NULL, "Suspended as requested.");
                 stepCmd = sysync::STEPCMD_DONE;
             } else if (aborting) {
                 // aborting very early can lead to results different from LOCERR_USERABORT
                 // => don't treat this as error
-                SE_LOG_INFO(NULL, NULL, "Aborted with unexpected result (%d)",
+                SE_LOG_INFO(NULL, "Aborted with unexpected result (%d)",
                             static_cast<int>(result.result()));
                 stepCmd = sysync::STEPCMD_DONE;
             } else {
                 Exception::handle(&status);
-                SE_LOG_DEBUG(NULL, NULL, "aborting after catching fatal error");
+                SE_LOG_DEBUG(NULL, "aborting after catching fatal error");
                 // Don't tell engine to abort when it already did.
                 stepCmd = aborting ? sysync::STEPCMD_DONE : sysync::STEPCMD_ABORT;
             }
         } catch (...) {
             Exception::handle(&status);
-            SE_LOG_DEBUG(NULL, NULL, "aborting after catching fatal error");
+            SE_LOG_DEBUG(NULL, "aborting after catching fatal error");
             // Don't tell engine to abort when it already did.
             stepCmd = aborting ? sysync::STEPCMD_DONE : sysync::STEPCMD_ABORT;
         }
@@ -3900,11 +4082,11 @@ SyncMLStatus SyncContext::doSync()
 
     // If we get here without error, then close down connection normally.
     // Otherwise destruct the agent without further communication.
-    if (!status && !checkForAbort()) {
+    if (!status && !flags.isAborted()) {
         try {
             m_agent->shutdown();
             // TODO: implement timeout for peers which fail to respond
-            while (!checkForAbort() &&
+            while (!flags.isAborted() &&
                    m_agent->wait(true) == TransportAgent::ACTIVE) {
                 // TODO: allow aborting the sync here
             }
@@ -3912,6 +4094,15 @@ SyncMLStatus SyncContext::doSync()
             status = handleException();
         }
     }
+
+    // Let session shut down before auto-destructing anything else
+    // (like our signal blocker). This may take a while, because it
+    // may involve shutting down the helper background thread which
+    // opened our local datastore.
+    SE_LOG_DEBUG(NULL, "closing session");
+    sessionSentinel.reset();
+    session.reset();
+    SE_LOG_DEBUG(NULL, "session closed");
 
     return status;
 }
@@ -3959,11 +4150,11 @@ void SyncContext::status()
                         SyncReport::WITHOUT_CONFLICTS|
                         SyncReport::WITHOUT_REJECTS|
                         SyncReport::WITH_TOTAL);
-    SE_LOG_INFO(NULL, NULL, "Local item changes:\n%s",
+    SE_LOG_INFO(NULL, "Local item changes:\n%s",
                 out.str().c_str());
 
     sourceList.accessSession(getLogDir());
-    LoggerBase::instance().setLevel(Logger::INFO);
+    Logger::instance().setLevel(Logger::INFO);
     string prevLogdir = sourceList.getPrevLogdir();
     bool found = access(prevLogdir.c_str(), R_OK|X_OK) == 0;
 
@@ -3978,9 +4169,9 @@ void SyncContext::status()
             }
         }
     } else {
-        SE_LOG_SHOW(NULL, NULL, "Previous log directory not found.");
+        SE_LOG_SHOW(NULL, "Previous log directory not found.");
         if (getLogDir().empty()) {
-            SE_LOG_SHOW(NULL, NULL, "Enable the 'logdir' option and synchronize to use this feature.");
+            SE_LOG_SHOW(NULL, "Enable the 'logdir' option and synchronize to use this feature.");
         }
     }
 }
@@ -4010,11 +4201,11 @@ static void logRestoreReport(const SyncReport &report, bool dryrun)
     if (!report.empty()) {
         stringstream out;
         report.prettyPrint(out, SyncReport::WITHOUT_SERVER|SyncReport::WITHOUT_CONFLICTS|SyncReport::WITH_TOTAL);
-        SE_LOG_INFO(NULL, NULL, "Item changes %s applied locally during restore:\n%s",
+        SE_LOG_INFO(NULL, "Item changes %s applied locally during restore:\n%s",
                     dryrun ? "to be" : "that were",
                     out.str().c_str());
-        SE_LOG_INFO(NULL, NULL, "The same incremental changes will be applied to the server during the next sync.");
-        SE_LOG_INFO(NULL, NULL, "Use -sync refresh-from-client to replace the complete data on the server.");
+        SE_LOG_INFO(NULL, "The same incremental changes will be applied to the server during the next sync.");
+        SE_LOG_INFO(NULL, "Use -sync refresh-from-client to replace the complete data on the server.");
     }
 }
 
@@ -4071,7 +4262,7 @@ void SyncContext::restore(const string &dirname, RestoreDatabase database)
 
     SourceList sourceList(*this, false);
     sourceList.accessSession(dirname.c_str());
-    LoggerBase::instance().setLevel(Logger::INFO);
+    Logger::instance().setLevel(Logger::INFO);
     initSources(sourceList);
     BOOST_FOREACH(SyncSource *source, sourceList) {
         ConfigPropertyRegistry& registry = SyncSourceConfig::getRegistry();
@@ -4126,16 +4317,15 @@ void SyncContext::restore(const string &dirname, RestoreDatabase database)
 
 void SyncContext::getSessions(vector<string> &dirs)
 {
-    LogDir logging(*this);
-    logging.previousLogdirs(dirs);
+    LogDir::create(*this)->previousLogdirs(dirs);
 }
 
 string SyncContext::readSessionInfo(const string &dir, SyncReport &report)
 {
-    LogDir logging(*this);
-    logging.openLogdir(dir);
-    logging.readReport(report);
-    return logging.getPeerNameFromLogdir(dir);
+    boost::shared_ptr<LogDir> logging(LogDir::create(*this));
+    logging->openLogdir(dir);
+    logging->readReport(report);
+    return logging->getPeerNameFromLogdir(dir);
 }
 
 #ifdef ENABLE_UNIT_TESTS
@@ -4147,7 +4337,7 @@ string SyncContext::readSessionInfo(const string &dir, SyncReport &report)
  * With that setup and a fake SyncContext it is possible to simulate
  * sessions and test the resulting logdirs.
  */
-class LogDirTest : public CppUnit::TestFixture, private SyncContext, private LoggerBase
+class LogDirTest : public CppUnit::TestFixture, private SyncContext, public Logger
 {
 public:
     LogDirTest() :
@@ -4155,11 +4345,11 @@ public:
         m_maxLogDirs(10)
     {
         // suppress output by redirecting into m_out
-        pushLogger(this);
+        addLogger(boost::shared_ptr<Logger>(this, NopDestructor()));
     }
 
     ~LogDirTest() {
-        popLogger();
+        removeLogger(this);
     }
 
     void setUp() {
@@ -4265,21 +4455,16 @@ private:
     }
 
     /** capture output produced while test ran */
-    void messagev(Level level,
-                  const char *prefix,
-                  const char *file,
-                  int line,
-                  const char *function,
+    void messagev(const MessageOptions &options,
                   const char *format,
                   va_list args)
     {
         std::string str = StringPrintfV(format, args);
-        m_out << '[' << levelToStr(level) << ']' << str;
+        m_out << '[' << levelToStr(options.m_level) << ']' << str;
         if (!boost::ends_with(str, "\n")) {
             m_out << std::endl;
         }
     }
-    virtual bool isProcessSafe() const { return false; }
 
     CPPUNIT_TEST_SUITE(LogDirTest);
     CPPUNIT_TEST(testQuickCompare);
@@ -4300,7 +4485,7 @@ private:
      * @return logdir created for the session
      */
     string session(bool changeServer, SyncMLStatus status, ...) {
-        Logger::Level level = LoggerBase::instance().getLevel();
+        Logger::Level level = Logger::instance().getLevel();
         SourceList list(*this, true);
         list.setLogLevel(SourceList::LOGGING_QUIET);
         SyncReport report;
@@ -4350,7 +4535,7 @@ private:
         }
         list.syncDone(status, &report);
 
-        LoggerBase::instance().setLevel(level);
+        Logger::instance().setLevel(level);
         return list.getLogdir();
     }
 

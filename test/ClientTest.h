@@ -32,6 +32,7 @@
 #include <SyncML.h>
 #include <TransportAgent.h>
 #include <SyncSource.h>
+#include <syncevo/SuspendFlags.h>
 
 #include "test.h"
 #include "ClientTestAssert.h"
@@ -44,6 +45,8 @@
 
 #include <syncevo/Logging.h>
 #include <syncevo/util.h>
+
+#include <boost/utility.hpp>
 
 #include <syncevo/declarations.h>
 SE_BEGIN_CXX
@@ -136,9 +139,8 @@ struct SyncOptions {
     int m_retryDuration;
     int m_retryInterval;
 
-    bool m_isSuspended; 
-    
-    bool m_isAborted;
+    boost::shared_ptr<SuspendFlags::StateBlocker> m_isSuspended;
+    boost::shared_ptr<SuspendFlags::StateBlocker> m_isAborted;
 
     /**
      * Callback to be invoked after setting up local sources, but
@@ -174,8 +176,6 @@ struct SyncOptions {
         m_isWBXML(isWBXML),
         m_retryDuration(300),
         m_retryInterval(60),
-        m_isSuspended(false),
-        m_isAborted(false),
         m_startCallback(startCallback),
         m_transport (transport)
     {}
@@ -236,7 +236,7 @@ class SyncTests;
  * properties (like available sync sources) and then creates several
  * tests.
  */
-class ClientTest {
+class ClientTest : private boost::noncopyable {
   public:
     ClientTest(int serverSleepSec = 0, const std::string &serverLog= "");
     virtual ~ClientTest();
@@ -972,7 +972,7 @@ public:
 
 /** write log message into *.log file of a test */
 #define CLIENT_TEST_LOG(_format, _args...) \
-    SE_LOG_DEBUG(NULL, NULL, "\n%s:%d *** " _format, \
+    SE_LOG_DEBUG(NULL, "\n%s:%d *** " _format, \
                  getBasename(__FILE__).c_str(), __LINE__, \
                  ##_args)
 

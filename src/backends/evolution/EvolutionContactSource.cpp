@@ -177,7 +177,7 @@ void EvolutionContactSource::open()
     if (!e_book_get_addressbooks(&tmp, gerror)) {
         throwError("unable to access address books", gerror);
     }
-    ESourceListCXX sources(tmp, false);
+    ESourceListCXX sources(tmp, TRANSFER_REF);
 
     string id = getDatabaseID();
     ESource *source = findSource(sources, id);
@@ -222,7 +222,7 @@ void EvolutionContactSource::open()
         }
         while (authmethod) {
             const char *method = (const char *)authmethod->data;
-            SE_LOG_DEBUG(this, NULL, "trying authentication method \"%s\", user %s, password %s",
+            SE_LOG_DEBUG(getDisplayName(), "trying authentication method \"%s\", user %s, password %s",
                          method,
                          !user.empty() ? "configured" : "not configured",
                          !passwd.empty() ? "configured" : "not configured");
@@ -231,10 +231,10 @@ void EvolutionContactSource::open()
                                          passwd.c_str(),
                                          method,
                                          gerror)) {
-                SE_LOG_DEBUG(this, NULL, "authentication succeeded");
+                SE_LOG_DEBUG(getDisplayName(), "authentication succeeded");
                 break;
             } else {
-                SE_LOG_ERROR(this, NULL, "authentication failed: %s", gerror->message);
+                SE_LOG_ERROR(getDisplayName(), "authentication failed: %s", gerror->message);
             }
             authmethod = authmethod->next;
         }
@@ -347,7 +347,7 @@ void EvolutionContactSource::listAllItems(RevisionMap_t &revisions)
     GErrorCXX gerror;
     EBookClientView *view;
 
-    EBookQueryCXX allItemsQuery(e_book_query_any_field_contains(""), false);
+    EBookQueryCXX allItemsQuery(e_book_query_any_field_contains(""), TRANSFER_REF);
     PlainGStr sexp(e_book_query_to_string (allItemsQuery.get()));
     
     if (!e_book_client_get_view_sync(m_addressbook, sexp, &view, NULL, gerror)) {
@@ -361,7 +361,7 @@ void EvolutionContactSource::listAllItems(RevisionMap_t &revisions)
     interesting_field_list.push_back(e_contact_field_name (E_CONTACT_REV));
     e_book_client_view_set_fields_of_interest (viewPtr, interesting_field_list, gerror);
     if (gerror) {
-        SE_LOG_ERROR(this, NULL, "e_book_client_view_set_fields_of_interest: %s", (const char*)gerror);
+        SE_LOG_ERROR(getDisplayName(), "e_book_client_view_set_fields_of_interest: %s", (const char*)gerror);
         gerror.clear();
     }
 
@@ -403,7 +403,7 @@ void EvolutionContactSource::listAllItems(RevisionMap_t &revisions)
 
 void EvolutionContactSource::close()
 {
-    m_addressbook = NULL;
+    m_addressbook.reset();
 }
 
 string EvolutionContactSource::getRevision(const string &luid)

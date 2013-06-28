@@ -251,6 +251,10 @@ Details:
   GDBus.Error:org.meego.activesyncd.Error.AccountNotFound: Failed to find
   account [syncevolution@lists.intel.com]
 
+* Minor memory leak fix when using GDBus GIO: GDBusMethodInfo
+
+  Also depends on a glib fix, see https://bugzilla.gnome.org/show_bug.cgi?id=695376
+
 * build fixes
 
   Avoid -lrt in make dependencies. Add missing pcre libs to

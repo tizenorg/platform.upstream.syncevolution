@@ -62,7 +62,6 @@ cat > EXTRA_FILES <<EOF
 clientprovisioning_inc.cpp
 .*_tables_inc.cpp
 syncsessiondispatch.cpp
-platform_thread.cpp
 enginestubs.c
 platform_adapters/macosx
 EOF

@@ -32,10 +32,10 @@ SE_BEGIN_CXX
 /**
  * A logger which writes to syslog.
  */
-class LoggerSyslog : public LoggerBase
+class LoggerSyslog : public Logger
 {
     const std::string m_processName;
-    LoggerBase &m_parentLogger;
+    Handle m_parentLogger;
 
 public:
     /**
@@ -45,15 +45,10 @@ public:
 
     ~LoggerSyslog();
 
-    virtual void messagev(Level level,
-                          const char *prefix,
-                          const char *file,
-                          int line,
-                          const char *function,
+    virtual void messagev(const MessageOptions &options,
                           const char *format,
                           va_list args);
 
-    virtual bool isProcessSafe() const { return true; }
 private:
     static int getSyslogLevel(Level level);
 };

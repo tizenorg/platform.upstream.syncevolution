@@ -30,6 +30,8 @@ SE_GOBJECT_TYPE(GeeMapEntry)
 SE_GOBJECT_TYPE(GeeMapIterator)
 SE_GOBJECT_TYPE(GeeIterable)
 SE_GOBJECT_TYPE(GeeIterator)
+SE_GOBJECT_TYPE(GeeMultiMap)
+SE_GOBJECT_TYPE(GeeCollection)
 
 #include <syncevo/declarations.h>
 SE_BEGIN_CXX
@@ -88,9 +90,15 @@ template<class Entry> class GeeCollCXX
     GeeIterableCXX m_collection;
 
  public:
-    template<class Collection> GeeCollCXX(Collection *collection) :
-        m_collection(GEE_ITERABLE(collection))
+    template<class Collection> GeeCollCXX(Collection *collection, RefOwnership ownership) :
+        m_collection(GEE_ITERABLE(collection), ownership)
     {}
+
+    GeeCollCXX(GeeCollectionCXX &collection) :
+        m_collection(GEE_ITERABLE(collection.get()), ADD_REF)
+    {}
+
+    GeeIterable *get() const { return m_collection.get(); }
 
     class Iterator
     {
@@ -110,7 +118,7 @@ template<class Entry> class GeeCollCXX
          * Takes ownership of iterator, which may be NULL for the end Iterator.
          */
         Iterator(GeeIterator *iterator) :
-            m_it(iterator, false),
+            m_it(iterator, TRANSFER_REF),
             m_valid(false)
         {}
 
@@ -181,7 +189,7 @@ template<class Key, class Value> class GeeMapEntryWrapper  {
 
     /** take ownership of entry instance */
     GeeMapEntryWrapper(GeeMapEntry *entry = NULL) :
-        m_entry(entry, false)
+        m_entry(entry, TRANSFER_REF)
     {}
     GeeMapEntryWrapper(const GeeMapEntryWrapper &other):
         m_entry(other.m_entry)

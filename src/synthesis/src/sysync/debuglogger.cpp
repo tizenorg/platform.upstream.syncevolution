@@ -482,6 +482,8 @@ TDebugLoggerBase::TDebugLoggerBase(GZones *aGZonesP) :
   fIndent=0;
   fBlockHistory=NULL; // no Block open yet
   fOutStarted=false; // not yet started
+  fBlockNo=0;
+  fGZonesP=NULL;
   fOutputLoggerP=NULL; // no redirected output yet
 } // TDebugLoggerBase::TDebugLoggerBase
 
@@ -1480,6 +1482,18 @@ TDebugLogger::~TDebugLogger()
 
 #ifdef MULTI_THREAD_SUPPORT
 
+void TDebugLogger::setOptions(const TDbgOptions *aDbgOptionsP)
+{
+  TDebugLoggerBase::setOptions(aDbgOptionsP);
+  TSubThreadLog* subThreadP = fSubThreadLogs;
+  while (subThreadP) {
+    if (subThreadP->fSubThreadLogger) {
+      subThreadP->fSubThreadLogger->setOptions(aDbgOptionsP);
+    }
+    subThreadP = subThreadP->fNext;
+  }
+}
+
 /// @brief find (and possibly delete) subthread record
 /// @param aAndRemove[in] if set, the subthread record will be removed in a thread safe way
 ///        IF AND ONLY IF aThreadID is the calling thread (i.e. only own thread may be removed from the list)!
@@ -1509,7 +1523,7 @@ TDebugLoggerBase *TDebugLogger::getThreadLogger(bool aCreateNew)
 {
   if (!fDbgOptionsP || fDbgOptionsP->fSubThreadMode==dbgsubthread_none)
     return this; // no options, do not handle subthreads specially
-  uInt32 threadID = myThreadID();
+  uIntArch threadID = myThreadID();
   if (fDbgOptionsP->fSubThreadMode==dbgsubthread_linemix || threadID==fMainThreadID) {
     // In line mix and for mainthread - I am the logger for this thread!
     return this;
@@ -1541,7 +1555,7 @@ TDebugLoggerBase *TDebugLogger::getThreadLogger(bool aCreateNew)
         // - create new base logger
         subThreadP->fSubThreadLogger = new TDebugLoggerBase(fGZonesP);
         // - install output (copy)
-        subThreadP->fSubThreadLogger->installOutput(fDbgOutP->clone());
+        subThreadP->fSubThreadLogger->installOutput(fDbgOutP ? fDbgOutP->clone() : NULL);
         // - same options
         subThreadP->fSubThreadLogger->setOptions(getOptions());
         // - inherit current mask/enable
@@ -1549,7 +1563,7 @@ TDebugLoggerBase *TDebugLogger::getThreadLogger(bool aCreateNew)
         subThreadP->fSubThreadLogger->setEnabled(fDebugEnabled);
         // - debug path is same as myself plus Thread ID
         subThreadP->fSubThreadLogger->setDebugPath(fDbgPath.c_str());
-        StringObjPrintf(s,"_%lu",threadID);
+        StringObjPrintf(s,"_%lu",(long unsigned)threadID);
         subThreadP->fSubThreadLogger->appendToDebugPath(s.c_str());
         break;
       case dbgsubthread_suppress:
@@ -1634,7 +1648,7 @@ void TDebugLogger::DebugShowSubThreadOutput(void)
 void TDebugLogger::DebugThreadOutputDone(bool aRemoveIt)
 {
   #ifdef MULTI_THREAD_SUPPORT
-  uInt32 threadID = myThreadID();
+  uIntArch threadID = myThreadID();
   if (threadID==fMainThreadID) {
     // current main thread done
     fMainThreadID = 0;
@@ -1664,7 +1678,7 @@ void TDebugLogger::DebugThreadOutputDone(bool aRemoveIt)
 void TDebugLogger::DebugDefineMainThread(void)
 {
   #ifdef MULTI_THREAD_SUPPORT
-  uInt32 threadID = myThreadID();
+  uIntArch threadID = myThreadID();
   // if this is already the main thread, no op
   if (threadID == fMainThreadID)
     return; // nop, done

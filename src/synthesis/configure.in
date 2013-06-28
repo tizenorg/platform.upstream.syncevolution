@@ -4,7 +4,7 @@ AC_INIT(src/sysync/engineinterface.cpp)
 AC_CONFIG_MACRO_DIR([m4])
 # four digit upstream version, one additional digit for
 # Linux/SyncEvolution specific extensions:
-AM_INIT_AUTOMAKE(synthesis, 3.4.0.16.8)
+AM_INIT_AUTOMAKE(synthesis, 3.4.0.16.9)
 AM_CONFIG_HEADER(config.h)
 AC_LIBTOOL_DLOPEN
 

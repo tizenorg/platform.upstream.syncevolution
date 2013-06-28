@@ -150,9 +150,11 @@ appCharP StrAllocN( cAppCharP s, int n, bool fullSize )
     if (n>len) n= len; /* never more than the length of <s> */
   } /* if */
 
-           cp= (char*)malloc( n+1 );
-  strncpy( cp, s, n ); /* not yet NUL terminated !! */
-           cp[ n ]= '\0';
+  cp= (char*)malloc( n+1 );
+  if (cp) {
+    strncpy( cp, s, n ); /* not yet NUL terminated !! */
+    cp[ n ]= '\0';
+  }
   return   cp;
 } /* StrAllocN */
 
@@ -190,11 +192,11 @@ bool Field( cAppCharP item, cAppCharP key, char** field )
       if (*(b-1)==':') {                         /* correctly separated ? */
         if (!e) *field= StrAlloc ( b );             /* either the rest    */
         else    *field= StrAllocN( b, e-b, false ); /* or till next field */
-        return true;
+        return *field != NULL;
       } /* if */
-
-      if (!e) break;
     } /* if */
+
+    if (!e) break;
 
     t= e+1; /* go to the next field */
   } /* loop */
@@ -657,12 +659,12 @@ void DoDEBUG( void* aCB, uInt16 outputMode, bool withIntro,
         strlen(isX)     + strlen(routine) +
         strlen(p)       + strlen(text)    + 1;
 
-           s= (char*)malloc( size );
-  sprintf( s, "%s%s%s%s%s%s", dbIntro,id,isX,routine,p,text );
-
-  CallbackVPrintf( aCB, s,args, outputMode );
-
-  free   ( s );
+  s= (char*)malloc( size );
+  if (s) {
+    sprintf( s, "%s%s%s%s%s%s", dbIntro,id,isX,routine,p,text );
+    CallbackVPrintf( aCB, s,args, outputMode );
+    free   ( s );
+  }
 } /* DoDEBUG */
 #endif
 

@@ -30,6 +30,7 @@
 # same directory.
 
 import os
+import errno
 import sys
 import inspect
 import unittest
@@ -42,6 +43,7 @@ import re
 import itertools
 import codecs
 import glib
+import pprint
 
 # Update path so that testdbus.py can be found.
 pimFolder = os.path.realpath(os.path.abspath(os.path.split(inspect.getfile(inspect.currentframe()))[0]))
@@ -227,6 +229,8 @@ class Watchdog():
           self.timeout = glib.Timeout(int(self.interval * 1000))
           self.timeout.set_callback(self._ping)
           self.timeout.attach(loop.get_context())
+          if self.threshold < 0:
+               print '\nPinging server at intervals of %fs.' % self.interval
 
      def stop(self):
           if self.timeout:
@@ -235,10 +239,11 @@ class Watchdog():
 
      def check(self):
           '''Assert that all queries were served quickly enough.'''
-          tooslow = [x for x in self.results if x[1] > self.threshold]
-          self.test.assertEqual([], tooslow)
-          if self.started:
-               self.test.assertLess(time.time() - self.started, self.threshold)
+          if self.threshold > 0:
+               tooslow = [x for x in self.results if x[1] > self.threshold]
+               self.test.assertEqual([], tooslow)
+               if self.started:
+                    self.test.assertLess(time.time() - self.started, self.threshold)
 
      def reset(self):
           self.results = []
@@ -247,23 +252,27 @@ class Watchdog():
      def checkpoint(self, name):
           self.check()
           logging.printf('ping results for %s: %s', name, self.results)
+          if self.threshold < 0:
+               for result in self.results:
+                    print '%s: ping duration: %f' % (name, result[1])
           self.reset()
 
      def _ping(self):
           if not self.started:
                # Run with a long timeout. We want to know how long it
                # takes to reply, even if it is too long.
-               self.started = time.time()
+               started = time.time()
+               self.started = started
                self.manager.GetAllPeers(timeout=1000,
-                                        reply_handler=lambda peers: self._done(self.started, self.results, None),
-                                        error_handler=lambda error: self._done(self.started, self.results, error))
+                                        reply_handler=lambda peers: self._done(started, self.results, None),
+                                        error_handler=lambda error: self._done(started, self.results, error))
           return True
 
      def _done(self, started, results, error):
           '''Record result. Intentionally uses the results array from the time when the call started,
           to handle intermittent checkpoints.'''
           duration = time.time() - started
-          if duration > self.threshold or error:
+          if self.threshold > 0 and duration > self.threshold or error:
                logging.printf('ping failure: duration %fs, error %s', duration, error)
           if error:
                results.append((started, duration, error))
@@ -302,8 +311,11 @@ XDG root.
         # 'infinite' doesn't seem to be documented for Python.
         self.timeout = 100000
 
-        # Common prefix for peer UIDs.
-        self.uidPrefix = 'test-dbus-'
+        # Common prefix for peer UIDs. Use different prefixes in each test,
+        # because evolution-addressbook-factory keeps the old instance
+        # open when syncevo-dbus-server stops or crashes and then fails
+        # to work with that database when we remove it.
+        self.uidPrefix = self.testname.replace('_', '-').lower() + '-'
 
         # Prefix used by PIM Manager in EDS.
         self.managerPrefix = 'pim-manager-'
@@ -398,6 +410,7 @@ XDG root.
               c = [ '--daemon=no' ] + command
               logging.printf('running syncevolution command line: %s' % c)
               return cmdline.runCmdline(c,
+                                        testInstance=self,
                                         env=self.storedenv,
                                         sessionFlags=None,
                                         **args)
@@ -493,15 +506,82 @@ END:VCARD(\r|\n)*''',
         self.runTestDBusCheck = lambda test, log: test.assertNotIn('ERROR', log.replace('ERROR SUMMARY:', 'error summary:'))
         self.runTestOutputCheck = self.runTestDBusCheck
 
+        # We have to clean the xdg_root ourselves. We have to be nice
+        # to EDS and can't just wipe out the entire directory.
+        items = list(os.walk(xdg_root))
+        items.reverse()
+        for dirname, dirs, files in items:
+            reldir = os.path.relpath(dirname, xdg_root)
+            for dir in dirs:
+                # evolution-source-registry gets confused when we remove
+                # the "sources" directory itself.
+                if reldir == 'config/evolution' and dir == 'sources':
+                    continue
+                dest = os.path.join(dirname, dir)
+                try:
+                    os.rmdir(dest)
+                except OSError, ex:
+                    if ex.errno != errno.ENOTEMPTY:
+                        raise
+            for file in files:
+                dest = os.path.join(dirname, file)
+                # Don't delete a DB that may still be in use by
+                # evolution-addressbook-factory and that we may still need.
+                # Other DBs can be removed because we are not going to depend on
+                # them anymore thanks to the per-test uid prefix.
+                if reldir == 'data/evolution/addressbook/system':
+                    continue
+                os.unlink(dest)
+
+        # We have to wait until evolution-source-registry catches up
+        # and recognized that the sources are gone, otherwise
+        # evolution-addressbook-factory will keep the .db files open
+        # although we already removed them.
+        while True:
+            out, err = subprocess.Popen(['syncevolution', '--print-databases', '--daemon=no', 'backend=evolution-contacts'],
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE).communicate()
+            self.assertEqual('', err)
+            # Count the number of database entries. An exact
+            # comparison against the output does not work, because the
+            # name of the system address book due to localization and
+            # (to a lesser degree) its UID may change.
+            if len([x for x in out.split('\n') if x.startswith('   ')]) == 1:
+                break
+            else:
+                time.sleep(0.5)
+
+        # Does not work, Reload()ing a running registry confuses evolution-addressbook-factory.
+        #
+        # for i in range(0, 100):
+        #     try:
+        #         registry = dbus.Interface(bus.get_object('org.gnome.evolution.dataserver.Sources%d' % i,
+        #                                                  '/org/gnome/evolution/dataserver/SourceManager'),
+        #                                   'org.gnome.evolution.dataserver.SourceManager')
+        #     except dbus.exceptions.DBusException, ex:
+        #         if ex.get_dbus_name() != 'org.freedesktop.DBus.Error.ServiceUnknown':
+        #             raise
+        # registry.Reload()
+        # # Give it some time...
+        # time.sleep(2)
+
         # Runtime varies a lot when using valgrind, because
         # of the need to check an additional process. Allow
         # a lot more time when running under valgrind.
-        self.runTest(result, own_xdg=True, own_home=True,
+        self.runTest(result, own_xdg=False, own_home=False,
                      defTimeout=usingValgrind() and 600 or 20)
 
     def currentSources(self):
         '''returns current set of EDS sources as set of UIDs, without the .source suffix'''
         return set([os.path.splitext(x)[0] for x in (os.path.exists(self.sourcedir) and os.listdir(self.sourcedir) or [])])
+
+    def testUIDError(self):
+        '''TestContacts.testUIDError - check that invalid UID is properly detected and reported'''
+        with self.assertRaisesRegexp(dbus.DBusException,
+                                     'invalid peer uid: CAPITAL-LETTERS-NOT-ALLOWED'):
+            self.manager.SetPeer('CAPITAL-LETTERS-NOT-ALLOWED',
+                                 {},
+                                 timeout=self.timeout)
 
     @property("snapshot", "simple-sort")
     def testConfig(self):
@@ -641,6 +721,24 @@ END:VCARD(\r|\n)*''',
         expected = sources.copy()
         peers = {}
 
+        syncProgress = []
+        signal = bus.add_signal_receiver(lambda uid, event, data: (logging.printf('received SyncProgress: %s, %s, %s', uid, event, data), syncProgress.append((uid, event, data)), logging.printf('progress %s' % syncProgress)),
+                                         'SyncProgress',
+                                         'org._01.pim.contacts.Manager',
+                                         None, #'org._01.pim.contacts',
+                                         '/org/01/pim/contacts',
+                                         byte_arrays=True,
+                                         utf8_strings=True)
+        def checkSync(expected, result):
+             self.assertEqual(expected, result)
+             while not (uid, 'done', {}) in syncProgress:
+                  self.loopIteration('added signal')
+             self.assertEqual([(uid, 'started', {}),
+                               (uid, 'modified', expected),
+                               (uid, 'done', {})],
+                              syncProgress)
+
+
         # Must be the Bluetooth MAC address (like A0:4E:04:1E:AD:30)
         # of a phone which is paired, currently connected, and
         # supports both PBAP and SyncML. SyncML is needed for putting
@@ -699,7 +797,9 @@ END:VCARD(\r|\n)*''',
         # Remember current list of files and modification time stamp.
         files = listsyncevo()
 
-        # Remove all data locally.
+        # Remove all data locally. There may or may not have been data
+        # locally, because the database of the peer might have existed
+        # from previous tests.
         self.manager.SyncPeer(uid,
                               timeout=self.timeout)
         # TODO: check that syncPhone() really used PBAP - but how?
@@ -809,8 +909,14 @@ END:VCARD
         output.write(john)
         output.close()
         self.syncPhone(phone, uid)
-        self.manager.SyncPeer(uid,
-                              timeout=self.timeout)
+        syncProgress = []
+        result = self.manager.SyncPeer(uid,
+                                       timeout=self.timeout)
+        checkSync({'modified': True,
+                    'added': 1,
+                    'updated': 0,
+                    'removed': 0},
+                  result)
 
         # Also exclude modified database files.
         self.assertEqual(files, listsyncevo(exclude=exclude))
@@ -826,16 +932,28 @@ END:VCARD
                              peers[uid],
                              timeout=self.timeout)
         files = listsyncevo(exclude=exclude)
-        self.manager.SyncPeer(uid,
-                              timeout=self.timeout)
+        syncProgress = []
+        result = self.manager.SyncPeer(uid,
+                                       timeout=self.timeout)
+        checkSync({'modified': False,
+                   'added': 0,
+                   'updated': 0,
+                   'removed': 0},
+                  result)
         exclude.append(logdir + '(/$)')
         self.assertEqual(files, listsyncevo(exclude=exclude))
 
         self.assertEqual(2, len(os.listdir(logdir)))
 
         # At most one!
-        self.manager.SyncPeer(uid,
-                              timeout=self.timeout)
+        syncProgress = []
+        result = self.manager.SyncPeer(uid,
+                                       timeout=self.timeout)
+        checkSync({'modified': False,
+                   'added': 0,
+                   'updated': 0,
+                   'removed': 0},
+                  result)
         exclude.append(logdir + '(/$)')
         self.assertEqual(files, listsyncevo(exclude=exclude))
         self.assertEqual(2, len(os.listdir(logdir)))
@@ -846,11 +964,48 @@ END:VCARD
                              peers[uid],
                              timeout=self.timeout)
         files = listsyncevo(exclude=exclude)
-        self.manager.SyncPeer(uid,
-                              timeout=self.timeout)
+        syncProgress = []
+        result = self.manager.SyncPeer(uid,
+                                       timeout=self.timeout)
+        checkSync({'modified': False,
+                   'added': 0,
+                   'updated': 0,
+                   'removed': 0},
+                  result)
         exclude.append(logdir + '(/$)')
         self.assertEqual(files, listsyncevo(exclude=exclude))
         self.assertEqual(4, len(os.listdir(logdir)))
+
+        # Update contact.
+        john = '''BEGIN:VCARD
+VERSION:3.0
+FN:John Doe
+N:Doe;John
+END:VCARD'''
+        output = open(item, "w")
+        output.write(john)
+        output.close()
+        self.syncPhone(phone, uid)
+        syncProgress = []
+        result = self.manager.SyncPeer(uid,
+                                       timeout=self.timeout)
+        checkSync({'modified': True,
+                   'added': 0,
+                   'updated': 1,
+                   'removed': 0},
+                  result)
+
+        # Remove contact.
+        os.unlink(item)
+        self.syncPhone(phone, uid)
+        syncProgress = []
+        result = self.manager.SyncPeer(uid,
+                                       timeout=self.timeout)
+        checkSync({'modified': True,
+                   'added': 0,
+                   'updated': 0,
+                   'removed': 1},
+                  result)
 
         # Test invalid maxsession values.
         with self.assertRaisesRegexp(dbus.DBusException,
@@ -1454,7 +1609,7 @@ END:VCARD
                         },
                        ],
                           'source': [
-                       ('test-dbus-foo', luids[0])
+                       (self.uidPrefix + 'foo', luids[0])
                        ],
                           'id': '<stripped>',
                           'notes': [
@@ -1510,6 +1665,83 @@ END:VCARD
                          # Must sort before comparing.
                          contact,
                          sortLists=True)
+
+    def addressbooks(self):
+        entries = os.listdir(os.path.join(os.environ["XDG_DATA_HOME"], "evolution", "addressbook"))
+        entries.sort();
+        # Ignore trash folder and system DB, because they may or may not be present.
+        for db in ('trash', 'system'):
+            try:
+                entries.remove(db)
+            except ValueError:
+                pass
+        return entries
+
+    @timeout(60)
+    @property("snapshot", "simple-sort")
+    def testRemove(self):
+        '''TestContacts.testRemove - check that EDS database is created and removed'''
+        self.setUpView(search=None)
+
+        # Force sqlite DB files to exist by inserting a contact.
+        testcases = [r'''BEGIN:VCARD
+VERSION:3.0
+FN:John Doe
+N:Doe;John
+TEL:1234-5678
+EMAIL:john.doe@example.com
+URL:http://john.doe.com
+X-JABBER:jd@example.com
+END:VCARD
+''']
+        for i, contact in enumerate(testcases):
+             item = os.path.join(self.contacts, 'contact%d.vcf' % i)
+             output = open(item, "w")
+             output.write(contact)
+             output.close()
+        logging.log('inserting contacts')
+        out, err, returncode = self.runCmdline(['--import', self.contacts, '@' + self.managerPrefix + self.uid, 'local'])
+
+        self.assertEqual([self.managerPrefix + self.uid], self.addressbooks())
+        self.manager.RemovePeer(self.uid)
+        self.assertEqual([], self.addressbooks())
+
+    @timeout(60)
+    @property("snapshot", "simple-sort")
+    def testRemoveLive(self):
+        '''TestContacts.testRemove - check that EDS database is created and removed while it is open in a view'''
+        self.setUpView()
+
+        # Force sqlite DB files to exist by inserting a contact.
+        testcases = [r'''BEGIN:VCARD
+VERSION:3.0
+FN:John Doe
+N:Doe;John
+TEL:1234-5678
+EMAIL:john.doe@example.com
+URL:http://john.doe.com
+X-JABBER:jd@example.com
+END:VCARD
+''']
+        for i, contact in enumerate(testcases):
+             item = os.path.join(self.contacts, 'contact%d.vcf' % i)
+             output = open(item, "w")
+             output.write(contact)
+             output.close()
+        logging.log('inserting contacts')
+        out, err, returncode = self.runCmdline(['--import', self.contacts, '@' + self.managerPrefix + self.uid, 'local'])
+
+        # Run until the view has adapted.
+        self.runUntil('view with one contact',
+                      check=lambda: self.assertEqual([], self.view.errors),
+                      until=lambda: len(self.view.contacts) > 0)
+        # Don't wait for more contacts here. They shouldn't come, and if
+        # they do, we'll notice it below.
+        self.assertEqual(1, len(self.view.contacts))
+
+        self.assertEqual([self.managerPrefix + self.uid], self.addressbooks())
+        self.manager.RemovePeer(self.uid)
+        self.assertEqual([], self.addressbooks())
 
     @timeout(60)
     @property("snapshot", "simple-sort")
@@ -1597,8 +1829,8 @@ END:VCARD'''
                           'urls': [('http://john.doe.com', ['x-home-page'])],
                           'id': contact.get('id', '<???>'),
                           'source': [
-                       ('test-dbus-bar', luids[self.uidPrefix + 'bar'][0]),
-                       ('test-dbus-foo', luids[self.uidPrefix + 'foo'][0])
+                       (self.uidPrefix + 'bar', luids[self.uidPrefix + 'bar'][0]),
+                       (self.uidPrefix + 'foo', luids[self.uidPrefix + 'foo'][0])
 
                        ],
                           },
@@ -1614,7 +1846,7 @@ END:VCARD'''
 
         contactsPerPeer = int(os.environ.get('TESTPIM_TEST_ACTIVE_NUM', 10))
 
-        self.assertEqual(['', 'peer-test-dbus-a', 'peer-test-dbus-c'],
+        self.assertEqual(['', 'peer-' + self.uidPrefix + 'a', 'peer-' + self.uidPrefix + 'c'],
                          self.manager.GetActiveAddressBooks(timeout=self.timeout),
                          sortLists=True)
 
@@ -1652,13 +1884,13 @@ END:VCARD'''
         active = [''] + peers
 
         # Check that active databases were adapted and stored permanently.
-        self.assertEqual(['', 'peer-test-dbus-a', 'peer-test-dbus-b', 'peer-test-dbus-c'],
+        self.assertEqual(['', 'peer-' + self.uidPrefix + 'a', 'peer-' + self.uidPrefix + 'b', 'peer-' + self.uidPrefix + 'c'],
                          self.manager.GetActiveAddressBooks(timeout=self.timeout),
                          sortLists=True)
         # Order mirrors the one of SetActiveAddressBooks() in setUpView(),
         # assuming that the PIM Manager preserves that order (not really guaranteed
         # by the API, but is how it is implemented).
-        self.assertIn("active = pim-manager-test-dbus-a pim-manager-test-dbus-b pim-manager-test-dbus-c system-address-book\n",
+        self.assertIn('active = pim-manager-' + self.uidPrefix + 'a pim-manager-' + self.uidPrefix + 'b pim-manager-' + self.uidPrefix + 'c system-address-book\n',
                       open(os.path.join(xdg_root, "config", "syncevolution", "pim-manager.ini"),
                            "r").readlines())
 
@@ -1668,8 +1900,8 @@ END:VCARD'''
                   output = open(item, "w")
                   output.write('''BEGIN:VCARD
 VERSION:3.0
-FN:John_%(peer)s%(index)03d Doe
-N:Doe;John_%(peer)s%(index)03d
+FN:John_%(peer)s%(index)04d Doe
+N:Doe;John_%(peer)s%(index)04d
 END:VCARD''' % {'peer': peer, 'index': index})
                   output.close()
 
@@ -1704,7 +1936,7 @@ END:VCARD''' % {'peer': peer, 'index': index})
                   del contact['source']
              expected = [{'full-name': first + ' Doe',
                                 'structured-name': {'given': first, 'family': 'Doe'}} for \
-                                    first in ['John_%(peer)s%(index)03d' % {'peer': peer,
+                                    first in ['John_%(peer)s%(index)04d' % {'peer': peer,
                                                                             'index': index} \
                                                    for peer in active \
                                                    for index in range(0, contactsPerPeer)] ]
@@ -2111,6 +2343,255 @@ END:VCARD''']):
                       check=lambda: self.assertEqual([], view.errors),
                       until=lambda: view.quiescentCount > 0)
         self.assertEqual(0, len(view.contacts))
+
+    def doFilter(self, testdata, searches):
+        self.setUpView()
+
+        msg = None
+        try:
+             # Insert new contacts and calculate their family names.
+             names = []
+             numtestcases = len(testdata)
+             for i, contact in enumerate(testdata):
+                  item = os.path.join(self.contacts, 'contact%d.vcf' % i)
+                  output = codecs.open(item, "w", "utf-8")
+                  if isinstance(contact, tuple):
+                       # name + vcard
+                       output.write(contact[1])
+                       names.append(contact[0])
+                  else:
+                       # just the name
+                       output.write(u'''BEGIN:VCARD
+VERSION:3.0
+FN:%(name)s
+N:%(name)s;;;;
+END:VCARD
+''' % { 'name': contact })
+                       names.append(contact)
+                  output.close()
+
+             logging.log('inserting contacts')
+             out, err, returncode = self.runCmdline(['--import', self.contacts, '@' + self.managerPrefix + self.uid, 'local'])
+             # Relies on importing contacts sorted ascending by file name.
+             luids = self.extractLUIDs(out)
+             logging.printf('created contacts with luids: %s' % luids)
+
+             # Run until the view has adapted.
+             self.runUntil('view with three contacts',
+                           check=lambda: self.assertEqual([], self.view.errors),
+                           until=lambda: len(self.view.contacts) == numtestcases)
+
+             # Check for the one expected event.
+             # TODO: self.assertEqual([('added', 0, 3)], view.events)
+             self.view.events = []
+
+             # Read contacts.
+             logging.log('reading contacts')
+             self.view.read(0, numtestcases)
+             self.runUntil('contacts',
+                           check=lambda: self.assertEqual([], self.view.errors),
+                           until=lambda: self.view.haveData(0, numtestcases))
+             for i, name in enumerate(names):
+                  msg = u'contact #%d with name %s in\n%s' % (i, name, pprint.pformat(self.stripDBus(self.view.contacts, sortLists=False)))
+                  self.assertEqual(name, self.view.contacts[i]['full-name'])
+
+             # Run searches and compare results.
+             for i, (query, names) in enumerate(searches):
+                  msg = u'query %s, names %s' % (query, names)
+                  view = ContactsView(self.manager)
+                  view.search(query)
+                  self.runUntil('search %d: %s' % (i, query),
+                                check=lambda: self.assertEqual([], view.errors),
+                                until=lambda: view.quiescentCount > 0)
+                  msg = u'query %s, names %s in\n%s' % (query, names, pprint.pformat(self.stripDBus(view.contacts, sortLists=False)))
+                  self.assertEqual(len(names), len(view.contacts))
+                  view.read(0, len(names))
+                  self.runUntil('data %d: %s' % (i, query),
+                                check=lambda: self.assertEqual([], view.errors),
+                                until=lambda: view.haveData(0, len(names)))
+                  for e, name in enumerate(names):
+                       msg = u'query %s, names %s, name #%d %s in\n%s' % (query, names, e, name, pprint.pformat(self.stripDBus(view.contacts, sortLists=False)))
+                       self.assertEqual(name, view.contacts[e]['full-name'])
+        except Exception, ex:
+             if msg:
+                  info = sys.exc_info()
+                  raise Exception('%s:\n%s' % (msg, repr(ex))), None, info[2]
+             else:
+                  raise
+
+    @timeout(60)
+    @property("ENV", "LC_TYPE=ja_JP.UTF-8 LC_ALL=ja_JP.UTF-8 LANG=ja_JP.UTF-8")
+    def testFilterJapanese(self):
+         self.doFilter(# Names of all contacts, sorted as expected.
+                       ('111', u'1月', 'Bad'),
+                       # Query + expected results.
+                       (([], ('111', u'1月', 'Bad')),
+                        ([['any-contains', '1']], ('111', u'1月')),
+                        ([['any-contains', u'1月']], (u'1月',)))
+                       )
+
+    @timeout(60)
+    @property("ENV", "LC_TYPE=zh_CN.UTF-8 LC_ALL=zh_CN.UTF-8 LANG=zh_CN.UTF-8")
+    def testFilterChinesePinyin(self):
+         self.doFilter(# Names of all contacts, sorted as expected.
+                       # 江 = jiāng = Jiang when using Pinyin and thus after Jeffries and before Meadows.
+                       ('Adams', 'Jeffries', u'江', 'Meadows'),
+                       # 'J' not expected to find Jiang; searching
+                       # is meant to use Chinese letters.
+                       (([['any-contains', 'J']], ('Jeffries',)),
+                        ([['any-contains', u'江']], (u'江',)),
+                        ([['any-contains', u'jiāng']], ()),
+                        ([['any-contains', u'Jiang']], ()),
+                        ),
+                       )
+
+    @timeout(60)
+    @property("ENV", "LC_TYPE=de_DE.UTF-8 LC_ALL=de_DE.UTF-8 LANG=de_DE.UTF-8")
+    def testFilterGermany(self):
+         self.doFilter(# Names of all contacts, sorted as expected.
+                       # DIN 5007 Variant 2 defines phone book sorting in
+                       # Germany. It does not apply to Austria.
+                       # Example from http://de.wikipedia.org/wiki/Alphabetische_Sortierung
+                       (u'Göbel', u'Goethe', u'Göthe', u'Götz', u'Goldmann'),
+                       (),
+                       )
+
+    # Not supported correctly by ICU?
+    # See icu-support "Subject: Austrian phone book sorting"
+    # @timeout(60)
+    # @property("ENV", "LC_TYPE=de_AT.UTF-8 LC_ALL=de_AT.UTF-8 LANG=de_AT.UTF-8")
+    # def testFilterAustria(self):
+    #      self.doFilter(# Names of all contacts, sorted as expected.
+    #                    # Austrian phone book sorting.
+    #                    # Example from http://de.wikipedia.org/wiki/Alphabetische_Sortierung
+    #                    (u'Goethe', u'Goldmann', u'Göbel', u'Göthe', u'Götz'),
+    #                    (),
+    #                    )
+
+    @timeout(60)
+    def testFilterLogic(self):
+         '''TestContacts.testFilterLogic - check logic operators'''
+         self.doFilter(('Xing', 'Yeah', 'Zooh'),
+                       ((['or', ['any-contains', 'X'], ['any-contains', 'Z']], ('Xing', 'Zooh')),
+                        (['or', ['any-contains', 'X']], ('Xing',)),
+                        (['or', ['any-contains', 'Z']], ('Zooh',)),
+                        (['or'], ()),
+                        (['and', ['any-contains', 'h'], ['any-contains', 'Z']], ('Zooh',)),
+                        (['and', ['any-contains', 'h']], ('Yeah', 'Zooh')),
+                        (['and', ['any-contains', 'Z']], ('Zooh',)),
+                        (['and', ['any-contains', 'h'], ['any-contains', 'Z'], ['any-contains', 'A']], ()),
+                        (['and'], ()),
+                        # Python D-Bus does not like mixing elements of different types in a list.
+                        # In a tuple that's fine, and also works with the PIM Manager.
+                        (('or', ('and', ('any-contains', 'h'), ('any-contains', 'Z')), ('any-contains', 'X')), ('Xing', 'Zooh')),
+                        (('and', ('or', ('any-contains', 'X'), ('any-contains', 'Z')), ('any-contains', 'h')), ('Zooh',))))
+
+    @timeout(60)
+    def testFilterFields(self):
+         '''TestContacts.testFilterFields - check filter operations on fields'''
+         self.doFilter([('John Doe', r'''BEGIN:VCARD
+VERSION:3.0
+URL:http://john.doe.com
+TITLE:Senior Tester
+ORG:Test Inc.;Testing;test#1
+ROLE:professional test case
+X-EVOLUTION-MANAGER:John Doe Senior
+X-EVOLUTION-ASSISTANT:John Doe Junior
+NICKNAME:user1
+BDAY:2006-01-08
+X-EVOLUTION-ANNIVERSARY:2006-01-09
+X-EVOLUTION-SPOUSE:Joan Doe
+NOTE:This is a test case which uses almost all Evolution fields.
+FN:John Doe
+N:Doe;John;Johnny;;
+X-EVOLUTION-FILE-AS:Doe\, John
+CATEGORIES:TEST
+X-EVOLUTION-BLOG-URL:web log
+GEO:30.12;-130.34
+CALURI:calender
+FBURL:free/busy
+X-EVOLUTION-VIDEO-URL:chat
+X-MOZILLA-HTML:TRUE
+ADR;TYPE=WORK:Test Box #2;;Test Drive 2;Test Town;Upper Test County;12346;O
+ ld Testovia
+LABEL;TYPE=WORK:Test Drive 2\nTest Town\, Upper Test County\n12346\nTest Bo
+ x #2\nOld Testovia
+ADR;TYPE=HOME:Test Box #1;;Test Drive 1;Test Village;Lower Test County;1234
+ 5;Testovia
+LABEL;TYPE=HOME:Test Drive 1\nTest Village\, Lower Test County\n12345\nTest
+  Box #1\nTestovia
+ADR:Test Box #3;Test Extension;Test Drive 3;Test Megacity;Test County;12347;New Testonia
+LABEL;TYPE=OTHER:Test Drive 3\nTest Megacity\, Test County\n12347\nTest Box
+  #3\nNew Testonia
+UID:pas-id-43C0ED3900000001
+EMAIL;TYPE=WORK;X-EVOLUTION-UI-SLOT=1:john.doe@work.com
+EMAIL;TYPE=HOME;X-EVOLUTION-UI-SLOT=2:john.doe@home.priv
+EMAIL;TYPE=OTHER;X-EVOLUTION-UI-SLOT=3:john.doe@other.world
+EMAIL;TYPE=OTHER;X-EVOLUTION-UI-SLOT=4:john.doe@yet.another.world
+TEL;TYPE=work;TYPE=Voice;X-EVOLUTION-UI-SLOT=1:business 1
+TEL;TYPE=homE;TYPE=VOICE;X-EVOLUTION-UI-SLOT=2:home 2
+TEL;TYPE=CELL;X-EVOLUTION-UI-SLOT=3:mobile 3
+TEL;TYPE=WORK;TYPE=FAX;X-EVOLUTION-UI-SLOT=4:businessfax 4
+TEL;TYPE=HOME;TYPE=FAX;X-EVOLUTION-UI-SLOT=5:homefax 5
+TEL;TYPE=PAGER;X-EVOLUTION-UI-SLOT=6:pager 6
+TEL;TYPE=CAR;X-EVOLUTION-UI-SLOT=7:car 7
+TEL;TYPE=PREF;X-EVOLUTION-UI-SLOT=8:primary 8
+TEL:12 34-5
+END:VCARD
+''')],
+                       ((['is', 'full-name', 'john doe'], ('John Doe',)),
+                        (['is', 'full-name', 'John Doe', 'case-sensitive'], ('John Doe',)),
+                        (['is', 'full-name', 'john doe', 'case-sensitive'], ()),
+                        (['is', 'full-name', 'John Doe', 'case-insensitive'], ('John Doe',)),
+                        (['is', 'full-name', 'john'], ()),
+
+                        (['contains', 'full-name', 'ohn d'], ('John Doe',)),
+                        (['contains', 'full-name', 'ohn D', 'case-sensitive'], ('John Doe',)),
+                        (['contains', 'full-name', 'ohn d', 'case-sensitive'], ()),
+                        (['contains', 'full-name', 'ohn d', 'case-insensitive'], ('John Doe',)),
+                        (['contains', 'full-name', 'foobar'], ()),
+
+                        (['begins-with', 'full-name', 'john'], ('John Doe',)),
+                        (['begins-with', 'full-name', 'John', 'case-sensitive'], ('John Doe',)),
+                        (['begins-with', 'full-name', 'john', 'case-sensitive'], ()),
+                        (['begins-with', 'full-name', 'John', 'case-insensitive'], ('John Doe',)),
+                        (['begins-with', 'full-name', 'doe'], ()),
+
+                        (['ends-with', 'full-name', 'doe'], ('John Doe',)),
+                        (['ends-with', 'full-name', 'Doe', 'case-sensitive'], ('John Doe',)),
+                        (['ends-with', 'full-name', 'doe', 'case-sensitive'], ()),
+                        (['ends-with', 'full-name', 'Doe', 'case-insensitive'], ('John Doe',)),
+                        (['ends-with', 'full-name', 'john'], ()),
+
+                        (['is', 'nickname', 'user1'], ('John Doe',)),
+                        (['is', 'nickname', 'Johnny'], ()),
+                        (['is', 'structured-name/family', 'Doe'], ('John Doe',)),
+                        (['is', 'structured-name/family', 'John'], ()),
+                        (['is', 'structured-name/given', 'John'], ('John Doe',)),
+                        (['is', 'structured-name/given', 'Doe'], ()),
+                        (['is', 'structured-name/additional', 'Johnny'], ('John Doe',)),
+                        (['is', 'structured-name/additional', 'John'], ()),
+                        (['is', 'emails/value', 'john.doe@work.com'], ('John Doe',)),
+                        (['is', 'emails/value', 'foo@abc.com'], ()),
+                        (['is', 'addresses/po-box', 'Test Box #3'], ('John Doe',)),
+                        (['is', 'addresses/po-box', 'Foo Box'], ()),
+                        (['is', 'addresses/extension', 'Test Extension'], ('John Doe',)),
+                        (['is', 'addresses/extension', 'Foo Extension'], ()),
+                        (['is', 'addresses/street', 'Test Drive 3'], ('John Doe',)),
+                        (['is', 'addresses/street', 'Rodeo Drive'], ()),
+                        (['is', 'addresses/locality', 'Test Megacity'], ('John Doe',)),
+                        (['is', 'addresses/locality', 'New York'], ()),
+                        (['is', 'addresses/region', 'Test County'], ('John Doe',)),
+                        (['is', 'addresses/region', 'Testovia'], ()),
+                        (['is', 'addresses/postal-code', '54321'], ()),
+                        (['is', 'addresses/country', 'New Testonia'], ('John Doe',)),
+                        (['is', 'addresses/country', 'America'], ()),
+
+                        (['is', 'phones/value', 'business 1'], ('John Doe',)),
+                        (['is', 'phones/value', 'business 123'], ()),
+                        (['is', 'phones/value', '12345'], ('John Doe',)),
+                        (['is', 'phones/value', '123456'], ()),
+                        ))
 
     @timeout(60)
     @property("ENV", "LC_TYPE=de_DE.UTF-8 LC_ALL=de_DE.UTF-8 LANG=de_DE.UTF-8")
@@ -3461,9 +3942,6 @@ END:VCARD''']):
         self.setUpView(search=None, peers=[], withSystemAddressBook=True)
 
         # Insert new contact.
-        #
-        # The names are chosen so that sorting by first name and sorting by last name needs to
-        # reverse the list.
         for i, contact in enumerate([u'''BEGIN:VCARD
 VERSION:3.0
 FN:John Doe
@@ -3478,19 +3956,31 @@ END:VCARD''',
 
         out, err, returncode = self.runCmdline(['--import', self.contacts, 'backend=evolution-contacts'])
 
-        # Plug into "ContactsAdded" method so that it throws an error.
+        # Plug into processEvent() method so that it throws an error
+        # when receiving the ContactsAdded method call. The same cannot be
+        # done for Quiescent, because that call is optional and thus allowed
+        # to fail.
         original = self.view.processEvent
         def intercept(message, event):
+             if event[0] == 'quiescent':
+                  # Sometimes the aggregator was seen as idle before
+                  # it loaded the item above, leading to one
+                  # additional 'quiescent' before 'added'. Not sure
+                  # why. Anyway, that belongs into a different test,
+                  # so ignore 'quiescent' here.
+                  return
+             # Record it.
              original(message, event)
+             # Raise error?
              if event[0] == 'added':
+                  logging.printf('raising "fake error" for event %s' % event)
                   raise Exception('fake error')
         self.view.processEvent = intercept
         self.view.search([])
         self.runUntil('phone results',
                       check=lambda: self.assertEqual([], self.view.errors),
-                      until=lambda: self.view.quiescentCount > 0)
-        self.assertEqual([('added', 0, 1),
-                          ('quiescent',)],
+                      until=lambda: self.view.events)
+        self.assertEqual([('added', 0, 1)],
                          self.view.events)
 
         # Expect an error, view should have been closed already.
@@ -3521,11 +4011,19 @@ END:VCARD''',
 
 if __name__ == '__main__':
     xdg = (os.path.join(os.path.abspath('.'), 'temp-testpim', 'config'),
-           os.path.join(os.path.abspath('.'), 'temp-testpim', 'local', 'cache'))
+           os.path.join(os.path.abspath('.'), 'temp-testpim', 'data'),
+           os.path.join(os.path.abspath('.'), 'temp-testpim', 'cache'))
+
+    # Tell test-dbus.py about the temporary directory that we expect
+    # to use. It'll wipe it clean for us because we run with own_xdg=true.
+    # However, we have EDS daemons continuing to run while we do that.
+    # evolution-source-registry copes by watching for file changes.
+    xdg_root = os.path.join(os.path.abspath('.'), 'temp-testpim')
+    testdbus.xdg_root = xdg_root
     error = ''
-    if (os.environ.get('XDG_CONFIG_HOME', None), os.environ.get('XDG_DATA_HOME', None)) != xdg:
+    if (os.environ.get('XDG_CONFIG_HOME', None), os.environ.get('XDG_DATA_HOME', None), os.environ.get('XDG_CACHE_HOME', None)) != xdg:
          # Don't allow user of the script to erase his normal EDS data.
-         error = error + 'testpim.py must be started in a D-Bus session with XDG_CONFIG_HOME=%s XDG_DATA_HOME=%s because it will modify system EDS databases there.\n' % xdg
+         error = error + 'testpim.py must be started in a D-Bus session with XDG_CONFIG_HOME=%s XDG_DATA_HOME=%s XDG_CACHE_HOME=%s because it will modify system EDS databases there.\n' % xdg
     if os.environ.get('LANG', '') != 'de_DE.utf-8':
          error = error + 'EDS daemon must use the same LANG=de_DE.utf-8 as tests to get phone number normalization right.\n'
     if error:

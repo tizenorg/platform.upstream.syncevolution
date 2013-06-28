@@ -191,6 +191,9 @@
 // - string localIDs with sufficiently large size
 #define STRING_LOCALID_MAXLEN 256
 
+// - multithreaded
+#define MULTI_THREAD_SUPPORT 1
+#define MULTI_THREAD_DATASTORE 1
 
 // - if defined, SQL support is included
 #undef ODBCAPI_SUPPORT

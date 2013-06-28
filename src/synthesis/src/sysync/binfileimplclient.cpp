@@ -325,12 +325,12 @@ TSyError TBinfileTargetsKey::OpenSubkey(
   sInt32 aID, uInt16 aMode
 )
 {
-  TBinfileDBSyncTarget *targetP = new TBinfileDBSyncTarget;
-  TSyError sta = LOCERR_OK;
-  sInt32 targetIndex = -1;
   // safety check to see if targets are open at all
   if (!fBinfileClientConfigP->fTargetsBinFile.isOpen())
     return LOCERR_WRONGUSAGE;
+  TBinfileDBSyncTarget *targetP = new TBinfileDBSyncTarget;
+  TSyError sta = LOCERR_OK;
+  sInt32 targetIndex = -1;
   while(true) {
     switch (aID) {
       case KEYVAL_ID_FIRST:

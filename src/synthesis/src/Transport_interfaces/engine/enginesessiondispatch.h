@@ -119,7 +119,8 @@ class TSyncSession;
 
 // session handle for engine sessions
 // containing engine-specific session status
-class TEngineServerSessionHandle
+class TEngineServerSessionHandle :
+  noncopyable
 {
 public:
   TEngineServerSessionHandle(TServerEngineInterface *aServerEngineInterface);

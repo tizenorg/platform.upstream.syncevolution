@@ -461,8 +461,9 @@ xltDecInit(const SmlEncoding_t enc,
     if (!IS_START(pDecoder->scanner->curtok) ||
             (pDecoder->scanner->curtok->tagid != TN_SYNCML)) {
         smlFreePcdata(pDecoder->scanner->curtok->pcdata);
+        rc = SML_DECODEERROR(SML_ERR_XLT_INVAL_SYNCML_DOC,pDecoder->scanner,"xltDecInit");
         xltDecTerminate((XltDecoderPtr_t)pDecoder);
-        return SML_DECODEERROR(SML_ERR_XLT_INVAL_SYNCML_DOC,pDecoder->scanner,"xltDecInit");
+        return rc;
     }
 
     /* ... then the SyncHdr */
