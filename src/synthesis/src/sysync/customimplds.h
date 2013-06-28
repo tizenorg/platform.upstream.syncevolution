@@ -773,7 +773,7 @@ protected:
   //   as a item copy with only finalisation-required fields
   void queueForFinalisation(TMultiFieldItem *aItemP);
   /// helper to merge database version of an item with the passed version of the same item
-  TMultiFieldItem *mergeWithDatabaseVersion(TSyncItem *aSyncItemP);
+  TMultiFieldItem *mergeWithDatabaseVersion(TSyncItem *aSyncItemP, bool &aChangedDBVersion, bool &aChangedNewVersion);
 public:
   // - get last to-remote sync time
   lineartime_t getPreviousToRemoteSyncCmpRef(void) { return fPreviousToRemoteSyncCmpRef; };

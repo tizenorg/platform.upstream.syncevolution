@@ -533,9 +533,9 @@ top_srcdir = @top_srcdir@
 # incompatible way, increment CURRENT and reset AGE and REVISION to
 # zero. When fixing something without interface change, increment
 # REVISION.
-ENGINE_CURRENT = 5
-ENGINE_REVISION = 1
-ENGINE_AGE = 5
+ENGINE_CURRENT = 6
+ENGINE_REVISION = 0
+ENGINE_AGE = 6
 CLEANFILES = 
 EXTRA_DIST = $(am__append_1)
 lib_LTLIBRARIES = libsmltk.la libsynthesis.la libsynthesissdk.la libsynthesisstubs.la

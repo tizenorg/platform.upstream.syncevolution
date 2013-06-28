@@ -5,7 +5,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="Docutils 0.6: http://docutils.sourceforge.net/" />
 <title>SyncEvolution</title>
-<meta name="date" content="2011-09-15" />
+<meta name="date" content="2011-10-13" />
 <style type="text/css">
 
 /*
@@ -315,9 +315,9 @@ ul.auto-toc {
 <tr class="field"><th class="docinfo-name">Manual section:</th><td class="field-body">1</td>
 </tr>
 <tr><th class="docinfo-name">Version:</th>
-<td>1.1.99.7</td></tr>
+<td>1.2</td></tr>
 <tr><th class="docinfo-name">Date:</th>
-<td>2011-09-15</td></tr>
+<td>2011-10-13</td></tr>
 </tbody>
 </table>
 <div class="section" id="synopsis">
@@ -552,9 +552,18 @@ question mark can be used to get the corresponding help text and/or
 a list of valid values.</p>
 <dl class="docutils">
 <dt>--sync|-s &lt;mode&gt;|?</dt>
-<dd>Temporarily synchronize the active sources in that mode. Useful
+<dd><p class="first">Temporarily synchronize the active sources in that mode. Useful
 for a <cite>refresh-from-server</cite> or <cite>refresh-from-client</cite> sync which
-clears all data at one end and copies all items from the other.</dd>
+clears all data at one end and copies all items from the other.</p>
+<p class="last"><strong>Warning:</strong> in local sync (CalDAV/CardDAV/ActiveSync, ...) and
+direct sync with a phone, the sync is started by the side which acts
+as server. Therefore the <tt class="docutils literal"><span class="pre">from-server</span></tt> variants
+(<tt class="docutils literal"><span class="pre">one-way-from-server</span></tt>, <tt class="docutils literal"><span class="pre">refresh-from-server</span></tt>) transfer data
+from the sync config into the target config (see &quot;Synchronization
+beyond SyncML&quot; below) resp. to a phone. The <tt class="docutils literal"><span class="pre">from-client</span></tt> variants
+transfer in the other direction, even if the target config happens
+to access data on a remote server.</p>
+</dd>
 <dt>--print-servers|--print-configs|--print-peers</dt>
 <dd>Prints the names of all configured peers to stdout. There is no
 difference between these options, the are just aliases.</dd>
@@ -908,15 +917,8 @@ source in the target config.  The <tt class="docutils literal">sync</tt> propert
 defines the direction of the data flow. It can be set temporarily when
 starting a synchronzation with the sync config.</p>
 <blockquote>
-<p><strong>Warning:</strong> in local sync, the sync config side acts as
-server. Therefore the <tt class="docutils literal"><span class="pre">from-server</span></tt> variants
-(<tt class="docutils literal"><span class="pre">one-way-from-server</span></tt>, <tt class="docutils literal"><span class="pre">refresh-from-server</span></tt>) transfer data
-from the sync config into the target config. The <tt class="docutils literal"><span class="pre">from-client</span></tt>
-variants transfer in the other direction, even if the target config
-happens to access data on a remote server.</p>
-<p><strong>Warning:</strong> because the client in the local sync starts the sync,
-<tt class="docutils literal">preventSlowSync=0</tt> must be set in the target config to have an effect.</p>
-</blockquote>
+<strong>Warning:</strong> because the client in the local sync starts the sync,
+<tt class="docutils literal">preventSlowSync=0</tt> must be set in the target config to have an effect.</blockquote>
 </div>
 <div class="section" id="caldav-and-carddav">
 <h3>CalDAV and CardDAV</h3>

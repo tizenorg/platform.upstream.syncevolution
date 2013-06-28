@@ -21,9 +21,9 @@ $(srcdir)/Makefile.am: $(srcdir)/Makefile.am.in $(srcdir)/gen-makefile-am.sh
 # incompatible way, increment CURRENT and reset AGE and REVISION to
 # zero. When fixing something without interface change, increment
 # REVISION.
-ENGINE_CURRENT = 5
-ENGINE_REVISION = 1
-ENGINE_AGE = 5
+ENGINE_CURRENT = 6
+ENGINE_REVISION = 0
+ENGINE_AGE = 6
 
 CLEANFILES =
 EXTRA_DIST =

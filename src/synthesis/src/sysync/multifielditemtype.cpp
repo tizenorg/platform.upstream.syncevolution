@@ -215,7 +215,7 @@ public:
     if (!mfitP->fFirstItemP) aTermP->setAsInteger(SYSYNC_NOT_COMPARABLE);
     else {
       aTermP->setAsInteger(
-        mfitP->fFirstItemP->standardCompareWith(*(mfitP->fSecondItemP),mfitP->fEqMode,OBJDEBUGTEST(mfitP,DBG_SCRIPTS+DBG_DATA+DBG_MATCH)) ? 1 : 0
+        mfitP->fFirstItemP->standardCompareWith(*(mfitP->fSecondItemP),mfitP->fEqMode,OBJDEBUGTEST(mfitP,DBG_SCRIPTS+DBG_DATA+DBG_MATCH))
       );
     }
   }; // func_CompareFields

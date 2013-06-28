@@ -2976,7 +2976,7 @@ fi
 
 # Define the identity of the package.
  PACKAGE=synthesis
- VERSION=3.4.0.16.2
+ VERSION=3.4.0.16.4
 
 
 cat >>confdefs.h <<_ACEOF
@@ -14576,7 +14576,7 @@ $as_echo_n "checking which $dk_lang compiler warning flags to use... " >&6; }
     no) dk_warning_flags=;;
     max) dk_warning_flags="-Wall -Wno-unknown-pragmas";;
     fatal) dk_warning_flags="-Wall -Wno-unknown-pragmas -Werror";;
-    *) dk_warning_flags="-Wall";;
+    *) dk_warning_flags="-Wall -Wno-unknown-pragmas";;
   esac
 
   dk_deprecation_flags=
