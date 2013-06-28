@@ -135,25 +135,26 @@ EvolutionCalendarSource::EvolutionCalendarSource(EvolutionCalendarSourceType typ
 
 SyncSource::Databases EvolutionCalendarSource::getDatabases()
 {
-    ESourceList *sources = NULL;
+    ESourceList *tmp = NULL;
     GErrorCXX gerror;
     Databases result;
 
     if (
 #ifdef USE_ECAL_CLIENT
-        !e_cal_client_get_sources(&sources, sourceType(), gerror)
+        !e_cal_client_get_sources(&tmp, sourceType(), gerror)
 #else
-        !e_cal_get_sources(&sources, sourceType(), gerror)
+        !e_cal_get_sources(&tmp, sourceType(), gerror)
 #endif
         ) {
         // ignore unspecific errors (like on Maemo with no support for memos)
         // and continue with empty list (perhaps defaults work)
         if (!gerror) {
-            sources = NULL;
+            tmp = NULL;
         } else {
             throwError("unable to access backend databases", gerror);
         }
     }
+    ESourceListCXX sources(tmp, false);
 
     bool first = true;
     for (GSList *g = sources ? e_source_list_peek_groups (sources) : NULL;
@@ -237,7 +238,7 @@ char *EvolutionCalendarSource::authenticate(const char *prompt,
 
 void EvolutionCalendarSource::open()
 {
-    ESourceList *sources;
+    ESourceList *tmp;
     GErrorCXX gerror;
     bool onlyIfExists = false; // always try to create address book, because even if there is
                                // a source there's no guarantee that the actual database was
@@ -246,9 +247,10 @@ void EvolutionCalendarSource::open()
                                // therefore failed in some cases
 
 #ifdef USE_ECAL_CLIENT
-    if (!e_cal_client_get_sources (&sources, sourceType(), gerror)) {
-        gerror.throwError("unable to access backend databases");
+    if (!e_cal_client_get_sources (&tmp, sourceType(), gerror)) {
+        throwError("unable to access backend databases", gerror);
     }
+    ESourceListCXX sources(tmp, false);
 
     string id = getDatabaseID();    
     ESource *source = findSource(sources, id);
@@ -279,7 +281,7 @@ void EvolutionCalendarSource::open()
         }
 
         if (gerror) {
-            gerror.throwError("create calendar");
+            throwError("create calendar", gerror);
         }
 
         // Listen for errors
@@ -294,17 +296,18 @@ void EvolutionCalendarSource::open()
                 gerror.clear();
                 sleep(5);
                 if (!e_client_open_sync(E_CLIENT ((ECalClient*)m_calendar), onlyIfExists, NULL, gerror)) {
-                    gerror.throwError(string("opening ") + m_typeName );
+                    throwError(string("opening ") + m_typeName , gerror);
                 }
             } else {
-                gerror.throwError(string("opening ") + m_typeName );
+                throwError(string("opening ") + m_typeName , gerror);
             }
         }
     }
 #else
-    if (!e_cal_get_sources(&sources, sourceType(), gerror)) {
+    if (!e_cal_get_sources(&tmp, sourceType(), gerror)) {
         throwError("unable to access backend databases", gerror);
     }
+    ESourceListCXX sources(tmp, false);
 
     string id = getDatabaseID();    
     ESource *source = findSource(sources, id);
@@ -454,7 +457,7 @@ void EvolutionCalendarSource::listAllItems(RevisionMap_t &revisions)
     ECalClientView *view;
 
     if (!e_cal_client_get_view_sync (m_calendar, "#t", &view, NULL, gerror)) {
-        gerror.throwError( "getting the view" );
+        throwError( "getting the view" , gerror);
     }
     ECalClientViewCXX viewPtr = ECalClientViewCXX::steal(view);
 
@@ -462,7 +465,7 @@ void EvolutionCalendarSource::listAllItems(RevisionMap_t &revisions)
 
     ECalClientViewSyncHandler handler(viewPtr, list_revisions, &revisions);
     if (!handler.processSync(gerror)) {
-        gerror.throwError("watching view");
+        throwError("watching view", gerror);
     }
 
     // Update m_allLUIDs
@@ -505,6 +508,32 @@ void EvolutionCalendarSource::readItem(const string &luid, std::string &item, bo
     ItemID id(luid);
     item = retrieveItemAsString(id);
 }
+
+#ifdef USE_ECAL_CLIENT
+icaltimezone *
+my_tzlookup(const gchar *tzid,
+            gconstpointer ecalclient,
+            GCancellable *cancellable,
+            GError **error)
+{
+    icaltimezone *zone = NULL;
+    GError *local_error = NULL;
+
+    if (e_cal_client_get_timezone_sync((ECalClient *)ecalclient, tzid, &zone, cancellable, &local_error)) {
+        return zone;
+    } else if (local_error && local_error->domain == E_CAL_CLIENT_ERROR) {
+        // Ignore *all* E_CAL_CLIENT_ERROR errors, e_cal_client_get_timezone_sync() does
+        // not reliably return a specific code like E_CAL_CLIENT_ERROR_OBJECT_NOT_FOUND.
+        // See the 'e_cal_client_check_timezones() + e_cal_client_tzlookup() + Could not retrieve calendar time zone: Invalid object'
+        // mail thread.
+        g_clear_error (&local_error);
+    } else if (local_error) {
+        g_propagate_error (error, local_error);
+    }
+
+    return NULL;
+}
+#endif
 
 EvolutionCalendarSource::InsertItemResult EvolutionCalendarSource::insertItem(const string &luid, const std::string &item, bool raw)
 {
@@ -558,7 +587,7 @@ EvolutionCalendarSource::InsertItemResult EvolutionCalendarSource::insertItem(co
 #ifdef USE_ECAL_CLIENT
         !e_cal_client_check_timezones(icomp,
                                       NULL,
-                                      e_cal_client_tzlookup,
+                                      my_tzlookup,
                                       (const void *)m_calendar.get(),
                                       NULL,
                                       gerror)
@@ -777,6 +806,9 @@ EvolutionCalendarSource::InsertItemResult EvolutionCalendarSource::insertItem(co
                     ) {
                     throwError(string("creating updated item ") + luid, gerror);
                 }
+#ifdef USE_ECAL_CLIENT
+                PlainGStr owner((gchar *)uid);
+#endif
 
                 // Recreate any children removed earlier: when we get here,
                 // the parent exists and we must update it.
@@ -914,6 +946,9 @@ void EvolutionCalendarSource::removeItem(const string &luid)
                     ) {
                     throwError(string("recreating first item ") + luid, gerror);
                 }
+#ifdef USE_ECAL_CLIENT
+                PlainGStr owner((gchar *)uid);
+#endif
                 first = false;
             } else {
                 if (

@@ -5890,6 +5890,41 @@ TLocalDSConfig *TSessionConfig::newDatastoreConfig(const char *aName, const char
 
 #endif // HARDCODED_CONFIG
 
+bool TSyncSession::receivedSyncModeExtensions()
+{
+  TRemoteDataStorePContainer::iterator pos;
+  for (pos=fRemoteDataStores.begin(); pos!=fRemoteDataStores.end(); ++pos) {
+    set<string> modes;
+    (*pos)->getSyncModes(modes);
+    set<string>::const_iterator it;
+    for (it=modes.begin(); it!=modes.end(); ++it) {
+      const char *nptr = it->c_str();
+      char *endptr;
+      if (!*nptr) {
+        // ignore empty mode
+        continue;
+      }
+      long mode = strtol(nptr, &endptr, 10);
+      // ignore trailing spaces
+      while (isspace(*endptr)) {
+        endptr++;
+      }
+      if (*endptr) {
+        // non-standard character => found extensions
+        return true;
+      }
+
+      if (mode > 32) {
+        // Non-standed integer code!
+        // Choosing 32 is somewhat random, not all of those
+        // are really defined in the standard.
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 } // namespace sysync
 
 #endif // not SYNCSESSION_PART1_EXCLUDE

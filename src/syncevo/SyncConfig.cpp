@@ -29,6 +29,7 @@
 #include <syncevo/DevNullConfigNode.h>
 #include <syncevo/MultiplexConfigNode.h>
 #include <syncevo/SingleFileConfigTree.h>
+#include <syncevo/IniConfigNode.h>
 #include <syncevo/Cmdline.h>
 #include <syncevo/lcs.h>
 #include <test.h>
@@ -428,9 +429,9 @@ SyncConfig::SyncConfig(const string &peer,
         path = m_peerPath;
         if (path.empty()) {
             if (!m_redirectPeerRootPath.empty()) {
-                node.reset(new FileConfigNode(m_redirectPeerRootPath,
-                                              ".internal.ini",
-                                              false));
+                node.reset(new IniFileConfigNode(m_redirectPeerRootPath,
+                                                 ".internal.ini",
+                                                 false));
                 node = m_tree->add(m_redirectPeerRootPath + "/.internal.ini",
                                    node);
             } else {
@@ -837,7 +838,7 @@ boost::shared_ptr<SyncConfig> SyncConfig::createPeerTemplate(const string &serve
     // up in the UI.
     if (server == "default") {
         config->setConsumerReady(true);
-        config->setUserPeerName("");
+        config->setUserPeerName(InitStateString());
     }
 
     return config;
@@ -1059,11 +1060,17 @@ SyncSourceNodes SyncConfig::getSyncSourceNodes(const string &name,
         node = m_tree->open(peerPath, ConfigTree::visible);
         if (compatMode) {
             boost::shared_ptr<FilterConfigNode> compat(new FilterConfigNode(node));
-            compat->addFilter("syncFormat", sourceType.m_format);
-            compat->addFilter("forceSyncFormat", sourceType.m_forceFormat ? "1" : "0");
+            compat->addFilter("syncFormat",
+                              InitStateString(sourceType.m_format, !sourceType.m_format.empty()));
+            compat->addFilter("forceSyncFormat",
+                              sourceType.m_forceFormat ?
+                              InitStateString("1", true) :
+                              InitStateString("0", false));
             if (sharedPath.empty()) {
-                compat->addFilter("databaseFormat", sourceType.m_localFormat);
-                compat->addFilter("backend", sourceType.m_backend);
+                compat->addFilter("databaseFormat",
+                                  InitStateString(sourceType.m_localFormat, !sourceType.m_localFormat.empty()));
+                compat->addFilter("backend",
+                                  InitStateString(sourceType.m_backend, !sourceType.m_backend.empty()));
             }
             node = compat;
         }
@@ -1079,13 +1086,13 @@ SyncSourceNodes SyncConfig::getSyncSourceNodes(const string &name,
         // against the same context end up sharing .internal.ini and
         // .other.ini files inside that context.
         string path = m_redirectPeerRootPath + "/sources/" + lower;
-        trackingNode.reset(new HashFileConfigNode(path,
-                                                  ".other.ini",
-                                                  false));
+        trackingNode.reset(new IniHashConfigNode(path,
+                                                 ".other.ini",
+                                                 false));
         trackingNode = m_tree->add(path + "/.other.ini", trackingNode);
-        boost::shared_ptr<ConfigNode> node(new HashFileConfigNode(path,
-                                                                  ".internal.ini",
-                                                                  false));
+        boost::shared_ptr<ConfigNode> node(new IniHashConfigNode(path,
+                                                                 ".internal.ini",
+                                                                 false));
         hiddenPeerNode.reset(new FilterConfigNode(node));
         hiddenPeerNode = boost::static_pointer_cast<FilterConfigNode>(m_tree->add(path + "/.internal.ini", peerNode));
         if (peerPath.empty()) {
@@ -1099,8 +1106,10 @@ SyncSourceNodes SyncConfig::getSyncSourceNodes(const string &name,
         node = m_tree->open(sharedPath, ConfigTree::visible);
         if (compatMode) {
             boost::shared_ptr<FilterConfigNode> compat(new FilterConfigNode(node));
-            compat->addFilter("databaseFormat", sourceType.m_localFormat);
-            compat->addFilter("backend", sourceType.m_backend);
+            compat->addFilter("databaseFormat",
+                              InitStateString(sourceType.m_localFormat, !sourceType.m_localFormat.empty()));
+            compat->addFilter("backend",
+                              InitStateString(sourceType.m_backend, !sourceType.m_backend.empty()));
             node = compat;
         }
         sharedNode.reset(new FilterConfigNode(node, m_sourceFilters.createSourceFilter(name)));
@@ -1712,9 +1721,9 @@ void PasswordConfigProperty::checkPassword(UserInterface &ui,
      * Previous impl use temp string to store them, this is not good for expansion in the backend */
     if(!passwordSave.empty()) {
         if(sourceConfigNode.get() == NULL) {
-            globalConfigNode.addFilter(getMainName(), passwordSave);
+            globalConfigNode.addFilter(getMainName(), InitStateString(passwordSave, true));
         } else {
-            sourceConfigNode->addFilter(getMainName(), passwordSave);
+            sourceConfigNode->addFilter(getMainName(), InitStateString(passwordSave, true));
         }
     }
 }
@@ -1914,7 +1923,7 @@ InitStateString SyncConfig::getSyncMLVersion() const { return syncPropSyncMLVers
 void SyncConfig::setSyncMLVersion(const string &value, bool temporarily) { syncPropSyncMLVersion.setProperty(*getNode(syncPropSyncMLVersion), value, temporarily); }
 
 InitStateString SyncConfig::getUserPeerName() const { return syncPropPeerName.getProperty(*getNode(syncPropPeerName)); }
-void SyncConfig::setUserPeerName(const string &name) { syncPropPeerName.setProperty(*getNode(syncPropPeerName), name); }
+void SyncConfig::setUserPeerName(const InitStateString &name) { syncPropPeerName.setProperty(*getNode(syncPropPeerName), name); }
 
 InitState<bool> SyncConfig::getPrintChanges() const { return syncPropPrintChanges.getPropertyValue(*getNode(syncPropPrintChanges)); }
 void SyncConfig::setPrintChanges(bool value, bool temporarily) { syncPropPrintChanges.setProperty(*getNode(syncPropPrintChanges), value, temporarily); }
@@ -2131,8 +2140,9 @@ static void copyProperties(const ConfigNode &fromProps,
              prop->getSharing() != ConfigProperty::NO_SHARING)) {
             InitStateString value = prop->getProperty(fromProps);
             string name = prop->getName(toProps);
-            toProps.setProperty(name, value, prop->getComment(),
-                                !value.wasSet() ? &value : NULL);
+            toProps.setProperty(name,
+                                value,
+                                prop->getComment());
         }
     }
 }
@@ -2608,7 +2618,7 @@ void SyncSourceConfig::setSourceType(const SourceType &type, bool temporarily)
     // been converted to the new format before writing is allowed
     setBackend(type.m_backend, temporarily);
     setDatabaseFormat(type.m_localFormat, temporarily);
-    setSyncFormat(type.m_format, temporarily);
+    setSyncFormat(InitStateString(type.m_format, !type.m_format.empty()), temporarily);
     setForceSyncFormat(type.m_forceFormat, temporarily);
 }
 
@@ -2634,7 +2644,7 @@ InitStateString SyncSourceConfig::getDatabaseFormat() const
     return sourcePropDatabaseFormat.getProperty(*getNode(sourcePropDatabaseFormat));
 }
 
-void SyncSourceConfig::setSyncFormat(const std::string &value, bool temporarily)
+void SyncSourceConfig::setSyncFormat(const InitStateString &value, bool temporarily)
 {
     sourcePropSyncFormat.setProperty(*getNode(sourcePropSyncFormat),
                                      value,

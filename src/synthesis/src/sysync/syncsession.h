@@ -728,6 +728,8 @@ protected:
   TLocalDataStorePContainer fLocalDataStores;
   // - list of remote (client-side) datastores
   TRemoteDataStorePContainer fRemoteDataStores;
+  bool receivedSyncModeExtensions(); // any of the remote datastores in fRemoteDataStores
+                                     // had custom sync modes
   // - list of local content types
   TSyncItemTypePContainer fLocalItemTypes;
   // - list of remote item types

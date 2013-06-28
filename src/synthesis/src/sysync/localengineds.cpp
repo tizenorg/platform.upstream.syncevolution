@@ -3784,26 +3784,45 @@ SmlDevInfSyncCapPtr_t TLocalEngineDS::newDevInfSyncCap(uInt32 aSyncCapMask)
   // Now add non-standard synccaps.
   // From the spec: "Other values can also be specified."
   // Values are PCDATA, so we can use plain strings.
+  //
   // But the Funambol server expects integer numbers and
   // throws a parser error when sent a string. So better
   // stick to a semi-random number (hopefully no-one else
   // is using it).
   //
+  // Worse, Nokia phones cancel direct sync sessions with an
+  // OBEX error ("Forbidden") when non-standard sync modes
+  // are included in the SyncCap. As a workaround for that
+  // we use the following logic:
+  // - libsynthesis in a SyncML client will always send
+  //   all the extended sync modes; with the Funambol
+  //   workaround in place that works
+  // - libsynthesis in a SyncML server will only send the
+  //   extended sync modes if the client has sent any
+  //   extended sync modes itself; the 390002 mode is
+  //   sent unconditionally for that purpose
+  //
   // Corresponding code in TRemoteDataStore::setDatastoreDevInf().
-  if (canRestart()) {
-    synctypeP=newPCDataString("390001");
+  //
+  if (!IS_SERVER ||
+      fSessionP->receivedSyncModeExtensions()) {
+    if (canRestart()) {
+      synctypeP=newPCDataString("390001");
+      addPCDataToList(synctypeP,&(synccapP->synctype));
+    }
+    synctypeP=newPCDataString("390002");
     addPCDataToList(synctypeP,&(synccapP->synctype));
-  }
 
-  // Finally add non-standard synccaps that are outside of the
-  // engine's control.
-  set<string> modes;
-  getSyncModes(modes);
-  for (set<string>::const_iterator it = modes.begin();
-       it != modes.end();
-       ++it) {
-    synctypeP=newPCDataString(*it);
-    addPCDataToList(synctypeP,&(synccapP->synctype));
+    // Finally add non-standard synccaps that are outside of the
+    // engine's control.
+    set<string> modes;
+    getSyncModes(modes);
+    for (set<string>::const_iterator it = modes.begin();
+         it != modes.end();
+         ++it) {
+      synctypeP=newPCDataString(*it);
+      addPCDataToList(synctypeP,&(synccapP->synctype));
+    }
   }
 
   // return it

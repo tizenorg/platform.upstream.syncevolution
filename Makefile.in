@@ -1062,8 +1062,7 @@ am__src_syncevo_libsyncevolution_la_SOURCES_DIST =  \
 	src/syncevo/FilterConfigNode.h \
 	src/syncevo/FilterConfigNode.cpp src/syncevo/SafeConfigNode.h \
 	src/syncevo/SafeConfigNode.cpp src/syncevo/PrefixConfigNode.h \
-	src/syncevo/PrefixConfigNode.cpp src/syncevo/FileConfigNode.h \
-	src/syncevo/FileConfigNode.cpp src/syncevo/IniConfigNode.h \
+	src/syncevo/PrefixConfigNode.cpp src/syncevo/IniConfigNode.h \
 	src/syncevo/IniConfigNode.cpp \
 	src/syncevo/SingleFileConfigTree.h \
 	src/syncevo/SingleFileConfigTree.cpp src/syncevo/DataBlob.h \
@@ -1107,7 +1106,6 @@ am__src_syncevo_libsyncevolution_la_SOURCES_DIST =  \
 @COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-FilterConfigNode.lo \
 @COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-SafeConfigNode.lo \
 @COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-PrefixConfigNode.lo \
-@COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-FileConfigNode.lo \
 @COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-IniConfigNode.lo \
 @COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-SingleFileConfigTree.lo \
 @COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-FileDataBlob.lo \
@@ -1859,16 +1857,15 @@ am__src_syncevo_libsyncevolution_include_HEADERS_DIST =  \
 	src/syncevo/ConfigFilter.h src/syncevo/GLibSupport.h \
 	src/syncevo/TrackingSyncSource.h src/syncevo/MapSyncSource.h \
 	src/syncevo/LogRedirect.h src/syncevo/LogStdout.h \
-	src/syncevo/LogSyslog.h src/syncevo/FileConfigNode.h \
-	src/syncevo/FilterConfigNode.h src/syncevo/PrefixConfigNode.h \
-	src/syncevo/SafeConfigNode.h src/syncevo/SyncConfig.h \
-	src/syncevo/SyncSource.h src/syncevo/util.h \
-	src/syncevo/SuspendFlags.h src/syncevo/SyncContext.h \
-	src/syncevo/Timespec.h src/syncevo/UserInterface.h \
-	src/syncevo/SynthesisEngine.h src/syncevo/Logging.h \
-	src/syncevo/SyncML.h src/syncevo/eds_abi_wrapper.h \
-	src/syncevo/icalstrdup.h src/syncevo/SmartPtr.h \
-	src/syncevo/ConfigNode.h
+	src/syncevo/LogSyslog.h src/syncevo/FilterConfigNode.h \
+	src/syncevo/PrefixConfigNode.h src/syncevo/SafeConfigNode.h \
+	src/syncevo/SyncConfig.h src/syncevo/SyncSource.h \
+	src/syncevo/util.h src/syncevo/SuspendFlags.h \
+	src/syncevo/SyncContext.h src/syncevo/Timespec.h \
+	src/syncevo/UserInterface.h src/syncevo/SynthesisEngine.h \
+	src/syncevo/Logging.h src/syncevo/SyncML.h \
+	src/syncevo/eds_abi_wrapper.h src/syncevo/icalstrdup.h \
+	src/syncevo/SmartPtr.h src/syncevo/ConfigNode.h
 HEADERS = $(nodist_src_dbus_qt_libsyncevolution_qt_dbus_include_HEADERS) \
 	$(src_dbus_glib_libsyncevo_dbus_include_HEADERS) \
 	$(src_syncevo_libsyncevolution_include_HEADERS)
@@ -2467,8 +2464,6 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@	src/syncevo/SafeConfigNode.cpp \
 @COND_CORE_TRUE@	src/syncevo/PrefixConfigNode.h \
 @COND_CORE_TRUE@	src/syncevo/PrefixConfigNode.cpp \
-@COND_CORE_TRUE@	src/syncevo/FileConfigNode.h \
-@COND_CORE_TRUE@	src/syncevo/FileConfigNode.cpp \
 @COND_CORE_TRUE@	src/syncevo/IniConfigNode.h \
 @COND_CORE_TRUE@	src/syncevo/IniConfigNode.cpp \
 @COND_CORE_TRUE@	src/syncevo/SingleFileConfigTree.h \
@@ -2498,7 +2493,6 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@  src/syncevo/LogRedirect.h \
 @COND_CORE_TRUE@  src/syncevo/LogStdout.h \
 @COND_CORE_TRUE@  src/syncevo/LogSyslog.h \
-@COND_CORE_TRUE@  src/syncevo/FileConfigNode.h \
 @COND_CORE_TRUE@  \
 @COND_CORE_TRUE@  src/syncevo/FilterConfigNode.h \
 @COND_CORE_TRUE@  src/syncevo/PrefixConfigNode.h \
@@ -4256,9 +4250,6 @@ src/syncevo/src_syncevo_libsyncevolution_la-SafeConfigNode.lo:  \
 src/syncevo/src_syncevo_libsyncevolution_la-PrefixConfigNode.lo:  \
 	src/syncevo/$(am__dirstamp) \
 	src/syncevo/$(DEPDIR)/$(am__dirstamp)
-src/syncevo/src_syncevo_libsyncevolution_la-FileConfigNode.lo:  \
-	src/syncevo/$(am__dirstamp) \
-	src/syncevo/$(DEPDIR)/$(am__dirstamp)
 src/syncevo/src_syncevo_libsyncevolution_la-IniConfigNode.lo:  \
 	src/syncevo/$(am__dirstamp) \
 	src/syncevo/$(DEPDIR)/$(am__dirstamp)
@@ -5213,8 +5204,6 @@ mostlyclean-compile:
 	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-ConfigNode.lo
 	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-CurlTransportAgent.$(OBJEXT)
 	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-CurlTransportAgent.lo
-	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-FileConfigNode.$(OBJEXT)
-	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-FileConfigNode.lo
 	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-FileConfigTree.$(OBJEXT)
 	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-FileConfigTree.lo
 	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-FileDataBlob.$(OBJEXT)
@@ -5482,7 +5471,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-ConfigFilter.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-ConfigNode.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-CurlTransportAgent.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-FileConfigNode.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-FileConfigTree.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-FileDataBlob.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-FilterConfigNode.Plo@am__quote@
@@ -6926,14 +6914,6 @@ src/syncevo/src_syncevo_libsyncevolution_la-PrefixConfigNode.lo: src/syncevo/Pre
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/syncevo/PrefixConfigNode.cpp' object='src/syncevo/src_syncevo_libsyncevolution_la-PrefixConfigNode.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -c -o src/syncevo/src_syncevo_libsyncevolution_la-PrefixConfigNode.lo `test -f 'src/syncevo/PrefixConfigNode.cpp' || echo '$(srcdir)/'`src/syncevo/PrefixConfigNode.cpp
-
-src/syncevo/src_syncevo_libsyncevolution_la-FileConfigNode.lo: src/syncevo/FileConfigNode.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -MT src/syncevo/src_syncevo_libsyncevolution_la-FileConfigNode.lo -MD -MP -MF src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-FileConfigNode.Tpo -c -o src/syncevo/src_syncevo_libsyncevolution_la-FileConfigNode.lo `test -f 'src/syncevo/FileConfigNode.cpp' || echo '$(srcdir)/'`src/syncevo/FileConfigNode.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-FileConfigNode.Tpo src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-FileConfigNode.Plo
-@am__fastdepCXX_FALSE@	$(AM_V_CXX) @AM_BACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='src/syncevo/FileConfigNode.cpp' object='src/syncevo/src_syncevo_libsyncevolution_la-FileConfigNode.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -c -o src/syncevo/src_syncevo_libsyncevolution_la-FileConfigNode.lo `test -f 'src/syncevo/FileConfigNode.cpp' || echo '$(srcdir)/'`src/syncevo/FileConfigNode.cpp
 
 src/syncevo/src_syncevo_libsyncevolution_la-IniConfigNode.lo: src/syncevo/IniConfigNode.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -MT src/syncevo/src_syncevo_libsyncevolution_la-IniConfigNode.lo -MD -MP -MF src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-IniConfigNode.Tpo -c -o src/syncevo/src_syncevo_libsyncevolution_la-IniConfigNode.lo `test -f 'src/syncevo/IniConfigNode.cpp' || echo '$(srcdir)/'`src/syncevo/IniConfigNode.cpp
