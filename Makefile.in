@@ -2301,7 +2301,13 @@ all_phonies = $(am__append_27) $(TEST_FILES_GENERATED) testcase2patch \
 BUILT_SOURCES = $(am__append_28) $(src_dbus_interfaces_built_sources) \
 	$(am__append_48) $(am__append_51)
 DIST_SUBDIRS = po
-EXTRA_DIST = src/gtk-ui/ui.xml src/gtk3-ui/ui.xml
+EXTRA_DIST = build/export-foreign-git.sh build/export-gdbus.sh \
+	build/export-synthesis-xml.sh build/gen-backends-am.sh \
+	build/gen-backends.sh build/gen-changelog.pl \
+	build/gen-linguas.sh build/import-foreign-git.sh \
+	build/import-gdbus.sh build/import-synthesis-xml.sh \
+	build/update-copyrights.sh src/gtk-ui/ui.xml \
+	src/gtk3-ui/ui.xml
 SUBDIRS = $(am__append_1) $(am__append_2) . $(am__append_87)
 TESTS = $(am__append_79)
 AUTOMAKE_OPTIONS = subdir-objects
@@ -10176,8 +10182,8 @@ src/dbus/interfaces/%.xml: src/dbus/interfaces/%-full.xml
 @COND_DOC_TRUE@	done; \
 @COND_DOC_TRUE@	echo '</reference>' >>$@
 
-@COND_DOC_TRUE@src/dbus/interfaces/syncevo-dbus-api-doc.html: src/dbus/interfaces/syncevo-dbus-api-doc.xml
-@COND_DOC_TRUE@	$(AM_V_GEN)$(XSLT) -o $@ http://docbook.sourceforge.net/release/xsl/current/html/docbook.xsl $<
+@COND_DOC_TRUE@src/dbus/interfaces/syncevo-dbus-api-doc.html: src/dbus/interfaces/syncevo-dbus-api-doc.xml build/xsl/html/docbook.xsl
+@COND_DOC_TRUE@	$(AM_V_GEN)$(XSLT) -o $@ $(top_srcdir)/build/xsl/html/docbook.xsl $<
 
 # D-Bus binding tool gets confused by doc comments, strip them first
 @COND_GUI_TRUE@src/dbus/glib/%.xml: $(top_srcdir)/src/dbus/interfaces/spec-strip-docs.xsl $(top_srcdir)/src/dbus/interfaces/%-full.xml

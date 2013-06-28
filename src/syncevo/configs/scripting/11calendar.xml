@@ -4,6 +4,13 @@
       STRING MATCHES[];
       STRING CAT,CN,EM;
       INTEGER i;
+      // Remove UID/RECURRENCE-ID from servers which do not support
+      // the semantic properly (for example, Funambol supports
+      // UID but drops RECURRENCE-ID, causing conflicts).
+      if (SESSIONVAR("stripUID")) {
+          UID = UNASSIGNED;
+          ORIGSTART = UNASSIGNED;
+      }
       // make sure we have all trailing and leading spaces eliminated
       DESCRIPTION=NORMALIZED(DESCRIPTION);
       SUMMARY=NORMALIZED(SUMMARY);
@@ -254,4 +261,14 @@
         SUBSTR(DESCRIPTION, lensummary, 1) == "\n") {
         DESCRIPTION = SUBSTR(DESCRIPTION, lensummary + 1, lendescr - lensummary - 1);
     }
+    ]]></macro>
+
+    <macro name="CALENDAR_BEFOREWRITE_SCRIPT"><![CDATA[
+      // set UTC time of generation for iCalendar 2.0 DTSTAMP
+      DGENERATED = NOW();
+      // ensure that there is a DMODIFIED = LAST-MODIFIED property,
+      // not all storages add it
+      if (!DMODIFIED) {
+         DMODIFIED = DGENERATED;
+      }
     ]]></macro>

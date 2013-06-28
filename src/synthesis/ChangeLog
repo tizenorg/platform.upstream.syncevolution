@@ -3970,234 +3970,486 @@
 
 	* src/sysync/syncagent.cpp:
 	* src/sysync/syncagent.h:
-	* src/sysync/synccommand.cpp:
-	* src/sysync/synccommand.h:
-	* src/sysync/syncsession.cpp:
-	* src/sysync/syncsession.h:
+	* src/sysync/synccommand.c	* test/synccompare.pl:
+	* test/testcases/eds_event.ics.oracle.tem.patch:
 
-	Alert 222 loop detector improved: do not trigger as long as valid
-	status is received
+	testing: get tests to pass with Oracle Communications Calendar
+	server
 
-2009-10-16  Lukas Zeller  <luz@synthesis.ch>
+2011-10-06  Patrick Ohly  <patrick.ohly@intel.com>
 
-	* src/DB_interfaces/odbc_db/odbcapiagent.cpp:
+	* test/testcases/eds_contact.vcf.oracle.tem.patch:
 
-	ODBC STD servers and clients: did not work at all (connection
-	string always empty)
+	Oracle: remove problematic \; test case
 
-2009-10-16  Lukas Zeller  <luz@synthesis.ch>
+2011-10-10  Patrick Ohly  <patrick.ohly@intel.com>
 
-	* src/sysync/engineinterface.cpp:
-	* src/sysync_SDK/Sources/sync_dbapidef.h:
+	* test/resultchecker.py:
+	* test/runtests.py:
 
-	comment cosmetics
+	testing: added Oracle and eGroupware CalDAV/CardDAV testing
 
-2009-10-15  Lukas Zeller  <luz@synthesis.ch>
+2011-10-05  Patrick Ohly  <patrick.ohly@intel.com>
 
-	* src/sysync/mimedirprofile.cpp:
+	* src/backends/webdav/CardDAVSource.cpp:
 
-	vcard/vcal folding: Made sure folding does not occur within UTF-8
-	sequences
+	CardDAV: disable HTML entity decoding
 
-2009-10-15  Lukas Zeller  <luz@synthesis.ch>
+2011-10-05  Patrick Ohly  <patrick.ohly@intel.com>
 
-	* src/sysync/mimedirprofile.cpp:
-	* src/sysync/sysync_utils.cpp:
+	* test/testcases/eds_event.ics:
+	* test/testcases/eds_event.ics.Ovi.tem.patch:
+	* test/testcases/eds_event.ics.apple.tem.patch:
+	* test/testcases/eds_event.ics.googlecalendar.tem.patch:
+	* test/testcases/eds_event.ics.memotoo.tem.patch:
+	* test/testcases/eds_event.ics.mobical.tem.patch:
+	* test/testcases/eds_event.ics.nokia_7210c.tem.patch:
 
-	vcard/vcal B64 properties: base64 encoded properties must be
-	terminated with a CRLF even if folding is disabled
+	testing: added recurring all-day with EXDATE
 
-2009-10-14  Lukas Zeller  <luz@synthesis.ch>
+2011-10-05  Patrick Ohly  <patrick.ohly@intel.com>
 
-	* src/sysync/mimedirprofile.cpp:
+	* test/testcases/eds_event.ics:
+	* test/testcases/eds_event.ics.apple.tem.patch:
+	* test/testcases/eds_event.ics.exchange.tem.patch:
+	* test/testcases/eds_event.ics.funambol.tem.patch:
+	* test/testcases/eds_event.ics.googlecalendar.tem.patch:
+	* test/testcases/eds_event.ics.memotoo.tem.patch:
+	* test/testcases/eds_event.ics.mobical.tem.patch:
+	* test/testcases/eds_event.ics.nokia_7210c.tem.patch:
 
-	vcard/vcal B64 properties: added workaround to recognize
-	improperly folded B64 properties
+	testing: be strict about DTSTART + EXDATE matching
 
-2009-10-13  Lukas Zeller  <luz@synthesis.ch>
+2011-10-04  Patrick Ohly  <patrick.ohly@intel.com>
 
-	* src/DB_interfaces/api_db/pluginapids.cpp:
-	* src/sysync/localengineds.cpp:
-	* src/sysync/multifielditem.cpp:
-	* src/sysync/stdlogicds.cpp:
-	* src/sysync/syncagent.cpp:
-	* src/sysync/syncsession.cpp:
+	* test/ClientTest.cpp:
 
-	unilib: eliminated another bunch of printf argument warnings by
-	casting all %ld arguments to (long)
+	testing: avoid TZID prefix in source tests
 
-2009-10-13  Lukas Zeller  <luz@synthesis.ch>
+2011-10-04  Patrick Ohly  <patrick.ohly@intel.com>
 
-	* src/sysync/engineinterface.cpp:
+	* src/backends/webdav/CardDAVSource.cpp:
 
-	engineinterface: added missing return statement for
-	returnLineartime()
+	CardDAV: fixed line end after UID
 
-2009-10-08  Beat Forster  <elisabethegli@beat-forsters-macbook-pro.local>
+2011-10-05  Patrick Ohly  <patrick.ohly@intel.com>
 
-	* src/sysync/customimplds.cpp:
+	* src/backends/webdav/WebDAVSource.cpp:
 
-	stl_minimal has no != operator => use ==
+	WebDAV: infinite loop during collection scan
 
-2009-10-08  Beat Forster  <elisabethegli@beat-forsters-macbook-pro.local>
+2011-10-04  Patrick Ohly  <patrick.ohly@intel.com>
 
-	* src/global_options.h:
-	* src/platform_adapters/linux/configfiles.cpp:
+	* src/backends/webdav/WebDAVSource.cpp:
 
-	ANDROID strings added
+	WebDAV: better logging of scanning
 
-2009-10-08  Beat Forster  <elisabethegli@beat-forsters-macbook-pro.local>
+2011-10-04  Patrick Ohly  <patrick.ohly@intel.com>
 
-	* src/DB_interfaces/api_db/pluginapids.cpp:
-	* src/DB_interfaces/odbc_db/odbcapiagent.cpp:
-	* src/sysync/syncagent.cpp:
-	* src/sysync_SDK/Sources/stringutil.cpp:
+	* src/backends/webdav/WebDAVSource.cpp:
 
-	unilib: several type adaptions for changes due to unilib
+	WebDAV: increased number of queries while scanning for
+	collections
 
-2009-10-13  Lukas Zeller  <luz@synthesis.ch>
+2011-10-04  Patrick Ohly  <patrick.ohly@intel.com>
 
+	* src/backends/webdav/WebDAVSource.cpp:
 
-	Merge remote branch 'moblin/unilib' into unilib
+	WebDAV: ignore props of a found collection
 
-2009-10-13  Lukas Zeller  <luz@synthesis.ch>
+2011-10-04  Patrick Ohly  <patrick.ohly@intel.com>
 
-	* src/sysync/syncclientbase.cpp:
+	* src/backends/webdav/WebDAVSource.cpp:
+	* src/backends/webdav/WebDAVSource.h:
 
-	unilib: make sure no half-constructed session is left over at
-	failed OpenSession()
+	WebDAV: handle more than one entry in
+	calendar/addresbook-home-set
 
-2009-10-08  Lukas Zeller  <luz@synthesis.ch>
+2011-10-04  Patrick Ohly  <patrick.ohly@intel.com>
 
-	* src/DB_interfaces/api_db/pluginapids.cpp:
-	* src/sysync/customimplagent.cpp:
-	* src/sysync/customimplds.cpp:
-	* src/sysync/syncsession.cpp:
+	* src/backends/webdav/WebDAVSource.cpp:
 
-	unilib cleanup: fixed some build problems introduced through
-	unilib
+	WebDAV: allow relative redirects (eGroupware)
 
-2009-10-08  Lukas Zeller  <luz@synthesis.ch>
+2011-10-04  Patrick Ohly  <patrick.ohly@intel.com>
 
-	* src/DB_interfaces/odbc_db/odbcapiagent.cpp:
-	* src/sysync/customimplagent.h:
+	* src/backends/webdav/WebDAVSource.cpp:
 
-	unilib: fixed case for targets with no binfile compiled in at all
+	WebDAV: more resilient code
 
-2009-10-07  Lukas Zeller  <luz@synthesis.ch>
+2011-10-04  Patrick Ohly  <patrick.ohly@intel.com>
 
-	* src/sysync/syserial.h:
+	* src/backends/webdav/CalDAVSource.h:
+	* src/backends/webdav/CardDAVSource.h:
+	* src/backends/webdav/WebDAVSource.cpp:
+	* src/backends/webdav/WebDAVSource.h:
 
-	syserial product codes: added codes for Android client and server
-	libs, changed Win32 server code (was overlapping iPhone client
-	lib)
+	WebDAV: fallback to .well-known URLs for hostname as syncURL
 
-2009-10-07  Beat Forster  <elisabethegli@beat-forsters-macbook-pro.local>
+2011-10-04  Patrick Ohly  <patrick.ohly@intel.com>
 
-	* src/sysync_SDK/Sources/SDK_util.c:
-	* src/sysync_SDK/Sources/sync_dbapidef.h:
+	* src/backends/webdav/WebDAVSource.cpp:
+	* src/backends/webdav/WebDAVSource.h:
 
-	SDK: version changed to V1.6.1
+	WebDAV: ignore certain collections
 
-2009-10-13  Lukas Zeller  <luz@synthesis.ch>
+2011-10-10  Patrick Ohly  <patrick.ohly@intel.com>
 
-	* src/sysync/engineinterface.cpp:
-	* src/sysync/engineinterface.h:
-	* src/sysync/syncagent.cpp:
+	* src/backends/webdav/WebDAVSource.cpp:
+	* src/backends/webdav/WebDAVSource.h:
 
-	engine: added "lastused" and "timeout" session keys for server
-	session timeout handling
+	WebDAV: initial support for listing databases
 
-2009-10-12  Patrick Ohly  <patrick.ohly@intel.com>
+2011-10-03  Patrick Ohly  <patrick.ohly@intel.com>
 
-	* src/gen-makefile-am.sh:
+	* README.rst:
+	* src/syncevo/Cmdline.cpp:
+	* src/syncevo/Cmdline.h:
 
-	autotools build: only build SAN code as part of the SDK
+	command line: introduced --print-databases
 
-2009-10-08  Lukas Zeller  <luz@synthesis.ch>
+2011-10-04  Patrick Ohly  <patrick.ohly@intel.com>
 
+	* src/backends/webdav/CalDAVSource.cpp:
+	* src/backends/webdav/CalDAVSource.h:
+	* src/syncevo/MapSyncSource.cpp:
+	* src/syncevo/MapSyncSource.h:
+	* src/syncevo/SyncSource.cpp:
+	* src/syncevo/SyncSource.h:
 
-	Merge remote branch 'moblin/unilib' into unilib
+	TestingSyncSource+CalDAV: added "delete all" API call
 
-2009-10-08  Lukas Zeller  <luz@synthesis.ch>
+2011-10-17  Patrick Ohly  <patrick.ohly@intel.com>
 
 
-	Merge branch 'luz' into unilib
+	Merge remote branch 'origin/syncevolution-1-2-branch'
 
-2009-10-08  Lukas Zeller  <luz@synthesis.ch>
+2011-10-17  Patrick Ohly  <patrick.ohly@intel.com>
 
+	* test/runtests.py:
 
-	Merge remote branch 'moblin/san' into luz
+	Google CalDAV testing: ignore Google bug #61: cannot remove
+	detached recurrence
 
-2009-10-07  Lukas Zeller  <luz@synthesis.ch>
+2011-10-17  Patrick Ohly  <patrick.ohly@intel.com>
 
+	* test/testcases/eds_event.ics.googlecalendar.tem.patch:
 
-	Merge branch 'luz' into unilib
+	Google CalDAV testing: avoid multiple detached recurrences
 
-2009-10-07  Beat Forster  <bfo@synthesis.ch>
+2011-10-16  Patrick Ohly  <patrick.ohly@intel.com>
 
-	* src/platform_adapters/linux/configfiles.cpp:
-	* src/platform_adapters/linux/platform_time.cpp:
+	* test/ClientTest.cpp:
 
-	platform adapters Linux: Android adaptions
+	testing: avoid anchor dependencies between tests
 
-2009-10-07  Lukas Zeller  <luz@synthesis.ch>
+2011-10-13  Patrick Ohly  <patrick.ohly@intel.com>
 
-	* src/sysync/localengineds.cpp:
+	* NEWS:
+	* configure-pre.in:
 
-	localengineds: avoid using != operator on strings because STLs
-	exist that only support ==
+	NEWS + autotools: updated to 1.2
 
-2009-10-07  Patrick Ohly  <patrick.ohly@intel.com>
+2011-10-12  Patrick Ohly  <patrick.ohly@intel.com>
 
-	* Makefile.am:
-	* configure.in:
-	* src/Makefile.am.in:
-	* src/gen-makefile-am.sh:
-	* src/sysync_SDK/Sources/enginestubs.c:
-	* synthesis-sdk.pc.in:
-	* synthesis.pc.in:
+	* test/sys.supp:
 
-	autotools + pkg-config: added synthesis-sdk.pc
+	testing: added more valgrind suppressions for ASN encoding
 
-2009-10-02  Patrick Ohly  <patrick.ohly@intel.com>
+2011-10-10  Patrick Ohly  <patrick.ohly@intel.com>
 
-	* src/Makefile.am.in:
+	* configure-pre.in:
 
-	libsynthesis + autotools: must be linked against libz
+	autotools: depend on libsynthesis 3.4.0.16.3
 
-2009-10-07  Patrick Ohly  <patrick.ohly@intel.com>
+2011-10-10  Patrick Ohly  <patrick.ohly@intel.com>
 
-	* src/sysync/syncappbase.cpp:
+	* test/runtests.py:
 
-	syncappbasse: turned extern "C" into static functions
+	testing: avoid add<->add tests for Funambol, Memotoo, Mobical
 
-2009-10-02  Patrick Ohly  <patrick.ohly@intel.com>
+2011-10-10  Patrick Ohly  <patrick.ohly@intel.com>
 
-	* configure.in:
-	* src/Makefile.am.in:
-	* src/gen-makefile-am.sh:
-	* src/synthesis-linker.map:
-	* src/sysync_SDK/Sources/UI_util.cpp:
+	* test/runtests.py:
 
-	autotools build: switched to new combi engine
+	Apple testing: no need to avoid complex UID
 
-2009-10-07  Patrick Ohly  <patrick.ohly@intel.com>
+2011-10-07  Patrick Ohly  <patrick.ohly@intel.com>
 
-	* src/sysync/dataconversion.cpp:
+	* README.rst:
 
-	DataConversion(): adapted dummy engine to server API
+	README: moved warning about sync direction
 
-2009-09-24  Patrick Ohly  <patrick.ohly@intel.com>
+2011-10-07  Patrick Ohly  <patrick.ohly@intel.com>
 
-	* configure.in:
-	* src/sysync/san.cpp:
-	* src/sysync/san.h:
-	* src/sysync/sysync_b64.cpp:
-	* src/sysync/sysync_b64.h:
-	* src/sysync/sysync_md5.cpp:
-	* src/sysync/sysync_md5.h:
-	* src/sysync_SDK/Sources/san.	* test/ClientTest.cpp:
+	* test/testcases/eds_contact.vcf.apple.tem.patch:
+
+	vCard extensions + Apple: avoid problematic quoted PARAMETER2
+
+2011-10-07  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/testcases/eds_contact.vcf:
+	* test/testcases/eds_contact.vcf.mobical.tem.patch:
+	* test/testcases/eds_contact.vcf.synthesis.tem.patch:
+
+	vCard extensions: \; instead of ;
+
+2011-10-05  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/testcases/eds_contact.vcf:
+	* test/testcases/eds_contact.vcf.mobical.tem.patch:
+	* test/testcases/eds_contact.vcf.yahoo.tem.patch:
+
+	eds_contact: specify all N components
+
+2011-10-05  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/backends/evolution/EvolutionCalendarSource.cpp:
+
+	EDS calendar: fixed memory leak
+
+2011-10-04  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/backends/webdav/WebDAVSource.cpp:
+
+	WebDAV: strip quotes from ETag only if present
+
+2011-10-04  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/ClientTest.cpp:
+
+	testing: avoid redundant insert session in some tests
+
+2011-10-04  Chris Kühl  <chrisk@openismus.com>
+
+	* src/dbus/server/bluetooth_products.ini:
+
+	dbus: Added device id for Nokia 3720 Classic
+
+2011-10-01  Chris Kühl  <chrisk@openismus.com>
+
+	* src/dbus/server/bluetooth_products.ini:
+
+	dbus: Added user submitted device ids
+
+2011-09-30  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/ClientTest.cpp:
+
+	testing: improved tests for add<->add conflicts (BMC #22783)
+
+2011-09-15  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* NEWS:
+	* configure-pre.in:
+
+	bumped version to 1.1.99.7
+
+2011-09-15  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/ClientTest.cpp:
+
+	testing: relaxed add<->add tests
+
+2011-09-14  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/Cmdline.cpp:
+
+	command line: also check password for
+	--import/export/delete-items and the source (BMC #21311, #22937)
+
+2011-09-14  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/SyncConfig.cpp:
+
+	source passwords: password lookup failed in HTTP server mode (BMC
+	#22937)
+
+2011-09-12  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/backends/evolution/EvolutionCalendarSource.cpp:
+	* src/backends/evolution/EvolutionCalendarSource.h:
+
+	Evolution Calendar: fixed detached recurrence support (BMC
+	#22940)
+
+2011-09-12  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/configs/datatypes/11calendar-profile.xml:
+
+	iCalendar 2.0: must set VALUE in EXDATE (part of BMC #22940)
+
+2011-09-12  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/testcases/eds_event.ics.memotoo.tem.patch:
+
+	Memotoo testing: added EXDATEs
+
+2011-09-12  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/testcases/eds_event.ics:
+	* test/testcases/eds_event.ics.Ovi.tem.patch:
+	* test/testcases/eds_event.ics.funambol.tem.patch:
+	* test/testcases/eds_event.ics.googlecalendar.tem.patch:
+	* test/testcases/eds_event.ics.memotoo.tem.patch:
+	* test/testcases/eds_event.ics.mobical.tem.patch:
+	* test/testcases/eds_event.ics.nokia_7210c.tem.patch:
+
+	testing: extended detached recurrence test cases (triggers BMC
+	#22940)
+
+2011-09-13  Alban Crequy  <alban.crequy@collabora.co.uk>
+
+	* src/gtk-ui/sync-config-widget.c:
+
+	GTK sync-ui: wrap sync service descriptions (BMC #7199)
+
+2011-09-13  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* configure-pre.in:
+
+	autotools: depend on libsynthesis with
+	DB_DataMerged/Replaced/Conflict support
+
+2011-09-13  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/backends/akonadi/akonadisyncsource.cpp:
+	* src/backends/evolution/EvolutionCalendarSource.cpp:
+	* src/backends/evolution/EvolutionContactSource.cpp:
+	* src/backends/evolution/EvolutionMemoSource.cpp:
+	* src/backends/file/FileSyncSource.cpp:
+	* src/backends/webdav/CalDAVSource.cpp:
+	* src/backends/webdav/WebDAVSource.cpp:
+	* src/backends/xmlrpc/XMLRPCSyncSource.cpp:
+	* src/syncevo/MapSyncSource.cpp:
+	* src/syncevo/MapSyncSource.h:
+	* src/syncevo/SyncSource.cpp:
+	* src/syncevo/SyncSource.h:
+	* src/syncevo/TrackingSyncSource.cpp:
+	* test/ClientTest.cpp:
+
+	SyncSource API: support and use Synthesis
+	DB_DataMerged/Replace/Conflict result codes (BMC #22783)
+
+2011-09-13  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/ClientTest.cpp:
+	* test/ClientTest.h:
+
+	testing: added another add<->add test
+
+2011-08-29  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/SyncSource.cpp:
+	* test/ClientTest.cpp:
+	* test/ClientTest.h:
+
+	testing: added test case for add<->add conflict (part of BMC
+	#22783)
+
+2011-09-14  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/SyncContext.cpp:
+
+	source configs: don't check "backend" unless it is needed
+
+2011-09-13  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/dbus-session.sh:
+
+	dbus-session: adapted EDS startup to 3.2
+
+2011-09-07  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/ClientTest.cpp:
+
+	client-test: remove duplicate CLIENT_TEST_LOG support code
+
+2011-09-06  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/ClientTest.cpp:
+
+	testing: fix Client::Sync::*::testLinkedItemsChildParent
+
+2011-09-05  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/ClientTest.cpp:
+
+	testing: fix m_uniqueProperties check
+
+2011-09-02  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/backends/addressbook/AddressBookSourceRegister.cpp:
+	* src/backends/akonadi/AkonadiSyncSourceRegister.cpp:
+	* src/backends/evolution/EvolutionCalendarSourceRegister.cpp:
+	* src/backends/evolution/EvolutionContactSourceRegister.cpp:
+	* src/backends/file/FileSyncSourceRegister.cpp:
+	* src/backends/kcalextended/KCalExtendedSourceRegister.cpp:
+	* src/backends/maemo/MaemoCalendarSourceRegister.cpp:
+	* src/backends/qtcontacts/QtContactsSourceRegister.cpp:
+	* src/backends/sqlite/SQLiteContactSourceRegister.cpp:
+	* src/backends/webdav/WebDAVSourceRegister.cpp:
+	* src/client-test-app.cpp:
+	* src/syncevo/Cmdline.h:
+	* src/syncevo/SyncContext.cpp:
+	* src/syncevo/SyncContext.h:
+	* src/syncevo/SyncSource.h:
+	* src/syncevo/util.h:
+	* src/syncevolution.cpp:
+	* test/ClientTest.cpp:
+	* test/ClientTest.h:
+
+	testing: cleaned up ClientTestConfig
+
+2011-09-01  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/ClientTest.cpp:
+
+	client-test + ActiveSync: ignore Exchange failure in
+	testLinkedItemsRemoveNormal
+
+2011-09-01  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/ClientTest.cpp:
+
+	client-test: wrap compareDatabases() in CPPUNIT_ASSERT_NO_THROW()
+
+2011-09-01  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/ClientTest.cpp:
+
+	client-test LinkedItems: use CLIENT_TEST_LINKED_ITEMS_NO_DELETE
+	to stop test early
+
+2011-09-01  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/ClientTest.cpp:
+
+	client-test: cleaned up checking for CLIENT_TEST_SERVER
+
+2011-08-30  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/backends/akonadi/configure-sub.in:
+
+	Akonadi: fix link issues on Debian Testing
+
+2011-08-30  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/NotificationBackendLibnotify.cpp:
+
+	NotifyBackendLibnotify: avoid compiler warning about unused
+	NotFound()
+
+2011-08-29  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/NotificationBackendLibnotify.cpp:
+
+	syncevolution.org binaries: fix libnotify compatibility mode,
+	part II (BMC #22668)
+
+2011-08-29  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/ClientTest.cpp:
 
 	testing: LinkedItems_1 with "exchange" server: recurring all-day
 	event
