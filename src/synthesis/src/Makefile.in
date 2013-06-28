@@ -56,8 +56,8 @@ host_triplet = @host@
 
 # add path to xmlparse.h which includes the system's xmltok/xmlparse.h
 @COND_XMLPARSE_FALSE@am__append_4 = -I$(srcdir)/Targets/ReleasedProducts/clientEngine_autotools/systemxml
-@COND_STATIC_TRUE@am__append_5 = sysync_SDK/Sources/timeutil.cpp sysync_SDK/Sources/enginemodulebridge.cpp sysync_SDK/Sources/dbitem.cpp sysync_SDK/Sources/UI_util.cpp sysync_SDK/Sources/stringutil.cpp sysync_SDK/Sources/admindata.cpp sysync_SDK/Sources/blobs.cpp 
-@COND_STATIC_FALSE@am__append_6 = sysync_SDK/Sources/timeutil.cpp sysync_SDK/Sources/enginemodulebridge.cpp sysync_SDK/Sources/SDK_support.cpp sysync_SDK/Sources/SDK_util.c sysync_SDK/Sources/dbitem.cpp sysync_SDK/Sources/UI_util.cpp sysync_SDK/Sources/enginemodulebase.cpp sysync_SDK/Sources/stringutil.cpp sysync_SDK/Sources/admindata.cpp sysync_SDK/Sources/blobs.cpp 
+@COND_STATIC_TRUE@am__append_5 = sysync_SDK/Sources/timeutil.cpp sysync_SDK/Sources/enginemodulebridge.cpp sysync_SDK/Sources/dbitem.cpp sysync_SDK/Sources/UI_util.cpp sysync_SDK/Sources/stringutil.cpp sysync_SDK/Sources/admindata.cpp sysync_SDK/Sources/blobs.cpp
+@COND_STATIC_FALSE@am__append_6 = sysync_SDK/Sources/timeutil.cpp sysync_SDK/Sources/enginemodulebridge.cpp sysync_SDK/Sources/SDK_support.cpp sysync_SDK/Sources/SDK_util.c sysync_SDK/Sources/dbitem.cpp sysync_SDK/Sources/UI_util.cpp sysync_SDK/Sources/enginemodulebase.cpp sysync_SDK/Sources/stringutil.cpp sysync_SDK/Sources/admindata.cpp sysync_SDK/Sources/blobs.cpp
 subdir = src
 DIST_COMMON = $(nobase_include_HEADERS) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in
@@ -472,7 +472,7 @@ top_srcdir = @top_srcdir@
 CLEANFILES = 
 EXTRA_DIST = $(am__append_3)
 lib_LTLIBRARIES = libsmltk.la libsynthesis.la libsynthesissdk.la
-nobase_include_HEADERS = synthesis/enginemodulebridge.h synthesis/SDK_util.h synthesis/prefix_file.h synthesis/sync_dbapi.h synthesis/enginemodulebase.h synthesis/SDK_support.h synthesis/stringutil.h synthesis/sync_declarations.h synthesis/sync_dbapidef.h synthesis/generic_types.h synthesis/engine_defs.h synthesis/sync_include.h synthesis/timeutil.h synthesis/dbitem.h synthesis/blobs.h synthesis/sync_uiapi.h synthesis/admindata.h synthesis/dataconversion.h synthesis/syerror.h synthesis/UI_util.h  synthesis/target_options.h
+nobase_include_HEADERS = synthesis/enginemodulebridge.h synthesis/SDK_util.h synthesis/prefix_file.h synthesis/sync_dbapi.h synthesis/enginemodulebase.h synthesis/SDK_support.h synthesis/stringutil.h synthesis/sync_declarations.h synthesis/sync_dbapidef.h synthesis/generic_types.h synthesis/engine_defs.h synthesis/sync_include.h synthesis/timeutil.h synthesis/dbitem.h synthesis/blobs.h synthesis/sync_uiapi.h synthesis/admindata.h synthesis/dataconversion.h synthesis/syerror.h synthesis/UI_util.h synthesis/target_options.h
 
 # Configuration header files are searched in this order:
 # - Targets/ReleasedProducts/autotools: files only used when compiling with autotools
@@ -1929,7 +1929,7 @@ $(srcdir)/Makefile.am: $(srcdir)/Makefile.am.in $(srcdir)/gen-makefile-am.sh
 vpath %.cpp $(srcdir)/sysync_SDK/Sources $(srcdir)/sysync_SDK/SDK # $(srcdir)/Targets/ReleasedProducts/clientEngine_opensource_linux $(srcdir)/syncapps/clientEngine_custom $(srcdir)/sysync $(srcdir)/platform_adapters $(srcdir)
 vpath %.c $(srcdir)/sysync_SDK/Sources $(srcdir)/sysync_SDK/SDK # $(srcdir)/Targets/ReleasedProducts/clientEngine_opensource_linux $(srcdir)/syncapps/clientEngine_custom $(srcdir)/sysync $(srcdir)/platform_adapters $(srcdir)
 vpath %.h $(srcdir)/sysync_SDK/Sources $(srcdir)/sysync_SDK/SDK # $(srcdir)/Targets/ReleasedProducts/clientEngine_opensource_linux $(srcdir)/syncapps/clientEngine_custom $(srcdir)/sysync $(srcdir)/platform_adapters $(srcdir)
-synthesis/enginemodulebridge.h synthesis/SDK_util.h synthesis/prefix_file.h synthesis/sync_dbapi.h synthesis/enginemodulebase.h synthesis/SDK_support.h synthesis/stringutil.h synthesis/sync_declarations.h synthesis/sync_dbapidef.h synthesis/generic_types.h synthesis/engine_defs.h synthesis/sync_include.h synthesis/timeutil.h synthesis/dbitem.h synthesis/blobs.h synthesis/sync_uiapi.h synthesis/admindata.h synthesis/dataconversion.h synthesis/syerror.h synthesis/UI_util.h : synthesis/%: %
+synthesis/enginemodulebridge.h synthesis/SDK_util.h synthesis/prefix_file.h synthesis/sync_dbapi.h synthesis/enginemodulebase.h synthesis/SDK_support.h synthesis/stringutil.h synthesis/sync_declarations.h synthesis/sync_dbapidef.h synthesis/generic_types.h synthesis/engine_defs.h synthesis/sync_include.h synthesis/timeutil.h synthesis/dbitem.h synthesis/blobs.h synthesis/sync_uiapi.h synthesis/admindata.h synthesis/dataconversion.h synthesis/syerror.h synthesis/UI_util.h: synthesis/%: %
 	mkdir -p synthesis
 	sed -e 's;# *include  *";#include "synthesis/;' -e 's/defined(HAVE_STDINT_H)/1/' $< >$@
 

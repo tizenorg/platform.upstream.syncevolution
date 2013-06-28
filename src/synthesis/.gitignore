@@ -2,6 +2,11 @@
 *.o
 src/sysync_SDK/bin
 src/Makefile.am
+src/CLIENT_FILES
+src/EXCLUDE_FILES
+src/EXTRA_FILES
+src/SDK_FILES
+src/SERVER_FILES
 Makefile.in
 configure
 m4
