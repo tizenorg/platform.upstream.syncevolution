@@ -11,8 +11,6 @@ ENGINE_SOURCES="sysync DB_interfaces sysync_SDK/Sources Transport_interfaces/eng
 cat > SDK_FILES <<EOF
 enginemodulebridge.cpp
 enginemodulebridge.h
-stringutil.cpp
-stringutil.h
 target_options.h
 san.cpp
 san.h
@@ -20,6 +18,14 @@ timeutil.cpp
 timeutil.h
 UI_util.cpp
 UI_util.h
+EOF
+
+# files needed exclusively for libsynthesissdk.so
+# They should not go into libsynthesissdk.a because the more complete set of
+# code is available in the engine
+cat > SDK_EXCLUDE_FILES <<EOF
+stringutil.cpp
+stringutil.h
 EOF
 
 # The distinction between client and server files is not
@@ -44,8 +50,6 @@ admindata.cpp
 admindata.h
 dbitem.cpp
 dbitem.h
-blobs.cpp
-blobs.h
 enginesessiondispatch.cpp
 syncserver.cpp
 EOF
@@ -60,7 +64,7 @@ enginestubs.c
 EOF
 
 # files to be included in libsynthesis
-cat EXTRA_FILES SDK_FILES > EXCLUDE_FILES
+cat EXTRA_FILES SDK_FILES SDK_EXCLUDE_FILES> EXCLUDE_FILES
 LIBSYNTHESIS_SOURCES=`find ${ENGINE_SOURCES} \
      syncapps/clientEngine_custom \
      syncapps/serverEngine_custom \

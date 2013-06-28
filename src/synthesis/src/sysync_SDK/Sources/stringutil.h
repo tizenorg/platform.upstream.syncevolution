@@ -39,6 +39,8 @@ sInt16 StrToCStrAppend( cAppCharP aStr, string &aString, bool aAllow8Bit=false,
 void   StringObjAppendPrintf( string &aStringObj, cAppCharP aFormat, ... );
 
 sInt16    StrToULong    ( cAppCharP aStr, uInt32  &aLong,     sInt16 aMaxDigits= 100 );
+sInt16    StrToLong     ( cAppCharP aStr, sInt32  &aLong,     sInt16 aMaxDigits= 100 );
+sInt16    StrToUShort   ( cAppCharP aStr, uInt16  &aShort,    sInt16 aMaxDigits= 100 );
 sInt16 HexStrToULong    ( cAppCharP aStr, uInt32  &aLong,     sInt16 aMaxDigits= 100 );
 sInt16 HexStrToULongLong( cAppCharP aStr, uInt64  &aLongLong, sInt16 aMaxDigits= 100 );
 sInt16 HexStrToUIntPtr  ( cAppCharP aStr, uIntPtr &aIntPtr,   sInt16 aMaxDigits= 100 );

@@ -2613,7 +2613,7 @@ bool TSyncAgent::handleHeaderStatus(TStatusCommand *aStatusCmdP)
           uInt32 l;
           uInt8 *nonce = b64::decode(smlPCDataToCharP(chalmetaP->nextnonce), 0, &l);
           fRemoteNonce.assign((char *)nonce,l);
-          sysync_free(nonce);
+          b64::free(nonce);
         }
         // - show
         PDEBUGPRINTFX(DBG_PROTO,(
@@ -2974,7 +2974,7 @@ TSyError TSyncAgent::ServerSessionStep(uInt16 &aStepCmd, TEngineProgressInfo *aI
           sta = LOCERR_OK;
           break;
         }
-      } // switch stepCmdIn for ces_processing
+      } // switch stepCmdIn for ses_needdata
       break;
 
     // Waiting until SyncML answer data is sent
@@ -2987,7 +2987,7 @@ TSyError TSyncAgent::ServerSessionStep(uInt16 &aStepCmd, TEngineProgressInfo *aI
           aStepCmd = STEPCMD_NEEDDATA;
           sta = LOCERR_OK;
           break;
-      } // switch stepCmdIn for ces_processing
+      } // switch stepCmdIn for ses_dataready
       break;
 
 
@@ -2997,7 +2997,7 @@ TSyError TSyncAgent::ServerSessionStep(uInt16 &aStepCmd, TEngineProgressInfo *aI
         case STEPCMD_STEP :
           sta = ServerGeneratingStep(aStepCmd,aInfoP);
           break;
-      } // switch stepCmdIn for ces_generating
+      } // switch stepCmdIn for ses_generating
       break;
 
     // Ready for processing steps
@@ -3006,7 +3006,7 @@ TSyError TSyncAgent::ServerSessionStep(uInt16 &aStepCmd, TEngineProgressInfo *aI
         case STEPCMD_STEP :
           sta = ServerProcessingStep(aStepCmd,aInfoP);
           break;
-      } // switch stepCmdIn for ces_processing
+      } // switch stepCmdIn for ses_processing
       break;
 
   case numServerEngineStates:
@@ -3053,7 +3053,19 @@ TSyError TSyncAgent::ServerProcessingStep(uInt16 &aStepCmd, TEngineProgressInfo 
     fServerEngineState = ses_generating;
     sta = LOCERR_OK;
   }
-  else {
+  else if (rc==LOCERR_RETRYMSG) {
+		// server has detected that this message is a retry - report this to the app such that app can
+    // first discard the instance buffer (consume everything in it)
+    if (smlLockReadBuffer(myInstance,&data,&datasize)==SML_ERR_OK)
+      smlUnlockReadBuffer(myInstance,datasize);
+    // indicate that transport must resend the previous response
+    PDEBUGPRINTFX(DBG_ERROR,(
+      "Incoming message was identified as a retry - report STEPCMD_RESENDDATA - caller must resent last response"
+    ));
+    aStepCmd = STEPCMD_RESENDDATA;
+    fServerEngineState = ses_dataready;
+	}
+	else {
     // processing failed
     PDEBUGPRINTFX(DBG_ERROR,("===> smlProcessData failed, returned 0x%hX",(sInt16)rc));
     // dump the message that failed to process
@@ -3101,6 +3113,17 @@ TSyError TSyncAgent::ServerGeneratingStep(uInt16 &aStepCmd, TEngineProgressInfo 
   }
   // request reset
   fRequestSize = 0;
+
+  // finished generating outgoing message
+  // - make sure read pointer is set (advanced in case incoming
+  //   message had trailing garbage) to beginning of generated
+  //   answer. With incoming message being clean SyncML without
+  //   garbage, this call is not needed, however with garbage
+  //   it is important because otherwise outgoing message
+  //   would have that garbage inserted before actual message
+  //   start.
+  smlReadOutgoingAgain(getSmlWorkspaceID());
+
   // return status
   return LOCERR_OK;
 } // TSyncAgent::ServerGeneratingStep

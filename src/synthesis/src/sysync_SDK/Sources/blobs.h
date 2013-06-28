@@ -74,6 +74,12 @@ class TBlob {
       TSyError SetDates( string  aBlobName, TDates  aDate );                 // set  "      "      "
     #endif
 
+    string getDBName() const { return fDBName; }
+    string getBlobPath() const { return fBlobPath; }
+    string getContextName() const { return fContextName; }
+    string getDevKey() const { return fDevKey; }
+    string getUsrKey() const { return fUsrKey; }
+
   private:
     void*  fCB;       // callback structure, for debug logs
     string fDBName;   // database name,      for debug logs

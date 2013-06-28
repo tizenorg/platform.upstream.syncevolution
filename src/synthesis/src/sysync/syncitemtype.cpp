@@ -668,7 +668,7 @@ TSyncItem *TSyncItemType::newSyncItem(
             // something to decode, do it and replace original content
             aItemP->data->content = b64::decode(origData, origSize, (uInt32 *)&(aItemP->data->length));
             // we don't need the original data any more
-            sysync_free((void *)origData);
+            b64::free((void *)origData);
           }
         }
         // convert payload (as a whole) from UTF16 (Unicode) to UTF-8

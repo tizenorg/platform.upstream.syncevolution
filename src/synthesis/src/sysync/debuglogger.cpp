@@ -358,16 +358,17 @@ void TStdFileDbgOut::putLine(cAppCharP aLine, bool aForceFlush)
       // now output
       fputs(aLine,fFile);
       fputs("\n",fFile);
-    }
-    // do required flushing
-    if (fFlushMode==dbgflush_openclose) {
-      // we need to close the file after every line of output
-      fclose(fFile);
-      fFile=NULL;
-    }
-    else if (aForceFlush || fFlushMode==dbgflush_flush) {
-      // simply flush
-      fflush(fFile);
+
+      // do required flushing
+      if (fFlushMode==dbgflush_openclose) {
+        // we need to close the file after every line of output
+        fclose(fFile);
+        fFile=NULL;
+      }
+      else if (aForceFlush || fFlushMode==dbgflush_flush) {
+        // simply flush
+        fflush(fFile);
+      }
     }
   }
 } // TStdFileDbgOut::putLine

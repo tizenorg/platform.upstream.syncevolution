@@ -579,7 +579,7 @@ static void CallbackVPrintf( DB_Callback aCB, cAppCharP format, va_list args, uI
 
     #ifdef __GNUC__
           isMax= strlen(message)==maxmsglen-1;
-      if (isMax) vasprintf( &ptr, format, copy );
+      if (isMax && vasprintf( &ptr, format, copy ) != -1) {};
       va_end(copy);
     #endif
 

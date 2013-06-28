@@ -651,7 +651,9 @@ static Ret_t buildDevInfProperty(XltDecoderPtr_t pDecoder, VoidPtr_t *ppElem, in
     XltDecScannerPtr_t            pScanner      = pDecoder->scanner;
     Ret_t rc;
 
-    if (IS_EMPTY(pScanner->curtok)) {
+    /* Do not return immediately for <1.2 style, the outer loop ends only meeting an end tag
+     * which will lead to an infinite loop*/
+    if (datastoreLocal && IS_EMPTY(pScanner->curtok)) {
         return SML_ERR_OK;
     }
 
@@ -812,7 +814,10 @@ Ret_t buildDevInfCtcap(XltDecoderPtr_t pDecoder, VoidPtr_t *ppElem, Boolean_t da
             break;
           case TN_DEVINF_PROPERTY:
             // DS 1.2 case: only </Property> ends the property building process, next token must be read first
-            rc = buildDevInfProperty(pDecoder, (VoidPtr_t)&pCtcap->data->prop,datastoreLocal);
+            // If there is a Property tag, let's take it as DS 1.2 Property Decoding even if the CTCAP is globally
+            // This is found from some Nokia phones (eg. N900, which will send a DevInf v1.2 but the CTCAP
+            // was not inside the datastore as DevInf v1.1)
+            rc = buildDevInfProperty(pDecoder, (VoidPtr_t)&pCtcap->data->prop,TRUE);
             break;
           case TN_DEVINF_PROPNAME:
             // <DS 1.2 case: current token TN_DEVINF_PROPNAME is processed by builder, next occurence of TN_DEVINF_PROPNAME ends property as well
@@ -822,6 +827,7 @@ Ret_t buildDevInfCtcap(XltDecoderPtr_t pDecoder, VoidPtr_t *ppElem, Boolean_t da
               rc = buildDevInfProperty(pDecoder, (VoidPtr_t)&pCtcap->data->prop,datastoreLocal);
               if (rc==SML_ERR_OK)
                 continue; // re-evaluate current tag (tag that caused buildDevInfProperty() to end, either unknown or closing </CTCap>
+                          // this means do not return SML_ERR_OK unless this is an unknow tag or closing </CTCcap>, otherwise it will trigger an infinite loop
             }
             break;
 

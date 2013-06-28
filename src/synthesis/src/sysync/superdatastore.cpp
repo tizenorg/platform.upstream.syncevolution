@@ -306,7 +306,13 @@ TAlertCommand *TSuperDataStore::engProcessSyncAlert(
         delete subalertcmdP;
       }
       // check if processing alert had a problem
-      if (substatus.getStatusCode()!=0) {
+      // Notes:
+      // - When we have a subalertcmdP here, it is the server case, which means a non-zero status code
+      //   (such as 508) at this point is ok and should not stop processing alerts.
+      //   Only in case we have no alert we need to check the status code and abort immediately if it's not ok.
+      // - 508 can happen even in client for the rare case the server thinks anchors are ok, but client check
+      //   says they are not, so we need to exclude 508 here.
+      if (!subalertcmdP && substatus.getStatusCode()!=0 && substatus.getStatusCode()!=508) {
         // basic problem with one of the subdatastores
         // - propagate error code
         aStatusCommand.setStatusCode(substatus.getStatusCode());

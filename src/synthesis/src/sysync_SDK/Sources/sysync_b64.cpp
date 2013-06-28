@@ -21,6 +21,16 @@ static const char table [64] = {
   'w','x','y','z','0','1','2','3','4','5','6','7','8','9','+','/'
 };
 
+
+// free memory allocated with encode or decode above
+void b64::free(void *mem)
+{
+	// we use normal malloc below, so use normal free as well
+	::free(mem);
+}
+
+
+
 char *b64::encode (const uInt8 *instr, uInt32 len, uInt32 *outlenP, sInt16 maxLineLen, bool crLineEnd) {
 
 

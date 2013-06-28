@@ -32,8 +32,10 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+@COND_CORE_TRUE@am__append_1 = po test
+@COND_CORE_TRUE@am__append_2 = README NEWS COPYING $(TEST_README_FILES)
 subdir = .
-DIST_COMMON = README $(am__configure_deps) $(dist_doc_DATA) \
+DIST_COMMON = README $(am__configure_deps) $(am__dist_doc_DATA_DIST) \
 	$(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(srcdir)/config.h.in $(top_srcdir)/configure AUTHORS COPYING \
 	ChangeLog INSTALL NEWS config.guess config.sub depcomp \
@@ -57,6 +59,8 @@ RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	install-pdf-recursive install-ps-recursive install-recursive \
 	installcheck-recursive installdirs-recursive pdf-recursive \
 	ps-recursive uninstall-recursive
+am__dist_doc_DATA_DIST = README NEWS COPYING $(wildcard \
+	$(srcdir)/test/README.*)
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
@@ -70,7 +74,6 @@ RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
   distclean-recursive maintainer-clean-recursive
 ETAGS = etags
 CTAGS = ctags
-DIST_SUBDIRS = $(SUBDIRS)
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 distdir = $(PACKAGE)-$(VERSION)
 top_distdir = $(distdir)
@@ -181,6 +184,8 @@ LDFLAGS = @LDFLAGS@
 LIBEXECDIR = @LIBEXECDIR@
 LIBICAL_AVAILABLE_CFLAGS = @LIBICAL_AVAILABLE_CFLAGS@
 LIBICAL_AVAILABLE_LIBS = @LIBICAL_AVAILABLE_LIBS@
+LIBNOTIFY_CFLAGS = @LIBNOTIFY_CFLAGS@
+LIBNOTIFY_LIBS = @LIBNOTIFY_LIBS@
 LIBOBJS = @LIBOBJS@
 LIBOPENOBEX_CFLAGS = @LIBOPENOBEX_CFLAGS@
 LIBOPENOBEX_LIBS = @LIBOPENOBEX_LIBS@
@@ -199,6 +204,8 @@ MODIFY_SYNCCOMPARE = @MODIFY_SYNCCOMPARE@
 MSGFMT = @MSGFMT@
 MSGFMT_OPTS = @MSGFMT_OPTS@
 MSGMERGE = @MSGMERGE@
+MX_GTK_0_99_1_CFLAGS = @MX_GTK_0_99_1_CFLAGS@
+MX_GTK_0_99_1_LIBS = @MX_GTK_0_99_1_LIBS@
 NMEDIT = @NMEDIT@
 NSS_CFLAGS = @NSS_CFLAGS@
 NSS_LIBS = @NSS_LIBS@
@@ -236,6 +243,7 @@ SYNTHESIS_LIB = @SYNTHESIS_LIB@
 SYNTHESIS_LIBS = @SYNTHESIS_LIBS@
 SYNTHESIS_SRC = @SYNTHESIS_SRC@
 SYNTHESIS_SUBDIR = @SYNTHESIS_SUBDIR@
+SYNTHESIS_SUBDIR_INCLUDES = @SYNTHESIS_SUBDIR_INCLUDES@
 TRANSPORT_CFLAGS = @TRANSPORT_CFLAGS@
 TRANSPORT_LIBS = @TRANSPORT_LIBS@
 UNIQUE_CFLAGS = @UNIQUE_CFLAGS@
@@ -300,7 +308,9 @@ target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 ACLOCAL_AMFLAGS = -I m4 -I m4-repo
-SUBDIRS = src po test
+dist_doc_DATA = $(am__append_2)
+SUBDIRS = src $(am__append_1)
+DIST_SUBDIRS = src po test
 EXTRA_DIST = \
 	HACKING \
 	LICENSE.txt \
@@ -335,9 +345,6 @@ PKGNAME = syncevolution$(patsubst %,-%,$(BINSUFFIX))
 # This is a list of packages (potentially) provided on estamos.de.
 # The current package conflicts with any of them, but not itself.
 PKGS = $(addprefix syncevolution-evolution-, 2.6 2.8 2.12)
-
-# install doc files via normal autotools
-dist_doc_DATA = README NEWS COPYING $(TEST_README_FILES)
 
 # Because backend-related variables need to be substituted in
 # Makefile-gen.am and configure.in we need an explicit rule to redo that work
@@ -967,8 +974,8 @@ dist-hook:
 
 @ENABLE_EVOLUTION_COMPATIBILITY_TRUE@installcheck-local:
 @ENABLE_EVOLUTION_COMPATIBILITY_TRUE@	for i in `find . -name *.so`; do \
-@ENABLE_EVOLUTION_COMPATIBILITY_TRUE@		if ldd $$i | grep -e libecal -e libebook -e libedata -e libical; then \
-@ENABLE_EVOLUTION_COMPATIBILITY_TRUE@			echo "$$i should not depend on EDS or libical"; \
+@ENABLE_EVOLUTION_COMPATIBILITY_TRUE@		if ldd $$i | grep -e libecal -e libebook -e libedata -e libical -e libbluetooth; then \
+@ENABLE_EVOLUTION_COMPATIBILITY_TRUE@			echo "$$i should not depend on EDS, libical or libbluetooth"; \
 @ENABLE_EVOLUTION_COMPATIBILITY_TRUE@			objdump -T -C $$i | grep -v :: | grep -e ical -e " e_"; \
 @ENABLE_EVOLUTION_COMPATIBILITY_TRUE@			exit 1; \
 @ENABLE_EVOLUTION_COMPATIBILITY_TRUE@		fi \

@@ -19,6 +19,9 @@ char *encode (
 // decode B64 string to data (len=0 calculates string length automatically)
 uInt8 *decode(const char *instr, uInt32 len=0, uInt32 *outlenP=NULL);
 
+// free memory allocated with encode or decode above
+void free(void *mem);
+
 }
 
 #endif /* SYSYNC_B64_H */

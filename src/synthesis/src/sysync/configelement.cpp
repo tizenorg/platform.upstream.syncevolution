@@ -95,6 +95,7 @@ TConfigElement::TConfigElement(const char *aElementName, TConfigElement *aParent
   // init parsing
   ResetParsing();
   #endif
+  fCfgVarExp=0;
 } // TConfigElement::TConfigElement
 
 

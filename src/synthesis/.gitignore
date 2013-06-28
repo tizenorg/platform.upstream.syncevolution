@@ -7,6 +7,7 @@ src/EXCLUDE_FILES
 src/EXTRA_FILES
 src/SDK_FILES
 src/SERVER_FILES
+src/SDK_EXCLUDE_FILES
 Makefile.in
 configure
 m4

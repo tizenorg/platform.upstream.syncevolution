@@ -1032,6 +1032,9 @@ bool TPluginApiDS::dsFilteredFetchesFromDB(bool aFilterChanged)
 localstatus TPluginApiDS::apiReadSyncSet(bool aNeedAll)
 {
 	TSyError dberr=LOCERR_OK;
+  #ifdef SYDEBUG
+  string ts1,ts2;
+  #endif
 
   #ifdef BASED_ON_BINFILE_CLIENT
   if (binfileDSActive()) {
@@ -1052,12 +1055,13 @@ localstatus TPluginApiDS::apiReadSyncSet(bool aNeedAll)
     else if (dberr==LOCERR_NOTIMP)
       dberr=LOCERR_OK; // we just don't have a data plugin, that's ok, inherited (SQL) will handle data
     if (dberr!=LOCERR_OK)
-      return dberr;
+    	goto endread;
   } // binfile active
   #endif // BASED_ON_BINFILE_CLIENT
   #ifndef SDK_ONLY_SUPPORT
   // only handle here if we are in charge - otherwise let ancestor handle it
-  if (!fDBApi_Data.Created()) return inherited::apiReadSyncSet(aNeedAll);
+  if (!fDBApi_Data.Created())
+  	return inherited::apiReadSyncSet(aNeedAll);
   #endif
 
   // just let plugin know if we want data (if it actually does is the plugin's choice)
@@ -1078,14 +1082,15 @@ localstatus TPluginApiDS::apiReadSyncSet(bool aNeedAll)
   fParentKey.erase();
   fWriting=false;
   fPluginAgentP->fScriptContextDatastore=this;
-  if (!TScriptContext::executeTest(true,fScriptContextP,fPluginDSConfigP->fFieldMappings.fInitScript,fPluginDSConfigP->getDSFuncTableP(),fPluginAgentP))
-    SYSYNC_THROW(TSyncException("<initscript> failed"));
+  if (!TScriptContext::executeTest(true,fScriptContextP,fPluginDSConfigP->fFieldMappings.fInitScript,fPluginDSConfigP->getDSFuncTableP(),fPluginAgentP)) {
+  	PDEBUGPRINTFX(DBG_ERROR,("<initscript> failed"));
+    goto endread;
+  }
   #endif
   // start reading
   // - read list of all local IDs that are in the current sync set
   DeleteSyncSet();
   #ifdef SYDEBUG
-  string ts1,ts2;
   StringObjTimestamp(ts1,getPreviousToRemoteSyncCmpRef());
   StringObjTimestamp(ts2,getPreviousSuspendCmpRef());
   PDEBUGPRINTFX(DBG_DATA,(
@@ -1096,8 +1101,10 @@ localstatus TPluginApiDS::apiReadSyncSet(bool aNeedAll)
   #endif
   // start the reading phase anyway (to make sure call order is always StartRead/EndRead/StartWrite/EndWrite)
   dberr = fDBApi_Data.StartDataRead(fPreviousToRemoteSyncIdentifier.c_str(),fPreviousSuspendIdentifier.c_str());
-  if (dberr!=LOCERR_OK)
-    SYSYNC_THROW(TSyncException("DBapi::StartDataRead fatal error",dberr));
+  if (dberr!=LOCERR_OK) {
+  	PDEBUGPRINTFX(DBG_ERROR,("DBapi::StartDataRead fatal error: %hd",dberr));
+    goto endread;
+  }
   // we don't need to load the syncset if we are only refreshing from remote
   // but we also must load it if we can't zap without it on slow refresh
   if (!fRefreshOnly || (fSlowSync && apiNeedSyncSetToZap()) || implNeedSyncSetToRetrieve()) {
@@ -1158,8 +1165,13 @@ localstatus TPluginApiDS::apiReadSyncSet(bool aNeedAll)
         #else
         return LOCERR_WRONGUSAGE; // completely wrong usage - should never happen as compatibility is tested at module connect
         #endif
-        if (dberr!=LOCERR_OK)
-          SYSYNC_THROW(TSyncException("DBapi::ReadNextItem fatal error",dberr));
+        if (dberr!=LOCERR_OK) {
+          PDEBUGPRINTFX(DBG_ERROR,("DBapi::ReadNextItem fatal error = %hd",dberr));
+		      #if defined(DBAPI_ASKEYITEMS) && defined(ENGINEINTERFACE_SUPPORT)
+          if (mfitemP) delete mfitemP;
+          #endif
+          goto endread;
+        }
         // check if we have seen all items
         if (itemstatus==ReadNextItem_EOF)
           break;
@@ -1225,6 +1237,7 @@ localstatus TPluginApiDS::apiReadSyncSet(bool aNeedAll)
       dberr=LOCERR_EXCEPTION;
     SYSYNC_ENDCATCH
   } // if we need the syncset at all
+endread:
   // then end read here
   if (dberr==LOCERR_OK) {
     dberr=fDBApi_Data.EndDataRead();
@@ -1397,8 +1410,10 @@ localstatus TPluginApiDS::apiAddItem(TMultiFieldItem &aItem, string &aLocalID)
     fInserting=true;
     fDeleting=false;
     fPluginAgentP->fScriptContextDatastore=this;
-    if (!TScriptContext::execute(fScriptContextP,fPluginDSConfigP->fFieldMappings.fAfterWriteScript,fPluginDSConfigP->getDSFuncTableP(),fPluginAgentP,&aItem,true))
-      SYSYNC_THROW(TSyncException("<afterwritescript> failed"));
+    if (!TScriptContext::execute(fScriptContextP,fPluginDSConfigP->fFieldMappings.fAfterWriteScript,fPluginDSConfigP->getDSFuncTableP(),fPluginAgentP,&aItem,true)) {
+      PDEBUGPRINTFX(DBG_ERROR,("<afterwritescript> failed"));
+      dberr = LOCERR_WRONGUSAGE;
+    }
     #endif
   }
   // return status
@@ -1500,8 +1515,10 @@ localstatus TPluginApiDS::apiUpdateItem(TMultiFieldItem &aItem)
     fInserting=false;
     fDeleting=false;
     fPluginAgentP->fScriptContextDatastore=this;
-    if (!TScriptContext::execute(fScriptContextP,fPluginDSConfigP->fFieldMappings.fAfterWriteScript,fPluginDSConfigP->getDSFuncTableP(),fPluginAgentP,&aItem,true))
-      SYSYNC_THROW(TSyncException("<afterwritescript> failed"));
+    if (!TScriptContext::execute(fScriptContextP,fPluginDSConfigP->fFieldMappings.fAfterWriteScript,fPluginDSConfigP->getDSFuncTableP(),fPluginAgentP,&aItem,true)) {
+      PDEBUGPRINTFX(DBG_ERROR,("<afterwritescript> failed"));
+      dberr = LOCERR_WRONGUSAGE;
+    }
     #endif
   }
   // return status
@@ -1529,8 +1546,10 @@ localstatus TPluginApiDS::apiDeleteItem(TMultiFieldItem &aItem)
     fInserting=false;
     fDeleting=true;
     fPluginAgentP->fScriptContextDatastore=this;
-    if (!TScriptContext::execute(fScriptContextP,fPluginDSConfigP->fFieldMappings.fAfterWriteScript,fPluginDSConfigP->getDSFuncTableP(),fPluginAgentP,&aItem,true))
-      SYSYNC_THROW(TSyncException("<afterwritescript> failed"));
+    if (!TScriptContext::execute(fScriptContextP,fPluginDSConfigP->fFieldMappings.fAfterWriteScript,fPluginDSConfigP->getDSFuncTableP(),fPluginAgentP,&aItem,true)) {
+      PDEBUGPRINTFX(DBG_ERROR,("<afterwritescript> failed"));
+      dberr = LOCERR_WRONGUSAGE;
+    }
     #endif
   } // if
 
@@ -1988,7 +2007,7 @@ localstatus TPluginApiDS::apiLoadAdminData(
 
   const char* PIStored = "PIStored"; // blob name field
 
-  TSyError err= LOCERR_OK;
+  TSyError err = LOCERR_OK;
 
   // In any case - this is the time to create the contexts for the datastore
   // - admin if selected

@@ -50,6 +50,7 @@ void TEngineServerCommConfig::clear(void)
   // init defaults
   fSessionIDCGIPrefix = "sessionid=";
   fSessionIDCGI = true;
+  fBuffersRetryAnswer = false; // we don't know if the app driving the engine implements this, so default is off
   // clear inherited  
   inherited::clear();
 } // TEngineServerCommConfig::clear
@@ -61,6 +62,8 @@ void TEngineServerCommConfig::clear(void)
 bool TEngineServerCommConfig::localStartElement(const char *aElementName, const char **aAttributes, sInt32 aLine)
 {
   // checking the elements
+  if (strucmp(aElementName,"buffersretryanswer")==0)
+    expectBool(fBuffersRetryAnswer);
   if (strucmp(aElementName,"sessionidcgiprefix")==0)
     expectString(fSessionIDCGIPrefix);
   if (strucmp(aElementName,"sessionidcgi")==0)
@@ -130,7 +133,18 @@ Ret_t TEngineSessionDispatch::StartMessage(
 } // TEngineSessionDispatch::StartMessage
 
 
-// - combine URI and session ID to make a RespURI according to transport
+
+
+// Test if message buffering is available
+bool TEngineSessionDispatch::canBufferRetryAnswer(void)
+{
+  // basically, we can buffer, we do it if configured
+  return dynamic_cast<TEngineServerCommConfig *>(getRootConfig()->fCommConfigP)->fBuffersRetryAnswer;
+} // TEngineSessionDispatch::canBufferRetryAnswer
+
+
+
+// Combine URI and session ID to make a RespURI according to transport
 void TEngineSessionDispatch::generateRespURI(
   string &aRespURI,
   cAppCharP aLocalURI,

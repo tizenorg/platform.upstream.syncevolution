@@ -2270,6 +2270,7 @@ bool TSyncOpCommand::execute(void)
   localstatus sta;
   TSyncOpCommand *incompleteCmdP;
   bool queueforlater,processitem;
+  bool nostatus;
   SmlItemListPtr_t tobequeueditems=NULL;
 
   SYSYNC_TRY {
@@ -2292,6 +2293,7 @@ bool TSyncOpCommand::execute(void)
     while (*itemnodePP) {
       queueforlater=false; // do no queue by default
       processitem=true; // process by default
+      nostatus=false; // set to true if someone else is responsible for updating fLastItemStatus
       thisitemnode = *itemnodePP;
       // no result nor status so far
       statusCmdP=NULL;
@@ -2531,7 +2533,10 @@ bool TSyncOpCommand::execute(void)
               // - first remove global link to it to avoid recursion
               fSessionP->fIncompleteDataCommandP=NULL;
               // - execute now (and pass ownership)
-              //   issues appropriate statuses
+              //   issues appropriate statuses, so we don't need to deal with it;
+              //   in fact, we must not touch fLastItemStatus because we don't
+              //   know the status
+              nostatus=true;
               fSessionP->process(incompleteCmdP);
               // - this item is processed now, continue in loop if there are more items
               processitem=false; // do not process the item normally
@@ -2628,7 +2633,7 @@ bool TSyncOpCommand::execute(void)
         // item processed
         // - remember status (final only) for possible suspend and resume
         sta= statusCmdP ? statusCmdP->getStatusCode() : 0;
-        if (sta!=213) {
+        if (!nostatus && sta!=213) {
           // final status received, save it for possible resend
           fDataStoreP->fLastItemStatus = sta;
           // but forget data stored at DS level

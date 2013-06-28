@@ -51,7 +51,9 @@ extern "C" {
 
 // utilities
 #include "sysync_utils.h"
+#ifdef SYSYNC_ENGINE
 #include "stringutils.h"
+#endif
 #include "lineartime.h"
 #include "iso8601.h"
 #include "debuglogger.h"

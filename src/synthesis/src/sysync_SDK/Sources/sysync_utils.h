@@ -19,7 +19,9 @@
 // include external utils in separate files
 #include "sysync_b64.h"
 #include "sysync_md5.h"
-#include "stringutils.h"
+#ifndef SYSYNC_ENGINE
+#include "stringutil.h"
+#endif
 #include "lineartime.h"
 #include "iso8601.h"
 

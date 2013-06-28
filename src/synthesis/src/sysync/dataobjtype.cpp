@@ -503,7 +503,7 @@ void TDataObjType::generateData(TLocalEngineDS *aDatastoreP, TMultiFieldItem &aI
             else if (strucmp( enc.c_str(),"base64" )==0) {
               char*        bb= b64::encode( (uInt8*)ptr,size );
               v=           bb;   // maybe one copy operation can be avoided in future
-              sysync_free( bb ); // does never contain '\0' => can be treated as normal string
+              b64::free( bb ); // does never contain '\0' => can be treated as normal string
             }
             else if (strucmp( enc.c_str(),"quoted-printable")==0) {
               sysync::appendEncoded( (uInt8*)ptr,size, v, enc_quoted_printable,
@@ -853,7 +853,7 @@ bool TDataObjType::parseData(const char *aText, stringSize aSize, TMultiFieldIte
                       uInt32 oLen;
                       uInt8*               bb= b64::decode( value.c_str(), 0, &oLen );
                       fieldP->setAsString( (const char*)bb, oLen ); // assign the value
-                      sysync_free        ( bb );
+                      b64::free        ( bb );
                       break; // already done now (blob assigned correctly
                     }
                     else if (strucmp( enc.c_str(),"quoted-printable")==0) {

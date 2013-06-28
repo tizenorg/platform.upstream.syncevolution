@@ -1297,19 +1297,29 @@ bool TStdLogicDS::logicProcessRemoteItem(
           case sop_add :
             if (sta==418) {
               // 418: item already exists, this is kind of a conflict
-              // (should not happen normally, but can happen if aborted session was not
-              // completely rolled back by server, so treat it like
-              // "conflict resolved by client data winning")
-              PDEBUGPRINTFX(DBG_DATA,("to-be-added item already exists, and incomplete rollbacks in server possible -> trying replace (=conflict resolved by client winning)"));
-              // - switch to replace
-              syncitemP->setSyncOp(sop_replace);
-              irregular=true;
-              // - process again
-              if (implProcessItem(syncitemP,aStatusCommand)) {
-                aStatusCommand.setStatusCode(208); // client has won
+              if (isResuming() || fIgnoreUpdate || IS_CLIENT) {
+              	// - in a client, this should not happen (prevented via checking against pending maps before
+                //   this routine is called) - if it still does just report the status back
+              	// - in a resume, this can happen and the add should be ignored (se we return the status 418)
+                // - if updates are to be ignored, don't try update instead (and report 418)
+                // --> just return the status as-is
               }
               else {
-                sta = aStatusCommand.getStatusCode();
+                // in normal sync in the server case, this can happen when a previous session
+                // was aborted (and already applied adds not rolled back)
+                // --> reprocess it as a replace
+                PDEBUGPRINTFX(DBG_DATA,("to-be-added item already exists -> trying replace (=conflict resolved by client winning)"));
+                // - switch to replace
+                syncitemP->setSyncOp(sop_replace);
+                irregular=true;
+                // - process again
+                if (implProcessItem(syncitemP,aStatusCommand)) {
+                  aStatusCommand.setStatusCode(208); // client has won
+                }
+                else {
+                  // failed, return status
+                  sta = aStatusCommand.getStatusCode();
+                }
               }
             }
             break;

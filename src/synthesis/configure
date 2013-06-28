@@ -21285,11 +21285,8 @@ fi
 
 # Disable unconditionally at the moment. Would add dependency of SDK
 # on SyncML Toolkit.
-
-cat >>confdefs.h <<\_ACEOF
-#define WITHOUT_SAN_1_1 1
-_ACEOF
-
+#AC_DEFINE(WITHOUT_SAN_1_1, 1,
+#          [support for Server Alerted Notifications according to SyncML 1.1])
 
 ac_config_files="$ac_config_files Makefile src/Makefile synthesis.pc synthesis-sdk.pc"
 

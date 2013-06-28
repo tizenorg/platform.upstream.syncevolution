@@ -102,13 +102,14 @@ namespace sysync {
 #define SYSER_PRODCODE_CLIENT_LIB_DEMO    	27 // All DEMO Libraries
 
 
-// - Server product flags (no flags -> only XPT version allowed)
+// - Client product flags (no flags -> only XPT version allowed)
 #define SYSER_PRODFLAG_CLIENT_DMU 0x01 // DMU enabled
+#define SYSER_PRODFLAG_CLIENT_APP 0x02 // App enabled (not only library)
 
 
 // Servers
 
-// - Server Libraries
+// - Server (=usually unified server+client) Libraries
 #define SYSER_PRODCODE_SERVER_LIB_WIN32   	39 // Win32 ODBC PRO
 #define SYSER_PRODCODE_SERVER_LIB_MACOSX  	29 // for Mac OS X
 #define SYSER_PRODCODE_SERVER_LIB_LINUX   	30 // for Linux

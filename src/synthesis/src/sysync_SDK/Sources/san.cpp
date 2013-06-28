@@ -75,6 +75,8 @@ digest= H(B64(H(server-identifier:password)):nonce:B64(H(notification)))
 
 
 const uInt16 SyncML12 = 12;   // currently supported SyncML version
+const uInt16 SyncML11 = 11;   // currently supported SyncML version
+const uInt16 SyncML10 = 10;   // currently supported SyncML version
 
 #pragma options align= packed // allow direct mapping of the structure
 
@@ -107,7 +109,6 @@ struct TBody {
 
 
 // ---- defined locally for the moment to avoid dependencies ----
-// - sysync_free replaced by free
 //
 // MD5 and B64 given string
 static void MD5B64_Local(const char *aString, sInt32 aLen, string &aMD5B64)
@@ -126,7 +127,7 @@ static void MD5B64_Local(const char *aString, sInt32 aLen, string &aMD5B64)
   // assign result
   aMD5B64.assign(b64md5,b64md5len);
   // done
-  /*sysync_*/free(b64md5); // return buffer allocated by b64::encode
+  b64::free(b64md5); // return buffer allocated by b64::encode
 } // MD5B64_Local
 
 
@@ -490,7 +491,7 @@ TSyError SanPackage::Check_11( void* san, size_t sanSize )
 
   // struct assignment / 1k buffer
   sIOpts.encoding       = SML_WBXML; // it is always WBXML
-  sIOpts.workspaceSize  = 1024;      // should be always sufficient
+  sIOpts.workspaceSize  = 1024*30;      // should be always sufficient
   sIOpts.maxOutgoingSize=    0;      // disabled for now
 
   err=   smlInitInstance( &scb, &sIOpts, this, &id );  if (err) return err;
@@ -510,23 +511,25 @@ TSyError SanPackage::Check_11( void* san, size_t sanSize )
 #endif // WITHOUT_SAN_1_1
 
 
-TSyError SanPackage::PassSan( void* san, size_t sanSize )
+TSyError SanPackage::PassSan( void* san, size_t sanSize, int mode)
 {
-  TSyError err;
+  TSyError err = LOCERR_OK;
   bool     use_as_12= true;
 
   ReleasePackage();
 //printf( "here we will have the potential 1.1 -> 1.2 conversion\n" );
 
   #ifndef WITHOUT_SAN_1_1
-               err= Check_11  ( san,sanSize );
-    if (!err)  err= GetPackage( san,sanSize );
-  //use_as_12= err==SML_ERR_XLT_INCOMP_WBXML_VERS;
-    use_as_12= err!=0;
-  //printf( "err=%d\n", err );
-  #endif
+  if (mode == 0 || mode == 1) {
+      err= Check_11  ( san,sanSize );
+      if (!err)  err= GetPackage( san,sanSize );
+      //use_as_12= err==SML_ERR_XLT_INCOMP_WBXML_VERS;
+      use_as_12= err!=0;
+      //printf( "err=%d\n", err );
+  }
+#endif
 
-  if (use_as_12) {
+  if (use_as_12 && mode !=1) {
     err= DB_Full;
 
         fSan=   malloc( sanSize );
@@ -597,8 +600,10 @@ TSyError SanPackage::GetNthSync( int    nth,
   fInitiator      = (Initiator)GetBits( tp->bitField, 12, 1 );
   fSessionID      =            GetBits( tp->bitField, 40,16 );
 
-  // that's the joke, it's no longer forbidden !
-//if (fProtocolVersion!=SyncML12) return DB_Forbidden;
+  /*If the version does not match, this should be an invalid SAN message*/
+  if (fProtocolVersion!=SyncML12 &&
+      fProtocolVersion!=SyncML11 &&
+      fProtocolVersion!=SyncML10) return DB_Forbidden;
 
   byte* b= (byte*)(tp+1);
   byte* v;
@@ -689,6 +694,132 @@ void SanPackage::ReleasePackage() {
   if (fSan!=NULL) { free( fSan ); fSan= NULL; }
 } // ReleasePackage
 
+#ifndef WITHOUT_SAN_1_1
+
+const char * const SyncMLVerProtoNames[] = 
+{
+    "undefined",
+    "SyncML/1.0",
+    "SyncML/1.1",
+    "SyncML/1.2"
+};
+
+const char *const SyncMLVerDTDNames[] =
+{
+    "???",
+    "1.0",
+    "1.1",
+    "1.2"
+};
+
+const SmlVersion_t SmlVersionCodes[] =
+{
+    SML_VERS_UNDEF,
+    SML_VERS_1_0,
+    SML_VERS_1_1,
+    SML_VERS_1_1
+};
+
+TSyError SanPackage::GetPackageLegacy( void* &san,
+                                       size_t &sanSize,
+                                       const vector<pair <string, string> >& sources,
+                                       int alertCode,
+                                       bool wbxml)
+{
+  ReleasePackage(); // remove a previous one
+  TSyError err;
+  SmlCallbacks_t       scb= mySmlCallbacks;
+  SmlInstanceOptions_t sIOpts;
+  InstanceID_t         id;
+
+
+  // struct assignment / 1k buffer
+  sIOpts.encoding       = wbxml ? SML_WBXML : SML_XML;
+  sIOpts.workspaceSize  = 1024;      // should be always sufficient
+  sIOpts.maxOutgoingSize=    0;      // disabled for now
+
+  err=   smlInitInstance( &scb, &sIOpts, this, &id );  if (err) return err;
+
+  SmlSyncHdrPtr_t headerP = NULL;
+  SmlAlertPtr_t alertP = NULL;
+
+  do {
+    SYSYNC_TRY{
+      //create SyncHdr
+      headerP = SML_NEW (SmlSyncHdr_t);
+      headerP->elementType = SML_PE_HEADER;
+      if (fProtocolVersion != 10 && fProtocolVersion != 11){
+          //wrong version!
+          err = DB_Error;
+          break;
+      }
+      int version = fProtocolVersion - 10 + 1;
+      headerP->version = newPCDataString (SyncMLVerDTDNames[version]);
+      headerP->proto = newPCDataString (SyncMLVerProtoNames[version]);
+      headerP->sessionID = newPCDataLong (fSessionID);
+      headerP->msgID = newPCDataString ("1");
+      headerP->target = newLocation ("/", "");
+      headerP->source = newLocation (fServerID.c_str(), "");
+      headerP->respURI = NULL;
+      headerP->meta = NULL;
+      headerP->flags = 0;
+      //TODO generate the cred element for authentication
+      headerP->cred = NULL;
+
+      //create SyncMessage
+      err = smlStartMessageExt (id, headerP, SmlVersionCodes[version]); if (err) break;
+      //create Alert Commands
+      //internal Alert element 
+      alertP = SML_NEW (SmlAlert_t);
+      alertP->elementType = SML_PE_ALERT;
+      alertP->cmdID = newPCDataLong(1);
+      alertP->flags = 0;
+      alertP->data = newPCDataLong (alertCode);
+      alertP->cred = NULL;
+      alertP->itemList = NULL;
+      alertP->flags = 0;
+
+      //for each source, add a item
+      for (unsigned int num =0; num < sources.size(); num++) {
+          SmlItemPtr_t alertItemP = newItem();
+          alertItemP->source = newOptLocation (sources[num].second.c_str());
+          alertItemP->meta = newMetaType (sources[num].first.c_str());
+          addItemToList (alertItemP, &alertP->itemList);
+      }
+
+      err = smlAlertCmd (id, alertP); if (err) break;
+      err = smlEndMessage (id, true); if (err) break;
+
+      MemPtr_t buf = NULL;
+      err = smlLockReadBuffer (id, (MemPtr_t *) &buf, (MemSize_t *)&sanSize); if (err) break;
+      fSan          = malloc( sanSize ); if (!fSan) {err = DB_Full; break;}
+      san = fSan;
+      memcpy (san, buf, sanSize);
+      err = smlUnlockReadBuffer (id, sanSize); if (err) break;
+      } SYSYNC_CATCH (...)
+      if  (headerP) {
+          smlFreeProtoElement (headerP);
+          headerP = NULL;
+      }
+      if (alertP) {
+          smlFreeProtoElement (alertP);
+          alertP = NULL;
+      }
+      err = DB_Full;
+      SYSYNC_ENDCATCH
+  } while (false);
+  if  (headerP) {
+      smlFreeProtoElement (headerP);
+  }
+  if (alertP) {
+      smlFreeProtoElement (alertP);
+  }
+  if (err) return err;
+
+  err = smlTerminateInstance( id );
+  return err;
+}
+#endif
 
 } // namespace sysync
 

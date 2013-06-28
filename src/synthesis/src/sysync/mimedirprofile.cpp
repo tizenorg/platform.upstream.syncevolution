@@ -1923,7 +1923,7 @@ static void decodeValue(
     uInt32 binsz=0;
     uInt8 *binP = b64::decode(p, q-p, &binsz);
     aVal.append((const char *)binP,binsz);
-    sysync_free(binP);
+    b64::free(binP);
     // - continue at next char after b64 value
     p=q;
   }
@@ -3598,19 +3598,20 @@ bool TMimeDirProfileHandler::parseProperty(
   TEncodingTypes encoding;
   TCharSets charset;
   // field storage info vars, defaults are used if property has no TPropNameExtension
-  sInt16 baseoffset=0;
-  sInt16 repoffset=0;
-  sInt16 maxrep=1; // no repeat by default
-  sInt16 repinc=1; // inc by 1
-  sInt16 repid=-1; // invalid by default
-  bool overwriteempty=false; // do not overwrite empty values by default
+  sInt16 baseoffset = 0;
+  sInt16 repoffset = 0;
+  sInt16 maxrep = 1; // no repeat by default
+  sInt16 repinc = 1; // inc by 1
+  sInt16 repid = -1; // invalid by default
+  bool overwriteempty = false; // do not overwrite empty values by default
+  bool repoffsByGroup = false;    
 
   // init
-  encoding=enc_none; // no encoding by default
-  charset=aMimeMode==mimo_standard ? chs_utf8 : fDefaultInCharset; // always UTF8 for real MIME-DIR (same as enclosing SyncML doc), for mimo_old depends on <inputcharset> remote rule option (normally UTF-8)
-  nameextmap=0; // no name extensions detected so far
-  fieldoffsetfound=(aPropP->nameExts==NULL); // no first pass needed at all w/o nameExts, just use offs=0
-  valuelist=aPropP->valuelist; // cache flag
+  encoding = enc_none; // no encoding by default
+  charset = aMimeMode==mimo_standard ? chs_utf8 : fDefaultInCharset; // always UTF8 for real MIME-DIR (same as enclosing SyncML doc), for mimo_old depends on <inputcharset> remote rule option (normally UTF-8)
+  nameextmap = 0; // no name extensions detected so far
+  fieldoffsetfound = (aPropP->nameExts==NULL); // no first pass needed at all w/o nameExts, just use offs=0
+  valuelist = aPropP->valuelist; // cache flag
   // scan parameter list
   do {
     p=aText;
@@ -3805,8 +3806,8 @@ bool TMimeDirProfileHandler::parseProperty(
     //   an entry in the nameexts list
     TPropNameExtension *propnameextP = aPropP->nameExts;
     if (propnameextP) {
-      bool dostore=false;
-      bool repoffsByGroup = false;
+    	repoffsByGroup = false;
+      bool dostore = false;
       while (propnameextP) {
         // check if entry matches parsed extendsname param values
         if (
@@ -3841,7 +3842,8 @@ bool TMimeDirProfileHandler::parseProperty(
                 if (someGroups) {
                   // don't use repetitions already used by SOME of the fields in the group
                   // for auto-assigning new groups (or ungrouped occurrences)
-                  if (aRepArray[repid]<n+1) aRepArray[repid] = n+1;
+                  if (aRepArray[repid]<n+1)
+                  	aRepArray[repid] = n+1;
                 }
                 // check if group matches (only if there is a group at all)
                 g_fldP->getAsString(s);
@@ -3969,7 +3971,8 @@ bool TMimeDirProfileHandler::parseProperty(
       // update repeat offset and repeat count if this is a value list
       if (valuelist && convDef->combineSep==0 && (notempty || !overwriteempty)) {
         // - update count for every non-empty value (for empty values only if overwriteempty is not set)
-        if (repid>=0) aRepArray[repid]++; // next repetition
+        if (repid>=0)
+        	aRepArray[repid]++; // next repetition
         repoffset+=repinc; // also update repeat offset
       }
     }
@@ -3995,11 +3998,13 @@ bool TMimeDirProfileHandler::parseProperty(
       }
     }    
   }
-  if (!valuelist && repid>=0 && (notempty || !overwriteempty)) {
+  if (!valuelist && repid>=0 && (notempty || !overwriteempty) && !repoffsByGroup) {
     // we have used this repetition and actually stored values, so count it now
     // (unless we have stored an empty value only and overwriteempty is true, in
     // this case we don't increment, so next value found for this repetition will
     // overwrite empty value
+    // Also, if repeat offset was found by group name, don't increment (aRepArray
+    // is already updated in this case)
     aRepArray[repid]++;
   }
   // update read pointer past end of what we've scanned (but not necessarily up

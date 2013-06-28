@@ -96,8 +96,11 @@ public:
   TEngineServerCommConfig(TConfigElement *aParentElementP);
   virtual ~TEngineServerCommConfig();
   // config vars
+  // - session ID CGI config
   bool fSessionIDCGI;
   string fSessionIDCGIPrefix;
+  // - indicates transport can buffer answer to client until next client response, so it can be resent in case we detect a client resend.
+  bool fBuffersRetryAnswer;
 protected:
   // check config elements
   #ifndef HARDCODED_CONFIG
@@ -151,7 +154,9 @@ public:
   );
   // - Handle exception happening while decoding commands for a session
   virtual Ret_t HandleDecodingException(TSyncSession *aSessionP, const char *aRoutine, exception *aExceptionP);
-  // - combine URI and session ID to make a RespURI according to transport
+  // test if message buffering is available
+  virtual bool canBufferRetryAnswer(void);
+  // combine URI and session ID to make a RespURI according to transport
   virtual void generateRespURI(
     string &aRespURI,
     cAppCharP aLocalURI,

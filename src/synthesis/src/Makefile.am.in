@@ -116,8 +116,16 @@ libsynthesissdk_la_SOURCES += @LIBSYNTHESISSDK_SOURCES_BOTH@
 endif
 libsynthesissdk_la_CPPFLAGS = \
 	-D_GNU_SOURCE=1 \
+	-include $(top_builddir)/config.h \
+	-I$(srcdir)/Targets/ReleasedProducts/SDK \
 	-I$(srcdir)/sysync_SDK/Sources \
-	-I$(srcdir)/Targets/ReleasedProducts/SDK
+	-I$(srcdir)/platform_adapters/linux/ \
+	-I$(srcdir)/platform_adapters/unix_common/ \
+	-I$(srcdir)/platform_adapters/ \
+	-I$(srcdir)/sysync/ \
+	-I$(srcdir)/syncml_tk/src/sml/inc/ \
+	-I$(srcdir)/syncml_tk/src/sml/lib/inc/ \
+	-I$(srcdir)/syncml_tk/src/sml/mgr/inc/ 
 
 libsynthesisstubs_la_LDFLAGS = -static
 libsynthesisstubs_la_SOURCES = sysync_SDK/Sources/enginestubs.c

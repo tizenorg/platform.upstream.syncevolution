@@ -24,7 +24,7 @@
 #ifdef __cplusplus
   #include <string>      // STL includes
   #include <list>
-
+  #include <vector>
   using namespace std;
 #endif
 
@@ -69,6 +69,11 @@ enum Initiator {
  *
  *     4) Create the SAN package with 'GetPackage'.
  *        A vendor specific record can be added, if required.
+ *
+ * How to create a Legacy SAN package (server side SAN 1.0/1.1):
+ *    1) Prepare the SAN package using 'PreparePackage'
+ *    2) Call 'CreateEmptyNotificationBody' (not needed 1st time) and
+ *    3) Create the SAN package with 'GetPackageLegacy'.
  *
  *--------------------------------------------------------------------
  *  How to check a SAN package (on client side):
@@ -132,7 +137,7 @@ class SanPackage {
     TSyError AddSync( int syncType, uInt32 contentType, const char* serverURI );
 
 
-    /*! Get the SAN package
+    /*! Get the SAN package for v1.2
      *
      *  (out)
      *  @param  <san>                get the pointer to the SAN message.
@@ -151,6 +156,29 @@ class SanPackage {
                          void*  vendorSpecific= NULL,
                          size_t vendorSpecificSize= 0 );
 
+#ifndef WITHOUT_SAN_1_1
+    /*! Get the SAN package for v1.1/v1.0
+     *
+     *  (out)
+     *  @param  <san>                get the pointer to the SAN message.
+     *  @param  <sanSize>            get the SAN message size (in bytes).
+     *
+     *  (in)
+     *  @param  <sources>            vector of alerted sources
+     *  @param  <alertCode>          the synchronization mode
+     *  @param  <wbxml>              use wbxml or plain xml
+     *
+     *  @return error code           if operation can't be performed
+     *
+     *  NOTE: The notification body will be added automatically
+     *
+     */
+    TSyError GetPackageLegacy( void* &san,
+                               size_t &sanSize,
+                               const vector<pair <string, string> > &sources,
+                               int alertCode,
+                               bool wbxml = true);
+#endif
 
     /*! Create the digest for the SAN package:
      *  digest= H(B64(H(server-identifier:password)):nonce:B64(H(notification)))
@@ -173,8 +201,13 @@ class SanPackage {
 
     /*! Pass SAN message <san>,<sanSize> to object,
      *  a local copy will be kept then internally
+     *  (in)
+     *  @param  <san>          the pointer to the SAN message
+     *  @param  <sanSize>      the max. SAN message size (in bytes)
+     *  @param  <mode>         0|1|2, 0 tries both San 1.1 and 1.2, 1 tries only
+     *                         1.1 and 2 tries only 1.2
      */
-    TSyError PassSan( void* san, size_t sanSize );
+    TSyError PassSan( void* san, size_t sanSize , int mode = 0);
 
 
     /*! Get the effective size of an already created <san> message

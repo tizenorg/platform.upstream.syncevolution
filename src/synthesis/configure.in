@@ -161,8 +161,8 @@ AM_CONDITIONAL([COND_STATIC], [test "$enable_shared" = "no"])
 
 # Disable unconditionally at the moment. Would add dependency of SDK
 # on SyncML Toolkit.
-AC_DEFINE(WITHOUT_SAN_1_1, 1,
-          [support for Server Alerted Notifications according to SyncML 1.1])
+#AC_DEFINE(WITHOUT_SAN_1_1, 1,
+#          [support for Server Alerted Notifications according to SyncML 1.1])
 
 AC_CONFIG_FILES(Makefile src/Makefile synthesis.pc synthesis-sdk.pc)
 AC_OUTPUT

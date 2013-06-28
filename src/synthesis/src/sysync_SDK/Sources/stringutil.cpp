@@ -12,6 +12,7 @@
 
 #include "target_options.h"
 
+#ifndef WITHOUT_SAN_1_1
 
 #if defined __MACH__ && !defined __GNUC__ /* used for va_list support */
   #include <mw_stdarg.h>
@@ -239,10 +240,73 @@ sInt16 HexStrToUIntPtr( cAppCharP aStr, uIntPtr &aIntPtr, sInt16 aMaxDigits )
   #endif
 } // HexStrToUIntPtr
 
+// helper
+static bool isMinus(const char *&aStr, sInt16 &aNumRead)
+{
+  if (!aStr) return false; // not minus
+  if (*aStr=='-') {
+    aStr++;
+    aNumRead++;
+    return true; // is minus
+  }
+  else if (*aStr=='+') {
+    aStr++;
+    aNumRead++;
+  }
+  // is plus
+  return false;
+} // isMinus
+
+// returns number of successfully converted chars
+sInt16 StrToUShort( cAppCharP aStr, uInt16 &aShort, sInt16 aMaxDigits)
+{
+  // our own implementation
+  char c;
+  sInt16 n=0;
+  aShort=0;
+  while (aStr && (c=*aStr++) && (n<aMaxDigits)) {
+    if (!isdigit(c)) break;
+    aShort*=10;
+    aShort+=(c-0x30);
+    n++;
+  }
+  return n;
+} // StrToUShort
+
+// returns number of successfully converted chars
+sInt16 StrToULong(const char *aStr, uInt32 &aLong, sInt16 aMaxDigits)
+{
+  // our own implementation
+  char c;
+  sInt16 n=0;
+  aLong=0;
+  while (aStr && (c=*aStr++) && (n<aMaxDigits)) {
+    if (!isdigit(c)) break;
+    aLong*=10l;
+    aLong+=(c-0x30);
+    n++;
+  }
+  return n;
+} // StrToULong
+
+// returns number of successfully converted chars
+sInt16 StrToLong(const char *aStr, sInt32 &aLong, sInt16 aMaxDigits)
+{
+  // our own implementation
+  uInt32 temp;
+  sInt16 n=0;
+  bool neg=isMinus(aStr,n);
+  n+=StrToULong(aStr,temp,aMaxDigits-n);
+  if (neg) aLong=-(sInt32)temp;
+  else aLong=temp;
+  return n;
+} // StrToLong
+
 
 #ifdef __cplusplus
   } // namespace
 #endif
 
+#endif //WITHOUT_SAN_1_1
 /* eof */
 

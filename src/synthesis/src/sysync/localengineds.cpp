@@ -3721,8 +3721,6 @@ SmlDevInfDatastorePtr_t TLocalEngineDS::newDevInfDatastore(bool aAsServer, bool 
 {
   SmlDevInfDatastorePtr_t datastoreP;
 
-  // create new
-  datastoreP=SML_NEW(SmlDevInfDatastore_t);
   // set only basic info, details must be added in derived class
   // - sourceref is the name of the datastore,
   //   or for server, if already alerted, the name used in the alert
@@ -3731,7 +3729,13 @@ SmlDevInfDatastorePtr_t TLocalEngineDS::newDevInfDatastore(bool aAsServer, bool 
   string dotname;
   #ifdef SYSYNC_SERVER
   if (IS_SERVER && testState(dssta_serveralerted,false) && fSessionP->fDSPathInDevInf) {
-    // server and already alerted - use datastore spec as sent from remote, minus CGI, as relative spec
+    // server and already alerted
+    // - don't include sub-datastores
+    if (fAsSubDatastoreOf) {
+      return NULL;
+    }
+
+    // - use datastore spec as sent from remote, minus CGI, as relative spec
     dotname = URI_RELPREFIX;
     dotname += fSessionP->SessionRelativeURI(fRemoteViewOfLocalURI.c_str());
     if (!fSessionP->fDSCgiInDevInf) {
@@ -3747,6 +3751,9 @@ SmlDevInfDatastorePtr_t TLocalEngineDS::newDevInfDatastore(bool aAsServer, bool 
     // client or not yet alerted - just use datastore base name
     StringObjPrintf(dotname,URI_RELPREFIX "%s",fName.c_str());
   }
+
+  // create new
+  datastoreP=SML_NEW(SmlDevInfDatastore_t);
   datastoreP->sourceref=newPCDataString(dotname);
   #ifndef MINIMAL_CODE
   // - Optional display name
@@ -4131,10 +4138,17 @@ endchange:
 
 
 
-// test abort status, datastore is aborted also when session is just suspended
+// test datastore abort status
+// datastore is aborted when
+// - it was explicitly aborted (engAbortDataStoreSync() called, fAbortStatusCode set)
+// - session is suspending and the datastore has not yet completed sync up to sending
+//   maps (client) or admin already saved (server+client).
+//   If client has sent maps, all that MIGHT be missing would be map status, and
+//   if that hasn't arrived, the pendingMaps mechanism will make sure these get
+//   sent in the next session.
 bool TLocalEngineDS::isAborted(void)
 {
-  return fAbortStatusCode!=0 || fSessionP->isSuspending();
+  return fAbortStatusCode!=0 || (fSessionP->isSuspending() && !testState(dssta_clientmapssent));
 } // TLocalEngineDS::isAborted
 
 

@@ -34,29 +34,40 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-@ENABLE_GNOME_BLUETOOTH_PANEL_TRUE@am__append_1 = gnome-bluetooth
 EXTRA_PROGRAMS = $(am__EXEEXT_1) abort-redirect$(EXEEXT)
-TESTS = $(am__EXEEXT_2)
-bin_PROGRAMS = syncevolution$(EXEEXT) $(am__EXEEXT_2)
-@COND_DBUS_TRUE@libexec_PROGRAMS = syncevo-dbus-server$(EXEEXT)
-@ENABLE_MODULES_FALSE@am__append_2 = $(SYNCSOURCES)
-@ENABLE_MODULES_FALSE@am__append_3 = $(SYNCSOURCES)
-@ENABLE_MODULES_TRUE@am__append_4 = $(BACKEND_REGISTRIES)
-@ENABLE_MODULES_FALSE@am__append_5 = $(BACKEND_REGISTRIES)
+TESTS = $(am__EXEEXT_3)
+bin_PROGRAMS = $(am__EXEEXT_2) $(am__EXEEXT_3)
+libexec_PROGRAMS = $(am__EXEEXT_4)
+@COND_DBUS_TRUE@am__append_1 = gdbus
+@ENABLE_GNOME_BLUETOOTH_PANEL_TRUE@am__append_2 = gnome-bluetooth
+@COND_CORE_TRUE@am__append_3 = $(SYNTHESIS_SUBDIR) syncevo $(BACKENDS)
+@COND_CORE_TRUE@am__append_4 = syncevolution
+@COND_CORE_TRUE@am__append_5 = synccompare
+@COND_CORE_TRUE@am__append_6 = $(TEMPLATE_FILES)
+@COND_CORE_FALSE@am__append_7 = $(SYNTHESIS_SUBDIR_INCLUDES)
+@COND_GUI_TRUE@am__append_8 = dbus gtk-ui
+@COND_DBUS_TRUE@am__append_9 = syncevo-dbus-server
+@COND_DBUS_TRUE@am__append_10 = syncevo-http-server
+@COND_DBUS_TRUE@am__append_11 = $(SYNCEVO_DBUS_SERVER_SCRIPT)
+@ENABLE_MODULES_FALSE@am__append_12 = $(SYNCSOURCES)
+@ENABLE_MODULES_FALSE@am__append_13 = $(SYNCSOURCES)
+@ENABLE_MODULES_TRUE@am__append_14 = $(BACKEND_REGISTRIES)
+@ENABLE_MODULES_FALSE@am__append_15 = $(BACKEND_REGISTRIES)
+@COND_DBUS_TRUE@am__append_16 = gdbus/libgdbus.la
 
 # distribute test system?
 # yes: install client-test in bindir, test files in datadir
-@ENABLE_TESTING_TRUE@am__append_6 = client-test
-@ENABLE_TESTING_TRUE@am__append_7 = client-test
+@ENABLE_TESTING_TRUE@am__append_17 = client-test
+@ENABLE_TESTING_TRUE@am__append_18 = client-test
 # The "all" dependency causes a rebuild even if the actual input files
 # haven't changed. If client-test is part of the regular targets built
 # by "all", then it must not depend on all!
-@ENABLE_TESTING_FALSE@am__append_8 = client-test
-@ENABLE_TESTING_FALSE@am__append_9 = $(CLIENT_LIB_TEST_FILES)
-@ENABLE_TESTING_FALSE@am__append_10 = all
+@ENABLE_TESTING_FALSE@am__append_19 = client-test
+@ENABLE_TESTING_FALSE@am__append_20 = $(CLIENT_LIB_TEST_FILES)
+@ENABLE_TESTING_FALSE@am__append_21 = all
 subdir = src
 DIST_COMMON = $(am__nobase_dist_doc_DATA_DIST) \
-	$(nobase_dist_template_DATA) $(srcdir)/Makefile.am \
+	$(am__nobase_dist_template_DATA_DIST) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4-repo/ax_boost_base.m4 \
@@ -67,11 +78,15 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 @ENABLE_TESTING_FALSE@am__EXEEXT_1 = client-test$(EXEEXT)
-@ENABLE_TESTING_TRUE@am__EXEEXT_2 = client-test$(EXEEXT)
+@COND_CORE_TRUE@am__EXEEXT_2 = syncevolution$(EXEEXT)
+@ENABLE_TESTING_TRUE@am__EXEEXT_3 = client-test$(EXEEXT)
 am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(libexecdir)" \
-	"$(DESTDIR)$(bindir)" "$(DESTDIR)$(docdir)" \
-	"$(DESTDIR)$(templatedir)" "$(DESTDIR)$(servicedir)"
+	"$(DESTDIR)$(bindir)" "$(DESTDIR)$(libexecdir)" \
+	"$(DESTDIR)$(bindir)" "$(DESTDIR)$(autostartdir)" \
+	"$(DESTDIR)$(docdir)" "$(DESTDIR)$(templatedir)" \
+	"$(DESTDIR)$(servicedir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
+@COND_DBUS_TRUE@am__EXEEXT_4 = syncevo-dbus-server$(EXEEXT)
 libexecPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS) $(libexec_PROGRAMS)
 am_abort_redirect_OBJECTS = abort_redirect-abort-redirect.$(OBJEXT)
@@ -87,8 +102,8 @@ abort_redirect_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(abort_redirect_CXXFLAGS) $(CXXFLAGS) \
 	$(abort_redirect_LDFLAGS) $(LDFLAGS) -o $@
 am__client_test_SOURCES_DIST = client-test-app.cpp \
-	../test/ClientTest.cpp ../test/ClientTest.h \
-	../test/client-test-main.cpp \
+	CmdlineSyncClient.cpp ../test/ClientTest.cpp \
+	../test/ClientTest.h ../test/client-test-main.cpp \
 	backends/addressbook/AddressBookSourceRegister.cpp \
 	backends/evolution/EvolutionCalendarSourceRegister.cpp \
 	backends/evolution/EvolutionContactSourceRegister.cpp \
@@ -106,6 +121,7 @@ am__objects_1 = client_test-AddressBookSourceRegister.$(OBJEXT) \
 @ENABLE_MODULES_FALSE@am__objects_2 = $(am__objects_1)
 am__objects_3 = $(am__objects_2)
 am_client_test_OBJECTS = client_test-client-test-app.$(OBJEXT) \
+	client_test-CmdlineSyncClient.$(OBJEXT) \
 	client_test-ClientTest.$(OBJEXT) \
 	client_test-client-test-main.$(OBJEXT) $(am__objects_3)
 am__objects_4 =
@@ -173,7 +189,9 @@ syncevolution_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(syncevolution_CXXFLAGS) \
 	$(CXXFLAGS) $(syncevolution_LDFLAGS) $(LDFLAGS) -o $@
 binSCRIPT_INSTALL = $(INSTALL_SCRIPT)
-SCRIPTS = $(bin_SCRIPTS)
+libexecSCRIPT_INSTALL = $(INSTALL_SCRIPT)
+nodist_binSCRIPT_INSTALL = $(INSTALL_SCRIPT)
+SCRIPTS = $(bin_SCRIPTS) $(libexec_SCRIPTS) $(nodist_bin_SCRIPTS)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -210,9 +228,15 @@ RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	install-pdf-recursive install-ps-recursive install-recursive \
 	installcheck-recursive installdirs-recursive pdf-recursive \
 	ps-recursive uninstall-recursive
+am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
+am__vpath_adj = case $$p in \
+    $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
+    *) f=$$p;; \
+  esac;
+am__strip_dir = `echo $$p | sed -e 's|^.*/||'`;
+autostartDATA_INSTALL = $(INSTALL_DATA)
 am__nobase_dist_doc_DATA_DIST = testcases/lcs/file1.txt \
 	testcases/lcs/file2.txt \
-	testcases/templates/clients/default/template.ini \
 	testcases/templates/clients/SyncEvolution/sources/addressbook/config.ini \
 	testcases/templates/clients/SyncEvolution/sources/memo/config.ini \
 	testcases/templates/clients/SyncEvolution/sources/todo/config.ini \
@@ -230,17 +254,51 @@ am__nobase_dist_doc_DATA_DIST = testcases/lcs/file1.txt \
 	testcases/ical20.ics testcases/imemo20.ics \
 	testcases/itodo20.ics $(subst .patch,,$(subst \
 	$(srcdir)/../test/,,$(TEST_FILES_PATCHES)))
-am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
-am__vpath_adj = case $$p in \
-    $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
-    *) f=$$p;; \
-  esac;
-am__strip_dir = `echo $$p | sed -e 's|^.*/||'`;
 nobase_dist_docDATA_INSTALL = $(install_sh_DATA)
+am__nobase_dist_template_DATA_DIST = templates/README \
+	templates/servers/Funambol/config.ini \
+	templates/servers/Funambol/template.ini \
+	templates/servers/Funambol/sources/calendar/config.ini \
+	templates/servers/Funambol/sources/todo/config.ini \
+	templates/servers/Funambol/sources/addressbook/config.ini \
+	templates/servers/Funambol/sources/memo/config.ini \
+	templates/servers/ScheduleWorld/config.ini \
+	templates/servers/ScheduleWorld/template.ini \
+	templates/servers/ScheduleWorld/sources/calendar/config.ini \
+	templates/servers/ScheduleWorld/sources/todo/config.ini \
+	templates/servers/ScheduleWorld/sources/addressbook/config.ini \
+	templates/servers/ScheduleWorld/sources/memo/config.ini \
+	templates/clients/phone/nokia/S60/N85/config.ini \
+	templates/clients/phone/nokia/S60/N85/template.ini \
+	templates/clients/phone/nokia/S60/N85/sources/calendar/config.ini \
+	templates/clients/phone/nokia/S60/N85/sources/calendar+todo/config.ini \
+	templates/clients/phone/nokia/S60/N85/sources/todo/config.ini \
+	templates/clients/phone/nokia/S60/N85/sources/addressbook/config.ini \
+	templates/clients/phone/nokia/S60/N85/sources/memo/config.ini \
+	templates/clients/phone/nokia/maemo/n900/config.ini \
+	templates/clients/phone/nokia/maemo/n900/template.ini \
+	templates/clients/phone/nokia/maemo/n900/sources/calendar/config.ini \
+	templates/clients/phone/nokia/maemo/n900/sources/calendar+todo/config.ini \
+	templates/clients/phone/nokia/maemo/n900/sources/todo/config.ini \
+	templates/clients/phone/nokia/maemo/n900/sources/addressbook/config.ini \
+	templates/clients/phone/nokia/maemo/n900/sources/memo/config.ini \
+	templates/clients/phone/nokia/S40/7210c/config.ini \
+	templates/clients/phone/nokia/S40/7210c/template.ini \
+	templates/clients/phone/nokia/S40/7210c/sources/calendar/config.ini \
+	templates/clients/phone/nokia/S40/7210c/sources/calendar+todo/config.ini \
+	templates/clients/phone/nokia/S40/7210c/sources/todo/config.ini \
+	templates/clients/phone/nokia/S40/7210c/sources/addressbook/config.ini \
+	templates/clients/phone/nokia/S40/7210c/sources/memo/config.ini \
+	templates/clients/SyncEvolution/config.ini \
+	templates/clients/SyncEvolution/template.ini \
+	templates/clients/SyncEvolution/sources/calendar/config.ini \
+	templates/clients/SyncEvolution/sources/todo/config.ini \
+	templates/clients/SyncEvolution/sources/addressbook/config.ini \
+	templates/clients/SyncEvolution/sources/memo/config.ini
 nobase_dist_templateDATA_INSTALL = $(install_sh_DATA)
 serviceDATA_INSTALL = $(INSTALL_DATA)
-DATA = $(nobase_dist_doc_DATA) $(nobase_dist_template_DATA) \
-	$(service_DATA)
+DATA = $(autostart_DATA) $(nobase_dist_doc_DATA) \
+	$(nobase_dist_template_DATA) $(service_DATA)
 RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
   distclean-recursive maintainer-clean-recursive
 ETAGS = etags
@@ -345,6 +403,8 @@ LDFLAGS = @LDFLAGS@
 LIBEXECDIR = @LIBEXECDIR@
 LIBICAL_AVAILABLE_CFLAGS = @LIBICAL_AVAILABLE_CFLAGS@
 LIBICAL_AVAILABLE_LIBS = @LIBICAL_AVAILABLE_LIBS@
+LIBNOTIFY_CFLAGS = @LIBNOTIFY_CFLAGS@
+LIBNOTIFY_LIBS = @LIBNOTIFY_LIBS@
 LIBOBJS = @LIBOBJS@
 LIBOPENOBEX_CFLAGS = @LIBOPENOBEX_CFLAGS@
 LIBOPENOBEX_LIBS = @LIBOPENOBEX_LIBS@
@@ -363,6 +423,8 @@ MODIFY_SYNCCOMPARE = @MODIFY_SYNCCOMPARE@
 MSGFMT = @MSGFMT@
 MSGFMT_OPTS = @MSGFMT_OPTS@
 MSGMERGE = @MSGMERGE@
+MX_GTK_0_99_1_CFLAGS = @MX_GTK_0_99_1_CFLAGS@
+MX_GTK_0_99_1_LIBS = @MX_GTK_0_99_1_LIBS@
 NMEDIT = @NMEDIT@
 NSS_CFLAGS = @NSS_CFLAGS@
 NSS_LIBS = @NSS_LIBS@
@@ -388,7 +450,7 @@ SQLITE_LIBS = @SQLITE_LIBS@
 STABLE_VERSION = @STABLE_VERSION@
 STRIP = @STRIP@
 SYNCEVOLUTION_CXXFLAGS = @SYNCEVOLUTION_CXXFLAGS@
-SYNCEVOLUTION_LDADD = @SYNCEVOLUTION_LDADD@ $(am__append_2)
+SYNCEVOLUTION_LDADD = @SYNCEVOLUTION_LDADD@ $(am__append_12)
 SYNCEVOLUTION_LOCALEDIR = @SYNCEVOLUTION_LOCALEDIR@
 SYNCSOURCES = @SYNCSOURCES@
 SYNTHESIS = @SYNTHESIS@
@@ -400,6 +462,7 @@ SYNTHESIS_LIB = @SYNTHESIS_LIB@
 SYNTHESIS_LIBS = @SYNTHESIS_LIBS@
 SYNTHESIS_SRC = @SYNTHESIS_SRC@
 SYNTHESIS_SUBDIR = @SYNTHESIS_SUBDIR@
+SYNTHESIS_SUBDIR_INCLUDES = @SYNTHESIS_SUBDIR_INCLUDES@
 TRANSPORT_CFLAGS = @TRANSPORT_CFLAGS@
 TRANSPORT_LIBS = @TRANSPORT_LIBS@
 UNIQUE_CFLAGS = @UNIQUE_CFLAGS@
@@ -464,22 +527,35 @@ target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 BACKENDS = backends/addressbook backends/evolution backends/file backends/maemo backends/sqlite backends/xmlrpc
+
+# start with building nothing and add more targets below
+SUBDIRS = $(am__append_1) $(am__append_2) $(am__append_3) \
+	$(am__append_7) $(am__append_8)
+bin_SCRIPTS = $(am__append_5)
+nodist_bin_SCRIPTS = $(am__append_10) syncevo-phone-config
+libexec_SCRIPTS = $(am__append_11)
+nobase_dist_template_DATA = $(am__append_6)
+DISTCLEANFILES = synccompare
+CLEANFILES = libstdc++.a client-test $(CLIENT_LIB_TEST_FILES) \
+	org.syncevolution.service $(SYNCEVO_DBUS_SERVER_DESKTOP) \
+	$(SYNCEVO_DBUS_SERVER_SCRIPT) syncevo-http-server \
+	syncevo-phone-config abort-redirect.log
+BUILT_SOURCES = 
 service_in_files = org.syncevolution.service.in
 @COND_DBUS_TRUE@servicedir = $(DBUS_SERVICES_DIR)
 @COND_DBUS_TRUE@service_DATA = $(service_in_files:.service.in=.service)
-# jump into interface directory directly instead of going through dbus
-@COND_DBUS_FALSE@@COND_GUI_TRUE@DBUS_DIRS = dbus/interfaces
-@COND_DBUS_TRUE@DBUS_DIRS = gdbus dbus
-@COND_GUI_TRUE@GUI_DIR = gtk-ui
-SUBDIRS = $(SYNTHESIS_SUBDIR) $(DBUS_DIRS) syncevo $(BACKENDS) \
-	$(GUI_DIR) $(am__append_1)
-DIST_SUBDIRS = gdbus dbus syncevo $(BACKENDS) gtk-ui gnome-bluetooth
-BUILT_SOURCES = 
+DIST_SUBDIRS = gdbus dbus syncevo $(BACKENDS) gtk-ui gnome-bluetooth synthesis-includes
 AM_CPPFLAGS = $(SUBDIRS:%=-I$(srcdir)/%) -I$(srcdir)/../test -I$(top_srcdir) $(BACKEND_CPPFLAGS)
-bin_SCRIPTS = synccompare
-SYNCEVOLUTION_DEP = $(am__append_3)
+SYNCEVO_DBUS_SERVER_SCRIPT = syncevo-dbus-server-startup.sh
+SYNCEVO_DBUS_SERVER_SCRIPT_IN = $(SYNCEVO_DBUS_SERVER_SCRIPT).in
+autostartdir = $(sysconfdir)/xdg/autostart
+SYNCEVO_DBUS_SERVER_DESKTOP = syncevo-dbus-server.desktop
+SYNCEVO_DBUS_SERVER_DESKTOP_IN = $(SYNCEVO_DBUS_SERVER_DESKTOP).in
+@COND_DBUS_TRUE@autostart_DATA = $(SYNCEVO_DBUS_SERVER_DESKTOP)
+SYNCEVOLUTION_DEP = $(am__append_13)
 EXTRA_DIST = shlibs.local Makefile-gen.am $(service_in_files) \
-	$(am__append_4)
+	$(SYNCEVO_DBUS_SERVER_SCRIPT_IN) \
+	$(SYNCEVO_DBUS_SERVER_DESKTOP_IN) $(am__append_14)
 TEMPLATE_FILES = templates/README \
 	templates/servers/Funambol/config.ini \
 	templates/servers/Funambol/template.ini \
@@ -493,6 +569,20 @@ TEMPLATE_FILES = templates/README \
 	templates/servers/ScheduleWorld/sources/todo/config.ini \
 	templates/servers/ScheduleWorld/sources/addressbook/config.ini \
 	templates/servers/ScheduleWorld/sources/memo/config.ini \
+	templates/clients/phone/nokia/S60/N85/config.ini \
+	templates/clients/phone/nokia/S60/N85/template.ini \
+	templates/clients/phone/nokia/S60/N85/sources/calendar/config.ini \
+	templates/clients/phone/nokia/S60/N85/sources/calendar+todo/config.ini \
+	templates/clients/phone/nokia/S60/N85/sources/todo/config.ini \
+	templates/clients/phone/nokia/S60/N85/sources/addressbook/config.ini \
+	templates/clients/phone/nokia/S60/N85/sources/memo/config.ini \
+	templates/clients/phone/nokia/maemo/n900/config.ini \
+	templates/clients/phone/nokia/maemo/n900/template.ini \
+	templates/clients/phone/nokia/maemo/n900/sources/calendar/config.ini \
+	templates/clients/phone/nokia/maemo/n900/sources/calendar+todo/config.ini \
+	templates/clients/phone/nokia/maemo/n900/sources/todo/config.ini \
+	templates/clients/phone/nokia/maemo/n900/sources/addressbook/config.ini \
+	templates/clients/phone/nokia/maemo/n900/sources/memo/config.ini \
 	templates/clients/phone/nokia/S40/7210c/config.ini \
 	templates/clients/phone/nokia/S40/7210c/template.ini \
 	templates/clients/phone/nokia/S40/7210c/sources/calendar/config.ini \
@@ -500,7 +590,6 @@ TEMPLATE_FILES = templates/README \
 	templates/clients/phone/nokia/S40/7210c/sources/todo/config.ini \
 	templates/clients/phone/nokia/S40/7210c/sources/addressbook/config.ini \
 	templates/clients/phone/nokia/S40/7210c/sources/memo/config.ini \
-	templates/clients/default/template.ini \
 	templates/clients/SyncEvolution/config.ini \
 	templates/clients/SyncEvolution/template.ini \
 	templates/clients/SyncEvolution/sources/calendar/config.ini \
@@ -508,12 +597,7 @@ TEMPLATE_FILES = templates/README \
 	templates/clients/SyncEvolution/sources/addressbook/config.ini \
 	templates/clients/SyncEvolution/sources/memo/config.ini
 templatedir = $(datadir)/syncevolution/
-nobase_dist_template_DATA = $(TEMPLATE_FILES)
-DISTCLEANFILES = synccompare
-MAINTAINERCLEANFILES = Makefile.in
-CLEANFILES = libstdc++.a client-test $(CLIENT_LIB_TEST_FILES) \
-	org.syncevolution.service abort-redirect.log
-CORE_SOURCES = $(am__append_5)
+CORE_SOURCES = $(am__append_15)
 
 # The files which register backends have to be compiled into
 # "client-test" and "syncevolution" in order to pull in the
@@ -540,18 +624,18 @@ syncevolution_SOURCES = \
 # SYNCEVOLUTION_LDADD will be replaced with libsyncebook.la/libsyncecal.la/libsyncsqlite.la
 # if linking statically against them, empty otherwise;
 # either way this does not lead to a dependency on those libs - done explicitly
-syncevolution_LDADD = $(CORE_LDADD) $(KEYRING_LIBS)
-syncevolution_LDFLAGS = $(CORE_LD_FLAGS)
-syncevolution_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS) $(KEYRING_CFLAGS)
+syncevolution_LDADD = $(CORE_LDADD) $(KEYRING_LIBS) $(am__append_16)
+syncevolution_LDFLAGS = $(CORE_LD_FLAGS) $(DBUS_LIBS)
+syncevolution_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS) $(KEYRING_CFLAGS) -I$(srcdir)/gdbus $(DBUS_CFLAGS)
 syncevolution_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) # $(SYNTHESIS_DEP)
 @COND_DBUS_TRUE@syncevo_dbus_server_SOURCES = \
 @COND_DBUS_TRUE@	syncevo-dbus-server.cpp \
 @COND_DBUS_TRUE@	$(CORE_SOURCES)
 
 @COND_DBUS_TRUE@@ENABLE_UNIT_TESTS_TRUE@nodist_syncevo_dbus_server_SOURCES = ../test/test.cpp
-@COND_DBUS_TRUE@syncevo_dbus_server_LDADD = gdbus/libgdbus.la $(CORE_LDADD) $(KEYRING_LIBS)
-@COND_DBUS_TRUE@syncevo_dbus_server_CPPFLAGS = -DHAVE_CONFIG_H -I$(srcdir)/gdbus $(AM_CPPFLAGS)
-@COND_DBUS_TRUE@syncevo_dbus_server_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS) $(GLIB_CFLAGS) $(DBUS_CFLAGS) $(LIBSOUP_CFLAGS) $(KEYRING_CFLAGS)
+@COND_DBUS_TRUE@syncevo_dbus_server_LDADD = gdbus/libgdbus.la $(CORE_LDADD) $(KEYRING_LIBS) $(LIBNOTIFY_LIBS)
+@COND_DBUS_TRUE@syncevo_dbus_server_CPPFLAGS = -DHAVE_CONFIG_H -I$(srcdir)/gdbus $(AM_CPPFLAGS) -DSYNCEVOLUTION_LOCALEDIR=\"${SYNCEVOLUTION_LOCALEDIR}\"
+@COND_DBUS_TRUE@syncevo_dbus_server_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS) $(GLIB_CFLAGS) $(DBUS_CFLAGS) $(LIBSOUP_CFLAGS) $(KEYRING_CFLAGS) $(LIBNOTIFY_CFLAGS)
 @COND_DBUS_TRUE@syncevo_dbus_server_LDFLAGS = $(CORE_LD_FLAGS) $(LIBSOUP_LIBS)
 @COND_DBUS_TRUE@syncevo_dbus_server_DEPENDENCIES = gdbus/libgdbus.la $(EXTRA_LTLIBRARIES) $(CORE_DEP) $(SYNTHESIS_DEP)
 
@@ -561,12 +645,13 @@ syncevolution_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) # $(SYNTHESIS_DEP)
 # link line.
 client_test_SOURCES = \
 	client-test-app.cpp \
+	CmdlineSyncClient.cpp \
 	../test/ClientTest.cpp \
 	../test/ClientTest.h \
 	../test/client-test-main.cpp \
 	$(CORE_SOURCES)
 
-nodist_client_test_SOURCES = ../test/test.cpp $(am__append_9)
+nodist_client_test_SOURCES = ../test/test.cpp $(am__append_20)
 
 # list of test file base files
 #
@@ -576,7 +661,6 @@ nodist_client_test_SOURCES = ../test/test.cpp $(am__append_9)
 # add files created via patches
 CLIENT_LIB_TEST_FILES = testcases/lcs/file1.txt \
 	testcases/lcs/file2.txt \
-	testcases/templates/clients/default/template.ini \
 	testcases/templates/clients/SyncEvolution/sources/addressbook/config.ini \
 	testcases/templates/clients/SyncEvolution/sources/memo/config.ini \
 	testcases/templates/clients/SyncEvolution/sources/todo/config.ini \
@@ -601,8 +685,8 @@ TEST_FILES_GENERATED = $(subst .patch,,$(subst $(srcdir)/../test/,,$(TEST_FILES_
 # all patched files, regardless whether the patch already exists
 TEST_FILES_PATCHED = $(wildcard testcases/*.tem)
 client_test_CPPFLAGS = -DHAVE_CONFIG_H -DENABLE_INTEGRATION_TESTS -DENABLE_UNIT_TESTS $(AM_CPPFLAGS)
-client_test_CXXFLAGS = `cppunit-config --cflags` $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS)
-client_test_LDFLAGS = `cppunit-config --libs` `nm syncevo/.libs/libsyncevolution.a | grep funambolAutoRegisterRegistry | sed -e 's/.* /-u /'` $(CORE_LD_FLAGS)
+client_test_CXXFLAGS = `cppunit-config --cflags` $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS) $(KEYRING_CFLAGS)
+client_test_LDFLAGS = `cppunit-config --libs` `nm syncevo/.libs/libsyncevolution.a | grep funambolAutoRegisterRegistry | sed -e 's/.* /-u /'` $(CORE_LD_FLAGS) $(KEYRING_LIBS)
 client_test_LDADD = $(CORE_LDADD) $(SYNTHESIS_ENGINE)
 
 # The binary does not really depend on the test cases, only running it does.
@@ -610,7 +694,7 @@ client_test_LDADD = $(CORE_LDADD) $(SYNTHESIS_ENGINE)
 # runs the binary with out-dated auxiliary files.
 client_test_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) \
 	$(CLIENT_LIB_TEST_FILES) testcase2patch synccompare templates \
-	$(am__append_10)
+	$(am__append_21)
 @ENABLE_TESTING_TRUE@nobase_dist_doc_DATA = $(CLIENT_LIB_TEST_FILES)
 abort_redirect_SOURCES = ../test/abort-redirect.cpp
 abort_redirect_CPPFLAGS = -DHAVE_CONFIG_H $(AM_CPPFLAGS)
@@ -739,6 +823,44 @@ uninstall-binSCRIPTS:
 	  echo " rm -f '$(DESTDIR)$(bindir)/$$f'"; \
 	  rm -f "$(DESTDIR)$(bindir)/$$f"; \
 	done
+install-libexecSCRIPTS: $(libexec_SCRIPTS)
+	@$(NORMAL_INSTALL)
+	test -z "$(libexecdir)" || $(MKDIR_P) "$(DESTDIR)$(libexecdir)"
+	@list='$(libexec_SCRIPTS)'; for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  if test -f $$d$$p; then \
+	    f=`echo "$$p" | sed 's|^.*/||;$(transform)'`; \
+	    echo " $(libexecSCRIPT_INSTALL) '$$d$$p' '$(DESTDIR)$(libexecdir)/$$f'"; \
+	    $(libexecSCRIPT_INSTALL) "$$d$$p" "$(DESTDIR)$(libexecdir)/$$f"; \
+	  else :; fi; \
+	done
+
+uninstall-libexecSCRIPTS:
+	@$(NORMAL_UNINSTALL)
+	@list='$(libexec_SCRIPTS)'; for p in $$list; do \
+	  f=`echo "$$p" | sed 's|^.*/||;$(transform)'`; \
+	  echo " rm -f '$(DESTDIR)$(libexecdir)/$$f'"; \
+	  rm -f "$(DESTDIR)$(libexecdir)/$$f"; \
+	done
+install-nodist_binSCRIPTS: $(nodist_bin_SCRIPTS)
+	@$(NORMAL_INSTALL)
+	test -z "$(bindir)" || $(MKDIR_P) "$(DESTDIR)$(bindir)"
+	@list='$(nodist_bin_SCRIPTS)'; for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  if test -f $$d$$p; then \
+	    f=`echo "$$p" | sed 's|^.*/||;$(transform)'`; \
+	    echo " $(nodist_binSCRIPT_INSTALL) '$$d$$p' '$(DESTDIR)$(bindir)/$$f'"; \
+	    $(nodist_binSCRIPT_INSTALL) "$$d$$p" "$(DESTDIR)$(bindir)/$$f"; \
+	  else :; fi; \
+	done
+
+uninstall-nodist_binSCRIPTS:
+	@$(NORMAL_UNINSTALL)
+	@list='$(nodist_bin_SCRIPTS)'; for p in $$list; do \
+	  f=`echo "$$p" | sed 's|^.*/||;$(transform)'`; \
+	  echo " rm -f '$(DESTDIR)$(bindir)/$$f'"; \
+	  rm -f "$(DESTDIR)$(bindir)/$$f"; \
+	done
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -749,6 +871,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/abort_redirect-abort-redirect.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-AddressBookSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-ClientTest.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-CmdlineSyncClient.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-EvolutionCalendarSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-EvolutionContactSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-FileSyncSourceRegister.Po@am__quote@
@@ -826,6 +949,20 @@ client_test-client-test-app.obj: client-test-app.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='client-test-app.cpp' object='client_test-client-test-app.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-client-test-app.obj `if test -f 'client-test-app.cpp'; then $(CYGPATH_W) 'client-test-app.cpp'; else $(CYGPATH_W) '$(srcdir)/client-test-app.cpp'; fi`
+
+client_test-CmdlineSyncClient.o: CmdlineSyncClient.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-CmdlineSyncClient.o -MD -MP -MF $(DEPDIR)/client_test-CmdlineSyncClient.Tpo -c -o client_test-CmdlineSyncClient.o `test -f 'CmdlineSyncClient.cpp' || echo '$(srcdir)/'`CmdlineSyncClient.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/client_test-CmdlineSyncClient.Tpo $(DEPDIR)/client_test-CmdlineSyncClient.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='CmdlineSyncClient.cpp' object='client_test-CmdlineSyncClient.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-CmdlineSyncClient.o `test -f 'CmdlineSyncClient.cpp' || echo '$(srcdir)/'`CmdlineSyncClient.cpp
+
+client_test-CmdlineSyncClient.obj: CmdlineSyncClient.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-CmdlineSyncClient.obj -MD -MP -MF $(DEPDIR)/client_test-CmdlineSyncClient.Tpo -c -o client_test-CmdlineSyncClient.obj `if test -f 'CmdlineSyncClient.cpp'; then $(CYGPATH_W) 'CmdlineSyncClient.cpp'; else $(CYGPATH_W) '$(srcdir)/CmdlineSyncClient.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/client_test-CmdlineSyncClient.Tpo $(DEPDIR)/client_test-CmdlineSyncClient.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='CmdlineSyncClient.cpp' object='client_test-CmdlineSyncClient.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-CmdlineSyncClient.obj `if test -f 'CmdlineSyncClient.cpp'; then $(CYGPATH_W) 'CmdlineSyncClient.cpp'; else $(CYGPATH_W) '$(srcdir)/CmdlineSyncClient.cpp'; fi`
 
 client_test-ClientTest.o: ../test/ClientTest.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-ClientTest.o -MD -MP -MF $(DEPDIR)/client_test-ClientTest.Tpo -c -o client_test-ClientTest.o `test -f '../test/ClientTest.cpp' || echo '$(srcdir)/'`../test/ClientTest.cpp
@@ -1238,6 +1375,23 @@ mostlyclean-libtool:
 
 clean-libtool:
 	-rm -rf .libs _libs
+install-autostartDATA: $(autostart_DATA)
+	@$(NORMAL_INSTALL)
+	test -z "$(autostartdir)" || $(MKDIR_P) "$(DESTDIR)$(autostartdir)"
+	@list='$(autostart_DATA)'; for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  f=$(am__strip_dir) \
+	  echo " $(autostartDATA_INSTALL) '$$d$$p' '$(DESTDIR)$(autostartdir)/$$f'"; \
+	  $(autostartDATA_INSTALL) "$$d$$p" "$(DESTDIR)$(autostartdir)/$$f"; \
+	done
+
+uninstall-autostartDATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(autostart_DATA)'; for p in $$list; do \
+	  f=$(am__strip_dir) \
+	  echo " rm -f '$(DESTDIR)$(autostartdir)/$$f'"; \
+	  rm -f "$(DESTDIR)$(autostartdir)/$$f"; \
+	done
 install-nobase_dist_docDATA: $(nobase_dist_doc_DATA)
 	@$(NORMAL_INSTALL)
 	test -z "$(docdir)" || $(MKDIR_P) "$(DESTDIR)$(docdir)"
@@ -1550,7 +1704,7 @@ check: $(BUILT_SOURCES)
 all-am: Makefile $(PROGRAMS) $(SCRIPTS) $(DATA)
 installdirs: installdirs-recursive
 installdirs-am:
-	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(libexecdir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(docdir)" "$(DESTDIR)$(templatedir)" "$(DESTDIR)$(servicedir)"; do \
+	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(libexecdir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(libexecdir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(autostartdir)" "$(DESTDIR)$(docdir)" "$(DESTDIR)$(templatedir)" "$(DESTDIR)$(servicedir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: $(BUILT_SOURCES)
@@ -1581,7 +1735,6 @@ maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
 	-test -z "$(BUILT_SOURCES)" || rm -f $(BUILT_SOURCES)
-	-test -z "$(MAINTAINERCLEANFILES)" || rm -f $(MAINTAINERCLEANFILES)
 clean: clean-recursive
 
 clean-am: clean-binPROGRAMS clean-generic clean-libexecPROGRAMS \
@@ -1603,13 +1756,14 @@ info: info-recursive
 
 info-am:
 
-install-data-am: install-nobase_dist_docDATA \
+install-data-am: install-autostartDATA install-nobase_dist_docDATA \
 	install-nobase_dist_templateDATA install-serviceDATA
 
 install-dvi: install-dvi-recursive
 
 install-exec-am: install-binPROGRAMS install-binSCRIPTS \
-	install-libexecPROGRAMS
+	install-libexecPROGRAMS install-libexecSCRIPTS \
+	install-nodist_binSCRIPTS
 
 install-html: install-html-recursive
 
@@ -1641,9 +1795,11 @@ ps: ps-recursive
 
 ps-am:
 
-uninstall-am: uninstall-binPROGRAMS uninstall-binSCRIPTS \
-	uninstall-libexecPROGRAMS uninstall-nobase_dist_docDATA \
-	uninstall-nobase_dist_templateDATA uninstall-serviceDATA
+uninstall-am: uninstall-autostartDATA uninstall-binPROGRAMS \
+	uninstall-binSCRIPTS uninstall-libexecPROGRAMS \
+	uninstall-libexecSCRIPTS uninstall-nobase_dist_docDATA \
+	uninstall-nobase_dist_templateDATA uninstall-nodist_binSCRIPTS \
+	uninstall-serviceDATA
 
 .MAKE: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) install-am \
 	install-strip
@@ -1654,23 +1810,34 @@ uninstall-am: uninstall-binPROGRAMS uninstall-binSCRIPTS \
 	ctags ctags-recursive dist-hook distclean distclean-compile \
 	distclean-generic distclean-libtool distclean-local \
 	distclean-tags distdir dvi dvi-am html html-am info info-am \
-	install install-am install-binPROGRAMS install-binSCRIPTS \
-	install-data install-data-am install-dvi install-dvi-am \
-	install-exec install-exec-am install-html install-html-am \
-	install-info install-info-am install-libexecPROGRAMS \
-	install-man install-nobase_dist_docDATA \
-	install-nobase_dist_templateDATA install-pdf install-pdf-am \
+	install install-am install-autostartDATA install-binPROGRAMS \
+	install-binSCRIPTS install-data install-data-am install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am \
+	install-libexecPROGRAMS install-libexecSCRIPTS install-man \
+	install-nobase_dist_docDATA install-nobase_dist_templateDATA \
+	install-nodist_binSCRIPTS install-pdf install-pdf-am \
 	install-ps install-ps-am install-serviceDATA install-strip \
 	installcheck installcheck-am installdirs installdirs-am \
 	maintainer-clean maintainer-clean-generic mostlyclean \
 	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
 	pdf pdf-am ps ps-am tags tags-recursive uninstall uninstall-am \
-	uninstall-binPROGRAMS uninstall-binSCRIPTS \
-	uninstall-libexecPROGRAMS uninstall-nobase_dist_docDATA \
-	uninstall-nobase_dist_templateDATA uninstall-serviceDATA
+	uninstall-autostartDATA uninstall-binPROGRAMS \
+	uninstall-binSCRIPTS uninstall-libexecPROGRAMS \
+	uninstall-libexecSCRIPTS uninstall-nobase_dist_docDATA \
+	uninstall-nobase_dist_templateDATA uninstall-nodist_binSCRIPTS \
+	uninstall-serviceDATA
 
 @COND_DBUS_TRUE@$(service_DATA): $(service_in_files) Makefile
 @COND_DBUS_TRUE@	@sed -e "s|\@libexecdir\@|$(libexecdir)|" $< > $@
+@COND_DBUS_TRUE@$(libexec_SCRIPTS): $(SYNCEVO_DBUS_SERVER_SCRIPT_IN) Makefile
+@COND_DBUS_TRUE@	@sed -e "s|\@libexecdir\@|$(libexecdir)|" $< > $@
+@COND_DBUS_TRUE@$(autostart_DATA): $(SYNCEVO_DBUS_SERVER_DESKTOP_IN) Makefile
+@COND_DBUS_TRUE@	@sed -e "s|\@libexecdir\@|$(libexecdir)|" $< > $@
+syncevo-http-server: $(srcdir)/../test/syncevo-http-server.py
+	cp $< $@
+syncevo-phone-config: $(srcdir)/../test/syncevo-phone-config.py
+	cp $< $@
 
 # synccompare is created by replacing its 'import Algorithm::Diff;'
 # with a simplified copy of Diff.pm.

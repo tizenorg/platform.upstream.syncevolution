@@ -3718,7 +3718,7 @@ bool TODBCApiAgent::CheckLogin(const char *aOriginalUserName, const char *aModif
           }
           p = b64::encode(&md5[0],16);
           secret = p; // save converted string
-          sysync_free((void *)p);
+          b64::free((void *)p);
         }
         col++;
         #ifdef SCRIPT_SUPPORT

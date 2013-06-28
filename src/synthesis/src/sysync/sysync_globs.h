@@ -14,6 +14,8 @@
 #ifndef SYSYNC_GLOBS_H
 #define SYSYNC_GLOBS_H
 
+#include <stdio.h>
+
 #include "generic_types.h"
 
 // global error codes
@@ -27,6 +29,7 @@
 
 // include global progress defs
 #include "global_progress.h"
+
 
 #ifdef __cplusplus
 // we need some STL basics as we define types based on STL constructs

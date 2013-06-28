@@ -50,6 +50,7 @@
 /* activate debug output */
 #define SYDEBUG 2
 
+#define NOWSM 1
 
 #endif /* TARGET_OPTIONS_H */
 /* eof */

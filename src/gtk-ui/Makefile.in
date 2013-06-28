@@ -53,7 +53,6 @@ binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
 am_sync_ui_OBJECTS = sync_ui-main.$(OBJEXT) sync_ui-sync-ui.$(OBJEXT) \
 	sync_ui-sync-ui-config.$(OBJEXT) sync_ui-mux-frame.$(OBJEXT) \
-	sync_ui-mux-window.$(OBJEXT) sync_ui-mux-icon-button.$(OBJEXT) \
 	sync_ui-sync-config-widget.$(OBJEXT) \
 	sync_ui-gtkinfobar.$(OBJEXT)
 sync_ui_OBJECTS = $(am_sync_ui_OBJECTS)
@@ -67,8 +66,6 @@ am__objects_1 = sync_ui_gtk-main.$(OBJEXT) \
 	sync_ui_gtk-sync-ui.$(OBJEXT) \
 	sync_ui_gtk-sync-ui-config.$(OBJEXT) \
 	sync_ui_gtk-mux-frame.$(OBJEXT) \
-	sync_ui_gtk-mux-window.$(OBJEXT) \
-	sync_ui_gtk-mux-icon-button.$(OBJEXT) \
 	sync_ui_gtk-sync-config-widget.$(OBJEXT) \
 	sync_ui_gtk-gtkinfobar.$(OBJEXT)
 am_sync_ui_gtk_OBJECTS = $(am__objects_1)
@@ -85,8 +82,6 @@ am__objects_2 = sync_ui_moblin-main.$(OBJEXT) \
 	sync_ui_moblin-sync-ui.$(OBJEXT) \
 	sync_ui_moblin-sync-ui-config.$(OBJEXT) \
 	sync_ui_moblin-mux-frame.$(OBJEXT) \
-	sync_ui_moblin-mux-window.$(OBJEXT) \
-	sync_ui_moblin-mux-icon-button.$(OBJEXT) \
 	sync_ui_moblin-sync-config-widget.$(OBJEXT) \
 	sync_ui_moblin-gtkinfobar.$(OBJEXT)
 am_sync_ui_moblin_OBJECTS = $(am__objects_2)
@@ -228,6 +223,8 @@ LDFLAGS = @LDFLAGS@
 LIBEXECDIR = @LIBEXECDIR@
 LIBICAL_AVAILABLE_CFLAGS = @LIBICAL_AVAILABLE_CFLAGS@
 LIBICAL_AVAILABLE_LIBS = @LIBICAL_AVAILABLE_LIBS@
+LIBNOTIFY_CFLAGS = @LIBNOTIFY_CFLAGS@
+LIBNOTIFY_LIBS = @LIBNOTIFY_LIBS@
 LIBOBJS = @LIBOBJS@
 LIBOPENOBEX_CFLAGS = @LIBOPENOBEX_CFLAGS@
 LIBOPENOBEX_LIBS = @LIBOPENOBEX_LIBS@
@@ -246,6 +243,8 @@ MODIFY_SYNCCOMPARE = @MODIFY_SYNCCOMPARE@
 MSGFMT = @MSGFMT@
 MSGFMT_OPTS = @MSGFMT_OPTS@
 MSGMERGE = @MSGMERGE@
+MX_GTK_0_99_1_CFLAGS = @MX_GTK_0_99_1_CFLAGS@
+MX_GTK_0_99_1_LIBS = @MX_GTK_0_99_1_LIBS@
 NMEDIT = @NMEDIT@
 NSS_CFLAGS = @NSS_CFLAGS@
 NSS_LIBS = @NSS_LIBS@
@@ -283,6 +282,7 @@ SYNTHESIS_LIB = @SYNTHESIS_LIB@
 SYNTHESIS_LIBS = @SYNTHESIS_LIBS@
 SYNTHESIS_SRC = @SYNTHESIS_SRC@
 SYNTHESIS_SUBDIR = @SYNTHESIS_SUBDIR@
+SYNTHESIS_SUBDIR_INCLUDES = @SYNTHESIS_SUBDIR_INCLUDES@
 TRANSPORT_CFLAGS = @TRANSPORT_CFLAGS@
 TRANSPORT_LIBS = @TRANSPORT_LIBS@
 UNIQUE_CFLAGS = @UNIQUE_CFLAGS@
@@ -358,7 +358,6 @@ icondir = $(datadir)/icons/hicolor/48x48/apps
 dist_icon_DATA = sync.png
 themercdir = $(datadir)/syncevolution/
 themerc_DATA = \
-	close.png close_hover.png settings.png settings_hover.png \
 	sync-generic.png \
 	sync-spinner.gif \
 	sync-ui.rc
@@ -373,7 +372,7 @@ EXTRA_DIST = \
 bin_PROGRAMS = $(GUI_PROGRAMS)
 sync_ui_SOURCES = \
 	main.c sync-ui.c sync-ui.h sync-ui-config.c sync-ui-config.h \
-	mux-frame.c mux-frame.h mux-window.c mux-window.h mux-icon-button.c mux-icon-button.h \
+	mux-frame.c mux-frame.h \
 	sync-config-widget.c sync-config-widget.h \
 	gtkinfobar.c gtkinfobar.h
 
@@ -481,24 +480,18 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui-gtkinfobar.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui-main.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui-mux-frame.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui-mux-icon-button.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui-mux-window.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui-sync-config-widget.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui-sync-ui-config.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui-sync-ui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_gtk-gtkinfobar.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_gtk-main.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_gtk-mux-frame.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_gtk-mux-icon-button.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_gtk-mux-window.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_gtk-sync-config-widget.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_gtk-sync-ui-config.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_gtk-sync-ui.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_moblin-gtkinfobar.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_moblin-main.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_moblin-mux-frame.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_moblin-mux-icon-button.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_moblin-mux-window.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_moblin-sync-config-widget.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_moblin-sync-ui-config.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_moblin-sync-ui.Po@am__quote@
@@ -579,34 +572,6 @@ sync_ui-mux-frame.obj: mux-frame.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='mux-frame.c' object='sync_ui-mux-frame.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_CPPFLAGS) $(CPPFLAGS) $(sync_ui_CFLAGS) $(CFLAGS) -c -o sync_ui-mux-frame.obj `if test -f 'mux-frame.c'; then $(CYGPATH_W) 'mux-frame.c'; else $(CYGPATH_W) '$(srcdir)/mux-frame.c'; fi`
-
-sync_ui-mux-window.o: mux-window.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_CPPFLAGS) $(CPPFLAGS) $(sync_ui_CFLAGS) $(CFLAGS) -MT sync_ui-mux-window.o -MD -MP -MF $(DEPDIR)/sync_ui-mux-window.Tpo -c -o sync_ui-mux-window.o `test -f 'mux-window.c' || echo '$(srcdir)/'`mux-window.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/sync_ui-mux-window.Tpo $(DEPDIR)/sync_ui-mux-window.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='mux-window.c' object='sync_ui-mux-window.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_CPPFLAGS) $(CPPFLAGS) $(sync_ui_CFLAGS) $(CFLAGS) -c -o sync_ui-mux-window.o `test -f 'mux-window.c' || echo '$(srcdir)/'`mux-window.c
-
-sync_ui-mux-window.obj: mux-window.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_CPPFLAGS) $(CPPFLAGS) $(sync_ui_CFLAGS) $(CFLAGS) -MT sync_ui-mux-window.obj -MD -MP -MF $(DEPDIR)/sync_ui-mux-window.Tpo -c -o sync_ui-mux-window.obj `if test -f 'mux-window.c'; then $(CYGPATH_W) 'mux-window.c'; else $(CYGPATH_W) '$(srcdir)/mux-window.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/sync_ui-mux-window.Tpo $(DEPDIR)/sync_ui-mux-window.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='mux-window.c' object='sync_ui-mux-window.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_CPPFLAGS) $(CPPFLAGS) $(sync_ui_CFLAGS) $(CFLAGS) -c -o sync_ui-mux-window.obj `if test -f 'mux-window.c'; then $(CYGPATH_W) 'mux-window.c'; else $(CYGPATH_W) '$(srcdir)/mux-window.c'; fi`
-
-sync_ui-mux-icon-button.o: mux-icon-button.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_CPPFLAGS) $(CPPFLAGS) $(sync_ui_CFLAGS) $(CFLAGS) -MT sync_ui-mux-icon-button.o -MD -MP -MF $(DEPDIR)/sync_ui-mux-icon-button.Tpo -c -o sync_ui-mux-icon-button.o `test -f 'mux-icon-button.c' || echo '$(srcdir)/'`mux-icon-button.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/sync_ui-mux-icon-button.Tpo $(DEPDIR)/sync_ui-mux-icon-button.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='mux-icon-button.c' object='sync_ui-mux-icon-button.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_CPPFLAGS) $(CPPFLAGS) $(sync_ui_CFLAGS) $(CFLAGS) -c -o sync_ui-mux-icon-button.o `test -f 'mux-icon-button.c' || echo '$(srcdir)/'`mux-icon-button.c
-
-sync_ui-mux-icon-button.obj: mux-icon-button.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_CPPFLAGS) $(CPPFLAGS) $(sync_ui_CFLAGS) $(CFLAGS) -MT sync_ui-mux-icon-button.obj -MD -MP -MF $(DEPDIR)/sync_ui-mux-icon-button.Tpo -c -o sync_ui-mux-icon-button.obj `if test -f 'mux-icon-button.c'; then $(CYGPATH_W) 'mux-icon-button.c'; else $(CYGPATH_W) '$(srcdir)/mux-icon-button.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/sync_ui-mux-icon-button.Tpo $(DEPDIR)/sync_ui-mux-icon-button.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='mux-icon-button.c' object='sync_ui-mux-icon-button.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_CPPFLAGS) $(CPPFLAGS) $(sync_ui_CFLAGS) $(CFLAGS) -c -o sync_ui-mux-icon-button.obj `if test -f 'mux-icon-button.c'; then $(CYGPATH_W) 'mux-icon-button.c'; else $(CYGPATH_W) '$(srcdir)/mux-icon-button.c'; fi`
 
 sync_ui-sync-config-widget.o: sync-config-widget.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_CPPFLAGS) $(CPPFLAGS) $(sync_ui_CFLAGS) $(CFLAGS) -MT sync_ui-sync-config-widget.o -MD -MP -MF $(DEPDIR)/sync_ui-sync-config-widget.Tpo -c -o sync_ui-sync-config-widget.o `test -f 'sync-config-widget.c' || echo '$(srcdir)/'`sync-config-widget.c
@@ -692,34 +657,6 @@ sync_ui_gtk-mux-frame.obj: mux-frame.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_gtk_CPPFLAGS) $(CPPFLAGS) $(sync_ui_gtk_CFLAGS) $(CFLAGS) -c -o sync_ui_gtk-mux-frame.obj `if test -f 'mux-frame.c'; then $(CYGPATH_W) 'mux-frame.c'; else $(CYGPATH_W) '$(srcdir)/mux-frame.c'; fi`
 
-sync_ui_gtk-mux-window.o: mux-window.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_gtk_CPPFLAGS) $(CPPFLAGS) $(sync_ui_gtk_CFLAGS) $(CFLAGS) -MT sync_ui_gtk-mux-window.o -MD -MP -MF $(DEPDIR)/sync_ui_gtk-mux-window.Tpo -c -o sync_ui_gtk-mux-window.o `test -f 'mux-window.c' || echo '$(srcdir)/'`mux-window.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/sync_ui_gtk-mux-window.Tpo $(DEPDIR)/sync_ui_gtk-mux-window.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='mux-window.c' object='sync_ui_gtk-mux-window.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_gtk_CPPFLAGS) $(CPPFLAGS) $(sync_ui_gtk_CFLAGS) $(CFLAGS) -c -o sync_ui_gtk-mux-window.o `test -f 'mux-window.c' || echo '$(srcdir)/'`mux-window.c
-
-sync_ui_gtk-mux-window.obj: mux-window.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_gtk_CPPFLAGS) $(CPPFLAGS) $(sync_ui_gtk_CFLAGS) $(CFLAGS) -MT sync_ui_gtk-mux-window.obj -MD -MP -MF $(DEPDIR)/sync_ui_gtk-mux-window.Tpo -c -o sync_ui_gtk-mux-window.obj `if test -f 'mux-window.c'; then $(CYGPATH_W) 'mux-window.c'; else $(CYGPATH_W) '$(srcdir)/mux-window.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/sync_ui_gtk-mux-window.Tpo $(DEPDIR)/sync_ui_gtk-mux-window.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='mux-window.c' object='sync_ui_gtk-mux-window.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_gtk_CPPFLAGS) $(CPPFLAGS) $(sync_ui_gtk_CFLAGS) $(CFLAGS) -c -o sync_ui_gtk-mux-window.obj `if test -f 'mux-window.c'; then $(CYGPATH_W) 'mux-window.c'; else $(CYGPATH_W) '$(srcdir)/mux-window.c'; fi`
-
-sync_ui_gtk-mux-icon-button.o: mux-icon-button.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_gtk_CPPFLAGS) $(CPPFLAGS) $(sync_ui_gtk_CFLAGS) $(CFLAGS) -MT sync_ui_gtk-mux-icon-button.o -MD -MP -MF $(DEPDIR)/sync_ui_gtk-mux-icon-button.Tpo -c -o sync_ui_gtk-mux-icon-button.o `test -f 'mux-icon-button.c' || echo '$(srcdir)/'`mux-icon-button.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/sync_ui_gtk-mux-icon-button.Tpo $(DEPDIR)/sync_ui_gtk-mux-icon-button.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='mux-icon-button.c' object='sync_ui_gtk-mux-icon-button.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_gtk_CPPFLAGS) $(CPPFLAGS) $(sync_ui_gtk_CFLAGS) $(CFLAGS) -c -o sync_ui_gtk-mux-icon-button.o `test -f 'mux-icon-button.c' || echo '$(srcdir)/'`mux-icon-button.c
-
-sync_ui_gtk-mux-icon-button.obj: mux-icon-button.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_gtk_CPPFLAGS) $(CPPFLAGS) $(sync_ui_gtk_CFLAGS) $(CFLAGS) -MT sync_ui_gtk-mux-icon-button.obj -MD -MP -MF $(DEPDIR)/sync_ui_gtk-mux-icon-button.Tpo -c -o sync_ui_gtk-mux-icon-button.obj `if test -f 'mux-icon-button.c'; then $(CYGPATH_W) 'mux-icon-button.c'; else $(CYGPATH_W) '$(srcdir)/mux-icon-button.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/sync_ui_gtk-mux-icon-button.Tpo $(DEPDIR)/sync_ui_gtk-mux-icon-button.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='mux-icon-button.c' object='sync_ui_gtk-mux-icon-button.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_gtk_CPPFLAGS) $(CPPFLAGS) $(sync_ui_gtk_CFLAGS) $(CFLAGS) -c -o sync_ui_gtk-mux-icon-button.obj `if test -f 'mux-icon-button.c'; then $(CYGPATH_W) 'mux-icon-button.c'; else $(CYGPATH_W) '$(srcdir)/mux-icon-button.c'; fi`
-
 sync_ui_gtk-sync-config-widget.o: sync-config-widget.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_gtk_CPPFLAGS) $(CPPFLAGS) $(sync_ui_gtk_CFLAGS) $(CFLAGS) -MT sync_ui_gtk-sync-config-widget.o -MD -MP -MF $(DEPDIR)/sync_ui_gtk-sync-config-widget.Tpo -c -o sync_ui_gtk-sync-config-widget.o `test -f 'sync-config-widget.c' || echo '$(srcdir)/'`sync-config-widget.c
 @am__fastdepCC_TRUE@	mv -f $(DEPDIR)/sync_ui_gtk-sync-config-widget.Tpo $(DEPDIR)/sync_ui_gtk-sync-config-widget.Po
@@ -803,34 +740,6 @@ sync_ui_moblin-mux-frame.obj: mux-frame.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='mux-frame.c' object='sync_ui_moblin-mux-frame.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_moblin_CPPFLAGS) $(CPPFLAGS) $(sync_ui_moblin_CFLAGS) $(CFLAGS) -c -o sync_ui_moblin-mux-frame.obj `if test -f 'mux-frame.c'; then $(CYGPATH_W) 'mux-frame.c'; else $(CYGPATH_W) '$(srcdir)/mux-frame.c'; fi`
-
-sync_ui_moblin-mux-window.o: mux-window.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_moblin_CPPFLAGS) $(CPPFLAGS) $(sync_ui_moblin_CFLAGS) $(CFLAGS) -MT sync_ui_moblin-mux-window.o -MD -MP -MF $(DEPDIR)/sync_ui_moblin-mux-window.Tpo -c -o sync_ui_moblin-mux-window.o `test -f 'mux-window.c' || echo '$(srcdir)/'`mux-window.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/sync_ui_moblin-mux-window.Tpo $(DEPDIR)/sync_ui_moblin-mux-window.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='mux-window.c' object='sync_ui_moblin-mux-window.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_moblin_CPPFLAGS) $(CPPFLAGS) $(sync_ui_moblin_CFLAGS) $(CFLAGS) -c -o sync_ui_moblin-mux-window.o `test -f 'mux-window.c' || echo '$(srcdir)/'`mux-window.c
-
-sync_ui_moblin-mux-window.obj: mux-window.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_moblin_CPPFLAGS) $(CPPFLAGS) $(sync_ui_moblin_CFLAGS) $(CFLAGS) -MT sync_ui_moblin-mux-window.obj -MD -MP -MF $(DEPDIR)/sync_ui_moblin-mux-window.Tpo -c -o sync_ui_moblin-mux-window.obj `if test -f 'mux-window.c'; then $(CYGPATH_W) 'mux-window.c'; else $(CYGPATH_W) '$(srcdir)/mux-window.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/sync_ui_moblin-mux-window.Tpo $(DEPDIR)/sync_ui_moblin-mux-window.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='mux-window.c' object='sync_ui_moblin-mux-window.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_moblin_CPPFLAGS) $(CPPFLAGS) $(sync_ui_moblin_CFLAGS) $(CFLAGS) -c -o sync_ui_moblin-mux-window.obj `if test -f 'mux-window.c'; then $(CYGPATH_W) 'mux-window.c'; else $(CYGPATH_W) '$(srcdir)/mux-window.c'; fi`
-
-sync_ui_moblin-mux-icon-button.o: mux-icon-button.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_moblin_CPPFLAGS) $(CPPFLAGS) $(sync_ui_moblin_CFLAGS) $(CFLAGS) -MT sync_ui_moblin-mux-icon-button.o -MD -MP -MF $(DEPDIR)/sync_ui_moblin-mux-icon-button.Tpo -c -o sync_ui_moblin-mux-icon-button.o `test -f 'mux-icon-button.c' || echo '$(srcdir)/'`mux-icon-button.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/sync_ui_moblin-mux-icon-button.Tpo $(DEPDIR)/sync_ui_moblin-mux-icon-button.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='mux-icon-button.c' object='sync_ui_moblin-mux-icon-button.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_moblin_CPPFLAGS) $(CPPFLAGS) $(sync_ui_moblin_CFLAGS) $(CFLAGS) -c -o sync_ui_moblin-mux-icon-button.o `test -f 'mux-icon-button.c' || echo '$(srcdir)/'`mux-icon-button.c
-
-sync_ui_moblin-mux-icon-button.obj: mux-icon-button.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_moblin_CPPFLAGS) $(CPPFLAGS) $(sync_ui_moblin_CFLAGS) $(CFLAGS) -MT sync_ui_moblin-mux-icon-button.obj -MD -MP -MF $(DEPDIR)/sync_ui_moblin-mux-icon-button.Tpo -c -o sync_ui_moblin-mux-icon-button.obj `if test -f 'mux-icon-button.c'; then $(CYGPATH_W) 'mux-icon-button.c'; else $(CYGPATH_W) '$(srcdir)/mux-icon-button.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/sync_ui_moblin-mux-icon-button.Tpo $(DEPDIR)/sync_ui_moblin-mux-icon-button.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='mux-icon-button.c' object='sync_ui_moblin-mux-icon-button.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_moblin_CPPFLAGS) $(CPPFLAGS) $(sync_ui_moblin_CFLAGS) $(CFLAGS) -c -o sync_ui_moblin-mux-icon-button.obj `if test -f 'mux-icon-button.c'; then $(CYGPATH_W) 'mux-icon-button.c'; else $(CYGPATH_W) '$(srcdir)/mux-icon-button.c'; fi`
 
 sync_ui_moblin-sync-config-widget.o: sync-config-widget.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_moblin_CPPFLAGS) $(CPPFLAGS) $(sync_ui_moblin_CFLAGS) $(CFLAGS) -MT sync_ui_moblin-sync-config-widget.o -MD -MP -MF $(DEPDIR)/sync_ui_moblin-sync-config-widget.Tpo -c -o sync_ui_moblin-sync-config-widget.o `test -f 'sync-config-widget.c' || echo '$(srcdir)/'`sync-config-widget.c
