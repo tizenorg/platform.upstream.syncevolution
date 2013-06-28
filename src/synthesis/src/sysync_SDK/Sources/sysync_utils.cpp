@@ -2822,6 +2822,8 @@ SmlItemPtr_t newItem(void)
   // SyncML 1.2
   itemP->targetParent=NULL;
   itemP->sourceParent=NULL;
+  // custom data of client
+  itemP->aux=NULL;
   return itemP;
 } // newItem
 

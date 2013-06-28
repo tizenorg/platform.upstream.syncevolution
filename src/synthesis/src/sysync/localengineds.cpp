@@ -5058,6 +5058,26 @@ bool TLocalEngineDS::engProcessRemoteItem(
   return false;
 } // TLocalEngineDS::engProcessRemoteItem
 
+class SyncOpItemAux : public SmlItemAux_t {
+  static void freeAuxImpl(SmlItemAuxPtr_t ptr);
+public:
+  SyncOpItemAux();
+
+  TSyncItemType *remoteTypeP;
+  TSyncItemType *localTypeP;
+  TFmtTypes fmt;
+  TSyncItem *syncitemP;
+};
+
+SyncOpItemAux::SyncOpItemAux()
+{
+  freeAux = freeAuxImpl;
+}
+
+void SyncOpItemAux::freeAuxImpl(SmlItemAuxPtr_t ptr)
+{
+  delete static_cast<SyncOpItemAux *>(ptr);
+}
 
 // process SyncML SyncOp command for this datastore
 bool TLocalEngineDS::engProcessSyncOpItem(
@@ -5073,22 +5093,59 @@ bool TLocalEngineDS::engProcessSyncOpItem(
     PDEBUGPRINTFX(DBG_ERROR,("engProcessSyncOpItem: Remote Datastore not known"));
     aStatusCommand.setStatusCode(500);
   }
+
+  // We need the local and remote type plus format to
+  // process the item.
+  TSyncItemType *remoteTypeP;
+  TSyncItemType *localTypeP;
+  TFmtTypes fmt;
+  TSyncItem *syncitemP=NULL;
+
+  string versstr;
+
+  SyncOpItemAux *aux = aItemP->aux ? static_cast<SyncOpItemAux *>(aItemP->aux) : NULL;
+  if (aux) {
+    // Reuse the previously calculated
+    // values when being called again.
+    remoteTypeP = aux->remoteTypeP;
+    localTypeP = aux->remoteTypeP;
+    fmt = aux->fmt;
+    syncitemP = aux->syncitemP;
+
+    goto process;
+  }
+
+  if (false) {
+  again:
+    if (!aux) {
+      aux = new SyncOpItemAux;
+    }
+    aItemP->aux = aux;
+    aux->remoteTypeP = remoteTypeP;
+    aux->localTypeP = localTypeP;
+    aux->fmt = fmt;
+    aux->syncitemP = syncitemP;
+    return false;
+  }
+
+
   // - start with default
-  TSyncItemType *remoteTypeP=getRemoteSendType();
-  TSyncItemType *localTypeP=getLocalReceiveType();
+  remoteTypeP=getRemoteSendType();
+  localTypeP=getLocalReceiveType();
   // - see if command-wide meta plus item contents specify another type
   //   (item meta, if present, overrides command wide meta)
   // see if item itself or command meta specify a type name or format
-  SmlMetInfMetInfPtr_t itemmetaP = smlPCDataToMetInfP(aItemP->meta);
+  SmlMetInfMetInfPtr_t itemmetaP;
+  itemmetaP = smlPCDataToMetInfP(aItemP->meta);
   // - format
-  TFmtTypes fmt=fmt_chr;
+  fmt=fmt_chr;
   if (itemmetaP && itemmetaP->format)
     smlPCDataToFormat(itemmetaP->format,fmt); // use type name from item's meta
   else if (aMetaP && aMetaP->format)
     smlPCDataToFormat(aMetaP->format,fmt); // use type name from command-wide meta
   // - type
-  string versstr;
-  const char *typestr = NULL;
+  const char *typestr;
+  typestr = NULL;
   if (itemmetaP && itemmetaP->type)
     typestr = smlPCDataToCharP(itemmetaP->type); // use type name from item's meta
   else if (aMetaP && aMetaP->type)
@@ -5189,11 +5246,14 @@ bool TLocalEngineDS::engProcessSyncOpItem(
 
     }
   }
-  // now process
+  // Now process or resume. We cannot jump right into
+  // the block because of the try/catch, so some checks
+  // for resuming are necessary.
+ process:
   if (localTypeP && remoteTypeP) {
-    TSyncItem *syncitemP = NULL;
     // create the item (might have empty data in case of delete)
-    syncitemP=remoteTypeP->newSyncItem(aItemP,aSyncOp,fmt,localTypeP,this,aStatusCommand);
+    if (!syncitemP)
+      syncitemP=remoteTypeP->newSyncItem(aItemP,aSyncOp,fmt,localTypeP,this,aStatusCommand);
     if (!syncitemP) {
       // failed to create item
       return false; // irregular
@@ -5210,9 +5270,12 @@ bool TLocalEngineDS::engProcessSyncOpItem(
     errctx.syncop = syncitemP->getSyncOp();
     #endif
     SYSYNC_TRY {
-      // this call frees the item
+      // this call frees the item, unless it wants to be called again
       regular =
         engProcessRemoteItem(syncitemP,aStatusCommand);
+      if (aStatusCommand.getStatusCode() == LOCERR_AGAIN) {
+        goto again;
+      }
       syncitemP = NULL;
       PDEBUGENDBLOCK("Process_Item");
     }
@@ -5327,7 +5390,43 @@ localstatus TLocalEngineDS::engProcessMap(cAppCharP aRemoteID, cAppCharP aLocalI
   return logicProcessMap(aRemoteID, aLocalID);
 } // TLocalEngineDS::engProcessMap
 
+enum LocalItemOp
+{
+  LOCAL_ITEM_DELETE,
+  LOCAL_ITEM_ADD_NORMAL,
+  LOCAL_ITEM_ADD_DELETED,
+  LOCAL_ITEM_ADD_DUPLICATE,
+  LOCAL_ITEM_REPLACE_MERGED,
+  LOCAL_ITEM_REPLACE_FROM_CLIENT,
+  LOCAL_ITEM_REPLACE,
+  LOCAL_ITEM_ADD_MERGED,
+  LOCAL_ITEM_REPLACE_MERGED2,
+  LOCAL_ITEM_ADD_SLOW
+};
 
+struct TLocalSyncItemAux : public TSyncItemAux
+{
+  TSyncItem *fConflictingItemP;
+  TSyncItem *fEchoItemP;
+  TSyncItem *fDelItemP;
+  TSyncItem *fMatchingItemP;
+  bool fChangedIncoming;
+  bool fChangedExisting;
+  bool fRemainsVisible;
+  TSyncOperation fSyncOp;
+  uInt16 fItemTypeID;
+  string fRemoteID;
+  LocalItemOp fOp;
+
+  TSyncOperation fCurrentSyncOp;
+  TSyncOperation fEchoItemOp;
+  TConflictResolution fItemConflictStrategy;
+  bool fForceConflict;
+  bool fDeleteWins;
+  bool fPreventAdd;
+  bool fIgnoreUpdate;
+  sInt16 fRejectStatus;
+};
 
 // process sync operation from client with specified sync item
 // (according to current sync mode of local datastore)
@@ -5342,18 +5441,127 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
   TStatusCommand &aStatusCommand // status, must be set to correct status code (ok / error)
 )
 {
-  TSyncItem *conflictingItemP=NULL;
-  TSyncItem *echoItemP=NULL;
-  TSyncItem *delitemP=NULL;
-  bool changedincoming=false;
-  bool changedexisting=false;
-  bool remainsvisible=true; // usually, we want the item to remain visible in the sync set
-  TStatusCommand dummy(fSessionP);
+  // The logic of this function is pretty complex. Instead of trying
+  // to retrace our steps when called again after a LOCERR_AGAIN, let's
+  // jump to labels directly. For that to work, all local variables
+  // must be defined before the goto.
+  TSyncItem *conflictingItemP;
+  TSyncItem *echoItemP;
+  TSyncItem *delitemP;
+  TSyncItem *matchingItemP = NULL;
+  bool changedincoming;
+  bool changedexisting;
+  bool remainsvisible;
+  TSyncOperation syncop;
+  uInt16 itemtypeid;
+  string remoteid;
+  LocalItemOp op;
+  bool ok=false;
+
+  TLocalSyncItemAux *aux = static_cast<TLocalSyncItemAux *>(aSyncItemP->getAux(TSyncItem::LOCAL_ENGINE));
+  if (aux) {
+    // Resuming the function call: restore variables, jump to store
+    // method call.
+    //
+    // The compiler will tell us if we jump across a variable
+    // instantiation which initializes the variable ("jump bypasses
+    // variable initialization"). Variables which are not needed when
+    // resuming must be initialized with normal assignments to avoid
+    // this error. Variables which are needed, need to be moved to the
+    // section above and added to the store/restore.
+    conflictingItemP = aux->fConflictingItemP;
+    echoItemP = aux->fEchoItemP;
+    delitemP = aux->fDelItemP;
+    matchingItemP = aux->fMatchingItemP;
+    changedincoming = aux->fChangedIncoming;
+    changedexisting = aux->fChangedExisting;
+    remainsvisible = aux->fRemainsVisible;
+    syncop = aux->fSyncOp;
+    itemtypeid = aux->fItemTypeID;
+    remoteid = aux->fRemoteID;
+    op = aux->fOp;
+
+    // Besides the local variables, we also need to set members
+    // to the value they had before leaving. See checkItem() below.
+    // Some of these will never be different from the default because
+    // if they got set in the first call, we don't queue and thus
+    // don't get here. But restore them anyway, just to be sure.
+    fCurrentSyncOp = aux->fCurrentSyncOp;
+    fEchoItemOp = aux->fEchoItemOp;
+    fItemConflictStrategy = aux->fItemConflictStrategy;
+    fForceConflict = aux->fForceConflict;
+    fDeleteWins = aux->fDeleteWins;
+    fPreventAdd = aux->fPreventAdd;
+    fIgnoreUpdate = aux->fIgnoreUpdate;
+    fRejectStatus = aux->fRejectStatus;
+
+    PDEBUGPRINTFX(DBG_DATA,("%s item operation resumed",SyncOpNames[syncop]));
+    switch (op) {
+    case LOCAL_ITEM_DELETE: goto do_delete;
+    case LOCAL_ITEM_ADD_NORMAL: goto do_add_normal;
+    case LOCAL_ITEM_ADD_DELETED: goto do_add_deleted;
+    case LOCAL_ITEM_ADD_DUPLICATE: goto do_add_duplicate;
+    case LOCAL_ITEM_REPLACE_MERGED: goto do_replace_merged;
+    case LOCAL_ITEM_REPLACE_FROM_CLIENT: goto do_replace_from_client;
+    case LOCAL_ITEM_REPLACE: goto do_replace;
+    case LOCAL_ITEM_ADD_MERGED: goto do_add_merged;
+    case LOCAL_ITEM_REPLACE_MERGED2: goto do_replace_merged2;
+    case LOCAL_ITEM_ADD_SLOW: goto do_add_slow;
+    };
+  }
+  if (false) {
+    // Prepare for resuming the function call. Will only be reached
+    // via goto with "op" set to something identifying the source of
+    // the jump.
+  again:
+#define CHECK_FOR_AGAIN(_op) \
+      if (aStatusCommand.getStatusCode() == LOCERR_AGAIN) { \
+        op = _op; \
+        goto again; \
+      }
+
+    if (!aux) {
+      aux = new TLocalSyncItemAux;
+      aSyncItemP->setAux(TSyncItem::LOCAL_ENGINE, aux);
+    }
+
+    aux->fConflictingItemP = conflictingItemP;
+    aux->fEchoItemP = echoItemP;
+    aux->fDelItemP = delitemP;
+    aux->fMatchingItemP = matchingItemP;
+    aux->fChangedIncoming = changedincoming;
+    aux->fChangedExisting = changedexisting;
+    aux->fRemainsVisible = remainsvisible;
+    aux->fSyncOp = syncop;
+    aux->fItemTypeID = itemtypeid;
+    aux->fRemoteID = remoteid;
+    aux->fOp = op;
+
+    aux->fCurrentSyncOp = fCurrentSyncOp;
+    aux->fEchoItemOp = fEchoItemOp;
+    aux->fItemConflictStrategy = fItemConflictStrategy;
+    aux->fForceConflict = fForceConflict;
+    aux->fDeleteWins = fDeleteWins;
+    aux->fPreventAdd = fPreventAdd;
+    aux->fIgnoreUpdate = fIgnoreUpdate;
+    aux->fRejectStatus = fRejectStatus;
+
+    aStatusCommand.setStatusCode(LOCERR_AGAIN);
+    return false;
+  }
+
+  // Normal control flow: initialize variables, then execute.
+  conflictingItemP=NULL;
+  echoItemP=NULL;
+  delitemP=NULL;
+  changedincoming=false;
+  changedexisting=false;
+  remainsvisible=true; // usually, we want the item to remain visible in the sync set
 
   // get some info out of item (we might need it after item is already consumed)
-  TSyncOperation syncop=aSyncItemP->getSyncOp();
-  uInt16 itemtypeid=aSyncItemP->getTypeID();
-  string remoteid=aSyncItemP->getRemoteID();
+  syncop=aSyncItemP->getSyncOp();
+  itemtypeid=aSyncItemP->getTypeID();
+  remoteid=aSyncItemP->getRemoteID();
   // check if datastore is aborted
   if(CheckAborted(aStatusCommand))
     return false;
@@ -5456,7 +5664,6 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
     return true;
   }
   // now perform requested operation
-  bool ok=false;
   localstatus sta;
   switch (syncop) {
     readonly_delete:
@@ -5566,7 +5773,9 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
       // really delete
       fLocalItemsDeleted++;
       remainsvisible=false; // deleted not visible any more
+  do_delete:
       ok=logicProcessRemoteItem(aSyncItemP,aStatusCommand,remainsvisible); // delete in local database NOW
+      CHECK_FOR_AGAIN(LOCAL_ITEM_DELETE);
       break;
     case sop_copy:
       if (fReadOnly) {
@@ -5605,8 +5814,10 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
         // Note: making item to pass sync set filter is implemented in derived DB implementation
         //   as criteria for passing might be in data that must first be read from the DB
         #endif
+      do_add_normal:
         remainsvisible=true; // should remain visible
         ok=logicProcessRemoteItem(aSyncItemP,aStatusCommand,remainsvisible); // add to local database NOW
+        CHECK_FOR_AGAIN(LOCAL_ITEM_ADD_NORMAL);
         if (!remainsvisible && fSessionP->getSyncMLVersion()>=syncml_vers_1_2) {
           PDEBUGPRINTFX(DBG_DATA+DBG_HOT,("Added item is not visible under current filters -> remove it on client"));
           goto removefromremoteandsyncset;
@@ -5633,14 +5844,16 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
         if (!conflictingItemP && fForceConflict) {
           conflictingItemP=SendDBVersionOfItemAsServer(aSyncItemP);
         }
-        bool deleteconflict=false;
+        bool deleteconflict;
+        deleteconflict=false;
         if (conflictingItemP) {
           // Note: if there is a conflict, this replace cannot be an
           //       implicit add, so we don't need to check for fPreventAdd
           //       here.
           // Note: if we are in ignoreUpdate mode, the only conflict resolution
           //       possible is unconditional server win
-          sInt16 cmpRes = SYSYNC_NOT_COMPARABLE;
+          sInt16 cmpRes;
+          cmpRes = SYSYNC_NOT_COMPARABLE;
           // assume we can resolve the conflict
           aStatusCommand.setStatusCode(419); // default to server win
           ADDDEBUGITEM(aStatusCommand,"Conflict resolved by server");
@@ -5681,8 +5894,10 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
                   PDEBUGPRINTFX(DBG_PROTO+DBG_HOT,("Conflict of Client Replace with Server delete -> try to update already deleted item (as it might still exist in syncset)"));
                   // apply replace (and in case of !fDeleteWins, possible implicit add)
                   fPreventAdd=fDeleteWins; // we want implicit add only if delete cannot win
+                do_add_deleted:
                   remainsvisible=!fDeleteWins; // we want to see the item in the sync set if delete does not win!
                   ok=logicProcessRemoteItem(aSyncItemP,aStatusCommand,remainsvisible);
+                  CHECK_FOR_AGAIN(LOCAL_ITEM_ADD_DELETED);
                 }
                 if (fDeleteWins) {
                   if (!ok) {
@@ -5815,8 +6030,10 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
             // - add client item as new item to server DB
             fLocalItemsAdded++;
             aSyncItemP->setSyncOp(sop_add); // set correct op
+          do_add_duplicate:
             remainsvisible=true; // should remain visible
             ok=logicProcessRemoteItem(aSyncItemP,aStatusCommand,remainsvisible); // add to local database NOW
+            CHECK_FOR_AGAIN(LOCAL_ITEM_ADD_DUPLICATE);
             break;
           }
           else if (crstrategy==cr_server_wins) {
@@ -5843,8 +6060,10 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
               // process update in local database
               fLocalItemsUpdated++;
               aSyncItemP->setSyncOp(sop_replace); // update
+            do_replace_merged:
               remainsvisible=true; // should remain visible
               ok=logicProcessRemoteItem(aSyncItemP,aStatusCommand,remainsvisible); // update in local database NOW
+              CHECK_FOR_AGAIN(LOCAL_ITEM_REPLACE_MERGED);
               break;
             }
             else {
@@ -5885,8 +6104,10 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
               fLocalItemsUpdated++;
               aSyncItemP->setSyncOp(sop_replace);
             }
+          do_replace_from_client:
             remainsvisible=true; // should remain visible
             ok=logicProcessRemoteItem(aSyncItemP,aStatusCommand,remainsvisible); // replace in local database NOW
+            CHECK_FOR_AGAIN(LOCAL_ITEM_REPLACE_FROM_CLIENT);
             break;
           }
         } // replace conflict
@@ -5903,13 +6124,15 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
           PDEBUGPRINTFX(DBG_DATA+DBG_CONFLICT,("No Conflict: client item replaces server item"));
           // - replace item in server (or add if item does not exist and not fPreventAdd)
           aSyncItemP->setSyncOp(sop_replace);
+        do_replace:
           remainsvisible=true; // should remain visible
-          if (!logicProcessRemoteItem(aSyncItemP,aStatusCommand,remainsvisible)) {
+          ok=logicProcessRemoteItem(aSyncItemP,aStatusCommand,remainsvisible);
+          CHECK_FOR_AGAIN(LOCAL_ITEM_REPLACE);
+          if (!ok) {
             // check if this is a 404 or 410 and fPreventAdd
             if (fPreventAdd && (aStatusCommand.getStatusCode()==404 || aStatusCommand.getStatusCode()==410))
               goto preventadd2; // to-be-replaced item not found and implicit add prevented -> delete from remote
             // simply failed
-            ok=false;
             break;
           }
           // still visible in sync set?
@@ -5933,7 +6156,7 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
         //   prevent that in case of multiple (loosely compared) matches we
         //   catch the wrong item and cause a mess at slowsync
         //   NOTE: we do compare only relevant fields (eqm_conflict)
-        TSyncItem *matchingItemP = getMatchingItem(aSyncItemP,eqm_conflict);
+        matchingItemP = getMatchingItem(aSyncItemP,eqm_conflict); // separate assignment, only done as part of normal control flow
         if (!matchingItemP) {
           // try again with less strict comparison (eqm_slowsync or eqm_always for firsttimesync)
           DEBUGPRINTFX(DBG_DATA+DBG_MATCH,("Strict search for matching item failed, try with configured EqMode now"));
@@ -5947,21 +6170,26 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
           ));
           fSlowSyncMatches++;
           aStatusCommand.setStatusCode(syncop==sop_add ? 201 : 200); // default is: simply ok. But if original op was Add, MUST return 201 status (SCTS requires it)
-          bool matchingok=false;
+          bool matchingok;
+          matchingok = false;
           // - do not update map yet, as we still don't know if client item will
           //   possibly be added instead of mapped
           // Note: ONLY in case this is a reference-only item, the map is already updated!
-          bool mapupdated = syncop==sop_reference_only;
+          bool mapupdated;
+          mapupdated = syncop==sop_reference_only;
           // - determine which one is winning
-          bool needserverupdate=false;
-          bool needclientupdate=false;
+          bool needserverupdate;
+          bool needclientupdate;
+          needserverupdate = false;
+          needclientupdate = false;
           // if updates are ignored, we can short-cut here
           // Note: if this is a reference-only item, it was already updated (if needed) before last suspend
           //       so skip updating now!
           if (syncop!=sop_reference_only && !fIgnoreUpdate) {
             // Not a reference-only and also updates not suppressed
             // - for a read-only datastore, this defaults to server always winning
-            TConflictResolution crstrategy =
+            TConflictResolution crstrategy;
+            crstrategy =
               fReadOnly ?
               cr_server_wins : // server always wins for read-only
               fItemConflictStrategy; // pre-set strategy for this item
@@ -6025,7 +6253,6 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
                   #endif
                 )!=0
               ) {
-                string guid;
                 // items are not really equal in content, so duplicate them on both sides
                 PDEBUGPRINTFX(DBG_PROTO,("Matching items are not fully equal, duplicate them on both sides"));
                 fConflictsDuplicated++;
@@ -6035,8 +6262,11 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
                 fLocalItemsAdded++;
                 aSyncItemP->setSyncOp(sop_add);
                 aStatusCommand.setStatusCode(201); // item added (if no error occurs)
+              do_add_merged:
+                string guid;
                 remainsvisible=true; // should remain visible
                 matchingok=logicProcessRemoteItem(aSyncItemP,aStatusCommand,remainsvisible,&guid); // add item in local database NOW
+                CHECK_FOR_AGAIN(LOCAL_ITEM_ADD_MERGED);
                 aSyncItemP=NULL; // is already deleted!
                 if (matchingok) { // do it only if server add successful, because otherwise we don't have a GUID
                   // - make sure same item is ADDED as new item to client
@@ -6129,8 +6359,10 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
             // - update server side (NOTE: processItemAsServer takes ownership, pointer gets invalid!)
             fLocalItemsUpdated++;
             aSyncItemP->setSyncOp(sop_replace);
+          do_replace_merged2:
             remainsvisible=true; // should remain visible
             matchingok=logicProcessRemoteItem(aSyncItemP,aStatusCommand,remainsvisible); // replace item in local database NOW
+            CHECK_FOR_AGAIN(LOCAL_ITEM_REPLACE_MERGED2);
             PDEBUGPRINTFX(DBG_DATA+DBG_HOT,("Updated server item"));
           }
           else {
@@ -6159,8 +6391,10 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
           if (fPreventAdd) goto preventadd;
           fLocalItemsAdded++;
           aSyncItemP->setSyncOp(sop_add); // set correct op
+        do_add_slow:
           remainsvisible=true; // should remain visible
           ok=logicProcessRemoteItem(aSyncItemP,aStatusCommand,remainsvisible); // add to local database NOW
+          CHECK_FOR_AGAIN(LOCAL_ITEM_ADD_SLOW);
           break;
         }
       } // slow sync
@@ -6265,8 +6499,71 @@ bool TLocalEngineDS::engProcessRemoteItemAsClient(
   // but must be initialized correctly for client as well as descendants might test them
   fPreventAdd = false;
   fIgnoreUpdate = false;
+
+  TSyncOperation syncop;
+  LocalItemOp op;
+
+  TLocalSyncItemAux *aux = static_cast<TLocalSyncItemAux *>(aSyncItemP->getAux(TSyncItem::LOCAL_ENGINE));
+  if (aux) {
+    // Resuming the function call: restore variables, jump to store
+    // method call.
+    remainsvisible = aux->fRemainsVisible;
+    syncop = aux->fSyncOp;
+    remoteid = aux->fRemoteID;
+    op = aux->fOp;
+
+    fCurrentSyncOp = aux->fCurrentSyncOp;
+    fEchoItemOp = aux->fEchoItemOp;
+    fItemConflictStrategy = aux->fItemConflictStrategy;
+    fForceConflict = aux->fForceConflict;
+    fDeleteWins = aux->fDeleteWins;
+    fRejectStatus = aux->fRejectStatus;
+
+    PDEBUGPRINTFX(DBG_DATA,("%s item operation resumed",SyncOpNames[syncop]));
+    switch (op) {
+    case LOCAL_ITEM_DELETE: goto do_delete;
+    case LOCAL_ITEM_ADD_NORMAL: goto do_add;
+    case LOCAL_ITEM_REPLACE: goto do_replace;
+
+    // Not used in client:
+    case LOCAL_ITEM_ADD_DELETED:
+    case LOCAL_ITEM_ADD_DUPLICATE:
+    case LOCAL_ITEM_REPLACE_MERGED:
+    case LOCAL_ITEM_REPLACE_FROM_CLIENT:
+    case LOCAL_ITEM_ADD_MERGED:
+    case LOCAL_ITEM_REPLACE_MERGED2:
+    case LOCAL_ITEM_ADD_SLOW:
+      break;
+    };
+  }
+  if (false) {
+    // Prepare for resuming the function call. Will only be reached
+    // via goto with "op" set to something identifying the source of
+    // the jump.
+  again:
+    if (!aux) {
+      aux = new TLocalSyncItemAux;
+      aSyncItemP->setAux(TSyncItem::LOCAL_ENGINE, aux);
+    }
+
+    aux->fRemainsVisible = remainsvisible;
+    aux->fSyncOp = syncop;
+    aux->fRemoteID = remoteid;
+    aux->fOp = op;
+
+    aux->fCurrentSyncOp = fCurrentSyncOp;
+    aux->fEchoItemOp = fEchoItemOp;
+    aux->fItemConflictStrategy = fItemConflictStrategy;
+    aux->fForceConflict = fForceConflict;
+    aux->fDeleteWins = fDeleteWins;
+    aux->fRejectStatus = fRejectStatus;
+
+    aStatusCommand.setStatusCode(LOCERR_AGAIN);
+    return false;
+  }
+
   // get operation out of item
-  TSyncOperation syncop=aSyncItemP->getSyncOp();
+  syncop=aSyncItemP->getSyncOp();
   // show
   DEBUGPRINTFX(DBG_DATA,("%s item operation received",SyncOpNames[syncop]));
   // check if receiving commands is allowed at all
@@ -6339,8 +6636,10 @@ bool TLocalEngineDS::engProcessRemoteItemAsClient(
       case sop_delete:
         // delete item
         fLocalItemsDeleted++;
+    do_delete:
         remainsvisible=false; // deleted not visible any more
         ok=logicProcessRemoteItem(aSyncItemP,aStatusCommand,remainsvisible); // delete in local database NOW
+        CHECK_FOR_AGAIN(LOCAL_ITEM_DELETE);
         break;
       case sop_copy:
         // %%% note: this would belong into specific datastore implementation, but is here
@@ -6374,8 +6673,10 @@ bool TLocalEngineDS::engProcessRemoteItemAsClient(
           break;
         }
         #endif
+    do_add:
         remainsvisible=true; // should remain visible
         ok=logicProcessRemoteItem(aSyncItemP,aStatusCommand,remainsvisible,&localid); // add to local database NOW, get back local GUID
+        CHECK_FOR_AGAIN(LOCAL_ITEM_ADD_NORMAL);
         if (!ok) break;
         // if added (not replaced), we need to send map
         if (aStatusCommand.getStatusCode()==201) {
@@ -6402,8 +6703,10 @@ bool TLocalEngineDS::engProcessRemoteItemAsClient(
         // - get remoteid BEFORE processing item (as logicProcessRemoteItem consumes the item!!),
         //   in case replace is converted to add and we need to register a map entry.
         remoteid=aSyncItemP->getRemoteID(); // get remote ID
+    do_replace:
         remainsvisible=true; // should remain visible
         ok=logicProcessRemoteItem(aSyncItemP,aStatusCommand,remainsvisible,&localid); // replace in local database NOW
+        CHECK_FOR_AGAIN(LOCAL_ITEM_REPLACE);
         // if added (not replaced), we need to send map
         if (aStatusCommand.getStatusCode()==201) {
           // Note: logicProcessRemoteItem should NOT do an add if we have no remoteid, but return 404.

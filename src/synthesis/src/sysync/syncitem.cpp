@@ -65,9 +65,23 @@ TSyncItem::TSyncItem(TSyncItemType *aItemType)
 
 TSyncItem::~TSyncItem()
 {
-  // NOP
+  for (SyncItemAux_t::iterator it = fSyncItemAux.begin();
+       it != fSyncItemAux.end();
+       ++it) {
+    delete it->second;
+  }
 } // TSyncItem::~TSyncItem
 
+TSyncItemAux *TSyncItem::getAux(EngineLevel level) const
+{
+  SyncItemAux_t::const_iterator it = fSyncItemAux.find(level);
+  return it == fSyncItemAux.end() ? NULL : it->second;
+}
+
+void TSyncItem::setAux(EngineLevel level, TSyncItemAux *aux)
+{
+  fSyncItemAux[level] = aux;
+}
 
 // assignment (IDs and contents)
 TSyncItem& TSyncItem::operator=(TSyncItem &aSyncItem)

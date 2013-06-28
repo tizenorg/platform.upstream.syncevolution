@@ -449,6 +449,9 @@ class TSmlCommand;
 // container for TSmlCommand pointers
 typedef std::list<TSmlCommand*> TSmlCommandPContainer; // contains sync commands
 
+// Free all items in container and clear it.
+void TSmlCommandPContainerClear(TSmlCommandPContainer &aContainer);
+
 // string to string map
 typedef std::map<string,string> TStringToStringMap; // string to string map
 

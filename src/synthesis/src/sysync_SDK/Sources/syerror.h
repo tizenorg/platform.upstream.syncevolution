@@ -36,6 +36,14 @@ enum TSyErrorEnum {
   /** ok */
   LOCERR_OK = 0,
 
+  /**
+   * May be returned by a store when an operation was started without
+   * completing it yet. Engine will call the same operation again
+   * later. When called a second time, the store must finish the started
+   * operation and return the final result.
+   */
+  LOCERR_AGAIN = 1,
+
   /** no content / end of file / end of iteration / empty/NULL value */
   DB_NoContent = 204,
 

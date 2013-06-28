@@ -2731,7 +2731,24 @@ localstatus TCustomImplDS::implProcessMap(cAppCharP aRemoteID, cAppCharP aLocalI
   return sta;
 } // TCustomImplDS::implProcessMap
 
+enum CustomItemOp
+{
+  CUSTOM_ITEM_ADD,
+  CUSTOM_ITEM_ADD_AUGMENTED,
+  CUSTOM_ITEM_UPDATE,
+  CUSTOM_ITEM_UPDATE_AUGMENTED,
+  CUSTOM_ITEM_DELETE
+};
 
+struct TCustomItemAux : public TSyncItemAux
+{
+  string fLocalID;
+  string fRemoteID; // A copy of the original C string, to be on the safe side.
+  bool fRemoteIDSet;
+  TSyncOperation fSop;
+  bool fRemoteHasLatestData;
+  CustomItemOp fOp;
+};
 
 /// process item (according to operation: add/delete/replace - and for future: copy/move)
 /// @note data items will be sent only after StartWrite()
@@ -2746,6 +2763,8 @@ bool TCustomImplDS::implProcessItem(
   }
   #endif // BASED_ON_BINFILE_CLIENT
 
+  // Same approach as in TLocalEngineDS::engProcessRemoteItem:
+  // backup local state and restore when called again.
   bool ok=true;
   localstatus sta=LOCERR_OK;
   string localID;
@@ -2754,12 +2773,86 @@ bool TCustomImplDS::implProcessItem(
   TMapContainer::iterator mappos;
   TSyncOperation sop=sop_none;
   TMultiFieldItem *augmentedItemP = NULL;
+  bool remoteHasLatestData;
+  CustomItemOp op;
 
   TP_DEFIDX(li);
   TP_SWITCH(li,fSessionP->fTPInfo,TP_database);
   SYSYNC_TRY {
     // get casted item pointer
     TMultiFieldItem *myitemP = (TMultiFieldItem *)aItemP;
+
+    TCustomItemAux *aux = static_cast<TCustomItemAux *>(myitemP->getAux(TSyncItem::CUSTOM_DS));
+    DEBUGPRINTFX(DBG_DATA,(
+      "TCustomImplDS::implProcessItem %p %s, SyncOp=%s, RemoteID='%s', LocalID='%s'",
+      myitemP,
+      aux ? "resuming" : "starting",
+      SyncOpNames[myitemP->getSyncOp()],
+      myitemP->getRemoteID(),
+      myitemP->getLocalID()
+    ));
+    if (aux) {
+      // Resuming the function call: restore variables, jump to store
+      // method call.
+      localID = aux->fLocalID;
+      remoteID = aux->fRemoteIDSet ? aux->fRemoteID.c_str() : NULL;
+      sop = aux->fSop;
+      remoteHasLatestData = aux->fRemoteHasLatestData;
+      op = aux->fOp;
+
+      // Stripped down logic from normal code path below.
+      // We can't save/restore mapppos because it points into
+      // a data structure which may change between calls, thus
+      // invalidating the old iterator.
+      if (IS_CLIENT) {
+        if (!localID.empty() && sop!=sop_add && sop!=sop_wants_add)
+          mappos=findMapByLocalID(localID.c_str(),mapentry_normal);
+        else
+          mappos=fMapTable.end();
+      }
+      else {
+        mappos=findMapByRemoteID(remoteID);
+        if (mappos!=fMapTable.end()) {
+          localID = (*mappos).localid;
+        }
+      }
+
+      aStatusCommand.setStatusCode(510);
+      switch (op) {
+      case CUSTOM_ITEM_ADD: goto do_add;
+      case CUSTOM_ITEM_ADD_AUGMENTED: goto do_add_augmented;
+      case CUSTOM_ITEM_UPDATE: goto do_update;
+      case CUSTOM_ITEM_UPDATE_AUGMENTED: goto do_update_augmented;
+      case CUSTOM_ITEM_DELETE: goto do_delete;
+      };
+    }
+    if (false) {
+      // Prepare for resuming the function call. Will only be reached
+      // via goto with "op" set to something identifying the source of
+      // the jump.
+    again:
+#define CHECK_FOR_AGAIN(_status, _op) \
+        if (_status == LOCERR_AGAIN) { \
+          op = _op; \
+          goto again; \
+        }
+
+      if (!aux) {
+        aux = new TCustomItemAux;
+        myitemP->setAux(TSyncItem::CUSTOM_DS, aux);
+      }
+
+      aux->fLocalID = localID;
+      aux->fRemoteID = remoteID ? remoteID : "";
+      aux->fRemoteIDSet = remoteID != NULL;
+      aux->fSop = sop;
+      aux->fRemoteHasLatestData = remoteHasLatestData;
+      aux->fOp = op;
+
+      aStatusCommand.setStatusCode(LOCERR_AGAIN);
+      goto error;
+    }
+
     // - get op
     sop = myitemP->getSyncOp();
     // - check IDs
@@ -2790,7 +2883,7 @@ bool TCustomImplDS::implProcessItem(
     }
     // - now perform op
     aStatusCommand.setStatusCode(510); // default DB error
-    bool remoteHasLatestData = false;
+    remoteHasLatestData = false;
     switch (sop) {
       /// @todo sop_copy is now implemented by read/add sequence
       ///       in localEngineDS, but will be moved here later possibly
@@ -2809,7 +2902,9 @@ bool TCustomImplDS::implProcessItem(
           break;
         }
         // add item and retrieve new localID for it
+    do_add:
         sta = apiAddItem(*myitemP,localID);
+        CHECK_FOR_AGAIN(sta, CUSTOM_ITEM_ADD);
         myitemP->setLocalID(localID.c_str()); // possibly following operations need to be based on new localID returned by add
         // check for backend asking engine to do a merge
         if (sta==DB_Conflict) {
@@ -2821,10 +2916,12 @@ bool TCustomImplDS::implProcessItem(
             sta = DB_Error; // no item found, DB error
           else {
              // store augmented version back to DB only if modified
+          do_add_augmented:
             if (changedDBVersion)
               sta = apiUpdateItem(*augmentedItemP);
             else
               sta = LOCERR_OK;
+            CHECK_FOR_AGAIN(sta, CUSTOM_ITEM_ADD_AUGMENTED);
             // in server case, further process like backend merge (but no need to fetch again, we just keep augmentedItemP)
             if (IS_SERVER && sta==LOCERR_OK) {
               // TLocalEngineDS::engProcessRemoteItemAsServer() in
@@ -2941,7 +3038,9 @@ bool TCustomImplDS::implProcessItem(
           // - make sure item has local ID set
           myitemP->setLocalID(localID.c_str());
           // update item
+        do_update:
           sta = apiUpdateItem(*myitemP);
+          CHECK_FOR_AGAIN(sta, CUSTOM_ITEM_UPDATE);
           if (sta==DB_Conflict) {
             // DB has detected item conflicts with data already stored in the database and
             // request merging current data from the backend with new data before storing.
@@ -2951,10 +3050,12 @@ bool TCustomImplDS::implProcessItem(
               sta = DB_Error; // no item found, DB error
             else {
                // store augmented version back to DB only if modified
+            do_update_augmented:
               if (changedDBVersion)
                 sta = apiUpdateItem(*augmentedItemP);
               else
                 sta = LOCERR_OK;
+              CHECK_FOR_AGAIN(sta, CUSTOM_ITEM_UPDATE_AUGMENTED);
               delete augmentedItemP; // forget now
             }
           }
@@ -2989,7 +3090,9 @@ bool TCustomImplDS::implProcessItem(
           // - make sure item has local ID set
           myitemP->setLocalID(localID.c_str());
           // delete item
+        do_delete:
           sta = apiDeleteItem(*myitemP);
+          CHECK_FOR_AGAIN(sta, CUSTOM_ITEM_DELETE);
           if (sta!=LOCERR_OK) {
             // not found is reported as successful 211 status, because result is ok (item deleted, whatever reason)
             if (sta==404)

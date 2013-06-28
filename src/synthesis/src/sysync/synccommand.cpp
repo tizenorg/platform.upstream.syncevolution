@@ -39,6 +39,15 @@
 
 using namespace sysync;
 
+namespace sysync {
+void TSmlCommandPContainerClear(TSmlCommandPContainer &aContainer)
+{
+  while (!aContainer.empty()) {
+    delete aContainer.front();
+    aContainer.pop_front();
+  }
+}
+}
 
 /* command name list, used for cmdRef */
 
@@ -374,8 +383,27 @@ void TSmlCommand::issueStatusCommand(TSyError aStatusCode)
 
 TSmlCommand::~TSmlCommand()
 {
+  TSmlCommandPContainerClear(fPendingStatusReplies);
   PDEBUGPRINTFX(DBG_PROTO,("Deleted command '%s' (%s MsgID=%ld, CmdID=%ld)",getName(),fOutgoing ? "outgoing" : "incoming", (long)fMsgID,(long)fCmdID));
 } // TSmlCommand::~TSmlCommand
+
+void TSmlCommand::queueStatusCmd(TSmlCommand *aSyncCommandP)
+{
+  fPendingStatusReplies.push_back(aSyncCommandP);
+}
+
+bool TSmlCommand::hasQueuedStatusCmds() const
+{
+  return !fPendingStatusReplies.empty();
+}
+
+void TSmlCommand::transferQueuedStatusCmds(TSmlCommandPContainer &commands)
+{
+  while (!fPendingStatusReplies.empty()) {
+    commands.push_back(fPendingStatusReplies.front());
+    fPendingStatusReplies.pop_front();
+  }
+}
 
 /* end of TSmlCommand implementation */
 
@@ -2626,6 +2654,9 @@ bool TSyncOpCommand::execute(void)
         thisitemnode->next=NULL; // disconnect subsequent nodes
         thisitemnode->item=NULL; // disconnect item (which is now in tobequeueditems list)
         smlFreeItemList(thisitemnode); // dispose of node
+        // - and the status command
+        delete statusCmdP;
+        statusCmdP = NULL;
       }
       else {
         // count incoming net data

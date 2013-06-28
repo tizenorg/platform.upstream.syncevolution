@@ -250,6 +250,15 @@ typedef struct sml_sync_hdr_s {
 
 
 /**
+ * Auxiliary data added by layer above SMLTK.
+ * Actual data will be in derived types that
+ * are not visible to SMLTK.
+ */
+typedef struct sml_item_aux_s {
+  void (*freeAux)(struct sml_item_aux_s *ptr);   // Frees the aux instance.
+} *SmlItemAuxPtr_t, SmlItemAux_t;
+
+/**
  * Data in SyncML is encapsulated in an "item" element.
  */
 typedef struct sml_item_s {
@@ -261,6 +270,8 @@ typedef struct sml_item_s {
   SmlPcdataPtr_t        meta;         // opt.
   SmlPcdataPtr_t        data;         // opt.
   Flag_t                flags;        // opt. for MoreData
+
+  SmlItemAuxPtr_t       aux;          // for use by level above SMLTK
 } *SmlItemPtr_t, SmlItem_t;
 
 typedef struct sml_item_list_s {

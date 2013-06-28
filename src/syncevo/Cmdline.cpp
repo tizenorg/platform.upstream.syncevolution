@@ -678,6 +678,64 @@ void Cmdline::checkSourcePasswords(SyncContext &context,
     }
 }
 
+static void ShowLUID(SyncSourceLogging *logging, const std::string &luid)
+{
+    string description;
+    if (logging) {
+        description = logging->getDescription(luid);
+    }
+    SE_LOG_SHOW(NULL, "%s%s%s",
+                CmdlineLUID::fromLUID(luid).c_str(),
+                description.empty() ? "" : ": ",
+                description.c_str());
+}
+
+static void ExportLUID(SyncSourceRaw *raw,
+                       ostream *out,
+                       const std::string &defDelimiter,
+                       const std::string &itemPath,
+                       bool &haveItem, bool &haveNewline,
+                       const std::string &luid)
+{
+    string item;
+    raw->readItemRaw(luid, item);
+    if (!out) {
+        // write into directory
+        string fullPath = itemPath + "/" + luid;
+        ofstream file((itemPath + "/" + luid).c_str());
+        file << item;
+        file.close();
+        if (file.bad()) {
+            SyncContext::throwError(fullPath, errno);
+        }
+    } else {
+        std::string delimiter;
+        if (haveItem) {
+            if (defDelimiter.size() > 1 &&
+                haveNewline &&
+                defDelimiter[0] == '\n') {
+                // already wrote initial newline, skip it
+                delimiter = defDelimiter.substr(1);
+            } else {
+                delimiter = defDelimiter;
+            }
+        }
+        if (out == &std::cout) {
+            // special case, use logging infrastructure
+            SE_LOG_SHOW(NULL, "%s%s",
+                        delimiter.c_str(),
+                        item.c_str());
+            // always prints newline
+            haveNewline = true;
+        } else {
+            // write to file
+            *out << delimiter << item;
+            haveNewline = boost::ends_with(item, "\n");
+        }
+        haveItem = true;
+    }
+}
+
 bool Cmdline::run() {
     // --dry-run is only supported by some operations.
     // Be very strict about it and make sure it is off in all
@@ -1328,6 +1386,7 @@ bool Cmdline::run() {
 
         checkSyncPasswords(*context);
         checkSourcePasswords(*context, source->getName(), sourceNodes);
+        source->setNeedChanges(false);
         source->open();
         const SyncSource::Operations &ops = source->getOperations();
         if (m_printItems) {
@@ -1339,18 +1398,8 @@ bool Cmdline::run() {
 
             err = ops.m_startDataRead(*source, "", "");
             CHECK_ERROR("reading items");
-            list<string> luids;
-            readLUIDs(source, luids);
-            BOOST_FOREACH(string &luid, luids) {
-                string description;
-                if (logging) {
-                    description = logging->getDescription(luid);
-                }
-                SE_LOG_SHOW(NULL, "%s%s%s",
-                            CmdlineLUID::fromLUID(luid).c_str(),
-                            description.empty() ? "" : ": ",
-                            description.c_str());
-            }
+            source->setReadAheadOrder(SyncSourceBase::READ_ALL_ITEMS);
+            processLUIDs(source, boost::bind(ShowLUID, logging, _1));
         } else if (m_deleteItems) {
             if (!ops.m_deleteItem) {
                 source->throwError("deleting items not supported");
@@ -1497,50 +1546,29 @@ bool Cmdline::run() {
                     outFile.set(new ofstream(m_itemPath.c_str()));
                     out = outFile;
                 }
-                if (m_luids.empty()) {
-                    readLUIDs(source, m_luids);
-                }
                 bool haveItem = false;     // have written one item
                 bool haveNewline = false;  // that item had a newline at the end
-                BOOST_FOREACH(const string &luid, m_luids) {
-                    string item;
-                    raw->readItemRaw(luid, item);
-                    if (!out) {
-                        // write into directory
-                        string fullPath = m_itemPath + "/" + luid;
-                        ofstream file((m_itemPath + "/" + luid).c_str());
-                        file << item;
-                        file.close();
-                        if (file.bad()) {
-                            SyncContext::throwError(fullPath, errno);
-                        }
-                    } else {
-                        std::string delimiter;
-                        if (haveItem) {
-                            if (m_delimiter.size() > 1 &&
-                                haveNewline &&
-                                m_delimiter[0] == '\n') {
-                                // already wrote initial newline, skip it
-                                delimiter = m_delimiter.substr(1);
-                            } else {
-                                delimiter = m_delimiter;
-                            }
-                        }
-                        if (out == &std::cout) {
-                            // special case, use logging infrastructure
-                            SE_LOG_SHOW(NULL, "%s%s",
-                                        delimiter.c_str(),
-                                        item.c_str());
-                            // always prints newline
-                            haveNewline = true;
-                        } else {
-                            // write to file
-                            *out << delimiter << item;
-                            haveNewline = boost::ends_with(item, "\n");
-                        }
-                        haveItem = true;
+                if (m_luids.empty()) {
+                    // Read all items.
+                    raw->setReadAheadOrder(SyncSourceBase::READ_ALL_ITEMS);
+                    processLUIDs(source, boost::bind(ExportLUID,
+                                                     raw,
+                                                     out,
+                                                     boost::ref(m_delimiter),
+                                                     boost::ref(m_itemPath),
+                                                     boost::ref(haveItem),
+                                                     boost::ref(haveNewline),
+                                                     _1));
+                } else {
+                    SyncSourceBase::ReadAheadItems luids;
+                    luids.reserve(m_luids.size());
+                    luids.insert(luids.begin(), m_luids.begin(), m_luids.end());
+                    raw->setReadAheadOrder(SyncSourceBase::READ_SELECTED_ITEMS, luids);
+                    BOOST_FOREACH(const string &luid, m_luids) {
+                        ExportLUID(raw, out, m_delimiter, m_itemPath, haveItem, haveNewline, luid);
                     }
                 }
+                raw->setReadAheadOrder(SyncSourceBase::READ_NONE);
                 if (outFile) {
                     outFile->close();
                     if (outFile->bad()) {
@@ -1676,13 +1704,18 @@ bool Cmdline::run() {
 
 void Cmdline::readLUIDs(SyncSource *source, list<string> &luids)
 {
+    processLUIDs(source, boost::bind(&list<string>::push_back, boost::ref(luids), _1));
+}
+
+void Cmdline::processLUIDs(SyncSource *source, const boost::function<void (const std::string &)> &process)
+{
     const SyncSource::Operations &ops = source->getOperations();
     sysync::ItemIDType id;
     sysync::sInt32 status;
     sysync::TSyError err = ops.m_readNextItem(*source, &id, &status, true);
     CHECK_ERROR("next item");
     while (status != sysync::ReadNextItem_EOF) {
-        luids.push_back(id.item);
+        process(id.item);
         StrDispose(id.item);
         StrDispose(id.parent);
         err = ops.m_readNextItem(*source, &id, &status, false);

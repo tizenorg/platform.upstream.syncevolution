@@ -61,6 +61,12 @@ extern const char * const comparisonModeNames[numEQmodes];
 class TLocalEngineDS;
 class TSyncAppBase;
 
+class TSyncItemAux
+{
+ public:
+  virtual ~TSyncItemAux() {}
+};
+
 class TSyncItem :
   noncopyable
 {
@@ -161,6 +167,17 @@ public:
   #endif
   // - get session owner (dispatcher/clientbase)
   TSyncAppBase *getSyncAppBase(void);
+
+  // Opaque auxiliary data, for use in the different levels that the item passes through.
+  enum EngineLevel
+  {
+    LOCAL_ENGINE,
+    STD_LOGIC_DS,
+    CUSTOM_DS,
+    PLUGIN_API
+  };
+  TSyncItemAux *getAux(EngineLevel level) const;
+  void setAux(EngineLevel level, TSyncItemAux *aux);
 protected:
   // operation to be performed with this item at its destination
   TSyncOperation fSyncOp;
@@ -168,6 +185,8 @@ protected:
 private:
   // cast pointer to same type, returns NULL if incompatible
   TSyncItem *castToSameTypeP(TSyncItem *aItemP) { return aItemP; } // all are compatible TSyncItem
+  typedef std::map<EngineLevel, TSyncItemAux *> SyncItemAux_t;
+  SyncItemAux_t fSyncItemAux;
 }; // TSyncItem
 
 } // namespace sysync

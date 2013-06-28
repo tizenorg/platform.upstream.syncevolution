@@ -35,7 +35,6 @@ class TRemoteDataStore;
 // default command size
 #define DEFAULTCOMMANDSIZE 200;
 
-
 // Command Types (Note: not only strictly commands, but all
 // SyncML protocol items that need command-like processin
 // are wrapped in a command, too, e.g. "SyncHdr"
@@ -159,6 +158,9 @@ public:
   virtual bool isSyncOp(void) { return false; };
   virtual bool neverIgnore(void) { return false; }; // normal commands should be ignored when in fIgnoreIncomingCommands state
   virtual bool statusEssential(void) { return true; }; // normal commands MUST receive status
+  void queueStatusCmd(TSmlCommand *aSyncCommandP); // to be called by TSyncSession::issuePtr()
+  bool hasQueuedStatusCmds() const;
+  void transferQueuedStatusCmds(TSmlCommandPContainer &commands); // transfer ownership of pending commands to caller
 protected:
   // helper methods for derived classes
   // - get name of certain command
@@ -207,6 +209,7 @@ protected:
   bool fAllowFailure;
 private:
   uInt16 fWaitingForStatus; // count for how many statuses a command is waiting
+  TSmlCommandPContainer fPendingStatusReplies; // Status commands which could not be sent yet.
 }; // TSmlCommand
 
 

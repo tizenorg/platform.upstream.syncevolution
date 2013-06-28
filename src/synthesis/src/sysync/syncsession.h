@@ -524,6 +524,9 @@ public:
   bool sessionMustContinue(void);
   virtual void essentialStatusReceived(void) { /* NOP here */ };
   void delayExecUntilNextRequest(TSmlCommand *aCommand);
+  bool onlyItemChangesPending();
+  bool tryDelayedExecutionCommands(); // returns syncEndAfterSyncPackageEnd
+  bool executeDelayedCmd(TSmlCommand *aCmdP); // wrapper around TSmlCommand::execute() which issues queued Status commands if any are pending
   bool delayedSyncEndsPending(void) { return fDelayedExecSyncEnds>0; };
   // - continue interrupted or prevented issue in next package
   void ContinuePackageRoot(void);
@@ -901,6 +904,7 @@ protected:
   // - session state
   TPackageStates fIncomingState; // incoming package state
   TPackageStates fCmdIncomingState; // while executing commands: state when command was received (actual might be different due to queueing)
+  TSmlCommand *fCmdIncoming; // while executing command inside process(): command being processed
   TPackageStates fOutgoingState; // outgoing package state
   bool fRestarting; // Set to true in TSyncSession::processAlertItem() while processing the first Alert from a
                     // client which requests another sync cycle. Applies to all further Alerts, cleared

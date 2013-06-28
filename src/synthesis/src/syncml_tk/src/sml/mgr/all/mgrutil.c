@@ -816,6 +816,8 @@ SML_API void smlFreeItemPtr(SmlItemPtr_t pItem)
   if (! pItem)
     return;
 
+  if (pItem->aux)
+    pItem->aux->freeAux(pItem->aux);
   smlFreePcdata(pItem->meta);
   smlFreePcdata(pItem->data);
 

@@ -31,6 +31,7 @@
 
 #include <boost/function.hpp>
 #include <boost/signals2.hpp>
+#include <boost/variant.hpp>
 
 #include <syncevo/declarations.h>
 SE_BEGIN_CXX
@@ -693,12 +694,55 @@ class OperationSlotInvoker {
 };
 
 /**
- * helper class, needs to be specialized based on number of parameters
+ * Helper class for looking up a pending operation by a Synthesis parameter.
+ * KeyH (add, replace) and item ID (delete) are supported.
  */
-template<class F, int arity> class OperationWrapperSwitch;
+template<class A1> struct KeyConverter;
 
-/** one parameter */
-template<class F> class OperationWrapperSwitch<F, 0>
+/**
+ * For KeyH we make the assumption that the key exists as long
+ * as the pending operation, and thus its address can be used as
+ * unique identifier for the operation.
+ */
+template<> struct KeyConverter<sysync::KeyH>
+{
+    typedef void * key_type;
+    static key_type toKey(sysync::KeyH key) { return static_cast<void *>(key); }
+};
+
+/**
+ * For cItemID we just use the item ID as string.
+ */
+template<> struct KeyConverter<sysync::cItemID>
+{
+    typedef std::string key_type;
+    static key_type toKey(sysync::cItemID id) { return id->item; }
+};
+
+/**
+ * To be returned by a function wrapped by OperationWrapper
+ * when the function is not done yet and wants to be called again
+ * for the same item.
+ */
+template <class F> class ContinueOperation : public boost::function<F>
+{
+ public:
+    ContinueOperation()
+    {}
+
+    ContinueOperation(const boost::function<F> &callback) : 
+        boost::function<F>(callback)
+    {}
+};
+
+/**
+ * Helper class, needs to be specialized based on number of parameters
+ * and return type.
+ */
+template<class F, int arity, class R> class OperationWrapperSwitch;
+
+/** one parameter, sysync::TSyError type */
+template<class F> class OperationWrapperSwitch<F, 0, sysync::TSyError>
 {
  public:
     typedef sysync::TSyError result_type;
@@ -770,8 +814,8 @@ template<class F> class OperationWrapperSwitch<F, 0>
      * speaking this modifies the behavior of the
      * implementation.
      */
-    PreSignal &getPreSignal() const { return const_cast<OperationWrapperSwitch<F, 0> *>(this)->m_pre; }
-    PostSignal &getPostSignal() const { return const_cast<OperationWrapperSwitch<F, 0> *>(this)->m_post; }
+    PreSignal &getPreSignal() const { return const_cast<PreSignal &>(m_pre); }
+    PostSignal &getPostSignal() const { return const_cast<PostSignal &>(m_post); }
 
  protected:
     OperationType m_operation;
@@ -781,7 +825,7 @@ template<class F> class OperationWrapperSwitch<F, 0>
     PostSignal m_post;
 };
 
-template<class F> class OperationWrapperSwitch<F, 1>
+template<class F> class OperationWrapperSwitch<F, 1, sysync::TSyError>
 {
  public:
     typedef sysync::TSyError result_type;
@@ -822,8 +866,8 @@ template<class F> class OperationWrapperSwitch<F, 1>
         return res == STATUS_FATAL ? STATUS_DATASTORE_FAILURE : res;
     }
 
-    PreSignal &getPreSignal() const { return const_cast<OperationWrapperSwitch<F, 1> *>(this)->m_pre; }
-    PostSignal &getPostSignal() const { return const_cast<OperationWrapperSwitch<F, 1> *>(this)->m_post; }
+    PreSignal &getPreSignal() const { return const_cast<PreSignal &>(m_pre); }
+    PostSignal &getPostSignal() const { return const_cast<PostSignal &>(m_post); }
 
  protected:
     OperationType m_operation;
@@ -833,7 +877,83 @@ template<class F> class OperationWrapperSwitch<F, 1>
     PostSignal m_post;
 };
 
-template<class F> class OperationWrapperSwitch<F, 2>
+template<class F, class V> class OperationWrapperSwitch<F, 1, V>
+{
+ public:
+    typedef sysync::TSyError result_type;
+    typedef boost::function<F> OperationType;
+    typedef typename boost::function<F>::arg1_type arg1_type;
+    typedef boost::signals2::signal<void (SyncSource &, arg1_type a1),
+        OperationSlotInvoker> PreSignal;
+    typedef boost::signals2::signal<void (SyncSource &, OperationExecution, sysync::TSyError,
+                                          arg1_type a1),
+        OperationSlotInvoker> PostSignal;
+    typedef KeyConverter<arg1_type> Converter;
+    typedef ContinueOperation<sysync::TSyError (arg1_type)> Continue;
+    typedef std::map<typename Converter::key_type, Continue> Pending;
+
+    sysync::TSyError operator () (SyncSource &source,
+                                  arg1_type a1) const throw ()
+    {
+        sysync::TSyError res;
+        OperationExecution exec;
+
+        // Marking m_pending "volatile" didn't work, find() not defined for that.
+        typename Pending::iterator it = const_cast<Pending &>(m_pending).find(Converter::toKey(a1));
+        bool continuing = it != m_pending.end();
+
+        res = continuing ? sysync::LOCERR_OK : m_pre(source, a1);
+        if (res != sysync::LOCERR_OK) {
+            exec = OPERATION_SKIPPED;
+        } else {
+            if (continuing) {
+                res = it->second(a1);
+                if (res != sysync::LOCERR_AGAIN) {
+                    const_cast<Pending &>(m_pending).erase(it);
+                }
+            } else if (m_operation) {
+                try {
+                    V newres = m_operation(a1);
+                    sysync::TSyError *completed = boost::get<sysync::TSyError>(&newres);
+                    if (completed) {
+                        res = *completed;
+                    } else {
+                        res = sysync::LOCERR_AGAIN;
+                        Continue cont = boost::get<Continue>(newres);
+                        const_cast<Pending &>(m_pending).insert(std::make_pair(Converter::toKey(a1), cont));
+                    }
+                    exec = OPERATION_FINISHED;
+                } catch (...) {
+                    res = Exception::handle(/* source */);
+                    exec = OPERATION_EXCEPTION;
+                }
+            } else {
+                res = sysync::LOCERR_NOTIMP;
+                exec = OPERATION_EMPTY;
+            }
+        }
+        if (res != sysync::LOCERR_AGAIN) {
+            sysync::TSyError newres = m_post(source, exec, res, a1);
+            if (newres != sysync::LOCERR_OK) {
+                res = newres;
+            }
+        }
+        return res == STATUS_FATAL ? STATUS_DATASTORE_FAILURE : res;
+    }
+
+    PreSignal &getPreSignal() const { return const_cast<PreSignal &>(m_pre); }
+    PostSignal &getPostSignal() const { return const_cast<PostSignal &>(m_post); }
+
+ protected:
+    OperationType m_operation;
+
+ private:
+    PreSignal m_pre;
+    PostSignal m_post;
+    Pending m_pending;
+};
+
+template<class F> class OperationWrapperSwitch<F, 2, sysync::TSyError>
 {
  public:
     typedef sysync::TSyError result_type;
@@ -875,8 +995,8 @@ template<class F> class OperationWrapperSwitch<F, 2>
         return res == STATUS_FATAL ? STATUS_DATASTORE_FAILURE : res;
     }
 
-    PreSignal &getPreSignal() const { return const_cast<OperationWrapperSwitch<F, 2> *>(this)->m_pre; }
-    PostSignal &getPostSignal() const { return const_cast<OperationWrapperSwitch<F, 2> *>(this)->m_post; }
+    PreSignal &getPreSignal() const { return const_cast<PreSignal &>(m_pre); }
+    PostSignal &getPostSignal() const { return const_cast<PostSignal &>(m_post); }
 
  protected:
     OperationType m_operation;
@@ -886,7 +1006,84 @@ template<class F> class OperationWrapperSwitch<F, 2>
     PostSignal m_post;
 };
 
-template<class F> class OperationWrapperSwitch<F, 3>
+template<class F, class V> class OperationWrapperSwitch<F, 2, V>
+{
+ public:
+    typedef sysync::TSyError result_type;
+    typedef boost::function<F> OperationType;
+    typedef typename boost::function<F>::arg1_type arg1_type;
+    typedef typename boost::function<F>::arg2_type arg2_type;
+    typedef boost::signals2::signal<void (SyncSource &, arg1_type a1, arg2_type a2),
+        OperationSlotInvoker> PreSignal;
+    typedef boost::signals2::signal<void (SyncSource &, OperationExecution, sysync::TSyError,
+                                          arg1_type a1, arg2_type a2),
+        OperationSlotInvoker> PostSignal;
+    typedef KeyConverter<arg1_type> Converter;
+    typedef ContinueOperation<sysync::TSyError (arg1_type, arg2_type)> Continue;
+    typedef std::map<typename Converter::key_type, Continue> Pending;
+
+    sysync::TSyError operator () (SyncSource &source,
+                                  arg1_type a1, arg2_type a2) const throw ()
+    {
+        sysync::TSyError res;
+        OperationExecution exec;
+
+        // Marking m_pending "volatile" didn't work, find() not defined for that.
+        typename Pending::iterator it = const_cast<Pending &>(m_pending).find(Converter::toKey(a1));
+        bool continuing = it != m_pending.end();
+
+        res = continuing ? sysync::LOCERR_OK : m_pre(source, a1, a2);
+        if (res != sysync::LOCERR_OK) {
+            exec = OPERATION_SKIPPED;
+        } else {
+            if (continuing) {
+                res = it->second(a1, a2);
+                if (res != sysync::LOCERR_AGAIN) {
+                    const_cast<Pending &>(m_pending).erase(it);
+                }
+            } else if (m_operation) {
+                try {
+                    V newres = m_operation(a1, a2);
+                    sysync::TSyError *completed = boost::get<sysync::TSyError>(&newres);
+                    if (completed) {
+                        res = *completed;
+                    } else {
+                        res = sysync::LOCERR_AGAIN;
+                        Continue cont = boost::get<Continue>(newres);
+                        const_cast<Pending &>(m_pending).insert(std::make_pair(Converter::toKey(a1), cont));
+                    }
+                    exec = OPERATION_FINISHED;
+                } catch (...) {
+                    res = Exception::handle(/* source */);
+                    exec = OPERATION_EXCEPTION;
+                }
+            } else {
+                res = sysync::LOCERR_NOTIMP;
+                exec = OPERATION_EMPTY;
+            }
+        }
+        if (res != sysync::LOCERR_AGAIN) {
+            sysync::TSyError newres = m_post(source, exec, res, a1, a2);
+            if (newres != sysync::LOCERR_OK) {
+                res = newres;
+            }
+        }
+        return res == STATUS_FATAL ? STATUS_DATASTORE_FAILURE : res;
+    }
+
+    PreSignal &getPreSignal() const { return const_cast<PreSignal &>(m_pre); }
+    PostSignal &getPostSignal() const { return const_cast<PostSignal &>(m_post); }
+
+ protected:
+    OperationType m_operation;
+
+ private:
+    PreSignal m_pre;
+    PostSignal m_post;
+    Pending m_pending;
+};
+
+template<class F> class OperationWrapperSwitch<F, 3, sysync::TSyError>
 {
  public:
     typedef sysync::TSyError result_type;
@@ -929,8 +1126,8 @@ template<class F> class OperationWrapperSwitch<F, 3>
         return res == STATUS_FATAL ? STATUS_DATASTORE_FAILURE : res;
     }
 
-    PreSignal &getPreSignal() const { return const_cast<OperationWrapperSwitch<F, 3> *>(this)->m_pre; }
-    PostSignal &getPostSignal() const { return const_cast<OperationWrapperSwitch<F, 3> *>(this)->m_post; }
+    PreSignal &getPreSignal() const { return const_cast<PreSignal &>(m_pre); }
+    PostSignal &getPostSignal() const { return const_cast<PostSignal &>(m_post); }
 
  protected:
     OperationType m_operation;
@@ -941,15 +1138,102 @@ template<class F> class OperationWrapperSwitch<F, 3>
 
 };
 
+template<class F, class V> class OperationWrapperSwitch<F, 3, V>
+{
+ public:
+    typedef sysync::TSyError result_type;
+    typedef boost::function<F> OperationType;
+    typedef typename boost::function<F>::arg1_type arg1_type;
+    typedef typename boost::function<F>::arg2_type arg2_type;
+    typedef typename boost::function<F>::arg3_type arg3_type;
+    typedef boost::signals2::signal<void (SyncSource &, arg1_type a1, arg2_type a2, arg3_type a3),
+        OperationSlotInvoker> PreSignal;
+    typedef boost::signals2::signal<void (SyncSource &, OperationExecution, sysync::TSyError,
+                                          arg1_type a1, arg2_type a2, arg3_type a3),
+        OperationSlotInvoker> PostSignal;
+    typedef KeyConverter<arg1_type> Converter;
+    typedef ContinueOperation<sysync::TSyError (arg1_type, arg2_type, arg3_type)> Continue;
+    typedef std::map<typename Converter::key_type, Continue> Pending;
+
+    sysync::TSyError operator () (SyncSource &source,
+                                  arg1_type a1, arg2_type a2, arg3_type a3) const throw ()
+    {
+        sysync::TSyError res;
+        OperationExecution exec;
+
+        // Marking m_pending "volatile" didn't work, find() not defined for that.
+        typename Pending::iterator it = const_cast<Pending &>(m_pending).find(Converter::toKey(a1));
+        bool continuing = it != m_pending.end();
+
+        res = continuing ? sysync::LOCERR_OK : m_pre(source, a1, a2, a3);
+        if (res != sysync::LOCERR_OK) {
+            exec = OPERATION_SKIPPED;
+        } else {
+            if (continuing) {
+                res = it->second(a1, a2, a3);
+                if (res != sysync::LOCERR_AGAIN) {
+                    const_cast<Pending &>(m_pending).erase(it);
+                }
+            } else if (m_operation) {
+                try {
+                    V newres = m_operation(a1, a2, a3);
+                    sysync::TSyError *completed = boost::get<sysync::TSyError>(&newres);
+                    if (completed) {
+                        res = *completed;
+                    } else {
+                        res = sysync::LOCERR_AGAIN;
+                        Continue cont = boost::get<Continue>(newres);
+                        const_cast<Pending &>(m_pending).insert(std::make_pair(Converter::toKey(a1), cont));
+                    }
+                    exec = OPERATION_FINISHED;
+                } catch (...) {
+                    res = Exception::handle(/* source */);
+                    exec = OPERATION_EXCEPTION;
+                }
+            } else {
+                res = sysync::LOCERR_NOTIMP;
+                exec = OPERATION_EMPTY;
+            }
+        }
+        if (res != sysync::LOCERR_AGAIN) {
+            sysync::TSyError newres = m_post(source, exec, res, a1, a2, a3);
+            if (newres != sysync::LOCERR_OK) {
+                res = newres;
+            }
+        }
+        return res == STATUS_FATAL ? STATUS_DATASTORE_FAILURE : res;
+    }
+
+    PreSignal &getPreSignal() const { return const_cast<PreSignal &>(m_pre); }
+    PostSignal &getPostSignal() const { return const_cast<PostSignal &>(m_post); }
+
+ protected:
+    OperationType m_operation;
+
+ private:
+    PreSignal m_pre;
+    PostSignal m_post;
+    Pending m_pending;
+};
+
 /**
  * This mimics a boost::function with the same signature. The function
  * signature F must have a sysync::TSyError error return code, as in most
- * of the Synthesis DB API.
+ * of the Synthesis DB API, or a boost::variant of sysync::TSyError and
+ * ContinueOperation<F>.
  *
  * Specializations of this class for operations with different number
  * of parameters provide a call operator which invokes a pre- and
  * post-signal around the actual implementation. See
  * OperationWrapperSwitch<F, 0> for details.
+ *
+ * If the function returns a variant with a ContinueOperation<F> inside,
+ * the OperationWrapper will store that callback for the current
+ * set of parameters (currently using only the first one as key),
+ * then when called again, skip the pre-signal and invoke the callback
+ * instead of the original operation. That callback may return LOCERR_AGAIN
+ * to request being called again the same way. The post-signal is
+ * called when the operation finally completes.
  *
  * Additional operations could be wrapped by providing more
  * specializations (different return code, more parameters). The
@@ -959,9 +1243,9 @@ template<class F> class OperationWrapperSwitch<F, 3>
  * supported arguments in boost::signals2/boost::function.
  */
 template<class F> class OperationWrapper :
-public OperationWrapperSwitch<F, boost::function<F>::arity>
+public OperationWrapperSwitch<F, boost::function<F>::arity, typename boost::function<F>::result_type>
 {
-    typedef OperationWrapperSwitch<F, boost::function<F>::arity> inherited;
+    typedef OperationWrapperSwitch<F, boost::function<F>::arity, typename boost::function<F>::result_type> inherited;
  public:
     /** operation implemented? */
     operator bool () const { return inherited::m_operation; }
@@ -975,7 +1259,6 @@ public OperationWrapperSwitch<F, boost::function<F>::arity>
         inherited::m_operation = operation;
     }
 };
-
 
 /**
  * abstract base class for SyncSource with some common functionality
@@ -1247,6 +1530,9 @@ class SyncSourceBase {
         typedef OperationWrapper<sysync::TSyError ()> StartDataWrite_t;
         StartDataWrite_t m_startDataWrite;
 
+        typedef OperationWrapper<sysync::TSyError (sysync::cItemID aID, sysync::ItemID updID)> FinalizeLocalID_t;
+        FinalizeLocalID_t m_finalizeLocalID;
+
         typedef OperationWrapper<sysync::TSyError (bool success, char **newToken)> EndDataWrite_t;
         EndDataWrite_t m_endDataWrite;
 
@@ -1259,13 +1545,19 @@ class SyncSourceBase {
         typedef OperationWrapper<sysync::TSyError (sysync::cItemID aID, sysync::KeyH aItemKey)> ReadItemAsKey_t;
         ReadItemAsKey_t m_readItemAsKey;
 
-        typedef OperationWrapper<sysync::TSyError (sysync::KeyH aItemKey, sysync::ItemID newID)> InsertItemAsKey_t;
+        typedef ContinueOperation<sysync::TSyError (sysync::KeyH aItemKey, sysync::ItemID newID)> InsertItemAsKeyContinue_t;
+        typedef boost::variant<sysync::TSyError, InsertItemAsKeyContinue_t> InsertItemAsKeyResult_t;
+        typedef OperationWrapper<InsertItemAsKeyResult_t (sysync::KeyH aItemKey, sysync::ItemID newID)> InsertItemAsKey_t;
         InsertItemAsKey_t m_insertItemAsKey;
 
-        typedef OperationWrapper<sysync::TSyError (sysync::KeyH aItemKey, sysync::cItemID aID, sysync::ItemID updID)> UpdateItemAsKey_t;
+        typedef ContinueOperation<sysync::TSyError (sysync::KeyH aItemKey, sysync::cItemID aID, sysync::ItemID updID)> UpdateItemAsKeyContinue_t;
+        typedef boost::variant<sysync::TSyError, UpdateItemAsKeyContinue_t> UpdateItemAsKeyResult_t;
+        typedef OperationWrapper<UpdateItemAsKeyResult_t (sysync::KeyH aItemKey, sysync::cItemID aID, sysync::ItemID updID)> UpdateItemAsKey_t;
         UpdateItemAsKey_t m_updateItemAsKey;
 
-        typedef OperationWrapper<sysync::TSyError (sysync::cItemID aID)> DeleteItem_t;
+        typedef ContinueOperation<sysync::TSyError (sysync::cItemID aID)> DeleteItemContinue_t;
+        typedef boost::variant<sysync::TSyError, DeleteItemContinue_t> DeleteItemResult_t;
+        typedef OperationWrapper<DeleteItemResult_t (sysync::cItemID aID)> DeleteItem_t;
         DeleteItem_t m_deleteItem;
         /**@}*/
 
@@ -1327,6 +1619,62 @@ class SyncSourceBase {
      * Read-only access to operations.
      */
     virtual const Operations &getOperations() const = 0;
+
+    /**
+     * Start flushing item modifications which were not executed right
+     * away. Item modifications (add/update/delete) can be delayed by
+     * returning LOCERR_AGAIN or, when using for example
+     * SyncSourceSerialize aka TrackingSyncSource, by returning a "check"
+     * function instead of the final result.
+     *
+     * The sync engine calls this method after processing each incoming
+     * SyncML message.
+     */
+    virtual void flushItemChanges() {}
+
+    /**
+     * Called after flush() to ensure that all pending modifications
+     * have completed. Called when the engine needs the results.
+     *
+     * Called by the sync engine when the SyncML peer ran out of new
+     * item changes. At that time we would start sending back and forth
+     * empty messages, unless we can provide results.
+     */
+    virtual void finishItemChanges() {}
+
+    /**
+     * In some usage scenarios, change tracking is not necessary.
+     * This includes local caching (where local data is not expected
+     * to changed outside of sync) or item manipulation.
+     *
+     * The user of a source must explicitly disable change tracking,
+     * see SyncSource.
+     */
+    virtual bool needChanges() { return true; }
+
+    enum ReadAheadOrder {
+        READ_ALL_ITEMS,      /** all items as reported by the ReadNextItem operation */
+        READ_CHANGED_ITEMS,  /** read updated or added items as reported by the ReadNextItem operation */
+        READ_SELECTED_ITEMS, /** read items as given in an explicit list */
+        READ_NONE            /** remove previous hint */
+    };
+
+    typedef std::vector<std::string> ReadAheadItems;
+    /**
+     * Provides a hint to the source which items are going to be read
+     * next. A source may use this to implement read-ahead. This
+     * is just a hint, the source must also work if reads turn out to
+     * ask for other items.
+     */
+    virtual void setReadAheadOrder(ReadAheadOrder order,
+                                   const ReadAheadItems &luids = ReadAheadItems())
+    { }
+    virtual void getReadAheadOrder(ReadAheadOrder &order,
+                                   ReadAheadItems &luids)
+    {
+        order = READ_NONE;
+        luids.clear();
+    }
 
  protected:
     struct SynthesisInfo {
@@ -1672,6 +2020,9 @@ class SyncSource : virtual public SyncSourceBase, public SyncSourceConfig, publi
     virtual long getNumDeleted() const { return m_numDeleted; }
     virtual void setNumDeleted(long num) { m_numDeleted = num; }
     virtual void incrementNumDeleted() { m_numDeleted++; }
+    virtual bool needChanges() { return m_needChanges; }
+    void setNeedChanges(bool needChanges) { m_needChanges = needChanges; }
+
 
     /**
      * Set to true in SyncContext::initSAN() when a SyncML server has
@@ -1712,6 +2063,9 @@ class SyncSource : virtual public SyncSourceBase, public SyncSourceConfig, publi
 
     /** actual name of the source */
     std::string m_name;
+
+    /** change tracking enabled? */
+    bool m_needChanges;
 };
 
 /**
@@ -1912,6 +2266,12 @@ class SyncSourceDelete : virtual public SyncSourceBase {
 
 enum InsertItemResultState {
     /**
+     * Operation not complete, invoke callback in ItemResult to check
+     * for progress.
+     */
+    ITEM_AGAIN,
+
+    /**
      * item added or updated as requested
      */
     ITEM_OKAY,
@@ -1983,9 +2343,21 @@ class SyncSourceRaw : virtual public SyncSourceBase {
             m_state(state)
             {}
 
+        /**
+         * Constructor for the case where the final result is not available yet.
+         *
+         * @param check   will be called again later to poll for completion
+         */
+        InsertItemResult(const boost::function<InsertItemResult ()> &check) :
+        m_state(ITEM_AGAIN),
+            m_continue(check)
+        {}
+
         string m_luid;
         string m_revision;
         InsertItemResultState m_state;
+        typedef ContinueOperation<InsertItemResult ()> Continue_t;
+        Continue_t m_continue;
     };
 
     /** same as SyncSourceSerialize::insertItem(), but with internal format */
@@ -2082,8 +2454,8 @@ class SyncSourceSerialize : virtual public SyncSourceBase, virtual public SyncSo
     virtual void readItem(const std::string &luid, std::string &item) = 0;
 
     /* implement SyncSourceRaw under the assumption that the internal and engine format are identical */
-    virtual InsertItemResult insertItemRaw(const std::string &luid, const std::string &item) { return insertItem(luid, item); }
-    virtual void readItemRaw(const std::string &luid, std::string &item) { return readItem(luid, item); }
+    virtual InsertItemResult insertItemRaw(const std::string &luid, const std::string &item);
+    virtual void readItemRaw(const std::string &luid, std::string &item);
 
     /** set Synthesis DB Interface operations */
     void init(SyncSource::Operations &ops);
@@ -2098,7 +2470,9 @@ class SyncSourceSerialize : virtual public SyncSourceBase, virtual public SyncSo
                                   XMLConfigFragments &fragments);
  private:
     sysync::TSyError readItemAsKey(sysync::cItemID aID, sysync::KeyH aItemKey);
-    sysync::TSyError insertItemAsKey(sysync::KeyH aItemKey, sysync::cItemID aID, sysync::ItemID newID);
+    SyncSource::Operations::InsertItemAsKeyResult_t insertItemAsKey(sysync::KeyH aItemKey, sysync::ItemID newID);
+    SyncSource::Operations::UpdateItemAsKeyResult_t updateItemAsKey(sysync::KeyH aItemKey, sysync::cItemID aID, sysync::ItemID newID);
+    sysync::TSyError insertContinue(sysync::ItemID newID, const InsertItemResult::Continue_t &cont);
 };
 
 /**

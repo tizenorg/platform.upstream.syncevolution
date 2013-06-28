@@ -1871,8 +1871,21 @@ TSyError TEngineInterface::debugPuts(cAppCharP aFile, int aLine, cAppCharP aFunc
                                      cAppCharP aText)
 {
   #if defined(SYDEBUG)
-  getSyncAppBase()->getDbgLogger()->DebugPuts(TDBG_LOCATION_ARGS(aFunction, aFile, aLine /*, aPrefix */)
-                                              aDbgLevel, aText);
+  // Including the prefix as meta-data would be better, because it would
+  // allow formatting it, for example in HTML. Instead of
+  // dropping it entirely, at least mix into the normal text.
+  if (aPrefix) {
+    std::string body = aPrefix;
+    if (aText) {
+      body += ": ";
+      body += aText;
+    }
+    getSyncAppBase()->getDbgLogger()->DebugPuts(TDBG_LOCATION_ARGS(aFunction, aFile, aLine /*, aPrefix */)
+                                                aDbgLevel, body.c_str());
+  } else {
+    getSyncAppBase()->getDbgLogger()->DebugPuts(TDBG_LOCATION_ARGS(aFunction, aFile, aLine)
+                                                aDbgLevel, aText);
+  }
   return 0;
   #else
   return LOCERR_NOTIMP;

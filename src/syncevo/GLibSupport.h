@@ -370,6 +370,16 @@ struct GErrorCXX {
         return *this;
     }
 
+    /** takes over ownership */
+    void take (GError *err) {
+        if (err != m_gerror) {
+            if (m_gerror) {
+                g_clear_error(&m_gerror);
+            }
+            m_gerror = err;
+        }
+    }
+
     /** For convenient access to GError members (message, domain, ...) */
     const GError * operator-> () const { return m_gerror; }
 
@@ -612,6 +622,19 @@ class PlainGStr : public boost::shared_ptr<gchar>
         PlainGStr(const PlainGStr &other) : boost::shared_ptr<gchar>(other) {}    
         operator const gchar *() const { return &**this; }
         const gchar *c_str() const { return &**this; }
+};
+
+/**
+ * Wraps a glib string array, frees with g_strfreev().
+ */
+class PlainGStrArray : public boost::shared_ptr<gchar *>
+{
+    public:
+        PlainGStrArray() {}
+        PlainGStrArray(gchar **array) : boost::shared_ptr<char *>(array, g_strfreev) {}
+        PlainGStrArray(const PlainGStrArray &other) : boost::shared_ptr<char *>(other) {}
+        operator gchar * const *() const { return &**this; }
+        gchar * operator [] (size_t index) { return get()[index]; }
 };
 
 // empty template, need specialization based on parameter and return types

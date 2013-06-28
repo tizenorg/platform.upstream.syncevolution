@@ -973,9 +973,21 @@ void LogDirLogger::messagev(const MessageOptions &options,
         if (logdir->m_client.getEngine().get()) {
             va_list argscopy;
             va_copy(argscopy, args);
-            // once to Synthesis log, with full debugging
+            // Once to Synthesis log, with full debugging.
+            // The API does not support a process name, so
+            // put it into the prefix as "<procname> <prefix>".
+            std::string prefix;
+            if (options.m_processName) {
+                prefix += *options.m_processName;
+            }
+            if (options.m_prefix) {
+                if (!prefix.empty()) {
+                    prefix += " ";
+                }
+                prefix += *options.m_prefix;
+            }
             logdir->m_client.getEngine().doDebug(options.m_level,
-                                                 options.m_prefix ? options.m_prefix->c_str() : NULL,
+                                                 prefix.empty() ? NULL : prefix.c_str(),
                                                  options.m_file,
                                                  options.m_line,
                                                  options.m_function,
@@ -1049,6 +1061,7 @@ public:
     using inherited::end;
     using inherited::rbegin;
     using inherited::rend;
+    using inherited::size;
 
     /** transfers ownership (historic reasons for storing plain pointer...) */
     void addSource(cxxptr<SyncSource> &source) { checkSource(source); push_back(source.release()); }
@@ -1764,6 +1777,27 @@ void SyncContext::displaySourceProgress(sysync::TProgressEventEnum type,
                 break;
             }
             if (source.getFinalSyncMode() == SYNC_NONE) {
+                SE_LOG_DEBUG(NULL, "reading: set read-ahead based on sync mode %s",
+                             PrettyPrintSyncMode(SyncMode(mode)).c_str());
+                switch (mode) {
+                case SIMPLE_SYNC_NONE:
+                case SIMPLE_SYNC_INVALID:
+                case SIMPLE_SYNC_RESTORE_FROM_BACKUP:
+                case SIMPLE_SYNC_ONE_WAY_FROM_REMOTE:
+                case SIMPLE_SYNC_REFRESH_FROM_REMOTE:
+                case SIMPLE_SYNC_LOCAL_CACHE_INCREMENTAL:
+                    source.setReadAheadOrder(SyncSourceBase::READ_NONE);
+                    break;
+                case SIMPLE_SYNC_TWO_WAY:
+                case SIMPLE_SYNC_ONE_WAY_FROM_LOCAL:
+                    source.setReadAheadOrder(SyncSourceBase::READ_CHANGED_ITEMS);
+                    break;
+                case SIMPLE_SYNC_SLOW:
+                case SIMPLE_SYNC_REFRESH_FROM_LOCAL:
+                case SIMPLE_SYNC_LOCAL_CACHE_SLOW:
+                    source.setReadAheadOrder(SyncSourceBase::READ_ALL_ITEMS);
+                    break;
+                }
                 source.recordFinalSyncMode(SyncMode(mode));
                 source.recordFirstSync(extra1 == 2);
                 source.recordResumeSync(extra2 == 1);
@@ -1799,6 +1833,7 @@ void SyncContext::displaySourceProgress(sysync::TProgressEventEnum type,
             SE_LOG_INFO(NULL, "%s: received %d",
                         source.getDisplayName().c_str(), extra1);
         }
+        source.recordTotalNumItemsReceived(extra1);
         break;
     case sysync::PEV_ITEMSENT:
         /* item sent,     extra1=current item count,
@@ -2184,6 +2219,14 @@ void SyncContext::startSourceAccess(SyncSource *source)
         m_firstSourceAccess = false;
     }
     if (m_serverMode) {
+        // When using the source as cache, change tracking
+        // is not required. Disabling it can make item
+        // changes faster.
+        SyncMode mode = StringToSyncMode(source->getSync());
+        if (mode == SYNC_LOCAL_CACHE_SLOW ||
+            mode == SYNC_LOCAL_CACHE_INCREMENTAL) {
+            source->setNeedChanges(false);
+        }
         // source is active in sync, now open it
         source->open();
     }
@@ -2974,7 +3017,8 @@ static int CondTimedWaitGLib(pthread_cond_t * /* cond */, pthread_mutex_t *mutex
             }
 
             // Timeout?
-            if (milliSecondsToWait > 0 && deadline <= Timespec::system()) {
+            if (!milliSecondsToWait ||
+                (milliSecondsToWait > 0 && deadline <= Timespec::system())) {
                 SE_LOG_DEBUG(NULL, "give up waiting for background thread, timeout");
                 result = 1;
                 break;
@@ -3691,6 +3735,7 @@ SyncMLStatus SyncContext::doSync()
     Timespec sendStart, resendStart;
     int requestNum = 0;
     sysync::uInt16 previousStepCmd = stepCmd;
+    std::vector<int> numItemsReceived; // source->getTotalNumItemsReceived() for each source, see STEPCMD_SENDDATA
     do {
         try {
             // check for suspend, if so, modify step command for next step
@@ -3867,6 +3912,34 @@ SyncMLStatus SyncContext::doSync()
                 m_retries = 0;
                 break;
             case sysync::STEPCMD_SENDDATA: {
+                // We'll be busy for a while with network IO, so give
+                // sources a chance to do some work in parallel.
+                if (m_sourceListPtr) {
+                    bool needResults = true;
+                    if (numItemsReceived.size() < m_sourceListPtr->size()) {
+                        numItemsReceived.insert(numItemsReceived.end(),
+                                                m_sourceListPtr->size() - numItemsReceived.size(),
+                                                0);
+                    }
+                    for (size_t i = 0; i < numItemsReceived.size(); i++) {
+                        SyncSource *source = (*m_sourceListPtr->getSourceSet())[i];
+                        int received = source->getTotalNumItemsReceived();
+                        SE_LOG_DEBUG(source->getDisplayName(), "total number of items received %d",
+                                     received);
+                        if (numItemsReceived[i] != received) {
+                            numItemsReceived[i] = received;
+                            needResults = false;
+                        }
+                    }
+
+                    BOOST_FOREACH (SyncSource *source, *m_sourceListPtr) {
+                        source->flushItemChanges();
+                        if (needResults) {
+                            source->finishItemChanges();
+                        }
+                    }
+                }
+
                 // send data to remote
 
                 SharedKey sessionKey = m_engine.OpenSessionKey(session);
@@ -3964,7 +4037,7 @@ SyncMLStatus SyncContext::doSync()
                     } else {
                         SE_LOG_DEBUG(NULL, "unexpected content type '%s' in reply, %d bytes:\n%.*s",
                                      contentType.c_str(), (int)replylen, (int)replylen, reply);
-                        SE_LOG_ERROR(NULL, "unexpected reply from server; might be a temporary problem, try again later");
+                        SE_LOG_ERROR(NULL, "unexpected reply from peer; might be a temporary problem, try again later");
                       } //fall through to network failure case
                 }
                 /* If this is a network error, it usually failed quickly, retry

@@ -1175,9 +1175,21 @@ TMultiFieldItem *TStdLogicDS::mergeWithDatabaseVersion(TSyncItem *aSyncItemP, bo
   return dbVersionItemP;
 } // TStdLogicDS::mergeWithDatabaseVersion
 
+enum LogicItemOp
+{
+  LOGIC_ITEM_WRITE,
+  LOGIC_ITEM_REPLACE_FALLBACK,
+  LOGIC_ITEM_ADD_FALLBACK
+};
 
-
-
+struct TLogicSyncItemAux : public TSyncItemAux
+{
+  bool fIrregular;
+  bool fShouldBeVisible;
+  bool fVisibleInSyncset;
+  TSyncItem *fSyncItemP;
+  LogicItemOp fOp;
+};
 
 // called to process incoming item operation
 // Method takes ownership of syncitemP in all cases
@@ -1191,6 +1203,10 @@ bool TStdLogicDS::logicProcessRemoteItem(
   bool irregular=false;
   bool shouldbevisible=aVisibleInSyncset;
   string datatext;
+  LogicItemOp op;
+  // Must be kept alive for the duration of the entire call,
+  // in case that we need to resume.
+  TSyncItem *origSyncItemP=syncitemP;
 
   TP_DEFIDX(li);
   TP_SWITCH(li,fSessionP->fTPInfo,TP_database);
@@ -1203,13 +1219,56 @@ bool TStdLogicDS::logicProcessRemoteItem(
       aStatusCommand.setStatusCode(sta);
     }
     else {
+      TLogicSyncItemAux *aux = static_cast<TLogicSyncItemAux *>(origSyncItemP->getAux(TSyncItem::STD_LOGIC_DS));
+
       // show
       DEBUGPRINTFX(DBG_DATA,(
-        "TStdLogicDS::logicProcessRemoteItem starting, SyncOp=%s, RemoteID='%s', LocalID='%s'",
-        SyncOpNames[syncitemP->getSyncOp()],
-        syncitemP->getRemoteID(),
-        syncitemP->getLocalID()
+        "TStdLogicDS::logicProcessRemoteItem %p %s, SyncOp=%s, RemoteID='%s', LocalID='%s'",
+        origSyncItemP,
+        aux ? "resuming" : "starting",
+        SyncOpNames[origSyncItemP->getSyncOp()],
+        origSyncItemP->getRemoteID(),
+        origSyncItemP->getLocalID()
       ));
+
+      // Same approach as in TLocalEngineDS::engProcessRemoteItemAsServer():
+      // jump directly to the point where we left the last time we where
+      // called for this item.
+      if (aux) {
+        irregular = aux->fIrregular;
+        shouldbevisible = aux->fShouldBeVisible;
+        aVisibleInSyncset = aux->fVisibleInSyncset;
+        syncitemP = aux->fSyncItemP;
+        op = aux->fOp;
+
+        switch (op) {
+        case LOGIC_ITEM_WRITE: goto do_write;
+        case LOGIC_ITEM_REPLACE_FALLBACK: goto do_replace_fallback;
+        case LOGIC_ITEM_ADD_FALLBACK: goto do_add_fallback;
+        }
+      }
+
+      if (false) {
+      again:
+#define CHECK_FOR_AGAIN(_op) \
+      if (aStatusCommand.getStatusCode() == LOCERR_AGAIN) { \
+        op = _op; \
+        goto again; \
+      }
+
+        if (!aux) {
+          aux = new TLogicSyncItemAux;
+          origSyncItemP->setAux(TSyncItem::STD_LOGIC_DS, aux);
+        }
+        aux->fIrregular = irregular;
+        aux->fShouldBeVisible = shouldbevisible;
+        aux->fVisibleInSyncset = aVisibleInSyncset;
+        aux->fSyncItemP = syncitemP;
+        aux->fOp = op;
+        aStatusCommand.setStatusCode(LOCERR_AGAIN);
+        return false;
+      }
+
       // now perform action
       if (syncitemP->getSyncOp()==sop_replace || syncitemP->getSyncOp()==sop_wants_replace) {
         // check if we should read before writing
@@ -1312,8 +1371,6 @@ bool TStdLogicDS::logicProcessRemoteItem(
             }
             #endif
             #endif
-            // - get rid of original
-            delete syncitemP;
             // - use new item for further processing
             syncitemP=refitemP;
           }
@@ -1373,8 +1430,10 @@ bool TStdLogicDS::logicProcessRemoteItem(
         }
         #endif
         // Now let derived class process the item
+      do_write:
         if (!implProcessItem(syncitemP,aStatusCommand))
           sta = aStatusCommand.getStatusCode(); // not successful, get error status code
+        CHECK_FOR_AGAIN(LOGIC_ITEM_WRITE);
       }
       // perform special case handling
       if (sta!=LOCERR_OK) {
@@ -1400,10 +1459,12 @@ bool TStdLogicDS::logicProcessRemoteItem(
                 syncitemP->setSyncOp(sop_replace);
                 irregular=true;
                 // - process again
+              do_replace_fallback:
                 if (implProcessItem(syncitemP,aStatusCommand)) {
                   aStatusCommand.setStatusCode(208); // client has won
                 }
                 else {
+                  CHECK_FOR_AGAIN(LOGIC_ITEM_REPLACE_FALLBACK);
                   // failed, return status
                   sta = aStatusCommand.getStatusCode();
                 }
@@ -1439,8 +1500,10 @@ bool TStdLogicDS::logicProcessRemoteItem(
                   // - process again (note that we are re-using the status command that might
                   //   already have a text item with an OS errir if something failed before)
                   sta=LOCERR_OK; // forget previous status
+                do_add_fallback:
                   if (!implProcessItem(syncitemP,aStatusCommand))
                     sta=aStatusCommand.getStatusCode(); // not successful, get error status code
+                  CHECK_FOR_AGAIN(LOGIC_ITEM_ADD_FALLBACK);
                 }
               }
             }
@@ -1478,6 +1541,7 @@ bool TStdLogicDS::logicProcessRemoteItem(
           (*aGUID)=syncitemP->getLocalID();
         }
       }
+      /* LOCERR_AGAIN */
       else {
         PDEBUGPRINTFX(DBG_ERROR,(
           "- Operation %s failed with SyncML status=%hd",
@@ -1488,6 +1552,8 @@ bool TStdLogicDS::logicProcessRemoteItem(
     } // if startDataWrite ok
     // anyway, we are done with this item, delete it now
     delete syncitemP;
+    if (syncitemP != origSyncItemP)
+      delete origSyncItemP;
     TP_START(fSessionP->fTPInfo,li);
     // done, return regular/irregular status
     return (sta==LOCERR_OK) && !irregular;
@@ -1495,6 +1561,8 @@ bool TStdLogicDS::logicProcessRemoteItem(
   SYSYNC_CATCH (...)
     // delete the item
     if (syncitemP) delete syncitemP;
+    if (syncitemP != origSyncItemP)
+      delete origSyncItemP;
     TP_START(fSessionP->fTPInfo,li);
     // re-throw
     SYSYNC_RETHROW;

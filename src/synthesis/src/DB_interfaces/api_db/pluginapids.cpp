@@ -1321,7 +1321,15 @@ localstatus TPluginApiDS::apiStartDataWrite(void)
   return dberr;
 } // TPluginApiDS::apiStartDataWrite
 
-
+struct TPluginItemAux : public TSyncItemAux
+{
+#if defined(DBAPI_ASKEYITEMS) && defined(ENGINEINTERFACE_SUPPORT)
+  TDBItemKey *fItemKeyP;
+#endif
+#ifdef DBAPI_TEXTITEMS
+  string fItemData;
+#endif
+};
 
 // add new item to datastore, returns created localID
 localstatus TPluginApiDS::apiAddItem(TMultiFieldItem &aItem, string &aLocalID)
@@ -1334,39 +1342,77 @@ localstatus TPluginApiDS::apiAddItem(TMultiFieldItem &aItem, string &aLocalID)
   TSyError dberr=LOCERR_OK;
   TDB_Api_ItemID itemAndParentID;
 
-  // prepare data from item
   #ifdef SCRIPT_SUPPORT
   fInserting=true; // flag for script, we are inserting new record
   #endif
-  // two API variants
-  #if defined(DBAPI_ASKEYITEMS) && defined(ENGINEINTERFACE_SUPPORT)
-  if (fPluginDSConfigP->fItemAsKey) {
-    // preprocess
-    if (!preWriteProcessItem(aItem)) return 510; // DB error
-    // get key
-    TDBItemKey *itemKeyP = newDBItemKey(&aItem);
-    // let plugin use it to obtain data to write
-    dberr=fDBApi_Data.InsertItemAsKey((KeyH)itemKeyP,"",itemAndParentID);
-    // done with the key
-    delete itemKeyP;
+
+  TPluginItemAux *aux = static_cast<TPluginItemAux *>(aItem.getAux(TSyncItem::PLUGIN_API));
+  if (aux) {
+    // Continue operation.
+    #if defined(DBAPI_ASKEYITEMS) && defined(ENGINEINTERFACE_SUPPORT)
+    if (fPluginDSConfigP->fItemAsKey) {
+      dberr=fDBApi_Data.InsertItemAsKey((KeyH)aux->fItemKeyP,"",itemAndParentID);
+      if (dberr == LOCERR_AGAIN)
+        return dberr;
+      // done with the key
+      delete aux->fItemKeyP;
+      aux->fItemKeyP=NULL;
+    }
+    else
+    #endif
+    #ifdef DBAPI_TEXTITEMS
+    {
+      dberr=fDBApi_Data.InsertItem(aux->fItemData.c_str(),"",itemAndParentID);
+      if (dberr == LOCERR_AGAIN)
+        return dberr;
+    }
+    #else
+    return LOCERR_WRONGUSAGE;
+    #endif
+  } else {
+    // Two API variants for starting the operation.
+    #if defined(DBAPI_ASKEYITEMS) && defined(ENGINEINTERFACE_SUPPORT)
+    if (fPluginDSConfigP->fItemAsKey) {
+      // preprocess
+      if (!preWriteProcessItem(aItem)) return 510; // DB error
+      // get key
+      TDBItemKey *itemKeyP = newDBItemKey(&aItem);
+      // let plugin use it to obtain data to write
+      dberr=fDBApi_Data.InsertItemAsKey((KeyH)itemKeyP,"",itemAndParentID);
+      if (dberr == LOCERR_AGAIN) {
+        TPluginItemAux *aux=new TPluginItemAux;
+        aux->fItemKeyP=itemKeyP;
+        aItem.setAux(TSyncItem::PLUGIN_API, aux);
+        return LOCERR_AGAIN;
+      }
+      // done with the key
+      delete itemKeyP;
+    }
+    else
+    #endif
+    #ifdef DBAPI_TEXTITEMS
+    {
+      string itemData;
+      generateDBItemData(
+        false, // all fields, not only assigned ones
+        aItem,
+        0, // we do not use different sets for now
+        itemData // here we'll get the data
+      );
+      // now insert main record
+      dberr=fDBApi_Data.InsertItem(itemData.c_str(),"",itemAndParentID);
+      if (dberr == LOCERR_AGAIN) {
+        TPluginItemAux *aux=new TPluginItemAux;
+        aux->fItemData=itemData;
+        aItem.setAux(TSyncItem::PLUGIN_API, aux);
+        return LOCERR_AGAIN;
+      }
+    }
+    #else
+    return LOCERR_WRONGUSAGE; // completely wrong usage - should never happen as compatibility is tested at module connect
+    #endif
   }
-  else
-  #endif
-  #ifdef DBAPI_TEXTITEMS
-  {
-    string itemData;
-    generateDBItemData(
-      false, // all fields, not only assigned ones
-      aItem,
-      0, // we do not use different sets for now
-      itemData // here we'll get the data
-    );
-    // now insert main record
-    dberr=fDBApi_Data.InsertItem(itemData.c_str(),"",itemAndParentID);
-  }
-  #else
-  return LOCERR_WRONGUSAGE; // completely wrong usage - should never happen as compatibility is tested at module connect
-  #endif
+
   // now check result
   if (dberr==LOCERR_OK ||
       dberr==DB_Conflict ||
@@ -1442,39 +1488,76 @@ localstatus TPluginApiDS::apiUpdateItem(TMultiFieldItem &aItem)
   itemAndParentID.item=(appCharP)aItem.getLocalID();
   itemAndParentID.parent=const_cast<char *>("");
 
-  // prepare data from item
   #ifdef SCRIPT_SUPPORT
   fInserting=false; // flag for script, we are updating, not inserting now
   #endif
-  // two API variants
-  #if defined(DBAPI_ASKEYITEMS) && defined(ENGINEINTERFACE_SUPPORT)
-  if (fPluginDSConfigP->fItemAsKey) {
-    // preprocess
-    if (!preWriteProcessItem(aItem)) return 510; // DB error
-    // get key
-    TDBItemKey *itemKeyP = newDBItemKey(&aItem);
-    // let plugin use it to obtain data to write
-    dberr=fDBApi_Data.UpdateItemAsKey((KeyH)itemKeyP,itemAndParentID,updItemAndParentID);
-    // done with the key
-    delete itemKeyP;
+
+  TPluginItemAux *aux = static_cast<TPluginItemAux *>(aItem.getAux(TSyncItem::PLUGIN_API));
+  if (aux) {
+    // Continue operation.
+    #if defined(DBAPI_ASKEYITEMS) && defined(ENGINEINTERFACE_SUPPORT)
+    if (fPluginDSConfigP->fItemAsKey) {
+      dberr=fDBApi_Data.UpdateItemAsKey((KeyH)aux->fItemKeyP,itemAndParentID,updItemAndParentID);
+      if (dberr == LOCERR_AGAIN)
+        return dberr;
+      // done with the key
+      delete aux->fItemKeyP;
+      aux->fItemKeyP=NULL;
+    }
+    else
+    #endif
+    #ifdef DBAPI_TEXTITEMS
+    {
+      dberr=fDBApi_Data.UpdateItem(aux->fItemData.c_str(),itemAndParentID,updItemAndParentID);
+      if (dberr == LOCERR_AGAIN)
+        return dberr;
+    }
+    #else
+    return LOCERR_WRONGUSAGE; // completely wrong usage - should never happen as compatibility is tested at module connect
+    #endif
+  } else {
+    // Two API variants for starting the operation.
+    #if defined(DBAPI_ASKEYITEMS) && defined(ENGINEINTERFACE_SUPPORT)
+    if (fPluginDSConfigP->fItemAsKey) {
+      // preprocess
+      if (!preWriteProcessItem(aItem)) return 510; // DB error
+      // get key
+      TDBItemKey *itemKeyP = newDBItemKey(&aItem);
+      // let plugin use it to obtain data to write
+      dberr=fDBApi_Data.UpdateItemAsKey((KeyH)itemKeyP,itemAndParentID,updItemAndParentID);
+      if (dberr == LOCERR_AGAIN) {
+        TPluginItemAux *aux=new TPluginItemAux;
+        aux->fItemKeyP=itemKeyP;
+        aItem.setAux(TSyncItem::PLUGIN_API, aux);
+        return LOCERR_AGAIN;
+      }
+      // done with the key
+      delete itemKeyP;
+    }
+    else
+    #endif
+    #ifdef DBAPI_TEXTITEMS
+    {
+      string itemData;
+      generateDBItemData(
+        true, // only assigned fields
+        aItem,
+        0, // we do not use different sets for now
+        itemData // here we'll get the data
+      );
+      // now update main record
+      dberr=fDBApi_Data.UpdateItem(itemData.c_str(),itemAndParentID,updItemAndParentID);
+      if (dberr == LOCERR_AGAIN) {
+        TPluginItemAux *aux=new TPluginItemAux;
+        aux->fItemData=itemData;
+        aItem.setAux(TSyncItem::PLUGIN_API, aux);
+        return LOCERR_AGAIN;
+      }
+    }
+    #else
+    return LOCERR_WRONGUSAGE; // completely wrong usage - should never happen as compatibility is tested at module connect
+    #endif
   }
-  else
-  #endif
-  #ifdef DBAPI_TEXTITEMS
-  {
-    string itemData;
-    generateDBItemData(
-      true, // only assigned fields
-      aItem,
-      0, // we do not use different sets for now
-      itemData // here we'll get the data
-    );
-    // now update main record
-    dberr=fDBApi_Data.UpdateItem(itemData.c_str(),itemAndParentID,updItemAndParentID);
-  }
-  #else
-  return LOCERR_WRONGUSAGE; // completely wrong usage - should never happen as compatibility is tested at module connect
-  #endif
   if (dberr==LOCERR_OK) {
     // check if ID has changed
     if (!updItemAndParentID.item.empty() && strcmp(updItemAndParentID.item.c_str(),aItem.getLocalID())!=0) {

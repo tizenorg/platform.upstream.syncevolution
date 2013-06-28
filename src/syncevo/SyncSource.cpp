@@ -196,7 +196,8 @@ SyncSource::SyncSource(const SyncSourceParams &params) :
     m_numDeleted(0),
     m_forceSlowSync(false),
     m_database("", ""),
-    m_name(params.getDisplayName())
+    m_name(params.getDisplayName()),
+    m_needChanges(true)
 {
 }
 
@@ -731,17 +732,19 @@ sysync::TSyError SyncSourceSerialize::readItemAsKey(sysync::cItemID aID, sysync:
     return res;
 }
 
-sysync::TSyError SyncSourceSerialize::insertItemAsKey(sysync::KeyH aItemKey, sysync::cItemID aID, sysync::ItemID newID)
+SyncSource::Operations::InsertItemAsKeyResult_t SyncSourceSerialize::insertItemAsKey(sysync::KeyH aItemKey, sysync::ItemID newID)
 {
     SharedBuffer data;
     TSyError res = getSynthesisAPI()->getValue(aItemKey, "data", data);
 
     if (!res) {
-        InsertItemResult inserted =
-            insertItem(!aID ? "" : aID->item, data.get());
-        newID->item = StrAlloc(inserted.m_luid.c_str());
+        InsertItemResult inserted = insertItem("", data.get());
         switch (inserted.m_state) {
         case ITEM_OKAY:
+            break;
+        case ITEM_AGAIN:
+            // Skip setting the newID.
+            return Operations::InsertItemAsKeyContinue_t(boost::bind(&SyncSourceSerialize::insertContinue, this, _2, inserted.m_continue));
             break;
         case ITEM_REPLACED:
             res = sysync::DB_DataReplaced;
@@ -753,18 +756,103 @@ sysync::TSyError SyncSourceSerialize::insertItemAsKey(sysync::KeyH aItemKey, sys
             res = sysync::DB_Conflict;
             break;
         }
+        newID->item = StrAlloc(inserted.m_luid.c_str());
     }
 
     return res;
 }
+
+SyncSource::Operations::UpdateItemAsKeyResult_t SyncSourceSerialize::updateItemAsKey(sysync::KeyH aItemKey, sysync::cItemID aID, sysync::ItemID newID)
+{
+    SharedBuffer data;
+    TSyError res = getSynthesisAPI()->getValue(aItemKey, "data", data);
+
+    if (!res) {
+        InsertItemResult inserted = insertItem(aID->item, data.get());
+        switch (inserted.m_state) {
+        case ITEM_OKAY:
+            break;
+        case ITEM_AGAIN:
+            // Skip setting the newID.
+            return Operations::UpdateItemAsKeyContinue_t(boost::bind(&SyncSourceSerialize::insertContinue, this, _3, inserted.m_continue));
+            break;
+        case ITEM_REPLACED:
+            res = sysync::DB_DataReplaced;
+            break;
+        case ITEM_MERGED:
+            res = sysync::DB_DataMerged;
+            break;
+        case ITEM_NEEDS_MERGE:
+            res = sysync::DB_Conflict;
+            break;
+        }
+        newID->item = StrAlloc(inserted.m_luid.c_str());
+    }
+
+    return res;
+}
+
+sysync::TSyError SyncSourceSerialize::insertContinue(sysync::ItemID newID, const InsertItemResult::Continue_t &cont)
+{
+    // The engine cannot tell us when it needs results (for example,
+    // in the "final message received from peer" case in
+    // TSyncSession::EndMessage(), so assume that it does whenever it
+    // calls us again => flush and wait.
+    flushItemChanges();
+    finishItemChanges();
+
+    InsertItemResult inserted = cont();
+    TSyError res = sysync::LOCERR_OK;
+    switch (inserted.m_state) {
+    case ITEM_OKAY:
+        break;
+    case ITEM_AGAIN:
+        // Skip setting the newID.
+        return sysync::LOCERR_AGAIN;
+        break;
+    case ITEM_REPLACED:
+        res = sysync::DB_DataReplaced;
+        break;
+    case ITEM_MERGED:
+        res = sysync::DB_DataMerged;
+        break;
+    case ITEM_NEEDS_MERGE:
+        res = sysync::DB_Conflict;
+        break;
+    }
+    newID->item = StrAlloc(inserted.m_luid.c_str());
+    return res;
+}
+
+SyncSourceSerialize::InsertItemResult SyncSourceSerialize::insertItemRaw(const std::string &luid, const std::string &item)
+{
+    InsertItemResult result = insertItem(luid, item);
+
+    while (result.m_state == ITEM_AGAIN) {
+        // Flush and wait, because caller (command line, restore) is
+        // not prepared to deal with asynchronous execution.
+        flushItemChanges();
+        finishItemChanges();
+        result = result.m_continue();
+    }
+
+    return result;
+}
+
+void SyncSourceSerialize::readItemRaw(const std::string &luid, std::string &item)
+{
+    return readItem(luid, item);
+}
+
+
 
 void SyncSourceSerialize::init(SyncSource::Operations &ops)
 {
     ops.m_readItemAsKey = boost::bind(&SyncSourceSerialize::readItemAsKey,
                                       this, _1, _2);
     ops.m_insertItemAsKey = boost::bind(&SyncSourceSerialize::insertItemAsKey,
-                                        this, _1, (sysync::cItemID)NULL, _2);
-    ops.m_updateItemAsKey = boost::bind(&SyncSourceSerialize::insertItemAsKey,
+                                        this, _1, _2);
+    ops.m_updateItemAsKey = boost::bind(&SyncSourceSerialize::updateItemAsKey,
                                         this, _1, _2, _3);
 }
 
@@ -919,6 +1007,23 @@ void SyncSourceRevisions::backupData(const SyncSource::Operations::ConstBackupIn
         revisions = &buffer;
     }
 
+    // Ensure that source knows what we are going to read.
+    std::vector<std::string> uids;
+    uids.reserve(revisions->size());
+    BOOST_FOREACH(const StringPair &mapping, *revisions) {
+        uids.push_back(mapping.first);
+    }
+
+    // We may dump after a hint was already set when starting the
+    // sync. Remember that and restore it when done. If we fail, we
+    // don't need to restore, because then syncing will abort or skip
+    // the source.
+    ReadAheadOrder oldOrder;
+    ReadAheadItems oldLUIDs;
+    getReadAheadOrder(oldOrder, oldLUIDs);
+
+    setReadAheadOrder(READ_SELECTED_ITEMS, uids);
+
     string item;
     errno = 0;
     BOOST_FOREACH(const StringPair &mapping, *revisions) {
@@ -928,6 +1033,7 @@ void SyncSourceRevisions::backupData(const SyncSource::Operations::ConstBackupIn
         cache.backupItem(item, uid, rev);
     }
 
+    setReadAheadOrder(oldOrder, oldLUIDs);
     cache.finalize(report);
 }
 
@@ -1087,10 +1193,19 @@ bool SyncSourceRevisions::detectChanges(ConfigNode &trackingNode, ChangeMode mod
     initRevisions();
 
     // Check whether we have valid revision information.  If not, then
-    // we need to do a slow sync. The assumption here is 
-    if (!m_revisions.empty() &&
+    // we need to do a slow sync. The assumption here is that an empty
+    // revision string marks missing information. When we don't need
+    // change information, not having a revision string is okay.
+    if (needChanges() &&
+        !m_revisions.empty() &&
         m_revisions.begin()->second.empty()) {
         forceSlowSync = true;
+        mode = CHANGES_SLOW;
+    }
+
+    // If we don't need changes, then override the mode so that
+    // we don't compute them below.
+    if (!needChanges()) {
         mode = CHANGES_SLOW;
     }
 
@@ -1159,6 +1274,10 @@ void SyncSourceRevisions::updateRevision(ConfigNode &trackingNode,
                                          const std::string &new_luid,
                                          const std::string &revision)
 {
+    if (!needChanges()) {
+        return;
+    }
+
     databaseModified();
     if (old_luid != new_luid) {
         trackingNode.removeProperty(old_luid);
@@ -1172,6 +1291,9 @@ void SyncSourceRevisions::updateRevision(ConfigNode &trackingNode,
 void SyncSourceRevisions::deleteRevision(ConfigNode &trackingNode,
                                          const std::string &luid)
 {
+    if (!needChanges()) {
+        return;
+    }
     databaseModified();
     trackingNode.removeProperty(luid);
 }

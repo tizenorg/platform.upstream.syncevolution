@@ -42,8 +42,8 @@ import traceback
 import re
 import itertools
 import codecs
-import glib
 import pprint
+import shutil
 
 # Update path so that testdbus.py can be found.
 pimFolder = os.path.realpath(os.path.abspath(os.path.split(inspect.getfile(inspect.currentframe()))[0]))
@@ -53,8 +53,17 @@ testFolder = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect
 if testFolder not in sys.path:
     sys.path.insert(0, testFolder)
 
+# Rely on the glib/gobject compatibility import code in test-dbus.py.
+from testdbus import glib, gobject
+
 from testdbus import DBusUtil, timeout, property, usingValgrind, xdg_root, bus, logging, NullLogging, loop
 import testdbus
+
+def timeFunction(func, *args1, **args2):
+     start = time.time()
+     res = func(*args1, **args2)
+     end = time.time()
+     return (end - start, res)
 
 @unittest.skip("not a real test")
 class ContactsView(dbus.service.Object, unittest.TestCase):
@@ -83,8 +92,23 @@ class ContactsView(dbus.service.Object, unittest.TestCase):
 
           self.logging = logging
 
+          # Called at the end of each view notification.
+          # May throw exceptions, which will be recorded in self.errors.
+          self.check = lambda: True
+
           dbus.service.Object.__init__(self, dbus.SessionBus(), self.path)
           unittest.TestCase.__init__(self)
+
+     # Set self.check and returns a wrapper for use in runUntil.
+     # The function passed in should not check self.errors, this
+     # will be added by setCheck() for use in runUntil.
+     def setCheck(self, check):
+          if check:
+               self.check = check
+          else:
+               check = lambda: True
+               self.check = check
+          return lambda: (self.assertEqual([], self.errors), check())
 
      def runTest(self):
           pass
@@ -141,6 +165,7 @@ class ContactsView(dbus.service.Object, unittest.TestCase):
                # Overwrite valid data with just the (possibly modified) ID.
                self.contacts[start:start + count] = [str(x) for x in ids]
                self.logging.printf('contacts modified => %s', self.contacts)
+               self.check()
           except:
                error = traceback.format_exc()
                self.logging.printf('contacts modified: error: %s' % error)
@@ -160,6 +185,7 @@ class ContactsView(dbus.service.Object, unittest.TestCase):
                self.assertLessEqual(start, len(self.contacts))
                self.contacts[start:start] = [str(x) for x in ids]
                self.logging.printf('contacts added => %s', self.contacts)
+               self.check()
           except:
                error = traceback.format_exc()
                self.logging.printf('contacts added: error: %s' % error)
@@ -179,6 +205,7 @@ class ContactsView(dbus.service.Object, unittest.TestCase):
                self.assertEqual(self.getIDs(start, count), ids)
                del self.contacts[start:start + count]
                self.logging.printf('contacts removed => %s', self.contacts)
+               self.check()
           except:
                error = traceback.format_exc()
                self.logging.printf('contacts removed: error: %s' % error)
@@ -187,9 +214,18 @@ class ContactsView(dbus.service.Object, unittest.TestCase):
      @dbus.service.method(dbus_interface='org._01.pim.contacts.ViewAgent',
                           in_signature='o', out_signature='')
      def Quiescent(self, view):
+          # Allow exceptions from self.processEvent to be returned to caller,
+          # because Quiescent() is allowed to fail. testQuiescentOptional
+          # depends on that after hooking into the self.processEvent call.
           self.quiescentCount = self.quiescentCount + 1
           self.processEvent('quiescent: %s' % view,
                             ('quiescent',))
+          try:
+               self.check()
+          except:
+               error = traceback.format_exc()
+               self.logging.printf('quiescent: error: %s' % error)
+               self.errors.append(error)
 
      def read(self, start, count=1):
           '''Read the specified range of contact data.'''
@@ -713,13 +749,27 @@ END:VCARD(\r|\n)*''',
         # EDS workaround
         time.sleep(2)
 
-    @timeout(300)
+    @timeout(os.environ.get('TESTPIM_TEST_SYNC_TESTCASES', False) and 300000 or 300)
     @property("snapshot", "simple-sort")
     def testSync(self):
         '''TestContacts.testSync - test caching of a dummy peer which uses a real phone or a local directory as fallback'''
         sources = self.currentSources()
         expected = sources.copy()
         peers = {}
+        logdir = xdg_root + '/cache/syncevolution'
+        # If set, then test importing all these contacts,
+        # matching them, and removing them. Prints timing information.
+        testcases = os.environ.get('TESTPIM_TEST_SYNC_TESTCASES', None)
+        if testcases:
+             def progress(step, duration):
+                  print
+                  edslogs = [x for x in os.listdir(logdir) if x.startswith('eds@')]
+                  edslogs.sort()
+                  print '%s: %fs, see %s' % (step, duration,
+                                             os.path.join(logdir, edslogs[-1]))
+        else:
+             def progress(*args1, **args2):
+                  pass
 
         syncProgress = []
         signal = bus.add_signal_receiver(lambda uid, event, data: (logging.printf('received SyncProgress: %s, %s, %s', uid, event, data), syncProgress.append((uid, event, data)), logging.printf('progress %s' % syncProgress)),
@@ -800,8 +850,10 @@ END:VCARD(\r|\n)*''',
         # Remove all data locally. There may or may not have been data
         # locally, because the database of the peer might have existed
         # from previous tests.
-        self.manager.SyncPeer(uid,
-                              timeout=self.timeout)
+        duration, res = timeFunction(self.manager.SyncPeer,
+                                     uid,
+                                     timeout=self.timeout)
+        progress('clear', duration)
         # TODO: check that syncPhone() really used PBAP - but how?
 
         # Should not have written files, except for specific exceptions:
@@ -904,16 +956,28 @@ TEL;TYPE=PREF;X-EVOLUTION-UI-SLOT=8:primary 8
 END:VCARD
 '''
 
-        item = os.path.join(contacts, 'john.vcf')
-        output = open(item, "w")
-        output.write(john)
-        output.close()
+        if testcases:
+             # Split test case file into files.
+             for i, data in enumerate(open(testcases).read().split('\n\n')):
+                  item = os.path.join(contacts, '%d.vcf' % i)
+                  output = open(item, "w")
+                  output.write(data)
+                  output.close()
+             numItems = i + 1
+        else:
+             item = os.path.join(contacts, 'john.vcf')
+             output = open(item, "w")
+             output.write(john)
+             output.close()
+             numItems = 1
         self.syncPhone(phone, uid)
         syncProgress = []
-        result = self.manager.SyncPeer(uid,
-                                       timeout=self.timeout)
+        duration, result = timeFunction(self.manager.SyncPeer,
+                                        uid,
+                                        timeout=self.timeout)
+        progress('import', duration)
         checkSync({'modified': True,
-                    'added': 1,
+                    'added': numItems,
                     'updated': 0,
                     'removed': 0},
                   result)
@@ -921,109 +985,121 @@ END:VCARD
         # Also exclude modified database files.
         self.assertEqual(files, listsyncevo(exclude=exclude))
 
-        self.exportCache(uid, export)
-        self.compareDBs(contacts, export)
+        # Testcase data does not necessarily import/export without changes.
+        if not testcases:
+             self.exportCache(uid, export)
+             self.compareDBs(contacts, export)
 
-        # Keep one session directory in a non-default location.
-        logdir = xdg_root + '/pim-logdir'
-        peers[uid]['logdir'] = logdir
-        peers[uid]['maxsessions'] = '1'
-        self.manager.SetPeer(uid,
-                             peers[uid],
-                             timeout=self.timeout)
-        files = listsyncevo(exclude=exclude)
+        # Skip logdir tests when focusing on syncing data.
+        if not testcases:
+             # Keep one session directory in a non-default location.
+             logdir = xdg_root + '/pim-logdir'
+             peers[uid]['logdir'] = logdir
+             peers[uid]['maxsessions'] = '1'
+             self.manager.SetPeer(uid,
+                                  peers[uid],
+                                  timeout=self.timeout)
+             files = listsyncevo(exclude=exclude)
+             syncProgress = []
+             result = self.manager.SyncPeer(uid,
+                                            timeout=self.timeout)
+             checkSync({'modified': False,
+                        'added': 0,
+                        'updated': 0,
+                        'removed': 0},
+                       result)
+             exclude.append(logdir + '(/$)')
+             self.assertEqual(files, listsyncevo(exclude=exclude))
+             self.assertEqual(2, len(os.listdir(logdir)))
+
+        # No changes.
         syncProgress = []
-        result = self.manager.SyncPeer(uid,
-                                       timeout=self.timeout)
+        duration, result = timeFunction(self.manager.SyncPeer,
+                                        uid,
+                                        timeout=self.timeout)
+        progress('match', duration)
         checkSync({'modified': False,
                    'added': 0,
                    'updated': 0,
                    'removed': 0},
                   result)
-        exclude.append(logdir + '(/$)')
         self.assertEqual(files, listsyncevo(exclude=exclude))
+        self.assertEqual(testcases and 6 or 2, len(os.listdir(logdir)))
 
-        self.assertEqual(2, len(os.listdir(logdir)))
+        if not testcases:
+             # And now prune none.
+             peers[uid]['maxsessions'] = '0'
+             self.manager.SetPeer(uid,
+                                  peers[uid],
+                                  timeout=self.timeout)
+             files = listsyncevo(exclude=exclude)
+             syncProgress = []
+             result = self.manager.SyncPeer(uid,
+                                            timeout=self.timeout)
+             checkSync({'modified': False,
+                        'added': 0,
+                        'updated': 0,
+                        'removed': 0},
+                       result)
+             exclude.append(logdir + '(/$)')
+             self.assertEqual(files, listsyncevo(exclude=exclude))
+             self.assertEqual(4, len(os.listdir(logdir)))
 
-        # At most one!
-        syncProgress = []
-        result = self.manager.SyncPeer(uid,
-                                       timeout=self.timeout)
-        checkSync({'modified': False,
-                   'added': 0,
-                   'updated': 0,
-                   'removed': 0},
-                  result)
-        exclude.append(logdir + '(/$)')
-        self.assertEqual(files, listsyncevo(exclude=exclude))
-        self.assertEqual(2, len(os.listdir(logdir)))
-
-        # And now prune none.
-        peers[uid]['maxsessions'] = '0'
-        self.manager.SetPeer(uid,
-                             peers[uid],
-                             timeout=self.timeout)
-        files = listsyncevo(exclude=exclude)
-        syncProgress = []
-        result = self.manager.SyncPeer(uid,
-                                       timeout=self.timeout)
-        checkSync({'modified': False,
-                   'added': 0,
-                   'updated': 0,
-                   'removed': 0},
-                  result)
-        exclude.append(logdir + '(/$)')
-        self.assertEqual(files, listsyncevo(exclude=exclude))
-        self.assertEqual(4, len(os.listdir(logdir)))
-
-        # Update contact.
-        john = '''BEGIN:VCARD
+        # Cannot update data when using pre-defined test cases.
+        if not testcases:
+             # Update contact.
+             john = '''BEGIN:VCARD
 VERSION:3.0
 FN:John Doe
 N:Doe;John
 END:VCARD'''
-        output = open(item, "w")
-        output.write(john)
-        output.close()
-        self.syncPhone(phone, uid)
-        syncProgress = []
-        result = self.manager.SyncPeer(uid,
-                                       timeout=self.timeout)
-        checkSync({'modified': True,
-                   'added': 0,
-                   'updated': 1,
-                   'removed': 0},
-                  result)
+             output = open(item, "w")
+             output.write(john)
+             output.close()
+             self.syncPhone(phone, uid)
+             syncProgress = []
+             result = self.manager.SyncPeer(uid,
+                                            timeout=self.timeout)
+             checkSync({'modified': True,
+                        'added': 0,
+                        'updated': 1,
+                        'removed': 0},
+                       result)
 
-        # Remove contact.
-        os.unlink(item)
+        # Remove contact(s).
+        for file in os.listdir(contacts):
+             os.remove(os.path.join(contacts, file))
         self.syncPhone(phone, uid)
         syncProgress = []
-        result = self.manager.SyncPeer(uid,
-                                       timeout=self.timeout)
+        duration, result = timeFunction(self.manager.SyncPeer,
+                                        uid,
+                                        timeout=self.timeout)
+        progress('remove', duration)
         checkSync({'modified': True,
                    'added': 0,
                    'updated': 0,
-                   'removed': 1},
+                   'removed': numItems},
                   result)
 
         # Test invalid maxsession values.
-        with self.assertRaisesRegexp(dbus.DBusException,
-                                     "negative 'maxsessions' not allowed: -1"):
-             self.manager.SetPeer(uid,
-                                  {'protocol': 'PBAP',
-                                   'address': 'foo',
-                                   'maxsessions': '-1'},
-                                  timeout=self.timeout)
-        self.assertEqual(files, listsyncevo(exclude=exclude))
+        if not testcases:
+             with self.assertRaisesRegexp(dbus.DBusException,
+                                          "negative 'maxsessions' not allowed: -1"):
+                  self.manager.SetPeer(uid,
+                                       {'protocol': 'PBAP',
+                                        'address': 'foo',
+                                        'maxsessions': '-1'},
+                                       timeout=self.timeout)
+             self.assertEqual(files, listsyncevo(exclude=exclude))
 
-        with self.assertRaisesRegexp(dbus.DBusException,
-                                     'bad lexical cast: source type value could not be interpreted as target'):
-             self.manager.SetPeer(uid,
-                                  {'protocol': 'PBAP',
-                                   'address': 'foo',
-                                   'maxsessions': '1000000000000000000000000000000000000000000000'},
-                                  timeout=self.timeout)
+             with self.assertRaisesRegexp(dbus.DBusException,
+                                          'bad lexical cast: source type value could not be interpreted as target'):
+                  self.manager.SetPeer(uid,
+                                       {'protocol': 'PBAP',
+                                        'address': 'foo',
+                                        'maxsessions': '1000000000000000000000000000000000000000000000'},
+                                       timeout=self.timeout)
+
         self.assertEqual(files, listsyncevo(exclude=exclude))
 
     @timeout(100)
@@ -1101,6 +1177,7 @@ END:VCARD'''
         self.setUpView()
 
         # Insert new contact.
+        self.view.quiescentCount = 0
         john = '''BEGIN:VCARD
 VERSION:3.0
 FN:John Doe
@@ -1117,11 +1194,12 @@ END:VCARD'''
         # Run until the view has adapted.
         self.runUntil('view with one contact',
                       check=lambda: self.assertEqual([], self.view.errors),
-                      until=lambda: len(self.view.contacts) == 1)
+                      until=lambda: self.view.quiescentCount > 0)
 
         # Check for the one expected event.
         self.assertEqual([('added', 0, 1), ('quiescent',)], self.view.events)
         self.view.events = []
+        self.view.quiescentCount = 0
 
         # Read contact.
         logging.log('reading contact')
@@ -1145,18 +1223,19 @@ END:VCARD'''
         self.runCmdline(['--update', item, '@' + self.managerPrefix + self.uid, 'local', luid])
         self.runUntil('view with changed contact',
                       check=lambda: self.assertEqual([], self.view.errors),
-                      until=lambda: self.view.haveNoData(0))
+                      until=lambda: self.view.quiescentCount > 0)
         self.assertEqual([('modified', 0, 1), ('quiescent',)], self.view.events)
         self.view.events = []
+        self.view.quiescentCount = 0
 
         # Remove contact.
         self.runCmdline(['--delete-items', '@' + self.managerPrefix + self.uid, 'local', '*'])
         self.runUntil('view without contacts',
                       check=lambda: self.assertEqual([], self.view.errors),
-                      until=lambda: len(self.view.contacts) == 0)
+                      until=lambda: self.view.quiescentCount > 0)
         self.assertEqual([('removed', 0, 1), ('quiescent',)], self.view.events)
         self.view.events = []
-
+        self.view.quiescentCount = 0
 
     @timeout(60)
     @property("snapshot", "simple-sort")
@@ -1215,6 +1294,11 @@ END:VCARD''']):
         self.assertEqual('Benjamin Yeah', self.view.contacts[1]['full-name'])
         self.assertEqual('Abraham Zoo', self.view.contacts[2]['full-name'])
 
+        # We should have seen all events for the changes above now,
+        # start with a clean slate.
+        self.view.events = []
+        self.view.quiescentCount = 0
+
         # No re-ordering necessary: criteria doesn't change.
         item = os.path.join(self.contacts, 'contact0.vcf')
         output = open(item, "w")
@@ -1228,9 +1312,10 @@ END:VCARD''')
         self.runCmdline(['--update', item, '@' + self.managerPrefix + self.uid, 'local', luids[0]])
         self.runUntil('view with changed contact #2',
                       check=lambda: self.assertEqual([], self.view.errors),
-                      until=lambda: self.view.haveNoData(2))
+                      until=lambda: self.view.quiescentCount > 0)
         self.assertEqual([('modified', 2, 1), ('quiescent',)], self.view.events)
         self.view.events = []
+        self.view.quiescentCount = 0
         logging.log('reading updated contact')
         self.view.read(2, 1)
         self.runUntil('updated contact',
@@ -1253,9 +1338,10 @@ END:VCARD''')
         self.runCmdline(['--update', item, '@' + self.managerPrefix + self.uid, 'local', luids[0]])
         self.runUntil('view with changed contact #2',
                       check=lambda: self.assertEqual([], self.view.errors),
-                      until=lambda: self.view.haveNoData(2))
+                      until=lambda: self.view.quiescentCount > 0)
         self.assertEqual([('modified', 2, 1), ('quiescent',)], self.view.events)
         self.view.events = []
+        self.view.quiescentCount = 0
         logging.log('reading updated contact')
         self.view.read(2, 1)
         self.runUntil('updated contact',
@@ -1277,9 +1363,10 @@ END:VCARD''')
         self.runCmdline(['--update', item, '@' + self.managerPrefix + self.uid, 'local', luids[1]])
         self.runUntil('view with changed contact #1',
                       check=lambda: self.assertEqual([], self.view.errors),
-                      until=lambda: self.view.haveNoData(1))
+                      until=lambda: self.view.quiescentCount > 0)
         self.assertEqual([('modified', 1, 1), ('quiescent',)], self.view.events)
         self.view.events = []
+        self.view.quiescentCount = 0
         logging.log('reading updated contact')
         self.view.read(1, 1)
         self.runUntil('updated contact',
@@ -1301,9 +1388,10 @@ END:VCARD''')
         self.runCmdline(['--update', item, '@' + self.managerPrefix + self.uid, 'local', luids[2]])
         self.runUntil('view with changed contact #0',
                       check=lambda: self.assertEqual([], self.view.errors),
-                      until=lambda: self.view.haveNoData(0))
+                      until=lambda: self.view.quiescentCount > 0)
         self.assertEqual([('modified', 0, 1), ('quiescent',)], self.view.events)
         self.view.events = []
+        self.view.quiescentCount = 0
         logging.log('reading updated contact')
         self.view.read(0, 1)
         self.runUntil('updated contact',
@@ -1326,11 +1414,12 @@ END:VCARD''')
         self.runCmdline(['--update', item, '@' + self.managerPrefix + self.uid, 'local', luids[0]])
         self.runUntil('view with changed contact #0',
                       check=lambda: self.assertEqual([], self.view.errors),
-                      until=lambda: self.view.haveNoData(0))
+                      until=lambda: self.view.quiescentCount > 0)
         self.assertEqual([('removed', 2, 1),
                           ('added', 0, 1),
                           ('quiescent',)], self.view.events)
         self.view.events = []
+        self.view.quiescentCount = 0
         logging.log('reading updated contact')
         self.view.read(0, 1)
         self.runUntil('updated contact',
@@ -1353,11 +1442,12 @@ END:VCARD''')
         self.runCmdline(['--update', item, '@' + self.managerPrefix + self.uid, 'local', luids[0]])
         self.runUntil('view with changed contact #2',
                       check=lambda: self.assertEqual([], self.view.errors),
-                      until=lambda: self.view.haveNoData(2))
+                      until=lambda: self.view.quiescentCount > 0)
         self.assertEqual([('removed', 0, 1),
                           ('added', 2, 1),
                           ('quiescent',)], self.view.events)
         self.view.events = []
+        self.view.quiescentCount = 0
         logging.log('reading updated contact')
         self.view.read(2, 1)
         self.runUntil('updated contact',
@@ -1795,25 +1885,26 @@ END:VCARD'''
         output.write(john)
         output.close()
 
+        check = self.view.setCheck(lambda: self.assertGreater(2, len(self.view.contacts)))
+
         luids = {}
         for uid in self.uids:
              logging.log('inserting John into ' + uid)
              out, err, returncode = self.runCmdline(['--import', item, '@' + self.managerPrefix + uid, 'local'])
              luids[uid] = self.extractLUIDs(out)
 
-        # Run until the view has adapted.
-        self.runUntil('view with contacts',
-                      check=lambda: self.assertEqual([], self.view.errors),
-                      until=lambda: len(self.view.contacts) != 0)
-        self.assertEqual(1, len(self.view.contacts))
-
+        # Run until the view has adapted. We accept Added + Removed + Added
+        # (happens when folks switches IDs, which happens when the "primary" store
+        # changes) and Added + Updated.
+        #
         # Let it run for a bit longer, to catch further unintentional changes
         # and ensure that changes from both stores where processed.
         now = time.time()
         self.runUntil('delay',
-                      check=lambda: (self.assertEqual([], self.view.errors),
-                                     self.assertEqual(1, len(self.view.contacts))),
+                      check=check,
                       until=lambda: time.time() - now > 10)
+        self.assertEqual(1, len(self.view.contacts))
+        self.view.setCheck(None)
 
         # Read contact.
         logging.log('reading contact')
@@ -2702,19 +2793,21 @@ EMAIL:az@example.com
 END:VCARD''')
         output.close()
         logging.log('change nick of Abraham')
+        # Check as part of event processing:
+        # - view has one unmodified contact
+        check1 = view.setCheck(lambda: (self.assertEqual(1, len(view.contacts)),
+                                        self.assertIsInstance(view.contacts[0], dict)))
+        # - self.view changes, must not encounter errors
+        check2 = self.view.setCheck(None)
+        check = lambda: (check1(), check2())
+
         out, err, returncode = self.runCmdline(['--update', item, '@' + self.managerPrefix + self.uid, 'local', luids[0]])
         self.runUntil('Abraham nickname changed',
-                      check=lambda: (self.assertEqual([], view.errors),
-                                     self.assertEqual(1, len(view.contacts)),
-                                     self.assertIsInstance(view.contacts[0], dict),
-                                     self.assertEqual([], self.view.errors)),
+                      check=check,
                       until=lambda: self.view.haveNoData(0))
         self.view.read(0, 1)
         self.runUntil('Abraham nickname read',
-                      check=lambda: (self.assertEqual([], view.errors),
-                                     self.assertEqual(1, len(view.contacts)),
-                                     self.assertIsInstance(view.contacts[0], dict),
-                                     self.assertEqual([], self.view.errors)),
+                      check=check,
                       until=lambda: self.view.haveData(0))
         self.assertEqual(u'Charly', view.contacts[0]['structured-name']['given'])
         self.assertEqual(u'Abraham', self.view.contacts[0]['structured-name']['given'])
@@ -2725,7 +2818,8 @@ END:VCARD''')
                       until=lambda: len(phone.contacts) == 0)
         phone.close()
 
-        # Matched contact remains matched.
+        # Matched contact remains matched, but we loose the data.
+        check1 = view.setCheck(lambda: self.assertEqual(1, len(view.contacts)))
         item = os.path.join(self.contacts, 'contact%d.vcf' % 2)
         output = codecs.open(item, "w", "utf-8")
         output.write(u'''BEGIN:VCARD
@@ -2738,23 +2832,20 @@ END:VCARD''')
         logging.log('change nick of Charly')
         out, err, returncode = self.runCmdline(['--update', item, '@' + self.managerPrefix + self.uid, 'local', luids[2]])
         self.runUntil('Charly nickname changed',
-                      check=lambda: (self.assertEqual([], view.errors),
-                                     self.assertEqual(1, len(view.contacts)),
-                                     self.assertEqual([], self.view.errors)),
+                      check=check,
                       until=lambda: self.view.haveNoData(2) and \
                            view.haveNoData(0))
         view.read(0, 1)
         self.view.read(2, 1)
         self.runUntil('Charly nickname read',
-                      check=lambda: (self.assertEqual([], view.errors),
-                                     self.assertEqual(1, len(view.contacts)),
-                                     self.assertEqual([], self.view.errors)),
+                      check=check,
                       until=lambda: self.view.haveData(2) and \
                            view.haveData(0))
         self.assertEqual(u'Charly', view.contacts[0]['structured-name']['given'])
         self.assertEqual(u'Charly', self.view.contacts[2]['structured-name']['given'])
 
         # Unmatched contact gets matched.
+        check1 = view.setCheck(lambda: self.assertLess(0, len(view.contacts)))
         item = os.path.join(self.contacts, 'contact%d.vcf' % 0)
         output = codecs.open(item, "w", "utf-8")
         output.write(u'''BEGIN:VCARD
@@ -2768,19 +2859,16 @@ END:VCARD''')
         logging.log('change nick of Abraham, II')
         out, err, returncode = self.runCmdline(['--update', item, '@' + self.managerPrefix + self.uid, 'local', luids[0]])
         self.runUntil('Abraham nickname changed',
-                      check=lambda: (self.assertEqual([], view.errors),
-                                     self.assertLess(0, len(view.contacts)),
-                                     self.assertEqual([], self.view.errors)),
+                      check=check,
                       until=lambda: self.view.haveNoData(0) and \
                            len(view.contacts) == 2)
+        check1 = view.setCheck(lambda: self.assertEqual(2, len(view.contacts)))
         self.assertNotIsInstance(view.contacts[0], dict)
         self.assertIsInstance(view.contacts[1], dict)
         view.read(0, 1)
         self.view.read(0, 1)
         self.runUntil('Abraham nickname read, II',
-                      check=lambda: (self.assertEqual([], view.errors),
-                                     self.assertEqual(2, len(view.contacts)),
-                                     self.assertEqual([], self.view.errors)),
+                      check=check,
                       until=lambda: self.view.haveData(0) and \
                            view.haveData(0))
         self.assertEqual(u'Abraham', view.contacts[0]['structured-name']['given'])
@@ -2788,19 +2876,18 @@ END:VCARD''')
         self.assertEqual(u'Abraham', self.view.contacts[0]['structured-name']['given'])
 
         # Invert sort order.
+        check1 = view.setCheck(None)
         self.manager.SetSortOrder("last/first",
                                   timeout=self.timeout)
         self.runUntil('reordering',
-                      check=lambda: (self.assertEqual([], view.errors),
-                                     self.assertEqual([], self.view.errors)),
+                      check=check,
                       until=lambda: self.view.haveNoData(0) and \
                            self.view.haveNoData(2) and \
                            view.haveNoData(0, 2))
         view.read(0, 2)
         self.view.read(0, 3)
         self.runUntil('read reordered contacts',
-                      check=lambda: (self.assertEqual([], view.errors),
-                                     self.assertEqual([], self.view.errors)),
+                      check=check,
                       until=lambda: self.view.haveData(0, 3) and \
                            view.haveData(0, 2))
         self.assertEqual(2, len(view.contacts))
@@ -2815,16 +2902,14 @@ END:VCARD''')
         self.manager.SetSortOrder("first/last",
                                   timeout=self.timeout)
         self.runUntil('reordering, II',
-                      check=lambda: (self.assertEqual([], view.errors),
-                                     self.assertEqual([], self.view.errors)),
+                      check=check,
                       until=lambda: self.view.haveNoData(0) and \
                            self.view.haveNoData(2) and \
                            view.haveNoData(0, 2))
         view.read(0, 2)
         self.view.read(0, 3)
         self.runUntil('read reordered contacts, II',
-                      check=lambda: (self.assertEqual([], view.errors),
-                                     self.assertEqual([], self.view.errors)),
+                      check=check,
                       until=lambda: self.view.haveData(0, 3) and \
                            view.haveData(0, 2))
         self.assertEqual(2, len(view.contacts))
@@ -2836,6 +2921,7 @@ END:VCARD''')
         self.assertEqual(u'Charly', self.view.contacts[2]['structured-name']['given'])
 
         # Matched contact gets unmatched.
+        check1 = view.setCheck(lambda: self.assertLess(0, len(view.contacts)))
         item = os.path.join(self.contacts, 'contact%d.vcf' % 0)
         output = codecs.open(item, "w", "utf-8")
         output.write(u'''BEGIN:VCARD
@@ -2849,24 +2935,22 @@ END:VCARD''')
         logging.log('change nick of Abraham, II')
         out, err, returncode = self.runCmdline(['--update', item, '@' + self.managerPrefix + self.uid, 'local', luids[0]])
         self.runUntil('Abraham nickname changed to None',
-                      check=lambda: (self.assertEqual([], view.errors),
-                                     self.assertLess(0, len(view.contacts)),
-                                     self.assertEqual([], self.view.errors)),
+                      check=check,
                       until=lambda: self.view.haveNoData(0) and \
                            len(view.contacts) == 1)
         self.assertIsInstance(view.contacts[0], dict)
         self.view.read(0, 1)
+        check1 = view.setCheck(lambda: (self.assertEqual(1, len(view.contacts)),
+                                        self.assertIsInstance(view.contacts[0], dict)))
         self.runUntil('Abraham nickname read, None',
-                      check=lambda: (self.assertEqual([], view.errors),
-                                     self.assertEqual(1, len(view.contacts)),
-                                     self.assertIsInstance(view.contacts[0], dict),
-                                     self.assertEqual([], self.view.errors)),
+                      check=check,
                       until=lambda: self.view.haveData(0))
         self.assertEqual(u'Charly', view.contacts[0]['structured-name']['given'])
         self.assertEqual(u'Abraham', self.view.contacts[0]['structured-name']['given'])
 
         # Finally, remove everything.
         logging.log('remove contacts')
+        check1 = view.setCheck(None)
         out, err, returncode = self.runCmdline(['--delete-items', '@' + self.managerPrefix + self.uid, 'local', '*'])
         self.runUntil('all contacts removed',
                       check=lambda: (self.assertEqual([], view.errors),
@@ -3096,13 +3180,17 @@ END:VCARD''']):
         # they do, we'll notice it below.
         self.assertEqual(1, len(view.contacts))
 
+        # Check conditions as part of view updates.
+        check1 = view.setCheck(None)
+        check2 = self.view.setCheck(None)
+        check = lambda: (check1(), check2())
+
         # Read contacts.
         logging.log('reading contacts')
         view.read(0, 1)
         self.view.read(0, 3)
         self.runUntil('contacts',
-                      check=lambda: (self.assertEqual([], view.errors),
-                                     self.assertEqual([], self.view.errors)),
+                      check=check,
                       until=lambda: view.haveData(0) and \
                            self.view.haveData(0, 3))
         self.assertEqual(u'Abraham', view.contacts[0]['structured-name']['given'])
@@ -3121,18 +3209,15 @@ NICKNAME:King
 END:VCARD''')
         output.close()
         logging.log('change nick of Abraham')
+        check1 = view.setCheck(lambda: self.assertEqual(1, len(view.contacts)))
         out, err, returncode = self.runCmdline(['--update', item, '@' + self.managerPrefix + self.uid, 'local', luids[0]])
         self.runUntil('Abraham nickname changed',
-                      check=lambda: (self.assertEqual([], view.errors),
-                                     self.assertEqual(1, len(view.contacts)),
-                                     self.assertEqual([], self.view.errors)),
+                      check=check,
                       until=lambda: self.view.haveNoData(0) and view.haveNoData(0))
         view.read(0, 1)
         self.view.read(0, 1)
         self.runUntil('Abraham nickname read',
-                      check=lambda: (self.assertEqual([], view.errors),
-                                     self.assertEqual(1, len(view.contacts)),
-                                     self.assertEqual([], self.view.errors)),
+                      check=check,
                       until=lambda: self.view.haveData(0) and view.haveData(0))
         self.assertEqual(u'Abraham', view.contacts[0]['structured-name']['given'])
         self.assertEqual(u'Abraham', self.view.contacts[0]['structured-name']['given'])
@@ -3149,21 +3234,19 @@ NICKNAME:mamam
 END:VCARD''')
         output.close()
         logging.log('change nick of Charly')
+        check1 = view.setCheck(lambda: self.assertLess(0, len(view.contacts)))
         out, err, returncode = self.runCmdline(['--update', item, '@' + self.managerPrefix + self.uid, 'local', luids[2]])
         self.runUntil('Charly nickname changed',
-                      check=lambda: (self.assertEqual([], view.errors),
-                                     self.assertLess(0, len(view.contacts)),
-                                     self.assertEqual([], self.view.errors)),
+                      check=check,
                       until=lambda: self.view.haveNoData(2))
+        check1 = view.setCheck(lambda: self.assertEqual(1, len(view.contacts)))
         self.assertEqual(1, len(view.contacts))
         self.assertTrue(view.haveData(0))
         self.assertEqual(u'Abraham', view.contacts[0]['structured-name']['given'])
         self.assertFalse(self.view.haveData(2))
         self.view.read(2, 1)
         self.runUntil('Abraham nickname read, II',
-                      check=lambda: (self.assertEqual([], view.errors),
-                                     self.assertEqual(1, len(view.contacts)),
-                                     self.assertEqual([], self.view.errors)),
+                      check=check,
                       until=lambda: self.view.haveData(2) and \
                            view.haveData(0))
         self.assertEqual(u'Abraham', view.contacts[0]['structured-name']['given'])
@@ -3172,19 +3255,18 @@ END:VCARD''')
         self.assertEqual(u'Charly', self.view.contacts[2]['structured-name']['given'])
 
         # Invert sort order.
+        check1 = view.setCheck(None)
         self.manager.SetSortOrder("last/first",
                                   timeout=self.timeout)
         self.runUntil('reordering',
-                      check=lambda: (self.assertEqual([], view.errors),
-                                     self.assertEqual([], self.view.errors)),
+                      check=check,
                       until=lambda: self.view.haveNoData(0) and \
                            self.view.haveNoData(2) and \
                            view.haveNoData(0, 1))
         view.read(0, 1)
         self.view.read(0, 3)
         self.runUntil('read reordered contacts',
-                      check=lambda: (self.assertEqual([], view.errors),
-                                     self.assertEqual([], self.view.errors)),
+                      check=check,
                       until=lambda: self.view.haveData(0, 3) and \
                            view.haveData(0, 1))
         self.assertEqual(1, len(view.contacts))
@@ -3198,16 +3280,14 @@ END:VCARD''')
         self.manager.SetSortOrder("first/last",
                                   timeout=self.timeout)
         self.runUntil('reordering, II',
-                      check=lambda: (self.assertEqual([], view.errors),
-                                     self.assertEqual([], self.view.errors)),
+                      check=check,
                       until=lambda: self.view.haveNoData(0) and \
                            self.view.haveNoData(2) and \
                            view.haveNoData(0, 1))
         view.read(0, 1)
         self.view.read(0, 3)
         self.runUntil('read reordered contacts, II',
-                      check=lambda: (self.assertEqual([], view.errors),
-                                     self.assertEqual([], self.view.errors)),
+                      check=check,
                       until=lambda: self.view.haveData(0, 3) and \
                            view.haveData(0, 1))
         self.assertEqual(1, len(view.contacts))
@@ -3230,28 +3310,25 @@ END:VCARD''')
         logging.log('change name of Abraham')
         out, err, returncode = self.runCmdline(['--update', item, '@' + self.managerPrefix + self.uid, 'local', luids[0]])
         self.runUntil('Abraham -> Abrahan',
-                      check=lambda: (self.assertEqual([], view.errors),
-                                     self.assertLess(0, len(view.contacts)),
-                                     self.assertEqual([], self.view.errors)),
+                      check=check,
                       until=lambda: self.view.haveNoData(0) and \
                            len(view.contacts) == 1 and \
                            view.haveNoData(0))
+        check1 = view.setCheck(lambda: self.assertEqual(1, len(view.contacts)))
         view.read(0, 1)
         self.view.read(0, 1)
         self.runUntil('Abrahan read',
-                      check=lambda: (self.assertEqual([], view.errors),
-                                     self.assertEqual(1, len(view.contacts)),
-                                     self.assertEqual([], self.view.errors)),
+                      check=check,
                       until=lambda: self.view.haveData(0) and view.haveData(0))
         self.assertEqual(u'Benjamin', view.contacts[0]['structured-name']['given'])
         self.assertEqual(u'Abrahan', self.view.contacts[0]['structured-name']['given'])
 
         # Finally, remove everything.
         logging.log('remove contacts')
+        check1 = view.setCheck(None)
         out, err, returncode = self.runCmdline(['--delete-items', '@' + self.managerPrefix + self.uid, 'local', '*'])
         self.runUntil('all contacts removed',
-                      check=lambda: (self.assertEqual([], view.errors),
-                                     self.assertEqual([], self.view.errors)),
+                      check=check,
                       until=lambda: len(self.view.contacts) == 0 and \
                            len(view.contacts) == 0)
 
