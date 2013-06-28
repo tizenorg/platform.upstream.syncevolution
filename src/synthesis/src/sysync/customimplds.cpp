@@ -1113,6 +1113,9 @@ localstatus TCustomImplDS::dsAfterStateChange(TLocalEngineDSState aOldState,TLoc
     fAgentP->fScriptContextDatastore=this;
     TScriptContext::execute(fScriptContextP,fConfigP->fSyncEndScript,fConfigP->getDSFuncTableP(),fAgentP);
     #endif
+    // reset in case that we restart
+    DeleteSyncSet();
+    fSyncSetLoaded=false;
   }
   // let inherited do its stuff as well
   return inherited::dsAfterStateChange(aOldState,aNewState);
@@ -1791,13 +1794,10 @@ void TCustomImplDS::implMarkOnlyUngeneratedForResume(void)
   bool getPrepared = fGetPhasePrepared;
   // now flag all deletes that need resuming
   if (getPhase==gph_deleted) {
-    // if we are still in "deleted" phase, add these first
-    if (!getPrepared)
-      pos=fMapTable.begin();
-    else
-      pos=fDeleteMapPos;
-    // now mark pending deletes
-    while (pos!=fMapTable.end()) {
+    // now mark pending deletes; if we are still in "deleted" phase, add these first
+    for (pos = !getPrepared ? fMapTable.begin() : fDeleteMapPos;
+         pos!=fMapTable.end();
+         ++pos) {
       // check only undeleted map entries
       // Note: non-normal maps are always in deleted state in fMapTable, so these will be skipped as well
       if ((*pos).deleted) continue;
@@ -1806,8 +1806,6 @@ void TCustomImplDS::implMarkOnlyUngeneratedForResume(void)
         // mark this as pending for resume
         (*pos).markforresume=true;
       }
-      // next
-      ++pos;
     }
     getPhase=gph_added_changed;
     getPrepared=false;

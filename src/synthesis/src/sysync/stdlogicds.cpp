@@ -402,7 +402,7 @@ localstatus TStdLogicDS::performStartSync(void)
     sta=implEndDataRead();
     // show items
     PDEBUGPRINTFX(DBG_HOT,("%s: number of local items involved in %ssync = %ld",getName(), fSlowSync ? "slow " : "",(long)fItems.size()));
-    CONSOLEPRINTF(("  %ld local items are new/changed/deleted for this sync",(long)fItems.size()));
+    CONSOLEPRINTF(("  %ld local items are new/changed/deleted for this sync",fItems.size()));
     if (PDEBUGTEST(DBG_DATA+DBG_DETAILS)) {
       PDEBUGBLOCKFMTCOLL(("SyncSet","Items involved in Sync","datastore=%s",getName()));
       for (TSyncItemPContainer::iterator pos=fItems.begin();pos!=fItems.end();pos++) {
@@ -587,8 +587,8 @@ localstatus TStdLogicDS::startDataAccessForServer(void)
         // this will not work, warn (but no longer abort session, as Siemens S55 guys don't like that)
         CONSOLEPRINTF((
           "Warning: Synchronisation involves more items (%ld) than client can possibly manage (%ld",
-          (long)fItems.size(),
-          (long)getRemoteDatastore()->getMaxID()
+          (sInt32)fItems.size(),
+          (sInt32)getRemoteDatastore()->getMaxID()
         ));
         PDEBUGPRINTFX(DBG_ERROR,(
           "Warning: Synchronisation involves more items (%ld) than client can possibly manage (%ld)",

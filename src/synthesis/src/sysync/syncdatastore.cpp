@@ -60,6 +60,7 @@ void TSyncDataStore::init(TSyncSession *aSessionP)
   fMaxID = numeric_limits<__typeof__(fMaxID)>::max();
   fFreeID = fMaxID;
   #endif
+  fCanRestart = false;
   // rest ist like reset
   InternalResetDataStore();
 } // TSyncDataStore::init

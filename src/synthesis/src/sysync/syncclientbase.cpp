@@ -353,21 +353,33 @@ localstatus TSyncClientBase::processAnswer(void)
 // - extract hostname from an URI according to transport
 void TSyncClientBase::extractHostname(const char *aURI, string &aHostName)
 {
-  splitURL(aURI,NULL,&aHostName,NULL,NULL,NULL);
+  string port;
+  splitURL(aURI,NULL,&aHostName,NULL,NULL,NULL,&port,NULL);
+  // keep old semantic: port included in aHostName
+  if (!port.empty()) {
+    aHostName += ':';
+    aHostName += port;
+  }
 } // TSyncClientBase::extractHostname
 
 
 // - extract document name from an URI according to transport
 void TSyncClientBase::extractDocumentInfo(const char *aURI, string &aDocName)
 {
-  splitURL(aURI,NULL,NULL,&aDocName,NULL,NULL);
+  string query;
+  splitURL(aURI,NULL,NULL,&aDocName,NULL,NULL,NULL,&query);
+  // keep old semantic: query part of aDocName
+  if (!query.empty()) {
+    aDocName += '?';
+    aDocName += query;
+  }
 } // TSyncClientBase::extractDocumentInfo
 
 
 // - extract protocol name from an URI according to transport
 void TSyncClientBase::extractProtocolname(const char *aURI, string &aProtocolName)
 {
-  splitURL(aURI,&aProtocolName,NULL,NULL,NULL,NULL);
+  splitURL(aURI,&aProtocolName,NULL,NULL,NULL,NULL,NULL,NULL);
 } // TSyncClientBase::extractProtocolname
 
 

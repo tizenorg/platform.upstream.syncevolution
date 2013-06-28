@@ -148,6 +148,9 @@
 /* Define to 1 if you have the <execinfo.h> header file. */
 #undef HAVE_EXECINFO_H
 
+/* have e_contact_inline_local_photos() */
+#undef HAVE_E_CONTACT_INLINE_LOCAL_PHOTOS
+
 /* Define if the GNU gettext() function is already present or preinstalled. */
 #undef HAVE_GETTEXT
 

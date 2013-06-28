@@ -2241,9 +2241,55 @@ void splitHostname(const char *aHost,string *aAddr,string *aPort)
   }
 } // splitHostname
 
+// translate %XX into corresponding character in-place
+void urlDecode(string *str)
+{
+  // nothing todo?
+  if (!str ||
+      str->find('%') == string::npos) return;
 
-// split URL into protocol, hostname, document name and auth-info (user, password)
-void splitURL(const char *aURI,string *aProtocol,string *aHost,string *aDoc,string *aUser, string *aPasswd)
+  string replacement;
+  replacement.reserve(str->size());
+  const char *in = str->c_str();
+  char c;
+  while ((c = *in++) != 0) {
+    if (c == '%') {
+      c = tolower(*in++);
+      unsigned char value = 0;
+      if (!c) {
+          break;
+      } else if (c >= '0' && c <= '9') {
+        value = c - '0';
+      } else if (c >= 'a' && c <= 'f') {
+        value = c - 'a' + 10;
+      } else {
+        // silently skip invalid character
+      }
+      value *= 16;
+      c = tolower(*in++);
+      if (!c) {
+        break;
+      } else if (c >= '0' && c <= '9') {
+        value += c - '0';
+        replacement.append((char *)&value, 1);
+      } else if (c >= 'a' && c <= 'f') {
+        value += c - 'a' + 10;
+        replacement.append((char *)&value, 1);
+      } else {
+        // silently skip invalid character
+      }
+    } else {
+      replacement.append(&c, 1);
+    }
+  }
+  *str = replacement;
+}
+
+// split URL into protocol, hostname, document name and auth-info (user, password);
+// the optional query and port are not url-decoded, everything else is
+void splitURL(const char *aURI,string *aProtocol,string *aHost, 
+              string *aDoc, string *aUser, string *aPasswd,
+              string *aPort, string *aQuery)
 {
   const char *p,*q,*r;
 
@@ -2254,21 +2300,37 @@ void splitURL(const char *aURI,string *aProtocol,string *aHost,string *aDoc,stri
     // protocol found
     if (aProtocol) aProtocol->assign(p,q-p);
     p=q+1; // past colon
-    while (*p=='/') p++; // past trailing slashes
+    int count = 0;
+    while (*p=='/' && count < 2) {
+      p++; // past trailing slashes (two expected, ignore if less are given)
+      count++;
+    }
+    // now identify end of host part
+    string host;
+    q=strchr(p, '/');
+    if (!q) {
+      // no slash, skip forward to end of string
+      q = p + strlen(p);
+    }
+    host.assign(p, q - p);
+
     // if protocol specified, check for auth info
-    q=strchr(p,'@');
-    r=strchr(p,':');
+    const char *h = host.c_str();
+    q=strchr(h,'@');
+    r=strchr(h,':');
     if (q && r && q>r) {
       // auth exists
-      if (aUser) aUser->assign(p,r-p);
+      if (aUser) aUser->assign(h,r-h);
       if (aPasswd) aPasswd->assign(r+1,q-r-1);
-      p=q+1; // past "@"
+      // skip auth in full string
+      p += q + 1 - h;
     }
     else {
       // no auth found
       if (aUser) aUser->erase();
       if (aPasswd) aPasswd->erase();
     }
+    // p now points to host part, as expected below
   }
   else {
     // no protocol found
@@ -2278,34 +2340,123 @@ void splitURL(const char *aURI,string *aProtocol,string *aHost,string *aDoc,stri
     if (aPasswd) aPasswd->erase();
   }
   // separate hostname and document
-  // - assume path
+  std::string host;
+  // - check for path
   q=strchr(p,'/');
   // - if no path, check if there is a CGI param directly after the host name
   if (!q) {
+    // doc part left empty in this case
+    if (aDoc) aDoc->erase();
     q=strchr(p,'?');
-    // in case of no docpath, but CGI, put '?' into docname
-    r=q;
-  }
-  else {
-    // in case of '/', do not put slash into docname
-    // except if docname would be empty otherwise
-    r=q+1; // exclude slash
-    if (*r==0) r=q; // nothing follows, include the slash
-  }
-  if (q) {
-    // document exists
-    if (aDoc) {
-      aDoc->erase();
-      if (*q=='?') (*aDoc)+='/'; // if doc starts with CGI, we are at root
-      aDoc->append(r); // till end of string
+    if (q) {
+      // query directly follows host
+      host.assign(p, q - p);
+      if (aQuery) aQuery->assign(q + 1);
+    } else {
+      // entire string is considered the host
+      host.assign(p);
+      if (aQuery) aQuery->erase();
     }
-    if (aHost) aHost->assign(p,q-p); // assign host (all up to / or ?)
   }
   else {
-    if (aDoc) aDoc->erase(); // empty document name
-    if (aHost) aHost->assign(p); // entire string is host
+    // host part stops at slash
+    host.assign(p, q - p);
+    // in case of '/', do not put slash into docname
+    // even if it would be empty (caller expected to add
+    // slash as needed)
+    p = q + 1; // exclude slash
+    // now check for query
+    q=strchr(p,'?');
+    if (q) {
+      // split at question mark
+      if (aDoc) aDoc->assign(p, q - p);
+      if (aQuery) aQuery->assign(q + 1);
+    } else {
+      // whole string is document name
+      if (aDoc) aDoc->assign(p);
+      if (aQuery) aQuery->erase();
+    }
+  }
+
+  // remove optional port from host part before url-decoding, because
+  // that might introduce new : characters into the host name
+  size_t colon = host.find(':');
+  if (colon != host.npos) {
+    if (aHost) aHost->assign(host.substr(0, colon));
+    if (aPort) aPort->assign(host.substr(colon + 1));
+  } else {
+    if (aHost) aHost->assign(host);
+    if (aPort) aPort->erase();
   }
 } // splitURL
+
+#ifdef SPLIT_URL_MAIN
+
+#include <stdio.h>
+#include <assert.h>
+
+static void test(const std::string &in, const std::string &expected)
+{
+  string protocol, host, doc, user, password, port, query;
+  char buffer[1024];
+
+  splitURL(in.c_str(), &protocol, &host, &doc, &user, &password, &port, &query);
+
+  // URL-decode each part
+  urlDecode(&protocol);
+  urlDecode(&host);
+  urlDecode(&doc);
+  urlDecode(&user);
+  urlDecode(&password);
+
+  sprintf(buffer,
+          "prot '%s' user '%s' passwd '%s' host '%s' port '%s' doc '%s' query '%s'",
+          protocol.c_str(),
+          user.c_str(),
+          password.c_str(),
+          host.c_str(),
+          port.c_str(),
+          doc.c_str(),
+          query.c_str());
+  printf("%s -> %s\n", in.c_str(), buffer);
+  assert(expected == buffer);
+}
+
+int main(int argc, char **argv)
+{
+  test("http://user:passwd@host/patha/pathb?query",
+       "prot 'http' user 'user' passwd 'passwd' host 'host' port '' doc 'patha/pathb' query 'query'");
+  test("http://user:passwd@host:port/patha/pathb?query",
+       "prot 'http' user 'user' passwd 'passwd' host 'host' port 'port' doc 'patha/pathb' query 'query'");
+  test("file:///foo/bar",
+       "prot 'file' user '' passwd '' host '' port '' doc 'foo/bar' query ''");
+  test("http://host%3a:port?param=value",
+       "prot 'http' user '' passwd '' host 'host:' port 'port' doc '' query 'param=value'");
+  test("http://host%3a?param=value",
+       "prot 'http' user '' passwd '' host 'host:' port '' doc '' query 'param=value'");
+  test("foo%24",
+       "prot '' user '' passwd '' host 'foo$' port '' doc '' query ''");
+  test("foo%2f",
+       "prot '' user '' passwd '' host 'foo/' port '' doc '' query ''");
+  test("foo%2A",
+       "prot '' user '' passwd '' host 'foo*' port '' doc '' query ''");
+  test("foo%24bar",
+       "prot '' user '' passwd '' host 'foo$bar' port '' doc '' query ''");
+  test("%24bar",
+       "prot '' user '' passwd '' host '$bar' port '' doc '' query ''");
+  test("foo%2",
+       "prot '' user '' passwd '' host 'foo' port '' doc '' query ''");
+  test("foo%",
+       "prot '' user '' passwd '' host 'foo' port '' doc '' query ''");
+  test("foo%g",
+         "prot '' user '' passwd '' host 'foo' port '' doc '' query ''");
+  test("foo%gh",
+       "prot '' user '' passwd '' host 'foo' port '' doc '' query ''");
+  test("%ghbar",
+       "prot '' user '' passwd '' host 'bar' port '' doc '' query ''");
+  return 0;
+}
+#endif // SPLIT_URL_MAIN
 
 #endif //SYSYNC_ENGINE
 

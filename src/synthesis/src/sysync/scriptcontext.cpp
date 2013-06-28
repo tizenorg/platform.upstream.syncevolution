@@ -920,6 +920,26 @@ public:
     }
   } // func_Read
 
+  // string URIToPath(string uri)
+  // extracts the file path in a file:// uri; handles uri decoding
+  // Returns UNASSIGNED if not a file:// uri
+  static void func_URIToPath(TItemField *&aTermP, TScriptContext *aFuncContextP)
+  {
+    // get params
+    string uri;
+    aFuncContextP->getLocalVar(0)->getAsString(uri);
+
+    string protocol, doc;
+    splitURL(uri.c_str(), &protocol, NULL, &doc, NULL, NULL, NULL, NULL);
+    if (protocol == "file") {
+      string path;
+      path.reserve(doc.size() + 1);
+      path += "/"; // leading slash is never included by splitURL()
+      path += doc;
+      urlDecode(&path);
+      aTermP->setAsString(path);
+    }
+  } // func_URIToPath
 
   // string REMOTERULENAME()
   // returns name of the LAST matched remote rule (or subrule), empty if none
@@ -2308,6 +2328,7 @@ const TBuiltInFuncDef BuiltInFuncDefs[] = {
   { "REQUESTMINTIME", TBuiltinStdFuncs::func_RequestMinTime, fty_none, 1, param_oneInteger },
   { "SHELLEXECUTE", TBuiltinStdFuncs::func_Shellexecute, fty_integer, 3, param_Shellexecute },
   { "READ",  TBuiltinStdFuncs::func_Read, fty_string, 1, param_oneString },
+  { "URITOPATH",  TBuiltinStdFuncs::func_URIToPath, fty_string, 1, param_oneString },
   { "SESSIONVAR", TBuiltinStdFuncs::func_SessionVar, fty_none, 1, param_oneString },
   { "SETSESSIONVAR", TBuiltinStdFuncs::func_SetSessionVar, fty_none, 2, param_SetSessionVar },
   { "ABORTSESSION", TBuiltinStdFuncs::func_AbortSession, fty_none, 1, param_oneInteger },

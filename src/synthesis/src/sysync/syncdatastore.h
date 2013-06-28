@@ -77,6 +77,7 @@ public:
   sInt64 getMaxMemory(void) { return fMaxMemory; };
   sInt64 getFreeID(void) { return fFreeID; };
   sInt64 getMaxID(void) { return fMaxID; };
+  bool canRestart() { return fCanRestart; }
   // - session
   TSyncSession *getSession(void) { return fSessionP; };
   // description structure of datastore (NULL if not available)
@@ -116,6 +117,7 @@ protected:
   sInt64 fFreeMemory;  // number of free bytes
   sInt64 fMaxID;       // maximum number of ID
   sInt64 fFreeID;      // free IDs
+  bool fCanRestart;    // if set, then the datastore is able to participate in multiple sync sessions; in other words after a successful read/write cycle it is possible to restart at the reading phase
 public:
   // Type of items in this datastore (read-only, can be used by multiple Datastores simultaneously)
   // - receiving types (also used as default item type)

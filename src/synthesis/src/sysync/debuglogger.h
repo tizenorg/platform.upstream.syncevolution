@@ -97,10 +97,8 @@ public:
   bool fThreadIDForAll; ///< include thread ID information for every message
   TDbgFlushModes fFlushMode; ///< how and when to flush
   TDbgFoldingModes fFoldingMode; ///< if and how to fold HTML output
-  #ifdef SYDEBUG_LOCATION
   TDbgSourceModes fSourceLinkMode; ///< if and how to link with source code
   string fSourceRootPath; ///< defines root path for source links
-  #endif
   bool fAppend; ///< if set, existing debug files will not be overwritten, but appended to
   TDbgSubthreadModes fSubThreadMode; ///< how to handle debug messages from subthreads
   uInt32 fSubThreadBufferMax; ///< how much to buffer for subthread maximally

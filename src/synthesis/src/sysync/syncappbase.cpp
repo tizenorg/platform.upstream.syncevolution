@@ -920,12 +920,13 @@ bool TDebugConfig::localStartElement(const char *aElementName, const char **aAtt
     expectEnum(sizeof(fSessionDbgLoggerOptions.fOutputFormat),&fSessionDbgLoggerOptions.fOutputFormat,DbgOutFormatNames,numDbgOutFormats);
   else if (strucmp(aElementName,"folding")==0)
     expectEnum(sizeof(fSessionDbgLoggerOptions.fFoldingMode),&fSessionDbgLoggerOptions.fFoldingMode,DbgFoldingModeNames,numDbgFoldingModes);
-  #ifdef SYDEBUG_LOCATION
+  // source link settings always available, even if feature is not:
+  // allows adding the setting to configs unconditionally, without
+  // triggering config parser errors
   else if (strucmp(aElementName,"sourcelink")==0)
     expectEnum(sizeof(fSessionDbgLoggerOptions.fSourceLinkMode),&fSessionDbgLoggerOptions.fSourceLinkMode,DbgSourceModeNames,numDbgSourceModes);
   else if (strucmp(aElementName,"sourcebase")==0)
     expectPath(fSessionDbgLoggerOptions.fSourceRootPath);
-  #endif
   else if (strucmp(aElementName,"indentstring")==0)
     expectCString(fSessionDbgLoggerOptions.fIndentString);
   else if (strucmp(aElementName,"fileprefix")==0)

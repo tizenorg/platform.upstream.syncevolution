@@ -139,6 +139,7 @@ public:
   TConflictResolution fFirstTimeStrategy;
   // - options
   bool fReadOnly;          // if set, datastore will not write any data (only maps) to local DB (but fake successful status to remote)
+  bool fCanRestart;        // if set, then the datastore is able to participate in multiple sync sessions; in other words after a successful read/write cycle it is possible to restart at the reading phase
   bool fReportUpdates;     // if set(normal case), updates of server items will be sent to client (can be set to false for example for emails)
   bool fResendFailing;     // if set, items that receive a failure status from the remote will be resent in the next session (if DS 1.2 suspend marks supported by the DB)
   bool fDeleteWins;        // if set, in a replace/delete conflict the delete wins (also see DELETEWINS())
@@ -558,6 +559,10 @@ public:
   // called for >=SyncML 1.1 if remote wants number of changes.
   // Must return -1 if no NOC value can be returned
   virtual sInt32 getNumberOfChanges(void) { return -1; /* no NOC supported */ };
+  /// Called at end of sync to determine whether the store already knows
+  /// that it has more changes for the server in the next sync session.
+  /// For example, the TBinFileImplDS looks at its change log to determine that.
+  virtual bool hasPendingChangesForNextSync() { return false; }
   /// test abort status, datastore is aborted also when session is just suspended
   bool isAborted(void);
   /// abort status code with local error code prefix if cause was local

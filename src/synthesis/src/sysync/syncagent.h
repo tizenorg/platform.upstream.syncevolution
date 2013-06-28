@@ -424,6 +424,10 @@ public:
 public:
   // respuri
   bool fUseRespURI;
+  // flag controlled by app or datastore via "restartsync" session
+  // variable: if true, the agent will try to restart the sync and
+  // then clear the flag
+  bool fRestartSyncOnce;
 protected:
   // access to config
   TAgentConfig *getServerConfig(void);
@@ -444,6 +448,9 @@ protected:
   virtual void getNextNonce(const char *aDeviceID, string &aNextNonce);
   // - get nonce string, which is expected to be used by remote party for MD5 auth.
   virtual void getAuthNonce(const char *aDeviceID, string &aAuthNonce);
+  // restarting a sync session is allowed in non-standard mode
+  // TODO: introduce DevInf extensions and use that instead
+  virtual bool allowAlertAfterMap() { return fCompleteFromClientOnly; }
   #ifdef ENGINE_LIBRARY
   // Engine interface
   // - process step
@@ -493,6 +500,20 @@ protected:
   bool fAbortRequested;
   #endif // ENGINE_LIBRARY
 
+  // instead of sending <Final> at the end of the last message,
+  // the agent is going to ask the server for another sync session;
+  // set in NextMessage() for restarting in ClientMessageEnded()
+  bool fRestartingSync;
+
+  // true if the SyncML client shall continue the session
+  // by sending another package with <Alert>, instead of closing
+  // the session
+  bool restartSync();
+
+  // true if all active stores are in "from client only" mode and
+  // the engine is not in the fCompleteFromClientOnly mode
+  // => map phase can be skipped
+  bool checkAllFromClientOnly();
 }; // TSyncAgent
 
 

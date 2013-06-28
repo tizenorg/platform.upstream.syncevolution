@@ -779,6 +779,9 @@ protected:
   /// called for SyncML 1.1 if remote wants number of changes.
   /// Must return -1 no NOC value can be returned
   virtual sInt32 getNumberOfChanges(void);
+  /// checks change log for already known changes
+  virtual bool hasPendingChangesForNextSync();
+
   // Simple custom DB access interface methods
   /// sync login (into this database)
   /// @note might be called several times (auth retries at beginning of session)
@@ -967,6 +970,10 @@ private:
   // - entire change log, loaded into memory for quick reference during write phase
   TChangeLogEntry *fLoadedChangeLog;
   uInt32 fLoadedChangeLogEntries;
+  // - true if there are known pending changes for the next sync
+  //   (necessary for hasPendingChangesForNextSync()
+  //   because not all of the change log is always in memory)
+  bool fHasPendingChanges;
   #endif // CHECKSUM_CHANGELOG
   /// pending maps for Resume
   TBinFile fPendingMaps; ///< pending map binfile

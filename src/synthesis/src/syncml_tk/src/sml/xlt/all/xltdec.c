@@ -252,8 +252,8 @@ Ret_t show_decode_error(Ret_t aRc, XltDecScannerPtr_t aScanner, char *aRoutineNa
       b = aScanner->getPos(aScanner);
       SMLERRPRINTFX(DBG_ERROR,(
         "- Tag start at 0x%lX, scanner pos at 0x%lX%s, data:",
-        (unsigned long)aScanner->curtok->start,
-        (unsigned long)b,
+        aScanner->curtok->start,
+        b,
         aScanner->finished ? " (finished)" : ""
       ));
       if (b!=NULL) {
@@ -265,14 +265,14 @@ Ret_t show_decode_error(Ret_t aRc, XltDecScannerPtr_t aScanner, char *aRoutineNa
         }
         *p=0;
         b-=numBytesShow; // rewind
-        SMLERRPRINTFX(DBG_ERROR,("%s", hexshow));
+        SMLERRPRINTFX(DBG_ERROR,(hexshow));
         p=hexshow;
         for (i=0; i<numBytesShow; i++) {
           *p++ = (*b>=0x20) && (*b<0x7F) ? *b : '_';
           b++;
         }
         *p=0;
-        SMLERRPRINTFX(DBG_ERROR,("%s", hexshow));
+        SMLERRPRINTFX(DBG_ERROR,(hexshow));
       }
     }
     else {

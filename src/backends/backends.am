@@ -2,9 +2,9 @@
 # See AUTOTOOLS-TODO for details.
 @SYNCEVOLUTION_LIBS@: src/syncevo/libsyncevolution.la ; @true
 
-BACKENDS = src/backends/activesync src/backends/addressbook src/backends/akonadi src/backends/buteo src/backends/evolution src/backends/file src/backends/kcalextended src/backends/maemo src/backends/qtcontacts src/backends/sqlite src/backends/webdav src/backends/xmlrpc
+BACKENDS = src/backends/activesync src/backends/addressbook src/backends/akonadi src/backends/buteo src/backends/evolution src/backends/file src/backends/gnome src/backends/kcalextended src/backends/kde src/backends/maemo src/backends/qtcontacts src/backends/sqlite src/backends/webdav src/backends/xmlrpc
 
-BACKEND_REGISTRIES = src/backends/activesync/ActiveSyncSourceRegister.cpp src/backends/addressbook/AddressBookSourceRegister.cpp src/backends/akonadi/AkonadiSyncSourceRegister.cpp src/backends/evolution/EvolutionCalendarSourceRegister.cpp src/backends/evolution/EvolutionContactSourceRegister.cpp src/backends/file/FileSyncSourceRegister.cpp src/backends/kcalextended/KCalExtendedSourceRegister.cpp src/backends/maemo/MaemoCalendarSourceRegister.cpp src/backends/qtcontacts/QtContactsSourceRegister.cpp src/backends/sqlite/SQLiteContactSourceRegister.cpp src/backends/webdav/WebDAVSourceRegister.cpp src/backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
+BACKEND_REGISTRIES = src/backends/activesync/ActiveSyncSourceRegister.cpp src/backends/addressbook/AddressBookSourceRegister.cpp src/backends/akonadi/AkonadiSyncSourceRegister.cpp src/backends/evolution/EvolutionCalendarSourceRegister.cpp src/backends/evolution/EvolutionContactSourceRegister.cpp src/backends/file/FileSyncSourceRegister.cpp src/backends/gnome/GNOMEPlatformRegister.cpp src/backends/kcalextended/KCalExtendedSourceRegister.cpp src/backends/kde/KDEPlatformRegister.cpp src/backends/maemo/MaemoCalendarSourceRegister.cpp src/backends/qtcontacts/QtContactsSourceRegister.cpp src/backends/sqlite/SQLiteContactSourceRegister.cpp src/backends/webdav/WebDAVSourceRegister.cpp src/backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
 
 # backend includes
 include $(top_srcdir)/src/backends/activesync/activesync.am
@@ -13,7 +13,9 @@ include $(top_srcdir)/src/backends/akonadi/akonadi.am
 include $(top_srcdir)/src/backends/buteo/buteo.am
 include $(top_srcdir)/src/backends/evolution/evolution.am
 include $(top_srcdir)/src/backends/file/file.am
+include $(top_srcdir)/src/backends/gnome/gnome.am
 include $(top_srcdir)/src/backends/kcalextended/kcalextended.am
+include $(top_srcdir)/src/backends/kde/kde.am
 include $(top_srcdir)/src/backends/maemo/maemo.am
 include $(top_srcdir)/src/backends/qtcontacts/qtcontacts.am
 include $(top_srcdir)/src/backends/sqlite/sqlite.am

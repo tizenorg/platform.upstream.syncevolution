@@ -1071,6 +1071,9 @@ localstatus TPluginApiDS::apiReadSyncSet(bool aNeedAll)
   // (we won't retrieve anything in case of slow refresh, because after zapping there's nothing left by definition)
   if (!fRefreshOnly || (fSlowSync && apiNeedSyncSetToZap()) || (!fSlowSync && implNeedSyncSetToRetrieve())) {
     SYSYNC_TRY {
+      // true for initial ReadNextItem*() call, false later on
+      bool firstReadNextItem=true;
+
       // read the items
       #if defined(DBAPI_ASKEYITEMS) && defined(ENGINEINTERFACE_SUPPORT)
       TMultiFieldItem *mfitemP = NULL;
@@ -1101,7 +1104,7 @@ localstatus TPluginApiDS::apiReadSyncSet(bool aNeedAll)
           }
           // as key (Note: will be functional key but w/o any fields in case we pass NULL item pointer)
           TDBItemKey *itemKeyP = newDBItemKey(mfitemP);
-          dberr=fDBApi_Data.ReadNextItemAsKey(itemAndParentID, (KeyH)itemKeyP, itemstatus);
+          dberr=fDBApi_Data.ReadNextItemAsKey(itemAndParentID, (KeyH)itemKeyP, itemstatus, firstReadNextItem);
           // check if plugin wrote something to our key. If so, we assume this is the item and save
           // it, EVEN IF we did not request getting item data.
           if (!itemKeyP->isWritten()) {
@@ -1122,11 +1125,12 @@ localstatus TPluginApiDS::apiReadSyncSet(bool aNeedAll)
         #ifdef DBAPI_TEXTITEMS
         {
           // as text item
-          dberr=fDBApi_Data.ReadNextItem(itemAndParentID, itemData, itemstatus);
+          dberr=fDBApi_Data.ReadNextItem(itemAndParentID, itemData, itemstatus, firstReadNextItem);
         }
         #else
         return LOCERR_WRONGUSAGE; // completely wrong usage - should never happen as compatibility is tested at module connect
         #endif
+        firstReadNextItem=false;
         if (dberr!=LOCERR_OK) {
           PDEBUGPRINTFX(DBG_ERROR,("DBapi::ReadNextItem fatal error = %hd",dberr));
           #if defined(DBAPI_ASKEYITEMS) && defined(ENGINEINTERFACE_SUPPORT)

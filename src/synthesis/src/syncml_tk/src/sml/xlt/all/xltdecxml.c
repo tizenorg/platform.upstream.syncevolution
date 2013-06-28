@@ -614,11 +614,11 @@ xmlStringConst(xmlScannerPrivPtr_t pScanner, String_t *value)
 /**
  * parse HTML entity (like &amp;)
  *
- * pScanner->pos must pointer to &. Afterwards begin
- * points to the character and len is set to 1.
+ * pScanner->pos must pointer to &. Afterwards entity is set
+ * to the character.
  */
 static Ret_t
-xmlHTMLEntity(xmlScannerPrivPtr_t pScanner, MemPtr_t *begin, int *len)
+xmlHTMLEntity(xmlScannerPrivPtr_t pScanner, char *entityptr)
 {      
     // start of an HTML entity: decode just that single character
     static const struct {
@@ -634,6 +634,7 @@ xmlHTMLEntity(xmlScannerPrivPtr_t pScanner, MemPtr_t *begin, int *len)
     };
     MemPtr_t entity = pScanner->pos + 1;
     int i;
+    int len;
 
     while (*pScanner->pos != ';') {
         if (pScanner->pos >= pScanner->bufend) {
@@ -645,29 +646,46 @@ xmlHTMLEntity(xmlScannerPrivPtr_t pScanner, MemPtr_t *begin, int *len)
     }
 
     // remember length and skip ;
-    *len = pScanner->pos - entity;
+    len = pScanner->pos - entity;
     if (!readBytes(pScanner, 1)) {
         return SML_DECODEERROR(SML_ERR_XLT_END_OF_BUFFER,pScanner,"xmlHTMLEntity");
     }
 
     // identify the entity
-    *begin = NULL;
     for (i = 0; i < sizeof(entities)/sizeof(entities[0]); i++) {
-      if (!strncmp(entities[i].entity, (char *)entity, *len) &&
-            entities[i].entity[*len] == 0) {
-          *begin = (MemPtr_t)&entities[i].character;
-            break;
+      if (!strncmp(entities[i].entity, (char *)entity, len) &&
+            entities[i].entity[len] == 0) {
+            *entityptr = entities[i].character;
+            return SML_ERR_OK;
         }
     }
-    if (*begin) {
-        // found it, continue below by copying it
-        *len = 1;
+
+    // not one of the pre-defined entities
+    if (len >= 2 && *(char *)entity == '#') {
+        long value;
+        char *end;
+        // Either decimal or hexadecimal character reference.
+        if (((char *)entity)[1] == 'x') {
+            // hex
+            value = strtol((char *)entity + 2, &end, 16);
+        } else {
+            // dec
+            value = strtol((char *)entity + 1, &end, 10);
+        }
+        if (end != (char *)entity + len) {
+            // some character in the entity didn't decode in the expected base system
+            return SML_DECODEERROR(SML_ERR_XLT_INVAL_SYNCML_DOC,pScanner,"xmlHTMLEntity");
+        }
+        if (value < 0 || value > 255) {
+            // invalid value range
+            return SML_DECODEERROR(SML_ERR_XLT_INVAL_SYNCML_DOC,pScanner,"xmlHTMLEntity");
+        }
+        *entityptr = (unsigned char)value;
+        return SML_ERR_OK;
     } else {
         // invalid entity: abort!?
         return SML_DECODEERROR(SML_ERR_XLT_INVAL_SYNCML_DOC,pScanner,"xmlHTMLEntity");
     }
-
-    return SML_ERR_OK;
 }
 
 
@@ -682,7 +700,7 @@ xmlCharData(xmlScannerPrivPtr_t pScanner)
     SmlPcdataPtr_t pPCData;
     MemPtr_t begin;
     int len;
-
+    char entity;
 
     pPCData = (SmlPcdataPtr_t)smlLibMalloc(sizeof(SmlPcdata_t));
     if (pPCData == NULL)
@@ -705,11 +723,13 @@ xmlCharData(xmlScannerPrivPtr_t pScanner)
     }
 
     if (*pScanner->pos == '&') {
-        Ret_t ret = xmlHTMLEntity(pScanner, &begin, &len);
+        Ret_t ret = xmlHTMLEntity(pScanner, &entity);
         if (ret) {
             smlLibFree(pPCData);
             return ret;
         }
+        begin = (MemPtr_t)&entity;
+        len = 1;
     } else {
         while (*pScanner->pos != '<' && (*pScanner->pos != '&'))
         {
@@ -1098,6 +1118,7 @@ xmlSkipPCDATA(xmlScannerPrivPtr_t pScanner)
     Ret_t rc;
     String_t _tagString = NULL;
     String_t _tagString2 = NULL;
+    char entity;
 
     /* Check wether this PCData might contain a subdtd.
     ** We assume a Sub DTD starts with '<' as first char.
@@ -1155,11 +1176,13 @@ xmlSkipPCDATA(xmlScannerPrivPtr_t pScanner)
     begin = pScanner->pos;
 
     if (*pScanner->pos == '&') {
-        Ret_t ret = xmlHTMLEntity(pScanner, &begin, &len);
+        Ret_t ret = xmlHTMLEntity(pScanner, &entity);
         if (ret) {
             smlLibFree(_tagString2);
             return ret;
         }
+        begin = (MemPtr_t)&entity;
+        len = 1;
     } else {
         // Read Pcdata content until end tag appears or we run into something which
         // requires special decoding: CDATA or HTML entity

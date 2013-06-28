@@ -427,8 +427,13 @@ const char *smlFirstItemDataToCharP(const SmlItemListPtr_t aItemListP);
 // split Hostname into address and port parts
 void splitHostname(const char *aHost,string *aAddr,string *aPort);
 
-// split URL into protocol, hostname, document name and auth-info (user, password)
-void splitURL(const char *aURI,string *aProtocol,string *aHost,string *aDoc,string *aUser, string *aPasswd);
+// split URL into protocol, hostname, document name and auth-info (user, password);
+// none of the strings are url-decoded, do that as needed
+void splitURL(const char *aURI,string *aProtocol,string *aHost,string *aDoc,string *aUser, string *aPasswd,
+              string *aPort, string *aQuery);
+
+// in-place decoding of %XX, NULL pointer allowed
+void urlDecode(string *str);
 
 // returns error code made ready for SyncML sending (that is, remove offset
 // of 10000 if present, and make generic error 500 for non-SyncML errors,

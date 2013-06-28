@@ -1031,7 +1031,7 @@ void TURLField::stringWasAssigned(void)
   string proto;
   if (!fString.empty()) {
     // make sure we have a URL with protocol
-    splitURL(fString.c_str() ,&proto, NULL, NULL, NULL, NULL);
+    splitURL(fString.c_str() ,&proto, NULL, NULL, NULL, NULL, NULL, NULL);
     if (proto.empty()) {
       // no protocol set, but string not empty --> assume http
       fString.insert(0, "http://");

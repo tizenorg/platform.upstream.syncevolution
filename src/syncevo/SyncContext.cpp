@@ -71,18 +71,6 @@ using namespace std;
 #include <synthesis/SDK_util.h>
 #include <synthesis/san.h>
 
-#ifdef USE_KDE_KWALLET
-#include <QtCore/QCoreApplication>
-#include <QtCore/QString>
-#include <QtCore/QLatin1String>
-#include <QtCore/QDebug>
-#include <QtDBus/QDBusConnection>
-
-#include <KApplication>
-#include <KAboutData>
-#include <KCmdLineArgs>
-#endif
-
 #include "test.h"
 
 #include <syncevo/declarations.h>
@@ -1059,6 +1047,9 @@ private:
     }
 
 public:
+    /** allow iterating over sources */
+    const inherited *getSourceSet() const { return this; }
+
     LogLevel getLogLevel() const { return m_logLevel; }
     void setLogLevel(LogLevel logLevel) { m_logLevel = logLevel; }
 
@@ -1277,21 +1268,28 @@ public:
 
     // call when all sync sources are ready to dump
     // pre-sync databases
-    // @param excludeSource   when non-empty, limit preparation to that source
-    void syncPrepare(const string &excludeSource = "") {
+    // @param sourceName   limit preparation to that source
+    void syncPrepare(const string &sourceName) {
+        if (m_prepared.find(sourceName) != m_prepared.end()) {
+            // data dump was already done (can happen when running multiple
+            // SyncML sessions)
+            return;
+        }
+
         if (m_logdir.getLogfile().size() &&
             m_doLogging &&
             (m_client.getDumpData() || m_client.getPrintChanges())) {
             // dump initial databases
-            SE_LOG_INFO(NULL, NULL, "creating complete data backup before sync (%s)",
+            SE_LOG_INFO(NULL, NULL, "creating complete data backup of source %s before sync (%s)",
+                        sourceName.c_str(),
                         (m_client.getDumpData() && m_client.getPrintChanges()) ? "enabled with dumpData and needed for printChanges" :
                         m_client.getDumpData() ? "because it was enabled with dumpData" :
                         m_client.getPrintChanges() ? "needed for printChanges" :
                         "???");
-            dumpDatabases("before", &SyncSourceReport::m_backupBefore, excludeSource);
+            dumpDatabases("before", &SyncSourceReport::m_backupBefore, sourceName);
             if (m_client.getPrintChanges()) {
                 // compare against the old "after" database dump
-                dumpLocalChanges("", "after", "before", excludeSource,
+                dumpLocalChanges("", "after", "before", sourceName,
                                  StringPrintf("%s data changes to be applied during synchronization:\n",
                                               m_client.isLocalSync() ? m_client.getContextName().c_str() : "Local"));
             }
@@ -1443,31 +1441,43 @@ void unref(SourceList *sourceList)
     delete sourceList;
 }
 
-string SyncContext::askPassword(const string &passwordName, const string &descr, const ConfigPasswordKey &key)
+UserInterface &SyncContext::getUserInterfaceNonNull()
 {
-    char buffer[256];
-
-    printf("Enter password for %s: ",
-           descr.c_str());
-    fflush(stdout);
-    if (fgets(buffer, sizeof(buffer), stdin) &&
-        strcmp(buffer, "\n")) {
-        size_t len = strlen(buffer);
-        if (len && buffer[len - 1] == '\n') {
-            buffer[len - 1] = 0;
-        }
-        return buffer;
+    if (m_userInterface) {
+        return *m_userInterface;
     } else {
-        throwError(string("could not read password for ") + descr);
-        return "";
+        static class DummyUserInterface : public UserInterface
+        {
+        public:
+            virtual std::string askPassword(const std::string &passwordName, const std::string &descr, const ConfigPasswordKey &key) { return ""; }
+
+            virtual bool savePassword(const std::string &passwordName, const std::string &password, const ConfigPasswordKey &key) { return false; }
+
+            virtual void readStdin(std::string &content) { content.clear(); }
+        } dummy;
+
+        return dummy;
     }
 }
 
-void SyncContext::readStdin(string &content)
+void SyncContext::requestAnotherSync()
 {
-    if (!ReadFile(cin, content)) {
-        throwError("stdin", errno);
+    if (m_activeContext &&
+        m_activeContext->m_engine.get() &&
+        m_activeContext->m_session) {
+        SharedKey sessionKey =
+            m_activeContext->m_engine.OpenSessionKey(m_activeContext->m_session);
+        m_activeContext->m_engine.SetInt32Value(sessionKey,
+                                                "restartsync",
+                                                true);
     }
+}
+
+const std::vector<SyncSource *> *SyncContext::getSources() const
+{
+    return m_sourceListPtr ?
+        m_sourceListPtr->getSourceSet() :
+        NULL;
 }
 
 string SyncContext::getUsedSyncURL() {
@@ -1677,9 +1687,18 @@ void SyncContext::displaySourceProgress(sysync::TProgressEventEnum type,
                 }
                 break;
             }
-            source.recordFinalSyncMode(SyncMode(mode));
-            source.recordFirstSync(extra1 == 2);
-            source.recordResumeSync(extra2 == 1);
+            if (source.getFinalSyncMode() == SYNC_NONE) {
+                source.recordFinalSyncMode(SyncMode(mode));
+                source.recordFirstSync(extra1 == 2);
+                source.recordResumeSync(extra2 == 1);
+            } else if (SyncMode(mode) != SYNC_NONE) {
+                // may happen when the source is used in multiple
+                // SyncML sessions; only remember the initial sync
+                // mode in that case and count all following syncs
+                // (they should only finish the work of the initial
+                // one)
+                source.recordRestart();
+            }
         } else {
             SE_LOG_INFO(NULL, NULL, "%s: restore from backup", source.getDisplayName().c_str());
             source.recordFinalSyncMode(SYNC_RESTORE_FROM_BACKUP);
@@ -2428,6 +2447,7 @@ void SyncContext::getConfigXML(string &xml, string &configname)
             debug << "<xmltranslate>" << (loglevel >= 4 ? "yes" : "no") << "</xmltranslate>\n";
             if (loglevel >= 3) {
                 debug <<
+                    "    <sourcelink>doxygen</sourcelink>\n"
                     "    <enable option=\"all\"/>\n"
                     "    <enable option=\"userdata\"/>\n"
                     "    <enable option=\"scripts\"/>\n"
@@ -2794,52 +2814,9 @@ void SyncContext::initMain(const char *appname)
     g_log_set_default_handler(Logger::glogFunc, NULL);
 #endif
 
-#ifdef USE_KDE_KWALLET
-    //QCoreApplication *app;
-    int argc = 1;
-    static char *argv[] = { const_cast<char *>(appname), NULL };
-    KAboutData aboutData(// The program name used internally.
-                         "syncevolution",
-                         // The message catalog name
-                         // If null, program name is used instead.
-                         0,
-                         // A displayable program name string.
-                         ki18n("SyncEvolution"),
-                         // The program version string.
-                         "1.0",
-                         // Short description of what the app does.
-                         ki18n("Lets Akonadi synchronize with a SyncML Peer"),
-                         // The license this code is released under
-                         KAboutData::License_GPL,
-                         // Copyright Statement
-                         ki18n("(c) 2010-12"),
-                         // Optional text shown in the About box.
-                         // Can contain any information desired.
-                         ki18n(""),
-                         // The program homepage string.
-                         "http://www.syncevolution.org/",
-                         // The bug report email address
-                         "syncevolution@syncevolution.org");
-
-    KCmdLineArgs::init(argc, argv, &aboutData);
-    if (!kapp) {
-        // Don't allow KApplication to mess with SIGINT/SIGTERM.
-        // Restore current behavior after construction.
-        struct sigaction oldsigint, oldsigterm;
-        sigaction(SIGINT, NULL, &oldsigint);
-        sigaction(SIGTERM, NULL, &oldsigterm);
-
-        // Explicitly disable GUI mode in the KApplication.  Otherwise
-        // the whole binary will fail to run when there is no X11
-        // display.
-        new KApplication(false);
-        //To stop KApplication from spawning it's own DBus Service ... Will have to patch KApplication about this
-        QDBusConnection::sessionBus().unregisterService("org.syncevolution.syncevolution-"+QString::number(getpid()));
-
-        sigaction(SIGINT, &oldsigint, NULL);
-        sigaction(SIGTERM, &oldsigterm, NULL);
-    }
-#endif
+    // invoke optional init parts, for example KDE KApplication init
+    // in KDE backend
+    GetInitMainSignal()(appname);
 
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
@@ -2871,6 +2848,12 @@ void SyncContext::initMain(const char *appname)
             SE_LOG_ERROR(NULL, NULL, "SYNCEVOLUTION_GNUTLS_DEBUG debugging not possible, log functions not found");
         }
     }
+}
+
+SyncContext::InitMainSignal &SyncContext::GetInitMainSignal()
+{
+    static InitMainSignal initMainSignal;
+    return initMainSignal;
 }
 
 static bool IsStableRelease =
@@ -2988,12 +2971,16 @@ SyncMLStatus SyncContext::sync(SyncReport *report)
              */
             ConfigPropertyRegistry& registry = SyncConfig::getRegistry();
             BOOST_FOREACH(const ConfigProperty *prop, registry) {
-                prop->checkPassword(*this, m_server, *getProperties());
+                SE_LOG_DEBUG(NULL, NULL, "checking sync password %s", prop->getMainName().c_str());
+                prop->checkPassword(getUserInterfaceNonNull(), m_server, *getProperties());
             }
             BOOST_FOREACH(SyncSource *source, sourceList) {
                 ConfigPropertyRegistry& registry = SyncSourceConfig::getRegistry();
                 BOOST_FOREACH(const ConfigProperty *prop, registry) {
-                    prop->checkPassword(*this, m_server, *getProperties(),
+                    SE_LOG_DEBUG(NULL, NULL, "checking source %s password %s",
+                                 source->getName().c_str(),
+                                 prop->getMainName().c_str());
+                    prop->checkPassword(getUserInterfaceNonNull(), m_server, *getProperties(),
                                         source->getName(), source->getProperties());
                 }
             }
@@ -3009,7 +2996,7 @@ SyncMLStatus SyncContext::sync(SyncReport *report)
                 }
 
                 // request callback when starting to use source
-                source->addCallback(boost::bind(&SyncContext::startSourceAccess, this, source), &SyncSource::Operations::m_startAccess);
+                source->getOperations().m_startDataRead.getPreSignal().connect(boost::bind(&SyncContext::startSourceAccess, this, source));
             }
 
             // ready to go
@@ -3897,7 +3884,7 @@ void SyncContext::status()
     BOOST_FOREACH(SyncSource *source, sourceList) {
         ConfigPropertyRegistry& registry = SyncSourceConfig::getRegistry();
         BOOST_FOREACH(const ConfigProperty *prop, registry) {
-            prop->checkPassword(*this, m_server, *getProperties(),
+            prop->checkPassword(getUserInterfaceNonNull(), m_server, *getProperties(),
                                 source->getName(), source->getProperties());
         }
     }
@@ -3950,7 +3937,7 @@ void SyncContext::checkStatus(SyncReport &report)
     BOOST_FOREACH(SyncSource *source, sourceList) {
         ConfigPropertyRegistry& registry = SyncSourceConfig::getRegistry();
         BOOST_FOREACH(const ConfigProperty *prop, registry) {
-            prop->checkPassword(*this, m_server, *getProperties(),
+            prop->checkPassword(getUserInterfaceNonNull(), m_server, *getProperties(),
                                 source->getName(), source->getProperties());
         }
     }
@@ -4042,7 +4029,7 @@ void SyncContext::restore(const string &dirname, RestoreDatabase database)
     BOOST_FOREACH(SyncSource *source, sourceList) {
         ConfigPropertyRegistry& registry = SyncSourceConfig::getRegistry();
         BOOST_FOREACH(const ConfigProperty *prop, registry) {
-            prop->checkPassword(*this, m_server, *getProperties(),
+            prop->checkPassword(getUserInterfaceNonNull(), m_server, *getProperties(),
                                 source->getName(), source->getProperties());
         }
     }

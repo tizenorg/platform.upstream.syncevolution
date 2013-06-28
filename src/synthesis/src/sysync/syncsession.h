@@ -837,6 +837,9 @@ protected:
   virtual localstatus checkRemoteSpecifics(SmlDevInfDevInfPtr_t aDevInfP, SmlDevInfDevInfPtr_t *aOverrideDevInfP);
   // - remote device is analyzed, possibly save status
   virtual void remoteAnalyzed(void) { /* nop */ };
+  // - tell session whether it may accept an <Alert> in the map
+  //   phase and restart the sync
+  virtual bool allowAlertAfterMap() { return false; }
   // SyncML Toolkit interface
   InstanceID_t fSmlWorkspaceID; // SyncML toolkit workspace instance ID
   SmlEncoding_t fEncoding;      // Current encoding type in SyncML toolkit instance
@@ -895,6 +898,9 @@ protected:
   TPackageStates fIncomingState; // incoming package state
   TPackageStates fCmdIncomingState; // while executing commands: state when command was received (actual might be different due to queueing)
   TPackageStates fOutgoingState; // outgoing package state
+  bool fRestarting; // Set to true in TSyncSession::processAlertItem() while processing the first Alert from a
+                    // client which requests another sync cycle. Applies to all further Alerts, cleared
+                    // when entering fOutgoingState==psta_sync again.
   bool fFakeFinalFlag; // special flag to work around broken resume implementations
   bool fNewOutgoingPackage; // set if first outgoing message in outgoing package
   bool fNeedToAnswer; // set if an answer to currently processed message is needed (will be set by issuing of first non-synchdr-status)

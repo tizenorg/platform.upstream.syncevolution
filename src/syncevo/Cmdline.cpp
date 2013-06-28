@@ -511,7 +511,7 @@ void Cmdline::finishCopy(const boost::shared_ptr<SyncConfig> &from,
                          const boost::shared_ptr<SyncContext> &to)
 {
     // give a change to do something before flushing configs to files
-    to->preFlush(*to);
+    to->preFlush(to->getUserInterfaceNonNull());
 
     // done, now write it
     m_configModified = true;
@@ -724,10 +724,19 @@ bool Cmdline::run() {
                     if (!alias.empty() && source->m_enabled) {
                         SourceType type(*alias.begin());
                         nodes->getProperties()->setProperty("backend", type.m_backend);
-                        auto_ptr<SyncSource> source(SyncSource::createSource(params, false));
-                        if (source.get() != NULL) {
-                            listSources(*source, boost::join(alias, " = "));
-                            m_out << "\n";
+                        std::string header = boost::join(alias, " = ");
+                        try {
+                            auto_ptr<SyncSource> source(SyncSource::createSource(params, false));
+                            if (!source.get()) {
+                                // silently skip backends like the "file" backend which do not support
+                                // listing databases and return NULL unless configured properly
+                            } else {
+                                listSources(*source, header);
+                                m_out << "\n";
+                            }
+                        } catch (...) {
+                            SE_LOG_ERROR(NULL, NULL, "%s:\nlisting databases failed", header.c_str());
+                            Exception::handle();
                         }
                     }
                 }
@@ -811,13 +820,13 @@ bool Cmdline::run() {
         if (m_dryrun) {
             SyncContext::throwError("--dry-run not supported for configuration changes");
         }
-        if (m_keyring) {
-#if (!defined USE_GNOME_KEYRING) and (!defined USE_KDE_KWALLET)
+        if (m_keyring &&
+            GetLoadPasswordSignal().empty()) {
             m_err << "Error: this syncevolution binary was compiled without support for storing "
-                     "passwords in a keyring or wallet. Either store passwords in your configuration "
+                     "passwords in a keyring or wallet, or the backends for that functionality are not usable. "
+                     "Either store passwords in your configuration "
                      "files or enter them interactively on each program run." << endl;
             return false;
-#endif
         }
 
         // name of renamed config ("foo.old") after migration
@@ -1252,13 +1261,13 @@ bool Cmdline::run() {
         {
             ConfigPropertyRegistry& registry = SyncConfig::getRegistry();
             BOOST_FOREACH(const ConfigProperty *prop, registry) {
-                prop->checkPassword(*context, m_server, *context->getProperties());
+                prop->checkPassword(context->getUserInterfaceNonNull(), m_server, *context->getProperties());
             }
         }
         {
             ConfigPropertyRegistry &registry = SyncSourceConfig::getRegistry();
             BOOST_FOREACH(const ConfigProperty *prop, registry) {
-                prop->checkPassword(*context, m_server, *context->getProperties(),
+                prop->checkPassword(context->getUserInterfaceNonNull(), m_server, *context->getProperties(),
                                     source->getName(), sourceNodes.getProperties());
             }
         }
@@ -1272,7 +1281,7 @@ bool Cmdline::run() {
                 source->throwError("reading items not supported");
             }
 
-            err = ops.m_startDataRead("", "");
+            err = ops.m_startDataRead(*source, "", "");
             CHECK_ERROR("reading items");
             list<string> luids;
             readLUIDs(source, luids);
@@ -1292,7 +1301,7 @@ bool Cmdline::run() {
             }
             list<string> luids;
             bool deleteAll = std::find(m_luids.begin(), m_luids.end(), "*") != m_luids.end();
-            err = ops.m_startDataRead("", "");
+            err = ops.m_startDataRead(*source, "", "");
             CHECK_ERROR("reading items");
             if (deleteAll) {
                 readLUIDs(source, luids);
@@ -1300,21 +1309,21 @@ bool Cmdline::run() {
                 luids = m_luids;
             }
             if (ops.m_endDataRead) {
-                err = ops.m_endDataRead();
+                err = ops.m_endDataRead(*source);
                 CHECK_ERROR("stop reading items");
             }
             if (ops.m_startDataWrite) {
-                err = ops.m_startDataWrite();
+                err = ops.m_startDataWrite(*source);
                 CHECK_ERROR("writing items");
             }
             BOOST_FOREACH(const string &luid, luids) {
                 sysync::ItemIDType id;
                 id.item = (char *)luid.c_str();
-                err = ops.m_deleteItem(&id);
+                err = ops.m_deleteItem(*source, &id);
                 CHECK_ERROR("deleting item");
             }
             char *token;
-            err = ops.m_endDataWrite(true, &token);
+            err = ops.m_endDataWrite(*source, true, &token);
             if (token) {
                 free(token);
             }
@@ -1325,14 +1334,14 @@ bool Cmdline::run() {
                 source->throwError("reading/writing items directly not supported");
             }
             if (m_import || m_update) {
-                err = ops.m_startDataRead("", "");
+                err = ops.m_startDataRead(*source, "", "");
                 CHECK_ERROR("reading items");
                 if (ops.m_endDataRead) {
-                    err = ops.m_endDataRead();
+                    err = ops.m_endDataRead(*source);
                     CHECK_ERROR("stop reading items");
                 }
                 if (ops.m_startDataWrite) {
-                    err = ops.m_startDataWrite();
+                    err = ops.m_startDataWrite(*source);
                     CHECK_ERROR("writing items");
                 }
 
@@ -1342,7 +1351,7 @@ bool Cmdline::run() {
                     string content;
                     string luid;
                     if (m_itemPath == "-") {
-                        context->readStdin(content);
+                        context->getUserInterfaceNonNull().readStdin(content);
                     } else if (!ReadFile(m_itemPath, content)) {
                         SyncContext::throwError(m_itemPath, errno);
                     }
@@ -1412,13 +1421,13 @@ bool Cmdline::run() {
                     }
                 }
                 char *token = NULL;
-                err = ops.m_endDataWrite(true, &token);
+                err = ops.m_endDataWrite(*source, true, &token);
                 if (token) {
                     free(token);
                 }
                 CHECK_ERROR("stop writing items");
             } else if (m_export) {
-                err = ops.m_startDataRead("", "");
+                err = ops.m_startDataRead(*source, "", "");
                 CHECK_ERROR("reading items");
 
                 ostream *out = NULL;
@@ -1606,13 +1615,13 @@ void Cmdline::readLUIDs(SyncSource *source, list<string> &luids)
     const SyncSource::Operations &ops = source->getOperations();
     sysync::ItemIDType id;
     sysync::sInt32 status;
-    sysync::TSyError err = ops.m_readNextItem(&id, &status, true);
+    sysync::TSyError err = ops.m_readNextItem(*source, &id, &status, true);
     CHECK_ERROR("next item");
     while (status != sysync::ReadNextItem_EOF) {
         luids.push_back(id.item);
         StrDispose(id.item);
         StrDispose(id.parent);
-        err = ops.m_readNextItem(&id, &status, false);
+        err = ops.m_readNextItem(*source, &id, &status, false);
         CHECK_ERROR("next item");
     }
 }
@@ -1884,6 +1893,12 @@ void Cmdline::checkForPeerProps()
 void Cmdline::listSources(SyncSource &syncSource, const string &header)
 {
     m_out << header << ":\n";
+
+    if (syncSource.isInactive()) {
+        m_out << "not enabled during compilation or not usable in the current environment\n";
+        return;
+    }
+
     SyncSource::Databases databases = syncSource.getDatabases();
 
     BOOST_FOREACH(const SyncSource::Database &database, databases) {
