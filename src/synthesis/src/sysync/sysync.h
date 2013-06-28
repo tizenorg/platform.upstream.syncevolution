@@ -20,6 +20,10 @@
   #include <list>
 #endif
 
+#ifdef ANDROID
+#include "android/log.h"
+#endif
+
 /* SySync headers (not precompiled during SySync development) */
 
 // global constants and settings

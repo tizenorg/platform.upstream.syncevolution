@@ -546,6 +546,17 @@ bool TMultiFieldItem::adjustFidAndIndex(sInt16 &aFid, sInt16 &aIndex)
 } // adjustFidAndIndex
 
 
+
+// return specified leaf field of array field or regular field
+// depending if aFid addresses an array or not.
+// (This is a shortcut method to access fields specified by a base fid and a repeat)
+TItemField *TMultiFieldItem::getArrayFieldAdjusted(sInt16 aFid, sInt16 aIndex, bool aExistingOnly)
+{
+	adjustFidAndIndex(aFid,aIndex);
+	return getArrayField(aFid, aIndex, aExistingOnly);
+} // TMultiFieldItem::getArrayFieldAdjusted
+
+
 // return specified leaf field of array field
 TItemField *TMultiFieldItem::getArrayField(sInt16 aFid, sInt16 aIndex, bool aExistingOnly)
 {
@@ -1006,7 +1017,7 @@ bool TMultiFieldItem::processFilter(bool aMakePass, const char *&aPos, const cha
     }
   }
   // term is now evaluated, show what follows
-  // - check for boolean op chain, aPos points now to eventual logical operator
+  // - check for boolean op chain, aPos points now to possible logical operator
   do {
     // - skip spaces
     c=*aPos;
@@ -1361,8 +1372,8 @@ void TMultiFieldItem::standardMergeWith(TMultiFieldItem &aItem, bool &aChangedTh
   // same type of multifield, try to merge
   for (sInt16 i=0; i<fFieldDefinitionsP->numFields(); i++) {
     // get merge mode
-    char sep=fFieldDefinitionsP->fFields[i].mergeMode;
-    // eventual merging is only relevant (=to be reported) for fields that are not eqm_none
+    sInt16 sep=fFieldDefinitionsP->fFields[i].mergeMode;
+    // possible merging is only relevant (=to be reported) for fields that are not eqm_none
     bool mergerelevant = fFieldDefinitionsP->fFields[i].eqRelevant!=eqm_none;
     // check if available in both items at all
     if (

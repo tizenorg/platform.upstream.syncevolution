@@ -12,10 +12,43 @@ AC_PROG_LIBTOOL
 AC_PROG_MAKE_SET
 AM_PROG_CC_C_O
 
+
 dnl All of these libraries have to be compiled and installed
 dnl separately. TODO: build bundled sources?
-PKG_CHECK_MODULES(PCRE, libpcre)
-PKG_CHECK_MODULES(SQLITE3, sqlite3)
+dnl
+dnl WARNING: the initial PKG_CHECK_MODULES() must be executed
+dnl in all cases (i.e., not depend on an if clause) because
+dnl it initializes pkg-config checking.
+PKG_CHECK_MODULES(FOOBAR, foobar, [true], [true])
+
+AC_ARG_ENABLE(sqlite,
+              AS_HELP_STRING([--enable-sqlite],
+                             [enable the sqlite-based ODBC backend, depends on libsqlite3, enabled by default]),
+              [enable_sqlite=$enableval],
+              [enable_sqlite="yes"])
+if test "$enable_sqlite" == "yes"; then
+    PKG_CHECK_MODULES(SQLITE3, sqlite3)
+    HAVE_SQLITE=1
+else
+    HAVE_SQLITE=0
+fi
+AC_DEFINE_UNQUOTED(ONOFF_SQLITE_SUPPORT, $HAVE_SQLITE, [controls whether ODBC backend with libsqlite is enabled])
+
+AC_ARG_ENABLE(regex,
+              AS_HELP_STRING([--enable-regex],
+                             [enable regular expression support in scripts, depends on libpcre, enabled by default]),
+              [enable_regex=$enableval],
+              [enable_regex="yes"])
+if test "$enable_regex" == "yes"; then
+    PKG_CHECK_MODULES(PCRE, libpcre,
+                      [HAVE_PCRE=1],
+                      [AC_ERROR([libpcre not found, required for --enable-regex])])
+    HAVE_PCRE=1
+else
+    HAVE_PCRE=0
+fi
+AC_DEFINE_UNQUOTED(ONOFF_REGEX_SUPPORT, $HAVE_PCRE, "regular expressions in scripts")   
+
 AC_CHECK_HEADER(zlib.h, , [AC_ERROR(zlib.h not found.)])
 AC_CHECK_HEADER(xmltok/xmlparse.h, have_system_xmltok="yes")
 AC_CHECK_HEADER(expat.h, have_system_expat="yes")
@@ -24,12 +57,19 @@ dnl libical might be installed stand-alone (upstream)
 dnl or bundled with libecal. Upstream is preferred and
 dnl thus checked first. libical is optional, so don't
 dnl complain if not found.
-PKG_CHECK_MODULES(LIBICAL, libical,
-                           [AC_DEFINE(HAVE_LIBICAL, 1, "libical available")],
-                           [PKG_CHECK_MODULES(LIBECAL, libecal-1.2,
-                                                       [AC_DEFINE(HAVE_LIBICAL, 1, "libical available")
-                                                        AC_DEFINE(HAVE_LIBECAL, 1, "libecal available")],
-                                                       [true])])
+AC_ARG_ENABLE(libical,
+              AS_HELP_STRING([--enable-libical],
+                             [use libical (if necessary, the one in libecal) to improve time zone support, enabled by default if necessary libs are found]),
+              [enable_libical=$enableval],
+              [enable_libical="yes"])
+if test "$enable_libical" == "yes"; then
+   PKG_CHECK_MODULES(LIBICAL, libical,
+                     [AC_DEFINE(HAVE_LIBICAL, 1, "libical available")],
+                     [PKG_CHECK_MODULES(LIBECAL, libecal-1.2,
+                                        [AC_DEFINE(HAVE_LIBICAL, 1, "libical available")
+                                         AC_DEFINE(HAVE_LIBECAL, 1, "libecal available")],
+                                         [true])])
+fi
 
 AC_ARG_ENABLE(evolution-compatibility,
               AS_HELP_STRING([--enable-evolution-compatibility],

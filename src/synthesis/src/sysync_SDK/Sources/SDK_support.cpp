@@ -20,14 +20,13 @@
   namespace sysync {
 #endif
 
-//#define MyDB "SDK" /* local debug name */
-#define FLen  30   /* max length of (internal) item name */
+#define FLen 30 // max length of (internal) item name
 
 
 
 // --- plugin name handling ----------------------------------------
 //! recognize separation
-static bool SepFound( string name, string::size_type &pos, string sep= "!", bool backwards= false )
+bool SepFound( string name, string::size_type &pos, string sep, bool backwards )
 {
   if (backwards) pos= name.rfind( sep, name.length()-1 );
   else           pos= name.find ( sep, 0 );

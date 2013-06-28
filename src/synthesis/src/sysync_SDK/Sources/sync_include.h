@@ -81,11 +81,13 @@
 
 /* JAVA native interface JNI */
 #ifdef JNI_SUPPORT
-  #ifdef MACOSX
-    #include <JavaVM/jni.h>
-  #else
-    #include <jni.h>
-  #endif
+  #include <jni.h>
+
+//#ifdef MACOSX
+//  #include <JavaVM/jni.h>
+//#else
+//  #include <jni.h>
+//#endif
 #endif
 
 

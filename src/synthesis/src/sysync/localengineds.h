@@ -117,6 +117,8 @@ protected:
 extern const TFuncTable ClientDBFuncTable;
 #endif
 
+typedef list<string> TStringList;
+
 // local datastore config
 class TLocalDSConfig: public TConfigElement
 {
@@ -143,16 +145,19 @@ public:
   #ifdef SYSYNC_SERVER
   bool fTryUpdateDeleted;  // if set, in a client update with server delete conflict, server tries to update the already deleted item (in case it is just invisible)
   bool fAlwaysSendLocalID; // always send localID to clients (which gives them opportunity to remap IDs on Replace)
+  TStringList fAliasNames; // list of aliases for this datastore
   #endif // SYSYNC_SERVER
   uInt32 fMaxItemsPerMessage; // if >0, limits the number of items sent per SyncML message (useful in case of slow datastores where collecting data might exceed client timeout)
   #ifdef OBJECT_FILTERING
   // filtering
   // - filter applied to items coming from remote party, non-matching
   //   items will be rejected with 415 (unknown format) status
+  //   unless fSilentlyDiscardUnaccepted is set to true (then we accept and discard silently)
   //   (outgoing items will be made pass this filter with makePassFilter)
   string fRemoteAcceptFilter;
+  bool fSilentlyDiscardUnaccepted;
   // - filter will be applied to items read from the local database,
-  //   IN ADDITION to eventually specified target address filtering
+  //   IN ADDITION to possibly specified target address filtering
   string fLocalDBFilterConf;
   // - filter applied to incoming items with makePassFilter
   //   when there is no fSyncSetFilter or when applying fSyncSetFilter
@@ -200,6 +205,8 @@ public:
   virtual void addTypeLimits(TLocalEngineDS *aLocalDatastoreP, TSyncSession *aSessionP);
   // - reset config to defaults
   virtual void clear();
+  // - check for alias names
+	uInt16 isDatastoreAlias(cAppCharP aDatastoreURI);
 protected:
   // check config elements
   #ifndef HARDCODED_CONFIG
@@ -233,7 +240,7 @@ typedef enum {
   dssta_syncmodestable,           ///< client&server, sync mode is now stable (all alerts and alert statuses are exchanged and processed), server is ready for early maps
   dssta_dataaccessstarted,        ///< client&server, user data access has started (e.g. loading of sync set in progress)
   dssta_syncsetready,             ///< client&server, sync set is ready and can be accessed with logicXXXX sync op calls
-  dssta_clientsyncgenstarted,     ///< client only, generation of sync command(s) in client for server has started (eventually, we send some pending maps first)
+  dssta_clientsyncgenstarted,     ///< client only, generation of sync command(s) in client for server has started (possibly, we send some pending maps first)
   dssta_serverseenclientmods,     ///< server only, server has seen all client modifications now
   dssta_serversyncgenstarted,     ///< server only, generation of sync command(s) in server for client has started
   dssta_syncgendone,              ///< client&server, generation of sync command(s) is complete
@@ -496,6 +503,7 @@ private:
   bool fRemoteFilterInclusive;      ///< client, inclusive filter flag
   #endif // SYSYNC_CLIENT
   string fRemoteDBPath;             ///< server and client, path of remote DB, for documentary purposes
+  string fIdentifyingDBName;        ///< server and client, name with which the to-be-synced DB is identified (important in case of aliases in server)
   /// remote datastore involved, valid after processSyncCmdAsServer()
   TRemoteDataStore *fRemoteDatastoreP;
   /// Remote view if local URI
@@ -535,6 +543,8 @@ public:
   bool dbgTestState(TLocalEngineDSState aMinState, bool aNeedExactMatch=false)
     { return aNeedExactMatch ? fLocalDSState==aMinState : fLocalDSState>=aMinState; };
   #endif
+  // get name with which this datastore was identified by the remote
+  cAppCharP getIdentifyingName(void) { return fIdentifyingDBName.c_str(); }
   /// calculate Sync mode and flags from given alert code
   /// @note does not affect DS state in any way, nor checks if DS can handle this code.
   ///   (this will be done only when calling setSyncMode())
@@ -829,7 +839,7 @@ public:
   const char *filterCGIToString(cAppCharP aCGI, string &aFilter);
   */
   /// @brief parse "syncml:filtertype-cgi" filter, convert into internal filter syntax
-  ///  and eventually sets some special filter options (fDateRangeStart, fDateRangeEnd)
+  ///  and possibly sets some special filter options (fDateRangeStart, fDateRangeEnd)
   ///  based on "filterkeywords" available for the type passed (DS 1.2).
   ///  For parsing DS 1.1/1.0 TAF-style filters, aItemType can be NULL, no type-specific
   ///  filterkeywords can be parsed then.
@@ -961,7 +971,7 @@ protected:
   /// returns true if DB implementation supports resuming in midst of a chunked item (can save fPIxxx.. and related admin data)
   virtual bool dsResumeChunkedSupportedInDB(void) { return false; };
   /// called when a item in the sync set changes its localID (due to local DB internals)
-  /// Datastore must make sure that eventually cached items get updated
+  /// Datastore must make sure that possibly cached items get updated
   virtual void dsLocalIdHasChanged(const char *aOldID, const char *aNewID);
   /// called when request processing ends
   virtual void dsEndOfMessage(void) {}; // nop at this level
@@ -1048,7 +1058,7 @@ protected:
   /// called to mark an already sent item as "to-be-resent", e.g. due to temporary
   /// error status conditions, by localID or remoteID (latter only in server case).
   virtual void logicMarkItemForResend(cAppCharP aLocalID, cAppCharP aRemoteID) = 0;
-  /// save status information required to eventually perform a resume (as passed to datastore with
+  /// save status information required to possibly perform a resume (as passed to datastore with
   /// markOnlyUngeneratedForResume() and markItemForResume())
   /// (or, in case the session is really complete, make sure that no resume state is left)
   /// @note Must also save tempGUIDs (for server) and pending/unconfirmed maps (for client)
@@ -1131,6 +1141,13 @@ protected:
     string *aTableNameP=NULL,
     string *aCGIP=NULL
   );
+  /// get DB specific error code for last routine call that returned !=LOCERR_OK
+  /// @return platform specific DB error code
+  virtual uInt32 lastDBError(void) { return 0; };
+  virtual bool isDBError(uInt32 aErrCode) { return aErrCode!=0; } // standard implementation assumes 0=ok
+  /// get error message text showing lastDBError for dbg log, or empty string if none
+  /// @return platform specific DB error text
+  virtual string lastDBErrorText(void);
   /// @}
 }; // TLocalEngineDS
 

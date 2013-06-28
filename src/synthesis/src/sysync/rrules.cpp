@@ -889,7 +889,7 @@ bool endDateFromCount(
     {
       case 'W':
         LOGDEBUGPRINTFX(aLogP,DBG_PARSE+DBG_EXOTIC,("RRULE2toInternal() simple weekly calc"));
-        // v1 end date calc, we need to take into account eventual masks, so result must be end of interval, not just start date+interval
+        // v1 end date calc, we need to take into account possible masks, so result must be end of interval, not just start date+interval
         // weekly: end date is last day of target week
         until=dtstart+((ivrep*DaysOfWeek-startwday+6)*linearDateToTimeFactor);
         return true;
@@ -1028,7 +1028,7 @@ bool endDateFromCount(
           // occurrence interval can be at most 4 years in the future (safety abort)
           while (newYearsPassed<=4) {
             if (firstmask & ((uInt64)1<<(startmonth-1))) {
-              // eventually found an occurrence
+              // possibly found an occurrence
               // - is an occurrence only if that day exists in the month
               if (startday<=lastday) {
                 cnt--; // count it
@@ -1224,7 +1224,7 @@ void initRRuleExpansion(
   if (es.lastmask==0 && es.firstmask) {
   	fieldinteger_t m = es.firstmask;
     es.singleFMaskBit = 0;
-  	while((m & 1)==0) { m>>=1; es.singleFMaskBit++; } // calculate bit number 
+  	while((m & 1)==0) { m>>=1; es.singleFMaskBit++; } // calculate bit number of next set bit
     if (m & ~1) es.singleFMaskBit = -1; // more bits to come - reset again
   }
   // init expansion parameters
@@ -1256,14 +1256,17 @@ void initRRuleExpansion(
 
 
 // negative aAtLeastDays allowed only with aModulo==1 (because of undefined % operator for negatives - altough it is normally truncate towards zero = remainder)
-static void adjustCursor(TRRuleExpandStatus &es, lineardate_t aAtLeastDays, sInt16 aModulo=1)
+// - advances cursor by at least aAtLeastDays
+// - if advance is more than aNoModuloDays, advance will be one aModulo interval
+static void adjustCursor(TRRuleExpandStatus &es, lineardate_t aAtLeastDays, sInt16 aModulo=1, sInt16 aNoModuloDays=0)
 {
 	lineardate_t days = 0;
   days = aAtLeastDays; // default to simply add days
   if (aModulo>1) {
     // we need to make sure remainder is 0 and advance extra
     lineardate_t extradays = aAtLeastDays % aModulo;
-    if (extradays!=0) {
+    // only if extradays exceeds given range (which usually represents the reach of the current mask, e.g. remaining days in the week)
+    if (extradays>aNoModuloDays) {
       days += aModulo-extradays;
     }
   }
@@ -1349,15 +1352,15 @@ lineartime_t getNextOccurrence(TRRuleExpandStatus &es)
     // so recurrence starting at a Thu, scheduled for every two weeks on Mo and Thu will have:
     // 1st week: Thu, 2nd week: nothing, 3rd week: Mo,Thu, 4rd week: nothing, 5th week: Mo,Thu...
   	if (!es.started) {
-      // - make sure we have a mask
+      // make sure we have a mask
       if (es.firstmask==0)
         es.firstmask = 1<<es.cursorWDay; // set start day in mask
-      // - advance cursor to first day of expansion period
+      // advance cursor to first day of expansion period
       sInt16 woffs = es.cursorWDay-es.weekstart; // how many days back to next week start
       if (woffs<0) woffs+=DaysPerWk; // we want to go BACK to next week start
       adjustCursor(es, -woffs, 1); // back to previous start of week
-    	adjustCursor(es, es.expansionStartDayOffset, es.interval*DaysPerWk); // advance by intervals
-      adjustCursor(es, woffs, 1); // back to start weekday
+    	adjustCursor(es, es.expansionStartDayOffset, es.interval*DaysPerWk, DaysPerWk-woffs-1); // advance by intervals when advance exeeds rest of week (covered by mask)
+      adjustCursor(es, woffs, 1); // forward again to start weekday
 	    if (expansionEnd(es)) goto done; // could by beyond current expanding scope due to interval jump 
 		}
     // calculate first/next occurrence (if not first occurrence, do not check initially but advance first)

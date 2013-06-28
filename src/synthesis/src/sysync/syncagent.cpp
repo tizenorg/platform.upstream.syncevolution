@@ -1636,7 +1636,7 @@ void TSyncAgent::retryClientSessionStart(bool aOldMessageInBuffer)
   // now retry
   if (newSessionForAuthRetry) {
     // Notes:
-    // - must apparently be disabled for SCTS 3.1.2 and eventually Mightyphone
+    // - must apparently be disabled for SCTS 3.1.2 and possibly Mightyphone
     // - must be enabled e.g for for Magically Server
     // Create new session ID
     StringObjPrintf(fSynchdrSessionID,"%hd",(sInt16)++fClientSessionNo);
@@ -1676,7 +1676,7 @@ void TSyncAgent::retryClientSessionStart(bool aOldMessageInBuffer)
   // - make sure subsequent commands (most probably statuses for Alerts)
   //   don't get processed
   AbortCommandProcessing(0); // silently discard all further commands
-  // - make sure eventual processing errors do not abort the session
+  // - make sure possible processing errors do not abort the session
   fIgnoreMsgErrs = true;
 } // TSyncAgent::retryClientSessionStart
 
@@ -1797,7 +1797,7 @@ bool TSyncAgent::ServerMessageStarted(SmlSyncHdrPtr_t aContentP, TStatusCommand 
       fMapSeen=false;
       // - session has started, we are processing first incoming
       //   package and generating first outgoing package
-      //   (init, eventually changed to combined init/sync by <sync> in this package)
+      //   (init, possibly changed to combined init/sync by <sync> in this package)
       fIncomingState=psta_init;
       fOutgoingState=psta_init;
       fNewOutgoingPackage=true;
@@ -1952,7 +1952,7 @@ void TSyncAgent::ServerMessageEnded(bool aIncomingFinal)
         break;
       case psta_map :
       case psta_supplement : // supplement state does not exit automatically
-        // after map, eventually some supplement status/alert 222 messages are needed from client
+        // after map, possibly some supplement status/alert 222 messages are needed from client
         newincomingstate=psta_supplement;
         break;
       default:
@@ -2559,7 +2559,7 @@ bool TSyncAgent::syncHdrFailure(bool aTryAgain)
       // special special case: header failed to execute the second time
       DEBUGPRINTFX(DBG_ERROR,("Fatal internal problem, SyncHdr execution failed twice"));
       aTryAgain=false; // just to make sure
-      SYSYNC_THROW((TSyncException("SyncHdr fatal execution problem")));
+      SYSYNC_THROW(TSyncException("SyncHdr fatal execution problem"));
     }
     return aTryAgain;    
     #endif
@@ -2578,7 +2578,7 @@ bool TSyncAgent::handleHeaderStatus(TStatusCommand *aStatusCmdP)
     SmlMetInfMetInfPtr_t chalmetaP=NULL;
     SmlChalPtr_t chalP;
 
-    // first evaluate eventual challenge in header status
+    // first evaluate possible challenge in header status
     chalP = aStatusCmdP->getStatusElement()->chal;
     if (chalP) {
       chalmetaP = smlPCDataToMetInfP(chalP->meta);
@@ -2617,7 +2617,7 @@ bool TSyncAgent::handleHeaderStatus(TStatusCommand *aStatusCmdP)
       }
       /* %%% do not save here already, we don't know if SyncML version is ok
              moved to those status code cases below that signal
-      // let descendant eventually save auth params
+      // let descendant possibly save auth params
       saveRemoteParams();
       */
     }
@@ -2641,7 +2641,7 @@ bool TSyncAgent::handleHeaderStatus(TStatusCommand *aStatusCmdP)
         else {
           PDEBUGPRINTFX(DBG_PROTO,("Authentication with server ok for this message"));
         }
-        // let descendant eventually save auth params
+        // let descendant possibly save auth params
         saveRemoteParams();
         break;
       case 501: // handle a "command not implemented" for the SyncHdr like 513 (indication that server does not like our header)
@@ -2700,7 +2700,7 @@ bool TSyncAgent::handleHeaderStatus(TStatusCommand *aStatusCmdP)
           AbortSession(aStatusCmdP->getStatusCode(),false); // retries exhausted or no retry possible (no chal) -> stop session
           break;
         }
-        // let descendant eventually save auth params
+        // let descendant possibly save auth params
         saveRemoteParams();
         // modify session for re-start
         PDEBUGENDBLOCK("processStatus"); // done processing status
@@ -3348,7 +3348,7 @@ TSyError TSyncAgent::ClientProcessingStep(uInt16 &aStepCmd, TEngineProgressInfo 
   if (sta==LOCERR_OK && isStarting()) {
     // this is still the beginning of a session, which means
     // that we are restarting the session and caller should close
-    // eventually open communication with the server before sending the next message
+    // possibly open communication with the server before sending the next message
     aStepCmd = STEPCMD_RESTART;
   }
   // done

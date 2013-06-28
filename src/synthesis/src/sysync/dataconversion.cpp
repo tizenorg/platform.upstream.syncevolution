@@ -66,7 +66,7 @@ bool DataConversion(SessionH aSession,
   timecontext_t oldUserTimeContext = session->fUserTimeContext;
   session->fUserTimeContext = TCTX_UNKNOWN;
 
-  try {
+  SYSYNC_TRY {
     TRootConfig *config = session->getRootConfig();
     TDatatypesConfig *types = config->fDatatypesConfigP;
     TDataTypeConfig *fromTypeConfig = types->getDataType(aFromTypeName);
@@ -138,10 +138,10 @@ bool DataConversion(SessionH aSession,
 
     aItemData.assign(data, size);
     res = true;
-  } catch(...) {
+  } SYSYNC_CATCH (...)
     // TODO: error logging
     res = false;
-  }
+  SYSYNC_ENDCATCH
 
   done:
   if (smlitem)

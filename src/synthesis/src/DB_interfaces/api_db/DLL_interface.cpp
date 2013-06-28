@@ -63,18 +63,19 @@ bool TDLL::Disconnect() {
 
 
 // ---- Handler for DLL connection reporting ------------------------
-void ModuleConnectionError( void* /* ref */, cAppCharP aModName ) {
-  ConsolePrintf( "Can't connect to library '%s'.",     aModName );
+void ModuleConnectionError( void* /* ref */, cAppCharP aModName )
+{
+  string               s= "Can't connect to library "  + Apo(  aModName ) + ".";
+  ConsolePrintf      ( s.c_str() );
 } // ModuleConnectionError
 
 
 void FuncConnectionError( void* /* ref */, cAppCharP aFuncName, cAppCharP aModName )
 {
-  string s= "Can't connect to function '%s'";
-  if (*aModName!='\0') s+= " of module '%s'";
-  s+= ".";
-
-  ConsolePrintf( s.c_str(), aFuncName,aModName );
+  string               s= "Can't connect to function " + Apo( aFuncName );
+  if (*aModName!='\0') s+= " of module "               + Apo(  aModName );
+                       s+= ".";
+  ConsolePrintf      ( s.c_str() );
 } // FuncConnectionError
 
 

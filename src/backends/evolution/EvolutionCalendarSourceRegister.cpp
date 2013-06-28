@@ -38,7 +38,8 @@ static SyncSource *createSource(const SyncSourceParams &params)
 
     isMe = sourceType.m_backend == "Evolution Task List";
     if (isMe || sourceType.m_backend == "todo") {
-        if (sourceType.m_format == "" || sourceType.m_format == "text/calendar") { 
+        if (sourceType.m_format == "" || sourceType.m_format == "text/calendar" 
+                || sourceType.m_format == "text/x-vcalendar") { 
             return
 #ifdef ENABLE_ECAL
                 enabled ? new EvolutionCalendarSource(E_CAL_SOURCE_TYPE_TODO, params) :
@@ -91,14 +92,14 @@ static RegisterSyncSource registerMe("Evolution Calendar/Task List/Memos",
 #endif
                                      createSource,
                                      "Evolution Calendar = calendar = events = evolution-events\n"
-                                     "   iCalendar 2.0 (default) = text/calendar)\n"
+                                     "   iCalendar 2.0 (default) = text/calendar\n"
                                      "   vCalendar 1.0 = text/x-calendar\n"
                                      "Evolution Task List = Evolution Tasks = todo = tasks = evolution-tasks\n"
-                                     "   iCalendar 2.0 (default) = text/calendar)\n"
+                                     "   iCalendar 2.0 (default) = text/calendar\n"
                                      "   vCalendar 1.0 = text/x-calendar\n"
                                      "Evolution Memos = memo = memos = evolution-memos\n"
                                      "   plain text in UTF-8 (default) = text/plain\n"
-                                     "   iCalendar 2.0 = text/calendar)\n"
+                                     "   iCalendar 2.0 = text/calendar\n"
                                      "   vCalendar 1.0 = text/x-calendar\n"
                                      "   The later format is not tested because none of the\n"
                                      "   supported SyncML servers accepts it.\n",
@@ -301,8 +302,6 @@ SYNCEVOLUTION_TEST_SUITE_REGISTRATION(EvolutionCalendarTest);
 
 #endif // ENABLE_UNIT_TESTS
 
-#ifdef ENABLE_INTEGRATION_TESTS
-
 namespace {
 #if 0
 }
@@ -328,6 +327,17 @@ public:
     }
 } iTodo20Test;
 
+static class SuperTest : public RegisterSyncSourceTest {
+public:
+    SuperTest() : RegisterSyncSourceTest("super", "super") {}
+
+    virtual void updateConfig(ClientTestConfig &config) const
+    {
+        config.type = "virtual:text/x-vcalendar";
+    }
+
+} superTest;
+
 static class MemoTest : public RegisterSyncSourceTest {
 public:
     MemoTest() : RegisterSyncSourceTest("text", "text") {}
@@ -339,7 +349,6 @@ public:
 } memoTest;
 
 }
-#endif // ENABLE_INTEGRATION_TESTS
 
 #endif // ENABLE_ECAL
 

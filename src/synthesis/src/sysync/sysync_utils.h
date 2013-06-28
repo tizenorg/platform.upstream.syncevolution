@@ -207,7 +207,7 @@ void makeRFC2822AddrSpec(
 
 
 // Parse RFC2822-style address specificiation
-// - aName will receive name and all (eventual) comments
+// - aName will receive name and all (possible) comments
 // - aRecipient will receive the (first, in case of a group) email address
 cAppCharP parseRFC2822AddrSpec(
   cAppCharP aText,

@@ -142,7 +142,8 @@ typedef struct {
 #endif
 #define CHANGELOG_DB_ID 4
 #define LOWEST_CHANGELOG_DB_VERSION 2 // note: step from V2 to V3 was only change in header
-#define CHANGELOG_DB_VERSION 4 // create modcount added
+#define CHANGELOG_DB_VERSION 5 // dataCRC added as new field (was present for non-changedetection targets before)
+
 
 const uInt16 changeIndentifierMaxLen=128;
 
@@ -166,18 +167,29 @@ typedef struct {
   #endif
   // modification count of last modification
   uInt32 modcount;
+  /* Note: only DB versions V2 and earlier could possibly have this field. V3 and V4 never had it
+     as they were never used with CHANGEDETECTION_AVAILABLE not defined. V5 adds it unconditionally.
   #ifndef CHANGEDETECTION_AVAILABLE
   // CRC of the record's data after the last modification
   uInt16 dataCRC;
   #endif
+  */
   // flags
   uInt8 flags;
   uInt8 dummy;
+
+  // Version 3 has no new fields in records, only in header
 
   // Version 4 fields start here
   // ===========================
   // - creation timestamp for the record
   uInt32 modcount_created;
+
+	// Version 5 fields start here
+  // ===========================
+  // CRC of the record's data after the last modification
+  uInt16 dataCRC;
+
 } TChangeLogEntry;
 
 
@@ -620,6 +632,12 @@ typedef struct {
 #pragma pack(pop)
 #endif
 
+#ifndef CHANGEDETECTION_AVAILABLE
+#define CRC_CHANGE_DETECTION true
+#else
+#define CRC_CHANGE_DETECTION (fConfigP->fCRCChangeDetection)
+#endif
+
 
 // datastore config
 // ================
@@ -638,6 +656,10 @@ public:
   // properties
   // - activtion switch (for making it inactive e.g. in server case)
   bool fBinfileDSActive;
+	#ifdef CHANGEDETECTION_AVAILABLE
+  // - we have change detection, but we can be set to enable change detection by CRC
+  bool fCRCChangeDetection;
+  #endif
   // - identifies local Database related to this datastore
   string fLocalDBPath;
   // - flag that corresponds with profile.dsAvailFlags / dsavail_xxx
@@ -752,7 +774,7 @@ public:
 protected:
   /// called for SyncML 1.1 if remote wants number of changes.
   /// Must return -1 no NOC value can be returned
-  virtual sInt32 getNumberOfChanges(void) { return fNumberOfLocalChanges; };
+  virtual sInt32 getNumberOfChanges(void);
   // Simple custom DB access interface methods
   /// sync login (into this database)
   /// @note might be called several times (auth retries at beginning of session)
@@ -805,7 +827,7 @@ protected:
   virtual void implMarkItemForResend(cAppCharP aLocalID, cAppCharP aRemoteID);
   /// called to have all non-yet-generated sync commands as "to-be-resumed"
   virtual void implMarkOnlyUngeneratedForResume(void);
-  /// save status information required to eventually perform a resume (as passed to datastore with
+  /// save status information required to possibly perform a resume (as passed to datastore with
   /// markOnlyUngeneratedForResume() and markItemForResume())
   /// (or, in case the session is really complete, make sure that no resume state is left)
   virtual localstatus implSaveResumeMarks(void);
@@ -841,7 +863,6 @@ public:
 protected:
   // Routines to be implemented by derived classes to actually access
   // local databases
-  #ifndef CHANGEDETECTION_AVAILABLE
   #ifdef RECORDHASH_FROM_DBAPI
   /// get first item's ID and CRC from the sync set.
   /// @return false if no item found
@@ -857,14 +878,14 @@ protected:
   /// @return false if no item found
   virtual bool getNextItem(TSyncItem *&aItemP) = 0;
   #endif // RECORDHASH_FROM_DBAPI
-  #else // CHANGEDETECTION_AVAILABLE
+  #ifdef CHANGEDETECTION_AVAILABLE
   /// get first item's ID and modification status from the sync set
   /// @return false if no item found
   virtual bool getFirstItemInfo(localid_out_t &aLocalID, bool &aItemHasChanged) = 0;
   /// get next item's ID and modification status from the sync set.
   /// @return false if no item found
   virtual bool getNextItemInfo(localid_out_t &aLocalID, bool &aItemHasChanged) = 0;
-  #endif // not CHANGEDETECTION_AVAILABLE
+  #endif // CHANGEDETECTION_AVAILABLE
   /// get item by local ID from the sync set. Caller obtains ownership if aItemP is not NULL after return
   /// @return != LOCERR_OK  if item with specified ID is not found.
   virtual localstatus getItemByID(localid_t aLocalID, TSyncItem *&aItemP) = 0;
@@ -894,10 +915,6 @@ protected:
   /// zaps the entire datastore, returns LOCERR_OK if ok
   /// @return LOCERR_OK or error code.
   virtual localstatus zapDatastore(void) = 0;
-  /// get error code for last routine call that returned !=LOCERR_OK
-  /// @return platform specific DB error code
-  virtual uInt32 lastDBError(void) { return 0; };
-  virtual bool isDBError(uInt32 aErrCode) { return aErrCode!=0; } // standard implementation assumes 0=ok
   /// returns timestamp of this sync session (must be used to set mod-timestamp on added and changed records)
   lineartime_t getThisSyncTime(void) { return fCurrentSyncTime; }
   /// get reference time or count to be used as reference date for this sync's modifications
@@ -953,8 +970,6 @@ private:
   // number of local changes
   sInt32 fNumberOfLocalChanges;
   // GetItem vars
-  bool fAllRecords; /// @todo: for now, this is copied from TLocalEnginDS::fSlowSync
-  //bool fRefreshing;
   uInt32 fLogEntryIndex;
   // config (typed pointer for convenience)
   TBinfileDSConfig *fConfigP;

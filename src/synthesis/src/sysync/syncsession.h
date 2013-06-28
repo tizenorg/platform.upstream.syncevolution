@@ -141,6 +141,7 @@ public:
   sInt8 fCompleteFromClientOnly; // perform complete from-client-only session (non conformant, Synthesis before 2.9.8.2 style)
   sInt32 fRequestMaxTime; // max time [seconds] allowed for processing a single request, 0=unlimited, -1=not specified
   TCharSets fDefaultOutCharset; // default charset for generation
+  TCharSets fDefaultInCharset; // default charset for input interpretation
   TSyError fRejectStatusCode; // if >=0, attempt to connect will always be rejected with given status code
   sInt8 fForceUTC; // force sending time in UTC (overrides SyncML 1.1 <utc/> devInf flag)
   sInt8 fForceLocaltime; // force sending time in localtime (overrides SyncML 1.1 <utc/> devInf flag)
@@ -525,7 +526,7 @@ public:
   virtual localstatus analyzeRemoteDevInf(
     SmlDevInfDevInfPtr_t aDevInfP
   );
-  // - get eventually cached devinf for specified device, passes ownership of
+  // - get possibly cached devinf for specified device, passes ownership of
   //   created devinf structure to caller
   //   returns false if no devinf could be loaded
   virtual bool loadRemoteDevInf(const char * /* aDeviceID */, SmlDevInfDevInfPtr_t & /* aDevInfP */) { return false; };
@@ -633,7 +634,8 @@ public:
   bool fCompleteFromClientOnly; // perform complete from-client-only session (non conformant, Synthesis before 2.9.8.2 style)
   sInt32 fRequestMaxTime; // max time [seconds] allowed for processing a single request, 0=unlimited
   sInt32 fRequestMinTime; // min time [seconds] spent until returning answer (for debug purposes, 0=no minimum time)
-  TCharSets fDefaultOutCharset; // default charset for MIME-DIR generation
+  TCharSets fDefaultOutCharset; // default charset for output generation
+  TCharSets fDefaultInCharset; // default charset for input interpretation
   #ifndef NO_REMOTE_RULES
   TRemoteRuleConfig *fAppliedRemoteRuleP; // applied remote rule
   #endif
@@ -813,7 +815,7 @@ protected:
   // - check remote devinf to detect special behaviour needed for some clients. Base class
   //   does not do anything on server level (configured rules are handled at session level)
   virtual localstatus checkRemoteSpecifics(SmlDevInfDevInfPtr_t aDevInfP);
-  // - remote device is analyzed, eventually save status
+  // - remote device is analyzed, possibly save status
   virtual void remoteAnalyzed(void) { /* nop */ };
   // SyncML Toolkit interface
   InstanceID_t fSmlWorkspaceID; // SyncML toolkit workspace instance ID

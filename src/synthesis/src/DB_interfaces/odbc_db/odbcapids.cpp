@@ -841,7 +841,7 @@ void TODBCApiDS::apiRebuildScriptContexts(void)
 
 #ifdef ODBCAPI_SUPPORT
 
-// - get (session level) ODBC handle
+// - get (DB level) ODBC handle
 SQLHDBC TODBCApiDS::getODBCConnectionHandle(void)
 {
   if (fODBCConnectionHandle==SQL_NULL_HANDLE && fAgentP) {
@@ -857,8 +857,12 @@ SQLHDBC TODBCApiDS::getODBCConnectionHandle(void)
 // - check for connection-level error
 void TODBCApiDS::checkConnectionError(SQLRETURN aResult)
 {
-  if (!fAgentP)
-    return;
+  if (!fAgentP) return;
+	if (fODBCConnectionHandle!=SQL_NULL_HANDLE) {
+  	// check on local connection
+  	fAgentP->checkODBCError(aResult,SQL_HANDLE_DBC,fODBCConnectionHandle);
+  }
+  // check on session level
   fAgentP->checkConnectionError(aResult);
 } // TODBCApiDS::checkConnectionError
 
@@ -1568,7 +1572,7 @@ bool TODBCApiDS::execSQLStatement(SQLHSTMT aStatement, string &aSQL, bool aNoDat
   if (aSQL.empty()) return true; // "ok", nothing to execute
   #ifdef SQLITE_SUPPORT
   if (fUseSQLite && aForData) {
-    // execute (eventually already prepared) statement in SQLite
+    // execute (possibly already prepared) statement in SQLite
     if (!fSQLiteStmtP) {
       // not yet prepared, do it now
       fAgentP->prepareSQLiteStatement(aSQL.c_str(),fSQLiteP,fSQLiteStmtP);
@@ -2058,7 +2062,7 @@ void TODBCApiDS::DoDataSubstitutions(
                 else if (inStr[j]=='a') asci=true;
               } while(true);
             }
-            // extract name (without eventual array index or dbfieldtype)
+            // extract name (without possible array index or dbfieldtype)
             s.assign(inStr,j,m-j);
             // find field
             if (!aItemP) { i=k+1; n=0; break; } // no item, no action
@@ -2263,7 +2267,7 @@ void TODBCApiDS::resetSQLParameterMaps(void)
 {
   #ifdef SQLITE_SUPPORT
   if (fUseSQLite) {
-    // resetting the parameter map finalizes any eventually running statement
+    // resetting the parameter map finalizes any possibly running statement
     if (fSQLiteStmtP) {
       sqlite3_finalize(fSQLiteStmtP);
       fSQLiteStmtP=NULL;
@@ -2640,7 +2644,7 @@ bool TODBCApiDS::appendFilterTerm(string &aSQL, const char *&aPos, const char *a
           if ((*pos)->setNo==0 && fid==(*pos)->fid) {
             if ((*pos)->isArray()) return false; // array fields cannot be used in filters
             // found
-            if (mainfound) break; // second match just breaks loop (time for date, eventually)
+            if (mainfound) break; // second match just breaks loop (time for date, possibly)
             // main
             mainpos=pos; // save position of main field
             mainfound=true;
@@ -2648,8 +2652,8 @@ bool TODBCApiDS::appendFilterTerm(string &aSQL, const char *&aPos, const char *a
           }
         }
         if (!mainfound) {
-          return false; // no such field
           PDEBUGPRINTFX(DBG_EXOTIC,("Could not find DB field for fid=%hd",fid));
+          return false; // no such field
         }
         // - translate for special values
         if (specialValue) {
@@ -2999,7 +3003,7 @@ localstatus TODBCApiDS::updateSyncTarget(SQLHSTMT aStatement, bool aSessionFinis
   // now substitute standard: %f=folderkey, %u=userkey, %d=devicekey, %t=targetkey
   // - Note: it is important that %t,%d is checked here, after %dL, %dS, %tL and %tS above!!
   DoSQLSubstitutions(sql);
-  // - bind eventual params
+  // - bind possible params
   bindSQLParameters(aStatement,false);
   // - issue
   execSQLStatement(aStatement,sql,false,"updating anchor/lastsync",false);
@@ -4345,7 +4349,7 @@ TODBCFieldProxy::~TODBCFieldProxy()
 
 
 // fetch BLOB from DPAPI
-void TODBCFieldProxy::fetchBlob(size_t aNeededSize)
+void TODBCFieldProxy::fetchBlob(void)
 {
   if (!fFetched) {
     // if do not have anything yet and need something, read it now
@@ -4427,7 +4431,7 @@ void TODBCFieldProxy::fetchBlob(size_t aNeededSize)
 // returns size of entire blob
 size_t TODBCFieldProxy::getBlobSize(TStringField *aFieldP)
 {
-  fetchBlob(0);
+  fetchBlob();
   return fValue.size();
 } // TODBCFieldProxy::getBlobSize
 
@@ -4435,9 +4439,9 @@ size_t TODBCFieldProxy::getBlobSize(TStringField *aFieldP)
 // read from Blob from specified stream position and update stream pos
 size_t TODBCFieldProxy::readBlobStream(TStringField *aFieldP, size_t &aPos, void *aBuffer, size_t aMaxBytes)
 {
-  if (fValue.size()<=aPos || !fFetched) { // <=aPos instead of <
+  if (!fFetched) {
     // we need to read the body
-    fetchBlob(aPos+aMaxBytes);
+    fetchBlob();
   }
   // now copy from our value
   if (aPos>fValue.size()) return 0;

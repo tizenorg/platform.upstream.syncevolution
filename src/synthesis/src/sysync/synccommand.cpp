@@ -620,7 +620,7 @@ bool TSyncHeader::execute(void)
           }
         }
         // call server/client specific message start in derived classes
-        statusCmdP=newStatusCommand(200); // prepare OK default status (will eventually be modified by MessageStarted())
+        statusCmdP=newStatusCommand(200); // prepare OK default status (will possibly be modified by MessageStarted())
         hdrok=fSessionP->MessageStarted(fSyncHdrElementP,*statusCmdP);
       }
       else {
@@ -1585,7 +1585,7 @@ bool TSyncOpCommand::handleStatus(TStatusCommand *aStatusCmdP)
     fSessionP->AbortSession(412,true); // local problem
   }
   else {
-    // end of non-split SyncOp means that eventually saved
+    // end of non-split SyncOp means that possibly saved
     // parts of partial outgoing item are now obsolete
     if (fDataStoreP->fPartialItemState==pi_state_save_outgoing) {
       fDataStoreP->fPartialItemState=pi_state_none; // not any more
@@ -1833,7 +1833,7 @@ void TSyncOpCommand::saveAsPartialItem(SmlItemPtr_t aItemP)
 } // TSyncOpCommand::saveAsPartialItem
 
 
-// - eventually substitute data with previous session's buffered left-overs from a chunked transfer
+// - possibly substitute data with previous session's buffered left-overs from a chunked transfer
 //   for resuming a chunked item transfer.
 bool TSyncOpCommand::checkChunkContinuation(void)
 {
@@ -2366,7 +2366,7 @@ bool TSyncOpCommand::execute(void)
           uInt32 dataPos=0;
           if (processitem) {
             // save sizes confirmed/unconfirmed data in this command object
-            // (for eventual reassembly adjustment when command is complete)
+            // (for possible reassembly adjustment when command is complete)
             fUnconfirmedSize=fDataStoreP->fPIUnconfirmedSize;
             fStoredSize=fDataStoreP->fPIStoredSize;
             // Determine Data position
@@ -2504,7 +2504,7 @@ bool TSyncOpCommand::execute(void)
             sta=fSessionP->fIncompleteDataCommandP->AddNextChunk(thisitemnode->item,this);
             if (sta) statusCmdP->setStatusCode(sta); // set error if any
           }
-          PDEBUGPRINTFX(DBG_PROTO+DBG_HOT,("<Moredata/> set: Chunk (%ld bytes) received (plus eventual carry over from suspend) and buffered",(long)fLastChunkSize));
+          PDEBUGPRINTFX(DBG_PROTO+DBG_HOT,("<Moredata/> set: Chunk (%ld bytes) received (plus possible carry over from suspend) and buffered",(long)fLastChunkSize));
         }
         else {
           // Complete item or end of chunked item
@@ -2590,7 +2590,7 @@ bool TSyncOpCommand::execute(void)
         } // if complete item
       } // if processitem
       // now generate status or queue for later
-      // - remember as last item for eventual suspend and resume
+      // - remember as last item for possible suspend and resume
       fDataStoreP->fLastSourceURI = smlSrcTargLocURIToCharP(thisitemnode->item->source);
       fDataStoreP->fLastTargetURI = smlSrcTargLocURIToCharP(thisitemnode->item->target);
       if (queueforlater) {
@@ -2622,10 +2622,10 @@ bool TSyncOpCommand::execute(void)
           fDataStoreP->fIncomingDataBytes+=thisitemnode->item->data->length;
         }
         // item processed
-        // - remember status (final only) for eventual suspend and resume
+        // - remember status (final only) for possible suspend and resume
         sta= statusCmdP ? statusCmdP->getStatusCode() : 0;
         if (sta!=213) {
-          // final status received, save it for eventual resend
+          // final status received, save it for possible resend
           fDataStoreP->fLastItemStatus = sta;
           // but forget data stored at DS level
           fDataStoreP->fPIStoredSize=0;
@@ -2769,7 +2769,7 @@ bool TSyncOpCommand::issue(
       // we don't need the data any more, but we should keep the source and target IDs until we have the status
       // - get rid of data
       if (fSyncOpElementP->itemList) {
-        // - free eventual extra items (shouldn't be any - we always send single item per command)
+        // - free possible extra items (shouldn't be any - we always send single item per command)
         smlFreeItemList(fSyncOpElementP->itemList->next);
         fSyncOpElementP->itemList->next=NULL;
         // - free data and meta part of this item, but not target and source info
@@ -2923,7 +2923,7 @@ TMapCommand::TMapCommand(
 // generate empty map element
 void TMapCommand::generateEmptyMapElement(void)
 {
-  // free eventually still existing map element
+  // free possibly still existing map element
   if (fMapElementP) FreeSmlElement();
   // create internal map element
   fMapElementP = SML_NEW(SmlMap_t);
@@ -3039,7 +3039,7 @@ bool TMapCommand::continueIssue(bool &aNewIssue)
 // add as many Map items as possible, update fInProgress
 void TMapCommand::generateMapItems(void)
 {
-  // let datastore add Map items (eventually none)
+  // let datastore add Map items (possibly none)
   fInProgress = !(
     fLocalDataStoreP->engGenerateMapItems(this,NULL)
   );
@@ -3883,27 +3883,12 @@ void TStatusCommand::addSourceRef(
 } // TStatusCommand::addSourceRef
 
 
-// add an Error code string Item to the status
-void TStatusCommand::addErrorCodeString(
-  uInt32 aErrCode,
-  const char *aText // optional descriptive text
-)
-{
-  string msg;
-  if (!aText) aText="Err";
-  StringObjPrintf(msg,"%s = %ld",aText,(long)aErrCode);
-  if (fStatusElementP) {
-    addItem(newStringDataItem(msg.c_str()));
-  }
-} // TStatusCommand::addItemString
-
-
-// add a String Item to the status
+// add a String Item to the status (only if not empty)
 void TStatusCommand::addItemString(
   const char *aItemString // item string to be added
 )
 {
-  if (fStatusElementP && aItemString) {
+  if (fStatusElementP && aItemString && *aItemString) {
     addItem(newStringDataItem(aItemString));
   }
 } // TStatusCommand::addItemString

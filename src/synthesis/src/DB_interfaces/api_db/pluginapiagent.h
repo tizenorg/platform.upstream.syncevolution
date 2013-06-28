@@ -149,7 +149,7 @@ public:
   #ifndef BINFILE_ALWAYS_ACTIVE
   // - check device ID related stuff
   virtual void CheckDevice(const char *aDeviceID);
-  // - remote device is analyzed, eventually save status
+  // - remote device is analyzed, possibly save status
   virtual void remoteAnalyzed(void);
   // - check login for this session (everything else is done by CustomAgent's SessionLogin)
   virtual bool CheckLogin(const char *aOriginalUserName, const char *aModifiedUserName, const char *aAuthString, TAuthSecretTypes aAuthStringType, const char *aDeviceID);

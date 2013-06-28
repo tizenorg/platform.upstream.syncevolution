@@ -225,7 +225,7 @@ public:
 class TPropertyDefinition {
 public:
   // constructor/destructor
-  TPropertyDefinition(const char* aName, sInt16 aNumVals, bool aMandatory, bool aShowInCTCap, bool aSuppressEmpty, uInt16 aDelayedProcessing, char aValuesep, char aAltValuesep, uInt16 aPropertyGroupID, bool aCanFilter, TMimeDirMode aModeDep);
+  TPropertyDefinition(const char* aName, sInt16 aNumVals, bool aMandatory, bool aShowInCTCap, bool aSuppressEmpty, uInt16 aDelayedProcessing, char aValuesep, char aAltValuesep, uInt16 aPropertyGroupID, bool aCanFilter, TMimeDirMode aModeDep, sInt16 aGroupFieldID);
   ~TPropertyDefinition();
   // tools
   TParameterDefinition *addParam(const char *aName, bool aDefault, bool aExtendsName, bool aShowNonEmpty=false, bool aShowInCTCap=false, TMimeDirMode aModeDep=numMimeModes);
@@ -245,6 +245,8 @@ public:
   // property name extension list.
   // - If NULL, property is non-repeatable and has no name extensions at all
   TPropNameExtension *nameExts;
+  // ID of group field
+  sInt16 groupFieldID;
   // number of values
   sInt16 numValues;
   // conversion specification(s) for each value
@@ -333,7 +335,8 @@ public:
     uInt16 aPropertyGroupID=0, // property group ID (alternatives for same-named properties should have same ID>0)
     bool aCanFilter=false, // can be filtered -> show in filter cap
     TMimeDirMode aModeDep=numMimeModes, // property valid only for specific MIME mode
-    char aAltValuesep=0 // no alternate separator
+    char aAltValuesep=0, // no alternate separator
+		sInt16 aGroupFieldID=FID_NOT_SUPPORTED // no group field
   );
   void usePropertiesOf(TProfileDefinition *aProfile);
   TPropertyDefinition *getPropertyDef(const char *aPropName);
@@ -421,6 +424,8 @@ private:
 typedef struct {
   uInt16 delaylevel;
   const char *start;
+  const char *groupname;
+  size_t groupnameLen;
   const TPropertyDefinition *propDefP;
 } TDelayedPropParseParams;
 // delayed property parsing list
@@ -484,6 +489,8 @@ private:
   bool fDontSendEmptyProperties;
   // - default output charset
   TCharSets fDefaultOutCharset;
+  // - default input interpretation charset
+  TCharSets fDefaultInCharset;
   // - user time context
   timecontext_t fReceiverTimeContext;
   // - set if any 8-bit content must be encoded QUOTED-PRINTABLE
@@ -630,12 +637,14 @@ private:
   );
   // - parse given property
   bool parseProperty(
-    const char *&aText, // where to start interpreting property, will be updated past end of poperty
+    cAppCharP &aText, // where to start interpreting property, will be updated past end of poperty
     TMultiFieldItem &aItem, // item to store data into
     const TPropertyDefinition *aPropP, // the property definition
     sInt16 *aRepArray,  // array[repeatID], holding current repetition COUNT for a certain nameExts entry
     sInt16 aRepArraySize, // size of array (for security)
-    TMimeDirMode aMimeMode // MIME mode (older or newer vXXX format compatibility)
+    TMimeDirMode aMimeMode, // MIME mode (older or newer vXXX format compatibility)
+	  cAppCharP aGroupName, // property group ("a" in "a.TEL:131723612")
+  	size_t aGroupNameLen
   );
   // parse MIME-DIR level from specified string into item
   bool parseLevels(

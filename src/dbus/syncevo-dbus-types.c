@@ -38,7 +38,7 @@ syncevo_config_get_value (SyncevoConfig *config,
     if (!source || strlen (source) == 0) {
         name = g_strdup ("");
     } else {
-        name = g_strdup_printf ("sources/%s", source);
+        name = g_strdup_printf ("source/%s", source);
     }
 
     source_config = (GHashTable*)g_hash_table_lookup (config, name);
@@ -69,7 +69,7 @@ syncevo_config_set_value (SyncevoConfig *config,
     if (!source || strlen (source) == 0) {
         name = g_strdup ("");
     } else {
-        name = g_strdup_printf ("sources/%s", source);
+        name = g_strdup_printf ("source/%s", source);
     }
 
     source_config = (GHashTable*)g_hash_table_lookup (config, name);
@@ -213,6 +213,56 @@ syncevo_session_status_from_string (const char *status_str)
     return status;
 }
 
+SyncevoSyncMode
+syncevo_sync_mode_from_string (const char *mode_str)
+{
+    if (!mode_str) {
+        return SYNCEVO_SYNC_UNKNOWN;
+    } else if (g_str_has_prefix (mode_str, "none") ||
+               g_str_has_prefix (mode_str, "disabled")) {
+        return SYNCEVO_SYNC_NONE;
+    } else if (g_str_has_prefix (mode_str, "two-way")) {
+        return SYNCEVO_SYNC_TWO_WAY;
+    } else if (g_str_has_prefix (mode_str, "slow")) {
+        return SYNCEVO_SYNC_SLOW;
+    } else if (g_str_has_prefix (mode_str, "refresh-from-client")) {
+        return SYNCEVO_SYNC_REFRESH_FROM_CLIENT;
+    } else if (g_str_has_prefix (mode_str, "refresh-from-server")) {
+        return SYNCEVO_SYNC_REFRESH_FROM_SERVER;
+    } else if (g_str_has_prefix (mode_str, "one-way-from-client")) {
+        return SYNCEVO_SYNC_ONE_WAY_FROM_CLIENT;
+    } else if (g_str_has_prefix (mode_str, "one-way-from-server")) {
+        return SYNCEVO_SYNC_ONE_WAY_FROM_SERVER;
+    } else {
+        return SYNCEVO_SYNC_UNKNOWN;
+    }
+}
+
+static SyncevoSourceStatus
+syncevo_source_status_from_string (const char *status_str)
+{
+    SyncevoSourceStatus status;
+
+    if (!status_str) {
+        status = SYNCEVO_SOURCE_UNKNOWN;
+    } else if (g_str_has_prefix (status_str, "idle")) {
+        status = SYNCEVO_SOURCE_IDLE;
+    } else if (g_str_has_prefix (status_str, "running")) {
+        status = SYNCEVO_SOURCE_RUNNING;
+    } else if (g_str_has_prefix (status_str, "done")) {
+        status = SYNCEVO_SOURCE_DONE;
+    } else {
+        status = SYNCEVO_SOURCE_UNKNOWN;
+    }
+
+    /* check modifiers */
+    if (status_str && strstr (status_str, ";waiting")) {
+        status |= SYNCEVO_SOURCE_WAITING;
+    }
+
+    return status;
+}
+
 void
 syncevo_source_statuses_foreach (SyncevoSourceStatuses *source_statuses,
                                  SourceStatusFunc func,
@@ -234,28 +284,10 @@ syncevo_source_statuses_foreach (SyncevoSourceStatuses *source_statuses,
         guint error_code;
 
         mode_str = g_value_get_string (g_value_array_get_nth (source_status, 0));
-        if (!mode_str) {
-            mode = SYNCEVO_SYNC_UNKNOWN;
-        } else if (g_str_has_prefix (mode_str, "none")) {
-            mode = SYNCEVO_SYNC_NONE;
-        } else if (g_str_has_prefix (mode_str, "two-way")) {
-            mode = SYNCEVO_SYNC_TWO_WAY;
-        } else if (g_str_has_prefix (mode_str, "slow")) {
-            mode = SYNCEVO_SYNC_SLOW;
-        } else if (g_str_has_prefix (mode_str, "refresh-from-client")) {
-            mode = SYNCEVO_SYNC_REFRESH_FROM_CLIENT;
-        } else if (g_str_has_prefix (mode_str, "refresh-from-server")) {
-            mode = SYNCEVO_SYNC_REFRESH_FROM_SERVER;
-        } else if (g_str_has_prefix (mode_str, "one-way-from-client")) {
-            mode = SYNCEVO_SYNC_ONE_WAY_FROM_CLIENT;
-        } else if (g_str_has_prefix (mode_str, "one-way-from-server")) {
-            mode = SYNCEVO_SYNC_ONE_WAY_FROM_SERVER;
-        } else {
-            mode = SYNCEVO_SYNC_UNKNOWN;
-        }
+        mode = syncevo_sync_mode_from_string (mode_str);
 
         status_str = g_value_get_string (g_value_array_get_nth (source_status, 1));
-        status = syncevo_session_status_from_string (status_str);
+        status = syncevo_source_status_from_string (status_str);
         error_code = g_value_get_uint (g_value_array_get_nth (source_status, 2));
 
         func (name, mode, status, error_code, data);

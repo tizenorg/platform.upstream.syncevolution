@@ -89,8 +89,8 @@ LIBSYNTHESISSDK_SOURCES_ONLY=`echo $LIBSYNTHESISSDK_SOURCES_ONLY`
 # files needed in libsmltk
 LIBSMLTK_SOURCES=`find syncml_tk \
      \( -name '*.cpp' -o -name '*.[ch]' \) \
-     \! \( -wholename syncml_tk/src/sml/\*/palm/\* -o \
-           -wholename syncml_tk/src/sml/\*/win/\* \)`
+     \! \( -path syncml_tk/src/sml/\*/palm/\* -o \
+           -path syncml_tk/src/sml/\*/win/\* \)`
 LIBSMLTK_SOURCES=`echo $LIBSMLTK_SOURCES`
 
 # header files required for using libsynthesissdk,

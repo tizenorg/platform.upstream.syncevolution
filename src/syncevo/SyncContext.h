@@ -78,7 +78,13 @@ SuspendFlags():state(CLIENT_NORMAL),last_suspend(0),message(NULL)
  *
  */
 class SyncContext : public SyncConfig, public ConfigUserInterface {
+    /**
+     * the string used to request a config,
+     * *not* the normalized config name itself;
+     * for that use SyncConfig::getConfigName()
+     */
     const string m_server;
+
     bool m_doLogging;
     bool m_quiet;
     bool m_dryrun;
@@ -177,13 +183,13 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
 
     /*
      * Use initSAN as the first step is sync() if this is a server alerted sync.
-     * Prepare the san package and send the SAN request to the peer in retry
-     * times. Returns false if failed to get a valid client sync request
+     * Prepare the san package and send the SAN request to the peer.
+     * Returns false if failed to get a valid client sync request
      * otherwise put the client sync request into m_initialMessage which will
      * be used to initalze the server via initServer(), then continue sync() to
      * start the real sync serssion.
      */
-    bool initSAN (int retry = 3);
+    bool initSAN();
 
     /**
      * Initializes the session so that it runs as SyncML server once
@@ -268,8 +274,9 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
 
     /**
      * fills report with information about previous session
+     * @return the peer name from the dir.
      */
-    void readSessionInfo(const string &dir, SyncReport &report);
+    string readSessionInfo(const string &dir, SyncReport &report);
 
     /**
      * fills report with information about local changes
@@ -356,7 +363,17 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
     const SharedEngine getEngine() const { return m_engine; }
 
     bool getDoLogging() { return m_doLogging; }
-    std::string getServer() { return m_server; }
+
+    /**
+     * Returns the string used to select the peer config
+     * used by this instance.
+     *
+     * Note that this is not the same as a valid configuration
+     * name. For example "foo" might be matched against a
+     * "foo@bar" config by SyncConfig. Use SyncConfig::getConfigName()
+     * to get the underlying config.
+     */
+    std::string getPeer() { return m_server; }
 
     /**
      * Handle for active session, may be NULL.
@@ -580,6 +597,15 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
                                        int32_t extra1, int32_t extra2, int32_t extra3);
 
     /**
+     * report step command info
+     *
+     * Will be called after each step in step loop in SyncContext::doSync().
+     * This reports step command info. 
+     * @param stepCmd step command enum value 
+     */
+    virtual void reportStepCmd(sysync::uInt16 stepCmd) {}
+
+    /**
      * Called to find out whether user wants to abort sync.
      *
      * Will be called regularly. Once it has flagged an abort, all
@@ -647,6 +673,11 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
      */
     static void printSignals();
 
+    /**
+     * return true if "delayedabort" session variable is true
+     */
+    bool checkForScriptAbort(SharedSession session);
+
     // total retry duration
     int m_retryDuration;
     // message resend interval
@@ -656,7 +687,7 @@ class SyncContext : public SyncConfig, public ConfigUserInterface {
 
 public:
     static bool transport_cb (void *data);
-    bool processTransportCb();
+    void setTransportCallback(int seconds);
 };
 
 SE_END_CXX

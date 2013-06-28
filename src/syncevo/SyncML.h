@@ -23,6 +23,7 @@
 
 #include <string>
 #include <map>
+#include <list>
 #include <ostream>
 #include <string.h>
 
@@ -48,7 +49,10 @@ enum SyncMode {
     SA_SYNC_REFRESH_FROM_CLIENT = 208,
     SA_SYNC_ONE_WAY_FROM_SERVER = 209,
     SA_SYNC_REFRESH_FROM_SERVER = 210,
-    
+
+    // used by restore backend with backup data, a pseudo mode
+    SYNC_RESTORE_FROM_BACKUP = 211,
+
     SYNC_LAST = 220,
     /** error situation (in contrast to SYNC_NONE) */
     SYNC_INVALID = 255
@@ -78,8 +82,9 @@ SyncMode StringToSyncMode(const std::string &str, bool serverAlerted = false);
 
 /*
  * Parse string based content type to WSPCTC encoded binary code
+ * Always use older type unless forceType is true.
  */
-ContentType StringToContentType (const std::string &str);
+ContentType StringToContentType (const std::string &str, bool forceType);
 
 /**
  * result of SyncML operations, same codes as in HTTP and the Synthesis engine
@@ -102,6 +107,8 @@ enum SyncMLStatus {
     STATUS_NOT_FOUND = 404,
     /** command not allowed */
     STATUS_COMMAND_NOT_ALLOWED = 405,
+    /** object exists already */
+    STATUS_ALREADY_EXISTS = 418,
     /** command failed / fatal DB error */
     STATUS_FATAL = 500,
     /** general DB error */
@@ -109,8 +116,23 @@ enum SyncMLStatus {
     /** database / memory full error */
     STATUS_FULL = 420,
 
+    /* error codes in the range reserved by Synthesis for the application follow */
+
+    /** ran into an unexpected slow sync, refused to execute it */
+    STATUS_UNEXPECTED_SLOW_SYNC = 22000,
+
+    /** no error at the SyncML level, but some items did not transfer correctly */
+    STATUS_PARTIAL_FAILURE = 22001,
+
     STATUS_MAX = 0x7FFFFFF
 };
+
+/**
+ * short (in the range of 80 characters or less) description of the status code,
+ * followed by "(status xxxx)" because the mapping of description to code
+ * might be ambiguous
+ */
+std::string Status2String(SyncMLStatus status);
 
 /**
  * Information about a database dump.
@@ -231,6 +253,7 @@ class SyncSourceReport {
 class SyncReport : public std::map<std::string, SyncSourceReport> {
     time_t m_start, m_end;
     SyncMLStatus m_status;
+    std::string m_error;
 
  public:
     SyncReport() :
@@ -263,9 +286,18 @@ class SyncReport : public std::map<std::string, SyncSourceReport> {
     SyncMLStatus getStatus() const { return m_status; }
     void setStatus(SyncMLStatus status) { m_status = status; }
 
+    /**
+     * Initial ERROR description as seen by SyncEvolution,
+     * typically via the logging infrastructure. Not localized.
+     */
+    std::string getError() const { return m_error; }
+    void setError(const std::string &error) { m_error = error; }
+
     void clear() {
         std::map<std::string, SyncSourceReport>::clear();
         m_start = m_end = 0;
+        m_error = "";
+        m_status = STATUS_OK;
     }
 
     /** generate short string representing start and duration of sync */
@@ -280,6 +312,27 @@ class SyncReport : public std::map<std::string, SyncSourceReport> {
         WITHOUT_REJECTS = 1 << 4,
         WITH_TOTAL = 1 << 5
     };
+
+    /**
+     * Produces a non-localized explanation for recovering from unexpected 
+     * slow syncs, targeted towards command line users.
+     *
+     * @param peer     config name used to select the affected peer (nor necessarily normalized)
+     * @param sources  list of affected sources
+     * @return explanation, empty string if list of sources is empty
+     */
+    static std::string slowSyncExplanation(const std::string &peer,
+                                           const std::list<std::string> &sources);
+
+    /**
+     * Produces a non-localized explanation for recovering from unexpected 
+     * slow syncs, targeted towards command line users. Uses the information
+     * about sources stored in the report.
+     *
+     * @param peer     config name used to select the affected peer (nor necessarily normalized)
+     * @return explanation, empty string if list of sources is empty
+     */
+    std::string slowSyncExplanation(const std::string &peer) const;
 };
 
 /** pretty-print the report as an ASCII table */

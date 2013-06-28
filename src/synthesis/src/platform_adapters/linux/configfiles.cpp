@@ -259,7 +259,11 @@ bool getLocalDeviceID(string &aURI)
 void PlatformConsolePuts(const char *aText)
 {
   // generic output
-  puts(aText); // appends newline itself
+  #ifdef ANDROID
+    __android_log_write( ANDROID_LOG_DEBUG, "ConsolePuts", aText );
+  #else
+    puts(aText); // appends newline itself
+  #endif
 } // PlatformConsolePuts
 
 

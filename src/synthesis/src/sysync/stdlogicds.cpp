@@ -250,6 +250,41 @@ void TStdLogicDS::logicMarkItemForResend(cAppCharP aLocalID, cAppCharP aRemoteID
 } // TStdLogicDS::logicMarkItemForResend
 
 
+/// save status information required to possibly perform a resume (as passed to datastore with
+/// markOnlyUngeneratedForResume(), markItemForResume() and markItemForResend())
+/// (or, in case the session is really complete, make sure that no resume state is left)
+/// @note Must also save tempGUIDs (for server) and pending/unconfirmed maps (for client)
+localstatus TStdLogicDS::logicSaveResumeMarks(void)
+{
+  PDEBUGBLOCKFMTCOLL(("SaveResumeMarks","let implementation save resume info","datastore=%s",getName()));
+	localstatus sta = implSaveResumeMarks();
+  PDEBUGENDBLOCK("SaveResumeMarks");
+  return sta;
+} // TStdLogicDS::logicSaveResumeMarks
+
+
+
+
+
+// - called for SyncML 1.1 if remote wants number of changes.
+//   Must return -1 if no NOC value can be returned
+sInt32 TStdLogicDS::getNumberOfChanges(void)
+{
+	if (IS_SERVER) {
+    #ifdef SYSYNC_SERVER
+    // for server, number of changes is the number of items in the item list
+    // minus those that are for reference only (in a slow sync resume)
+    return fItems.size()-fNumRefOnlyItems;
+    #endif
+  }
+  else {
+  	// for client, derived class must provide it, or we'll return the default here (=no NOC)
+    // Note: for client-only builds, this methods does not exist in StdLogicDS and thus
+    //       inherited is always used
+  	return inherited::getNumberOfChanges();
+  }
+} // TStdLogicDS::getNumberOfChanges
+
 
 #ifdef SYSYNC_SERVER
 
@@ -308,16 +343,21 @@ localstatus TStdLogicDS::performStartSync(void)
             // we need to post-fetch filter the item first
             bool passes=postFetchFiltering(myitemP);
             if (!passes) {
-              // item does not pass = does not belong to sync set per now
-              if (!fSlowSync && (sop==sop_wants_replace)) {
+              // item was changed and does not pass now -> might be fallen out of the sync set now.
+              // Only when the DB is capable of tracking items fallen out of the sync set (i.e. bring them up as adds
+              // later should they match the filter criteria again), we can implement removing based
+              // on filter criteria. Otherwise, these are simply ignored.
+              if (implTracksSyncopChanges() && !fSlowSync && (sop==sop_wants_replace)) {
                 // item already exists on remote but falls out of syncset now: delete
                 // NOTE: This works only if reviewReadItem() is correctly implemented
                 //       and checks for items that are deleted after being reported
-                //       something else to delete their local map entry
+                //       as replace to delete their local map entry (which makes
+                //       them add candidates again)
                 sop=sop_delete;
                 myitemP->cleardata(); // also get rid of unneeded data
               }
-              else sop=sop_none; // ignore all others (especially adds or slowsync replaces)
+              else
+              	sop=sop_none; // ignore all others (especially adds or slowsync replaces)
             }
             else {
               // item passes = belongs to sync set
@@ -361,7 +401,7 @@ localstatus TStdLogicDS::performStartSync(void)
     // end reading
     sta=implEndDataRead();
     // show items
-    PDEBUGPRINTFX(DBG_HOT,("%s: number of local items involved in %ssync = %lu",getName(), fSlowSync ? "slow " : "",(unsigned long)fItems.size()));
+    PDEBUGPRINTFX(DBG_HOT,("%s: number of local items involved in %ssync = %ld",getName(), fSlowSync ? "slow " : "",(long)fItems.size()));
     CONSOLEPRINTF(("  %ld local items are new/changed/deleted for this sync",fItems.size()));
     if (PDEBUGTEST(DBG_DATA+DBG_DETAILS)) {
       PDEBUGBLOCKFMTCOLL(("SyncSet","Items involved in Sync","datastore=%s",getName()));
@@ -404,7 +444,7 @@ localstatus TStdLogicDS::performStartSync(void)
 #ifdef MULTI_THREAD_DATASTORE
 
 // function executed by thread
-static uInt32 StartSyncThreadFunc(TThreadObject *aThreadObject, uInt32 aParam)
+static uInt32 StartSyncThreadFunc(TThreadObject *aThreadObject, uIntArch aParam)
 {
   // parameter passed is pointer to datastore
   TStdLogicDS *datastoreP = static_cast<TStdLogicDS *>((void *)aParam);
@@ -475,7 +515,7 @@ localstatus TStdLogicDS::startDataAccessForServer(void)
     // - start initialisation now
     fWriteStarted=false;
     // - read all records from DB right now if server data is used at all
-    DEBUGPRINTFX(DBG_DATA,("- number of items in list before StartDataRead = %lu",(unsigned long)fItems.size()));
+    DEBUGPRINTFX(DBG_DATA,("- number of items in list before StartDataRead = %ld",(long)fItems.size()));
     // now we can initialize the conflict resolution mode for this session
     /// @todo move this to localengineds, at point where we get dssta_syncmodestable
     fSessionConflictStrategy=getConflictStrategy(fSlowSync,fFirstTimeSync);
@@ -495,7 +535,7 @@ localstatus TStdLogicDS::startDataAccessForServer(void)
     fInitializing=true; // we enter the initialisation phase now
     fStartInit=true; // and we want to start the init
   }
-  // try starting init now (eventually repeats until it can be done)
+  // try starting init now (possibly repeats until it can be done)
   if (fStartInit) {
     PDEBUGPRINTFX(DBG_DATA,( "MultiThread %sabled", fMultiThread ? "en":"dis" ));
     #ifdef MULTI_THREAD_DATASTORE // combined define and flag
@@ -650,7 +690,7 @@ void TStdLogicDS::dontSendItemAsServer(TSyncItem *syncitemP)
 
 
 // - called when a item in the sync set changes its localID (due to local DB internals)
-//   Datastore must make sure that eventually cached items get updated
+//   Datastore must make sure that possibly cached items get updated
 // - NOTE: derivates must take care of updating map entries as well!
 void TStdLogicDS::dsLocalIdHasChanged(const char *aOldID, const char *aNewID)
 {
@@ -694,20 +734,6 @@ bool TStdLogicDS::MapFinishAsServer(
   }
   return true;
 } // TStdLogicDS::MapFinishAsServer
-
-
-// - called for SyncML 1.1 if remote wants number of changes.
-//   Must return -1 if no NOC value can be returned
-//   NOTE: we implement it here only for server, as it is not really needed
-//   for clients normally - if it is needed, client's agent must provide
-//   it as CustDBDatastore has no own list it can use to count in client case.
-sInt32 TStdLogicDS::getNumberOfChanges(void)
-{
-  // for server, number of changes is the number of items in the item list
-  // minus those that are for reference only (in a slow sync resume)
-  return fItems.size()-fNumRefOnlyItems;
-} // TStdLogicDS::getNumberOfChanges
-
 
 
 // - called to let server generate sync commands for client
@@ -784,7 +810,7 @@ bool TStdLogicDS::logicGenerateSyncCommandsAsServer(
           ));
           ignoreitem=true;
         }
-        // - check if item passes eventual TAF
+        // - check if item passes possible TAF
         /// %%% (do not filter replaces, as these would not get reported again in the next session)
         /// @todo: the above is no longer true as we can now have them re-sent in next session,
         ///        so this must be changed later!!!
@@ -831,7 +857,7 @@ bool TStdLogicDS::logicGenerateSyncCommandsAsServer(
     //   would be sent before the third..nth chunk of the previous command).
     TSmlCommand *cmdP = syncopcmdP;
     syncopcmdP=NULL;
-    // eventually, we have a NULL command here (e.g. in case it could not be generated due to MaxObjSize restrictions)
+    // possibly, we have a NULL command here (e.g. in case it could not be generated due to MaxObjSize restrictions)
     if (cmdP) {
       if (!fSessionP->issuePtr(cmdP,aNextMessageCommands,aInterruptedCommandP)) {
         alldone=false; // issue failed (no room in message), not finished so far
@@ -926,32 +952,50 @@ bool TStdLogicDS::logicGenerateSyncCommandsAsClient(
       return false; // not complete
     }
     // read successful, test for EoC (end of changes)
-    if (fEoC)
-      break; // reading done
+    if (fEoC) break; // reading done
+    if (fSlowSync) changed=true; // all have changed (just in case GetItem does not return clean result here)
     // get sync op to perform
     TSyncOperation syncop=syncitemP->getSyncOp();
-    #ifdef OBJECT_FILTERING
-    // Filtering
-    // - call this anyway (makes sure item is made conformant to remoteAccept filter, even if
-    //   fFilteringNeeded is not set)
     if (syncop!=sop_delete && syncop!=sop_soft_delete && syncop!=sop_archive_delete) {
+	    #ifdef OBJECT_FILTERING
+      // Filtering
+      // - call this anyway (makes sure item is made conformant to remoteAccept filter, even if
+      //   fFilteringNeeded is not set)
       bool passes=postFetchFiltering(syncitemP);
-      if (fFilteringNeeded) {
-      	if (!passes) {
-        	// item does not pass (current) filter: don't send it.
-          // Note that we DO NOT DELETE items falling out of the sync set by filtering,
-          // as for that we'd need to be able to differentiate adds from replaces.
-          // The use case for client-side filtering is also normally not the "moving-subset-window"
-          // case as for server side filtering, but more static exclusion of certain types of
-          // local entries (e.g. to prevent private stuff going to the server).
-          // - we don't need that sync item
-          delete syncitemP;
-          // - try next
-          continue;
+      if (fFilteringNeeded && !passes) {
+        // item was changed and does not pass now -> might be fallen out of the sync set now.
+        // Only when the DB is capable of tracking items fallen out of the sync set (i.e. bring them up as adds
+        // later should they match the filter criteria again), we can implement removing based
+        // on filter criteria. Otherwise, these are simply ignored.
+        if (implTracksSyncopChanges() && !fSlowSync && changed && (syncop==sop_replace || syncop==sop_wants_replace)) {
+					// item already exists on remote but falls out of syncset now: delete
+          // NOTE: This works only if reviewReadItem() is correctly implemented
+          //       and checks for items that are deleted after being reported
+          //       as replace to delete their local map entry (which makes
+          //       them add candidates again)
+          syncop = sop_delete;
+          syncitemP->cleardata(); // also get rid of unneeded data
+        }
+        else
+        	syncop = sop_none; // ignore all others (especially adds or slowsync replaces)
+      }
+      else
+      #endif
+      {
+      	// item passes (or no filters anyway) -> belongs to sync set
+        if ((syncop==sop_replace || syncop==sop_wants_replace) && !changed && !fSlowSync) {
+          // exists but has not changed since last sync
+          syncop=sop_none; // ignore for now
         }
       }
     }
-    #endif
+    // check if we should use that item
+    if (syncop==sop_none) {
+      delete syncitemP;
+      continue; // try next from DB
+    }
+    // set final syncop now
+    syncitemP->setSyncOp(syncop);
     // add local ID prefix, if any
     if (aLocalIDPrefix && *aLocalIDPrefix && syncitemP->hasLocalID())
       syncitemP->fLocalID.insert(0,aLocalIDPrefix);
@@ -971,7 +1015,7 @@ bool TStdLogicDS::logicGenerateSyncCommandsAsClient(
     //   would be sent before the third..nth chunk of the previous command).
     TSmlCommand *cmdP = syncopcmdP;
     syncopcmdP=NULL;
-    // eventually, we have a NULL command here (e.g. in case it could not be generated due to MaxObjSize restrictions)
+    // possibly, we have a NULL command here (e.g. in case it could not be generated due to MaxObjSize restrictions)
     if (cmdP) {
       if (!fSessionP->issuePtr(cmdP,aNextMessageCommands,aInterruptedCommandP)) {
         alldone=false; // issue failed (no room in message), not finished so far
@@ -1007,7 +1051,7 @@ bool TStdLogicDS::logicGenerateSyncCommandsAsClient(
 #endif // SYSYNC_CLIENT
 
 
-/// @brief called to have all non-yet-generated sync commands as "to-be-resumed"
+/// @brief called to have all not-yet-generated sync commands as "to-be-resumed"
 void TStdLogicDS::logicMarkOnlyUngeneratedForResume(void)
 {
 	if (IS_SERVER) {

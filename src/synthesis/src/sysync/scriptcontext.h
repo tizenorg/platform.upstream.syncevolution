@@ -283,7 +283,7 @@ public:
     TScriptContext *aCtxP,
     const string &aTScript,
     const TFuncTable *aFuncTableP, // context's function table, NULL if none
-    void *aCallerContext, // free pointer eventually having a meaning for context functions
+    void *aCallerContext, // free pointer possibly having a meaning for context functions
     TMultiFieldItem *aTargetItemP=NULL, // target (or "loosing") item
     bool aTargetWritable=true, // if set, target item may be modified
     TMultiFieldItem *aReferenceItemP=NULL, // reference for source (or "old" or "winning") item
@@ -296,7 +296,7 @@ public:
     TScriptContext *aCtxP,
     const string &aTScript,
     const TFuncTable *aFuncTableP, // context's function table, NULL if none
-    void *aCallerContext, // free pointer eventually having a meaning for context functions
+    void *aCallerContext, // free pointer possibly having a meaning for context functions
     TMultiFieldItem *aTargetItemP=NULL, // target (or "loosing") item
     bool aTargetWritable=true, // if set, target item may be modified
     TMultiFieldItem *aReferenceItemP=NULL, // reference for source (or "old" or "winning") item
@@ -308,7 +308,7 @@ public:
     TScriptContext *aCtxP,
     const string &aTScript,
     const TFuncTable *aFuncTableP, // context's function table, NULL if none
-    void *aCallerContext, // free pointer eventually having a meaning for context functions
+    void *aCallerContext, // free pointer possibly having a meaning for context functions
     TMultiFieldItem *aTargetItemP, // target (or "loosing") item
     bool aTargetWritable, // if set, target item may be modified
     TMultiFieldItem *aReferenceItemP, // reference for source (or "old" or "winning") item
@@ -345,7 +345,7 @@ public:
     TItemField **aResultPP, // if not NULL, a result field will be returned here (must be deleted by caller)
     bool aAsFunction, // if set, this is a function call
     const TFuncTable *aFuncTableP, // context's function table, NULL if none
-    void *aCallerContext, // free pointer eventually having a meaning for context functions
+    void *aCallerContext, // free pointer possibly having a meaning for context functions
     TMultiFieldItem *aTargetItemP, // target (or "loosing") item
     bool aTargetWritable, // if set, target item may be modified
     TMultiFieldItem *aReferenceItemP, // reference for source (or "old" or "winning") item
@@ -422,7 +422,7 @@ public:
 private:
   //   Function table
   const TFuncTable *fFuncTableP; // caller context's function table
-  void *fCallerContext; // free pointer eventually having a meaning for context functions
+  void *fCallerContext; // free pointer possibly having a meaning for context functions
   // - helpers
   void pushState(TScriptState aNewState, cUInt8P aBegin=NULL, uInt16 aLine=0);
   void popState(TScriptState aCurrentStateExpected);

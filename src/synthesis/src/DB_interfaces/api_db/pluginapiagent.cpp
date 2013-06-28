@@ -499,7 +499,7 @@ void TPluginApiAgent::CheckDevice(const char *aDeviceID)
 } // TPluginApiAgent::CheckDevice
 
 
-// Device is no known as detailed as possible (i.e. we have the device information, if it was possible to get it)
+// Device is now known as detailed as possible (i.e. we have the device information, if it was possible to get it)
 // The implementation can now save some of this information for logging and tracking purposes:
 // - getRemoteURI()         : string, remote Device URI (usually IMEI or other globally unique ID)
 // - getRemoteDescName()    : string, remote Device's descriptive name (constructed from DevInf <man> and <mod>, or

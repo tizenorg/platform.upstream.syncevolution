@@ -51,7 +51,7 @@ class Channel {
  public:
      Channel() {channel = NULL;}
      Channel(GIOChannel *c) {channel = c;}
-     ~Channel() { if (!channel) {g_io_channel_unref (channel);}}
+     ~Channel() { if (channel) {g_io_channel_unref (channel);}}
      GIOChannel* get() {return channel;}
 };
 
@@ -59,9 +59,8 @@ class ObexEvent {
     guint event;
 public:
     ObexEvent() {event = 0;}
-    ObexEvent (guint e) {event = e; SE_LOG_DEBUG (NULL, NULL, "ObexTransportAgent: creating obex event %d", e);}
-    ~ObexEvent () {if (event) {g_source_remove (event);} 
-                   SE_LOG_DEBUG (NULL, NULL, "ObexTransportAgent: removing obex event %d", event);}
+    ObexEvent (guint e) {event = e;}
+    ~ObexEvent () {if (event) {g_source_remove (event);}}
     guint get() {return event;}
 };
 
@@ -70,7 +69,7 @@ class ObexHandle {
 public:
     ObexHandle() {handle = NULL;}
     ObexHandle(obex_t *h) {handle = h;}
-    ~ObexHandle() {if (!handle) {OBEX_Cleanup (handle);}}
+    ~ObexHandle() {if (handle) {OBEX_Cleanup (handle);}}
     obex_t* get() {return handle;}
 };
 

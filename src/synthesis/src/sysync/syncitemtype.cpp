@@ -198,7 +198,7 @@ const SmlDevInfCTCapPtr_t TSyncItemType::getCTCapDevInf(TLocalEngineDS *aOnlyFor
 // transmitted DevInf.
 bool TSyncItemType::analyzeCTCap(SmlDevInfCTCapPtr_t aCTCapP)
 {
-  // Note: derived classes will eventually get some type-related info out of the CTCaps
+  // Note: derived classes will possibly get some type-related info out of the CTCaps
   return true;
 } // TSyncItemType::analyzeCTCap
 
@@ -733,7 +733,7 @@ SmlItemPtr_t TSyncItemType::newSmlItem(
     // data only if not delete, copy or map
     TSyncOperation syncop = aSyncItemP->getSyncOp();
     if (syncop!=sop_delete && syncop!=sop_archive_delete && syncop!=sop_soft_delete && syncop!=sop_copy) {
-      // let virtual method implemented in descendant fill in data and, eventually, meta.
+      // let virtual method implemented in descendant fill in data and, possibly, meta.
       if (!internalSetItemData(aSyncItemP,smlitemP,aLocalDatastoreP)) {
         SYSYNC_THROW(TSyncException("newSmlItem: internalSetItemData() failed"));
       }

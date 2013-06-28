@@ -2390,7 +2390,7 @@ appPointer TBinfileImplClient::newSessionKey(TEngineInterface *aEngineInterfaceP
 void TBinfileImplClient::InternalResetSession(void)
 {
   // reset all datastores now to make sure all DB activity is done
-  // before we eventually close session-global databases
+  // before we possibly close session-global databases
   // (Note: TerminateDatastores() will be called again by TSyncSession)
   TerminateDatastores();
   fRemoteFlags=0; // no remote-specifics enabled so far
@@ -2585,7 +2585,7 @@ void TBinfileImplClient::processPutResultItem(bool aIsPut, const char *aLocUri, 
       // - now modify profile (may include the current profile)
       sInt32 activeprofile;
       bool provok = fConfigP->executeProvisioningString(provstring, activeprofile);
-      // - reload current profile (eventually modified)
+      // - reload current profile (possibly modified)
       fConfigP->getProfile(fProfileIndex,fProfile);
       // is ok
       aStatusCommand.setStatusCode(provok ? 200 : 400); // ok or bad request

@@ -29,7 +29,10 @@ using namespace sysync;
 namespace sysync {
 
 // special field IDs
-#define FID_NOT_SUPPORTED -1 // no field-ID
+#define FID_NOT_SUPPORTED -128 // no field-ID
+#if defined(VARIDX_UNDEFINED) && FID_NOT_SUPPORTED!=VARIDX_UNDEFINED
+	#error "FID_NOT_SUPPORTED must be the same as VARIDX_UNDEFINED"
+#endif
 
 // special field offsets
 #define OFFS_NOSTORE -9999 // offset meaning "do not store"

@@ -114,7 +114,7 @@ bool TRemoteDataStore::remoteProcessSyncCmd(
   // adjust name of datastore (may include subpath or CGI)
   fFullName = smlSrcTargLocURIToCharP(aSyncP->source);
   // read meta of Sync Command for remote datastore
-  // NOTE: this will overwrite Max values eventually read from DevInf
+  // NOTE: this will overwrite Max values possibly read from DevInf
   //       as meta is more accurate (actual free bytes/ids, not total)
   SmlMetInfMetInfPtr_t metaP = smlPCDataToMetInfP(aSyncP->meta);
   if (metaP) {
@@ -137,7 +137,7 @@ bool TRemoteDataStore::remoteProcessSyncCmd(
 // SYNC command bracket end (but another might follow in next message)
 bool TRemoteDataStore::remoteProcessSyncCmdEnd(void)
 {
-  // %%% nop for now, %%% eventually obsolete
+  // %%% nop for now, %%% possibly obsolete
   return true;
 } // TRemoteDataStore::remoteProcessSyncCmdEnd
 
@@ -145,7 +145,7 @@ bool TRemoteDataStore::remoteProcessSyncCmdEnd(void)
 // end of all sync commands from client
 bool TRemoteDataStore::endOfClientSyncCmds(void)
 {
-  // %%% nop for now, %%% eventually obsolete
+  // %%% nop for now, %%% possibly obsolete
   return true;
 } // TRemoteDataStore::endOfClientSyncCmds
 

@@ -288,7 +288,7 @@ public:
     ;
   /// @brief Open structure Block, without any attributes
   virtual void DebugOpenBlock(cAppCharP aBlockName, cAppCharP aBlockTitle=NULL, bool aCollapsed=false);
-  /// @brief Close structure Block. Name is used to close eventually unclosed contained Blocks automatically.
+  /// @brief Close structure Block. Name is used to close possibly unclosed contained Blocks automatically.
   virtual void DebugCloseBlock(cAppCharP aBlockName);
 protected:
   // helper methods
@@ -358,7 +358,7 @@ public:
   ///   to write into the output channel until a new main thread gains control via DebugDefineMainThread();
   void DebugThreadOutputDone(bool aRemoveIt=false);
   /// @brief Define the current calling thread as the main debug thread
-  /// Note: This is used for example when starting to process the next request of a session which eventually
+  /// Note: This is used for example when starting to process the next request of a session which possibly
   //        occurs from another thread).
   void DebugDefineMainThread(void);
 private:

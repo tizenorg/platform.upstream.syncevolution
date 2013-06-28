@@ -117,7 +117,7 @@ public:
   // - try to shrink command by at least aReduceByBytes
   //   Returns false if shrink is not possible
   virtual bool shrinkCommand(sInt32 /* aReduceByBytes */) { return false; /* normal commands can't be shrunk */ };
-  // - eventually substitute data with previous session's buffered left-overs from a chunked transfer
+  // - possibly substitute data with previous session's buffered left-overs from a chunked transfer
   //   for resuming a chunked item transfer.
   virtual bool checkChunkContinuation(void) { return false; /* normal commands can't split and so can't continue */ };
   // - test if completely issued (must be called after issue() and continueIssue())
@@ -430,7 +430,7 @@ public:
   //   Returns NULL if split is not possible
   virtual TSmlCommand *splitCommand(sInt32 aReduceByBytes);
   virtual bool canSplit(void);
-  // - eventually substitute data with previous session's buffered left-overs from a chunked transfer
+  // - possibly substitute data with previous session's buffered left-overs from a chunked transfer
   //   for resuming a chunked item transfer.
   virtual bool checkChunkContinuation(void);
   // - test if completely issued (must be called after issue() and continueIssue())
@@ -688,8 +688,6 @@ public:
   void addSourceRef(const char *aSourceRef); // Source LocURI of an item this status applies to
   // - add a String Item to an existing status
   void addItemString(const char *aItemString); // item string to be added
-  // - add an (internal) error code message as text item to the status
-  void addErrorCodeString(uInt32 aErrCode, const char *aText=NULL);
   // - add an Item to an existing status
   void addItem(SmlItemPtr_t aItemP); // existing item data structure, ownership is passed to Status
   // - move items from another status to this one (passes ownership of items and deletes them from original)

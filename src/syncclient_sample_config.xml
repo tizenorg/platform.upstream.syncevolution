@@ -97,6 +97,27 @@
       $VCALENDAR_10TO20_PRIORITY_CONVERSION;
     ]]></macro>
 
+    <macro name="VCARD_INCOMING_NAMECHANGE_SCRIPT"><![CDATA[
+      STRING tmp;
+      tmp=NORMALIZED(FN);
+      if (tmp==EMPTY){
+        tmp=N_FIRST;
+        if (N_MIDDLE != EMPTY) {
+          if (tmp != EMPTY) {
+            tmp = tmp + " ";
+          }
+          tmp = tmp + N_MIDDLE;
+        }
+        if (N_LAST != EMPTY) {
+          if (tmp != EMPTY) {
+            tmp = tmp + " ";
+          }
+          tmp = tmp + N_LAST;
+        }
+        FN = tmp;
+      }
+    ]]></macro>
+
 		<!-- define script macros for scripts that are used by both vCalendar 1.0 and iCalendar 2.0 -->
 
     <macro name="VCALENDAR_INCOMING_SCRIPT"><![CDATA[
@@ -199,7 +220,6 @@
       }
     ]]></macro>
 
-
     <macro name="VCALENDAR_OUTGOING_SCRIPT"><![CDATA[
       // set UTC time of generation for iCalendar 2.0 DTSTAMP
       DGENERATED = NOW();
@@ -263,6 +283,8 @@
 
       <field name="FN" type="string" compare="conflict" merge="fillempty"/>
       <field name="FILE-AS" type="string" compare="conflict" merge="fillempty"/>
+
+      <field name="GENDER" type="string" compare="conflict" merge="fillempty"/>
 
       <!-- categories and classification -->
       <field name="CATEGORIES" array="yes" type="string" compare="conflict"/>
@@ -329,6 +351,10 @@
       <field name="MSN_SLOT"          array="yes" type="string" compare="conflict"/>
       <field name="YAHOO_HANDLE"        array="yes" type="string" compare="conflict"/>
       <field name="YAHOO_SLOT"          array="yes" type="string" compare="conflict"/>
+      <field name="SKYPE_HANDLE"      array="yes" type="string" compare="conflict"/>
+      <field name="SKYPE_SLOT"        array="yes" type="string" compare="conflict"/>
+      <field name="SIP_HANDLE"        array="yes" type="string" compare="conflict"/>
+      <field name="SIP_SLOT"          array="yes" type="string" compare="conflict"/>
 
       <!-- home address -->
       <field name="ADR_STREET"        array="yes" type="multiline" compare="conflict"/>
@@ -381,6 +407,10 @@
 
         <property name="X-EVOLUTION-FILE-AS">
           <value field="FILE-AS"/>
+        </property>
+
+        <property name="X-GENDER">
+          <value field="GENDER"/>
         </property>
 
         <!-- onlyformode="standard": not part of vCard 2.1, but some
@@ -578,6 +608,20 @@
           </parameter>
         </property>
 
+        <property name="X-SKYPE" suppressempty="yes"> 
+          <value field="SKYPE_HANDLE"/>
+          <parameter name="X-EVOLUTION-UI-SLOT" positional="no" show="yes">
+            <value field="SKYPE_SLOT"/>
+          </parameter>
+        </property>
+
+        <property name="X-SIP" suppressempty="yes">
+          <value field="SIP_HANDLE"/>
+          <parameter name="X-EVOLUTION-UI-SLOT" positional="no" show="yes">
+            <value field="SIP_SLOT"/>
+          </parameter>
+        </property>
+
         <property name="ADR" values="7">
           <value index="0" field="ADR_POBOX"/>
           <value index="1" field="ADR_ADDTL"/>
@@ -623,12 +667,18 @@
     <datatype name="vCard21" basetype="vcard">
       <version>2.1</version>
       <use mimeprofile="vCard"/>
+     <incomingscript><![CDATA[
+        $VCARD_INCOMING_NAMECHANGE_SCRIPT
+      ]]></incomingscript>
     </datatype>
 
     <!-- vCard 3.0 datatype, using vCard profile defined above -->
     <datatype name="vCard30" basetype="vcard">
       <version>3.0</version>
       <use mimeprofile="vCard"/>
+      <incomingscript><![CDATA[
+        $VCARD_INCOMING_NAMECHANGE_SCRIPT
+      ]]></incomingscript>
     </datatype>
 
 
@@ -941,6 +991,30 @@
         <!-- sub-profile for event -->
         <subprofile name="VEVENT" nummandatory="1" showifselectedonly="yes" field="ISEVENT" value="1">
 
+            <property name="STATUS"  suppressempty="yes" onlyformode="old">
+                <value field="STATUS" conversion="emptyonly">
+                    <enum name="COMPLETED"      value="0"/>
+                    <enum mode="defaultvalue"   value="1"/> <!-- catch unknown, but also non-conformant NEEDS_ACTION -->
+                    <enum name="NEEDS ACTION"   value="1"/>
+                    <enum name="CANCELLED"      value="3"/>
+                    <enum name="ACCEPTED"       value="4"/>
+                    <enum name="TENTATIVE"      value="5"/>
+                    <enum name="DELEGATED"      value="6"/>
+                    <enum name="DECLINED"       value="7"/>
+                    <enum name="SENT"           value="8"/>
+                    <enum name="CONFIRMED"      value="9"/>
+                    <enum name="FINAL"          value="11"/>
+                </value>
+            </property>
+
+            <property name="STATUS" suppressempty="yes" onlyformode="standard">
+                <value field="STATUS" conversion="emptyonly">
+                    <enum name="CANCELLED" value="3"/>
+                    <enum name="TENTATIVE" value="5"/>
+                    <enum name="CONFIRMED" value="9"/>
+                </value>
+            </property>
+
           <property name="LAST-MODIFIED" suppressempty="yes">
             <value field="DMODIFIED"/>
           </property>
@@ -1219,7 +1293,7 @@
       <incomingscript><![CDATA[
         $VCALENDAR_INCOMING_SCRIPT
       ]]></incomingscript>
-
+      
       <outgoingscript><![CDATA[
         $VCALENDAR_OUTGOING_SCRIPT
       ]]></outgoingscript>
@@ -1235,6 +1309,7 @@
       <incomingscript><![CDATA[
         $VCALENDAR_INCOMING_SCRIPT
       ]]></incomingscript>
+
 
       <outgoingscript><![CDATA[
         $VCALENDAR_OUTGOING_SCRIPT

@@ -590,13 +590,12 @@ protected:
   // Simple custom DB access interface methods
   // - returns true if database implementation can only update all fields of a record at once
   virtual bool dsReplaceWritesAllDBFields(void);
-  #ifndef BASED_ON_BINFILE_CLIENT
-  // Note: these are identically in binfile client, so we need them only if there is no binfile layer
+  #ifndef BINFILE_ALWAYS_ACTIVE
   // - returns true if DB implementation supports resume (saving of resume marks, alert code, pending maps, tempGUIDs)
-  virtual bool dsResumeSupportedInDB(void) { return fConfigP && fConfigP->fResumeSupport; };
-  /// returns true if DB implementation supports resuming in midst of a chunked item (can save fPIxxx.. and related admin data)
-  virtual bool dsResumeChunkedSupportedInDB(void) { return fConfigP && fConfigP->fResumeItemSupport; };
-  #endif // not BASED_ON_BINFILE_CLIENT
+  virtual bool dsResumeSupportedInDB(void);
+  // - returns true if DB implementation supports resuming in midst of a chunked item (can save fPIxxx.. and related admin data)
+  virtual bool dsResumeChunkedSupportedInDB(void);
+  #endif // not BINFILE_ALWAYS_ACTIVE
   #ifdef OBJECT_FILTERING
   // - returns true if DB implementation can also apply special filters like CGI-options
   //   /dr(x,y) etc. during fetching
@@ -645,8 +644,12 @@ protected:
   #ifdef BASED_ON_BINFILE_CLIENT
   /// when based on binfile client, we need the syncset loaded when binfile is active
   bool implNeedSyncSetToRetrieve(void) { return binfileDSActive(); };
+  /// when based on binfile client, we can't track syncop changes (like having the DB report
+  /// items as added again when stdlogic filters have decided they fell out of the syncset)
+  virtual bool implTracksSyncopChanges(void) { return !binfileDSActive(); };
   #else
-  bool implNeedSyncSetToRetrieve(void) { return false; };
+  bool implNeedSyncSetToRetrieve(void) { return false; }; // non-binfiles don't need the syncset to retrieve
+  virtual bool implTracksSyncopChanges(void) { return true; }; // non-binfile custimpls are capable of this
   #endif
   
 
@@ -687,7 +690,7 @@ protected:
   virtual void implMarkItemForResend(cAppCharP aLocalID, cAppCharP aRemoteID);
   /// called to have all non-yet-generated sync commands as "to-be-resumed"
   virtual void implMarkOnlyUngeneratedForResume(void);
-  /// save status information required to eventually perform a resume (as passed to datastore with
+  /// save status information required to possibly perform a resume (as passed to datastore with
   /// markOnlyUngeneratedForResume() and markItemForResume())
   /// (or, in case the session is really complete, make sure that no resume state is left)
   virtual localstatus implSaveResumeMarks(void);
@@ -708,6 +711,12 @@ protected:
   /// get next item's ID and modification status from the sync set.
   /// @return false if no item found
   virtual bool getNextItemInfo(localid_out_t &aLocalID, bool &aItemHasChanged);
+  /// get first item from the sync set. Caller obtains ownership if aItemP is not NULL after return
+  /// @return false if no item found
+  virtual bool getFirstItem(TSyncItem *&aItemP);
+  /// get next item from the sync set. Caller obtains ownership if aItemP is not NULL after return
+  /// @return false if no item found
+  virtual bool getNextItem(TSyncItem *&aItemP);
   /// get item by local ID from the sync set. Caller obtains ownership if aItemP is not NULL after return
   /// @return != LOCERR_OK  if item with specified ID is not found.
   virtual localstatus getItemByID(localid_t aLocalID, TSyncItem *&aItemP);
@@ -732,10 +741,6 @@ protected:
   /// zaps the entire datastore, returns LOCERR_OK if ok
   /// @return LOCERR_OK or error code.
   virtual localstatus zapDatastore(void);
-  /// get error code for last routine call that returned !=LOCERR_OK
-  /// @return platform specific DB error code
-  virtual uInt32 lastDBError(void);
-
   /// @}
   #endif // BASED_ON_BINFILE_CLIENT
 
@@ -775,7 +780,7 @@ protected:
   #endif // not BINFILE_ALWAYS_ACTIVE
   #ifdef SYSYNC_SERVER
   // - called when a item in the sync set changes its localID (due to local DB internals)
-  //   Datastore must make sure that eventually cached items get updated
+  //   Datastore must make sure that possibly cached items get updated
   virtual void dsLocalIdHasChanged(const char *aOldID, const char *aNewID);
   #endif // SYSYNC_SERVER
   // - target key (if needed by descendant)
@@ -800,6 +805,7 @@ protected:
   #ifdef BASED_ON_BINFILE_CLIENT
   bool fSyncSetLoaded; // set if sync set is currently loaded
   bool makeSyncSetLoaded(bool aNeedAll);
+	localstatus getItemFromSyncSetItem(TSyncSetItem *aSyncSetItemP, TSyncItem *&aItemP);
   #endif // BASED_ON_BINFILE_CLIENT
   bool fNoSingleItemRead; // if set, syncset list will also contain items
   bool fMultiFolderDB; // if set, we need the syncset list for finding container IDs later

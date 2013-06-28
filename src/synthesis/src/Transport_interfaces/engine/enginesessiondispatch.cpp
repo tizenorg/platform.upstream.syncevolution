@@ -177,15 +177,15 @@ Ret_t TEngineSessionDispatch::HandleDecodingException(TSyncSession *aSessionP, c
   #ifdef SYDEBUG
   // determine session name
   const char *sname = "<unknown>";
-  try {
+  SYSYNC_TRY {
     if (aSessionP) {
       sname = aSessionP->getLocalSessionID();
     }
   }
-  catch (...) {
+  SYSYNC_CATCH (...)
     sname = "<BAD aSessionP, caused exception>";
     aSessionP=NULL; // prevent attempt to write to session's log
-  }
+  SYSYNC_ENDCATCH
   // determine routine name
   if (!aRoutine) aRoutine="<unspecified routine>";
   // show details

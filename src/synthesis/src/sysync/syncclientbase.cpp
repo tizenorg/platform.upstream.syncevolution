@@ -150,7 +150,7 @@ TSyError TClientEngineInterface::OpenSessionInternal(SessionH &aNewSessionH, uIn
     fSessionStatus = clientBaseP->CreateSession();
     // Pass profile ID
     if (fSessionStatus==LOCERR_OK) {
-      clientBaseP->fClientSessionP->SetProfileSelector(aSelector & ~SESSIONSEL_PROFILEID_MASK);
+      clientBaseP->fClientSessionP->SetProfileSelector(aSelector & SESSIONSEL_PROFILEID_MASK);
       // return the session pointer as handle
       aNewSessionH=(SessionH)clientBaseP->fClientSessionP;
     }
@@ -417,14 +417,14 @@ localstatus TSyncClientBase::CreateTunnelSession(cAppCharP aDatastoreName)
 // create a new client session
 localstatus TSyncClientBase::CreateSession(void)
 {
-  // remove any eventually existing old session first
+  // remove any possibly existing old session first
   KillClientSession();
   // get config
   //TAgentConfig *configP = static_cast<TAgentConfig *>(getSyncAppBase()->getRootConfig()->fAgentConfigP);
   // create a new client session of appropriate type
   // - use current time as session ID (only for logging purposes)
   string s;
-  LONGLONGTOSTR(s,(long long)(getSystemNowAs(TCTX_UTC)));
+  LONGLONGTOSTR(s,PRINTF_LLD_ARG(getSystemNowAs(TCTX_UTC)));
   fClientSessionP = static_cast<TAgentConfig *>(fConfigP->fAgentConfigP)->CreateClientSession(s.c_str());
   if (!fClientSessionP) return LOCERR_UNDEFINED;
   // check expiry here

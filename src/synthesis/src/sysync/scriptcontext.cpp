@@ -38,7 +38,11 @@
   #define EXPRDBGTEST (debugon && fSessionP && ((fSessionP->getDbgMask() & (DBG_SCRIPTS|DBG_SCRIPTEXPR)) == (DBG_SCRIPTS|DBG_SCRIPTEXPR)))
   #define DBGSTRINGDEF(s) string s
   #define DBGVALUESHOW(s,v) dbgValueShow(s,v)
-  #define SHOWVARDEFS(t) showVarDefs(t)
+  #if SYDEBUG>1
+	  #define SHOWVARDEFS(t) showVarDefs(t)
+  #else
+  	#define SHOWVARDEFS(t)
+  #endif
 #else
   #define SCRIPTDBGMSGX(lvl,x)
   #define SCRIPTDBGMSG(x)
@@ -1092,7 +1096,7 @@ public:
     // adjust
     char c = *(filler.c_str()); // NUL or filler char
     if (c!='0' && sign) {
-      s.insert(0,1,sign); // no zero-padding: insert sign before padding
+      s.insert((size_t)0,(size_t)1,sign); // no zero-padding: insert sign before padding
       sign=0; // done now
     }
     sInt32 n,sz = s.size() + (sign ? 1 : 0); // leave room for sign after zero padding
@@ -1102,7 +1106,7 @@ public:
       if (n<0)
         s.erase(0,-n); // delete at beginning
       else if (n>0 && c)
-        s.insert(0,n,c); // insert at beginning
+        s.insert((size_t)0,(size_t)n,c); // insert at beginning
     }
     else {
       // left aligned field
@@ -1110,11 +1114,11 @@ public:
       if (n<0)
         s.erase(sz-n,-n); // delete at end
       else if (n>0 && c)
-        s.insert(sz,n,c); // insert at end
+        s.insert((size_t)sz,(size_t)n,c); // insert at end
     }
     // insert plus now if filled with zeroes
     if (sign)
-      s.insert(0,1,sign); // insert sign after zero padding
+      s.insert((size_t)0,(size_t)1,sign); // insert sign after zero padding
     // return string
     aTermP->setAsString(s);
   } // func_NumFormat
@@ -3311,7 +3315,7 @@ void TScriptContext::executeBuiltIn(TItemField *&aTermP, const TBuiltInFuncDef *
 } // TScriptContext::executeBuiltIn
 
 
-#ifdef SYDEBUG
+#if SYDEBUG>1
 void TScriptContext::showVarDefs(cAppCharP aTxt)
 {
   if (DEBUGTEST(DBG_SCRIPTS+DBG_EXOTIC)) {
@@ -3382,7 +3386,7 @@ bool TScriptContext::executeTest(
   TScriptContext *aCtxP,
   const string &aTScript,
   const TFuncTable *aFuncTableP, // context's function table, NULL if none
-  void *aCallerContext, // free pointer eventually having a meaning for context functions and chain function
+  void *aCallerContext, // free pointer possibly having a meaning for context functions and chain function
   TMultiFieldItem *aTargetItemP, // target (or "loosing") item
   bool aTargetWritable, // if set, target item may be modified
   TMultiFieldItem *aReferenceItemP, // reference for source (or "old" or "winning") item
@@ -3432,7 +3436,7 @@ bool TScriptContext::executeWithResult(
   TScriptContext *aCtxP,
   const string &aTScript,
   const TFuncTable *aFuncTableP, // context's function table, NULL if none
-  void *aCallerContext, // free pointer eventually having a meaning for context functions
+  void *aCallerContext, // free pointer possibly having a meaning for context functions
   TMultiFieldItem *aTargetItemP, // target (or "loosing") item
   bool aTargetWritable, // if set, target item may be modified
   TMultiFieldItem *aReferenceItemP, // reference for source (or "old" or "winning") item
@@ -3465,7 +3469,7 @@ bool TScriptContext::execute(
   TScriptContext *aCtxP,
   const string &aTScript,
   const TFuncTable *aFuncTableP, // context's function table, NULL if none
-  void *aCallerContext, // free pointer eventually having a meaning for context functions
+  void *aCallerContext, // free pointer possibly having a meaning for context functions
   TMultiFieldItem *aTargetItemP, // target (or "loosing") item
   bool aTargetWritable, // if set, target item may be modified
   TMultiFieldItem *aReferenceItemP, // reference for source (or "old" or "winning") item
@@ -3556,7 +3560,7 @@ bool TScriptContext::getVarField(TItemField *&aItemFieldP)
     varidx=(sInt8)(*(p+2));
     if (varidx==VARIDX_UNDEFINED)
       SYSYNC_THROW(TScriptErrorException("Undefined identifier",line));
-    // check eventual array index
+    // check possible array index
     arridx=-1; // default to non-array
     if (*np==TK_OPEN_ARRAY) {
       tk=gettoken(); // consume open bracket
@@ -3813,7 +3817,7 @@ TItemField *TScriptContext::evalTerm(TItemFieldTypes aResultType)
         evalParams(funccontextP);
         // copy current line for reference (as builtins have no own line number
         funccontextP->line=line;
-        // copy caller's context pointer (eventually modified by function table chaining)
+        // copy caller's context pointer (possibly modified by function table chaining)
         funccontextP->fCallerContext=callerContext;
         funccontextP->fParentContextP=this; // link to calling script context
         // copy target and reference item vars
@@ -3856,7 +3860,7 @@ TItemField *TScriptContext::evalTerm(TItemFieldTypes aResultType)
       funcscript=getSyncAppBase()->getRootConfig()->fScriptConfigP->getFunctionScript(*(p+2));
       if (!funcscript)
         SYSYNC_THROW(TSyncException(DEBUGTEXT("invalid user function index","scri7")));
-      // %%% add caching of function contexts here eventually.
+      // %%% possibly add caching of function contexts here.
       //     Now we rebuild a context for every function call. Not extremely efficient...
       funccontextP=NULL;
       rebuildContext(fAppBaseP,*funcscript,funccontextP,fSessionP,true);
@@ -3914,7 +3918,7 @@ TItemField *TScriptContext::evalTerm(TItemFieldTypes aResultType)
       //SCRIPTDBGMSGX(DBG_SCRIPTS+DBG_EXOTIC+DBG_SCRIPTEXPR,("- Literal BOOLEAN: %d",tk==TK_TRUE ? 1 : 0));
     }
     else if (tk==TK_NUMERIC_LITERAL) {
-      // %%% add fty_float later eventually
+      // %%% possibly add fty_float later
       // set type to integer if not another type requested
       //SCRIPTDBGMSGX(DBG_SCRIPTS+DBG_EXOTIC+DBG_SCRIPTEXPR,("- Literal number: %0.*s",*(p+1),p+2));
       if (termtype==fty_none) termtype=fty_integer;
@@ -4217,7 +4221,7 @@ bool TScriptContext::ExecuteScript(
   TItemField **aResultPP, // if not NULL, a result field will be returned here (must be deleted by caller)
   bool aAsFunction, // if set, this is a function call
   const TFuncTable *aFuncTableP, // context's function table, NULL if none
-  void *aCallerContext, // free pointer eventually having a meaning for context functions
+  void *aCallerContext, // free pointer possibly having a meaning for context functions
   TMultiFieldItem *aTargetItemP, // target (or "loosing") item
   bool aTargetWritable, // if set, target item may be modified
   TMultiFieldItem *aReferenceItemP, // reference for source (or "old" or "winning") item

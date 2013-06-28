@@ -205,7 +205,6 @@ uInt32 TThreadObject::execute()
 {
   // standard implementation simply starts the predefined thread function, if any
   if (fThreadFunc) {
- // return fThreadFunc(this,fThreadFuncParam);
     uInt32 err= fThreadFunc(this,fThreadFuncParam);
     return err;
   }

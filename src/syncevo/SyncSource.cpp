@@ -40,6 +40,7 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <unistd.h>
 
 #include <fstream>
 #include <iostream>
@@ -143,10 +144,10 @@ void SyncSourceBase::getDatastoreXML(string &xml, XMLConfigFragments &fragments)
                 "           " << info.m_beforeWriteScript << "\n";
         }
         xmlstream <<
-            "           itemdata = MAKETEXTWITHPROFILE(" << info.m_profile << ", \"EVOLUTION\");\n"
+            "           itemdata = MAKETEXTWITHPROFILE(" << info.m_profile << ", \"" << info.m_backendRule << "\");\n"
             "        ]]></beforewritescript>\n"
             "        <afterreadscript><![CDATA[\n"
-            "           PARSETEXTWITHPROFILE(itemdata, " << info.m_profile << ", \"EVOLUTION\");\n";
+            "           PARSETEXTWITHPROFILE(itemdata, " << info.m_profile << ", \"" << info.m_backendRule << "\");\n";
         if(!info.m_afterReadScript.empty()) {
             xmlstream << 
                 "           " << info.m_afterReadScript<< "\n";
@@ -341,7 +342,7 @@ SyncSource *SyncSource::createSource(const SyncSourceParams &params, bool error)
 SyncSource *SyncSource::createTestingSource(const string &name, const string &type, bool error,
                                             const char *prefix)
 {
-    SyncConfig config("testing");
+    SyncConfig config("testing@client-test");
     SyncSourceNodes nodes = config.getSyncSourceNodes(name);
     SyncSourceParams params(name, nodes);
     PersistentSyncSourceConfig sourceconfig(name, nodes);
@@ -966,9 +967,11 @@ sysync::TSyError SyncSourceAdmin::deleteMapItem(sysync::cMapID mID)
 void SyncSourceAdmin::flush()
 {
     m_configNode->flush();
-    m_mappingNode->clear();
-    m_mappingNode->writeProperties(m_mapping);
-    m_mappingNode->flush();
+    if (m_mappingLoaded) {
+        m_mappingNode->clear();
+        m_mappingNode->writeProperties(m_mapping);
+        m_mappingNode->flush();
+    }
 }
 
 void SyncSourceAdmin::resetMap()
@@ -976,25 +979,34 @@ void SyncSourceAdmin::resetMap()
     m_mapping.clear();
     m_mappingNode->readProperties(m_mapping);
     m_mappingIterator = m_mapping.begin();
+    m_mappingLoaded = true;
 }
 
 
 void SyncSourceAdmin::mapid2entry(sysync::cMapID mID, string &key, string &value)
 {
-    key = SafeConfigNode::escape(mID->localID ? mID->localID : "", true, false);
-    value = StringPrintf("%s %x %x",
+    key = StringPrintf ("%s-%x",
+                         SafeConfigNode::escape(mID->localID ? mID->localID : "", true, false).c_str(),
+                         mID->ident);
+    value = StringPrintf("%s %x",
                          SafeConfigNode::escape(mID->remoteID ? mID->remoteID : "", true, false).c_str(),
-                         mID->flags, mID->ident);
+                         mID->flags);
 }
 
 void SyncSourceAdmin::entry2mapid(const string &key, const string &value, sysync::MapID mID)
 {
-    mID->localID = StrAlloc(SafeConfigNode::unescape(key).c_str());
+    std::string rawkey = SafeConfigNode::unescape(key);
+    size_t found = rawkey.find_last_of ("-");
+    mID->localID = StrAlloc(rawkey.substr(0,found).c_str());
+    if (found != rawkey.npos) {
+        mID->ident =  strtol(rawkey.substr(found+1).c_str(), NULL, 16);
+    } else {
+        mID->ident = 0;
+    }
     std::vector< std::string > tokens;
     boost::split(tokens, value, boost::is_from_range(' ', ' '));
     mID->remoteID = tokens.size() > 0 ? StrAlloc(tokens[0].c_str()) : NULL;
     mID->flags = tokens.size() > 1 ? strtol(tokens[1].c_str(), NULL, 16) : 0;
-    mID->ident = tokens.size() > 2 ? strtol(tokens[2].c_str(), NULL, 16) : 0;
 }
 
 void SyncSourceAdmin::init(SyncSource::Operations &ops,
@@ -1005,6 +1017,7 @@ void SyncSourceAdmin::init(SyncSource::Operations &ops,
     m_configNode = config;
     m_adminPropertyName = adminPropertyName;
     m_mappingNode = mapping;
+    m_mappingLoaded = false;
 
     ops.m_loadAdminData = boost::bind(&SyncSourceAdmin::loadAdminData,
                                       this, _1, _2, _3);

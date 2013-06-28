@@ -139,9 +139,9 @@ void TItemField::setAsInteger(fieldinteger_t aInteger)
 {
   string s;
   #ifndef NO64BITINT
-  LONGLONGTOSTR(s,(long long)aInteger);
+  LONGLONGTOSTR(s,PRINTF_LLD_ARG(aInteger));
   #else
-  StringObjPrintf(s,"%ld",(long)aInteger);
+  StringObjPrintf(s,"%ld",(sInt32)aInteger);
   #endif
   // set as string
   setAsString(s);
@@ -596,7 +596,7 @@ void TStringField::setBlobProxy(TBlobProxy *aBlobProxyP)
 void TStringField::pullFromProxy(void)
 {
   if (fBlobProxyP) {
-    const size_t bufsiz=2048;
+    const size_t bufsiz=4096;
     cAppCharP bufP = new char[bufsiz];
     resetStream();
     size_t by;
@@ -1311,7 +1311,7 @@ lineartime_t TTimestampField::getTimestampAs(timecontext_t aTargetContext, timec
   }
   // return target context as actual context
   if (aActualContext) *aActualContext = aTargetContext;
-  // return timestamp, eventually truncated to date-only or time-only if requested
+  // return timestamp, possibly truncated to date-only or time-only if requested
   if (TCTX_IS_DATEONLY(aTargetContext))
     return lineartime2dateonlyTime(ts);
   else if (TCTX_IS_TIMEONLY(aTargetContext))
@@ -1769,9 +1769,9 @@ void TIntegerField::getAsString(string &aString)
     aString.erase();
   else {
     #ifndef NO64BITINT
-    LONGLONGTOSTR(aString,(long long)fInteger);
+    LONGLONGTOSTR(aString,PRINTF_LLD_ARG(fInteger));
     #else
-    StringObjPrintf(aString,"%ld",(long)fInteger);
+    StringObjPrintf(aString,"%ld",(sInt32)fInteger);
     #endif
   }
 } // TIntegerField::getAsString
@@ -2046,7 +2046,7 @@ TSyError TItemFieldKey::GetValueInternal(
             if (fTimeMode & TMODE_FLAG_FLOATING)
               ts = tsFldP->getTimestampAs(TCTX_UNKNOWN); // as-is
             else
-              ts = tsFldP->getTimestampAs(TCTX_UTC,&tctx); // always as UTC, will be converted to SYSTEM eventually by caller
+              ts = tsFldP->getTimestampAs(TCTX_UTC,&tctx); // always as UTC, will be converted to SYSTEM possibly by caller
             // return timestamp
             valPtr = &ts;
           }

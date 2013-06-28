@@ -73,7 +73,7 @@ sInt16 ISO8601StrToTimestamp(cAppCharP aISOString, lineartime_t &aTimestamp, tim
         aISOString++; n++;
       }
       #ifdef NO_FLOATS
-      long part;
+      sInt32 part;
       h = StrToLong(aISOString,part);
       #else
       double part;

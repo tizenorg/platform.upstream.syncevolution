@@ -610,6 +610,50 @@ class EmitSignal5
     }
 };
 
+template <typename A1, typename A2, typename A3, typename A4, typename A5, typename A6>
+class EmitSignal6
+{
+    const DBusObject &m_object;
+    const std::string m_signal;
+
+ public:
+    EmitSignal6(const DBusObject &object,
+                const std::string &signal) :
+        m_object(object),
+        m_signal(signal)
+    {}
+
+    void operator () (A1 a1, A2 a2, A3 a3, A4 a4, A5 a5, A6 a6)
+    {
+        DBusMessagePtr msg(dbus_message_new_signal(m_object.getPath(),
+                                                   m_object.getInterface(),
+                                                   m_signal.c_str()));
+        if (!msg) {
+            throw std::runtime_error("dbus_message_new_signal() failed");
+        }
+        append_retvals(msg, a1, a2, a3, a4, a5, a6);
+        if (!dbus_connection_send(m_object.getConnection(), msg.get(), NULL)) {
+            throw std::runtime_error("dbus_connection_send failed");
+        }
+    }
+
+    GDBusSignalTable makeSignalEntry(GDBusSignalFlags flags = G_DBUS_SIGNAL_FLAG_NONE) const
+    {
+        GDBusSignalTable entry;
+        entry.name = m_signal.c_str();
+        std::string buffer;
+        buffer += dbus_traits<A1>::getSignature();
+        buffer += dbus_traits<A2>::getSignature();
+        buffer += dbus_traits<A3>::getSignature();
+        buffer += dbus_traits<A4>::getSignature();
+        buffer += dbus_traits<A5>::getSignature();
+        buffer += dbus_traits<A6>::getSignature();
+        entry.signature = strdup(buffer.c_str());
+        entry.flags = flags;
+        return entry;
+    }
+};
+
 template <class M>
 struct MakeMethodEntry
 {
@@ -682,6 +726,7 @@ class DBusObjectHelper : public DBusObject
     DBusConnectionPtr m_conn;
     std::string m_path;
     std::string m_interface;
+    boost::function<void (void)> m_callback;
     bool m_activated;
     DBusVector<GDBusMethodTable> m_methods;
     DBusVector<GDBusSignalTable> m_signals;
@@ -689,10 +734,12 @@ class DBusObjectHelper : public DBusObject
  public:
     DBusObjectHelper(DBusConnection *conn,
                      const std::string &path,
-                     const std::string &interface) :
+                     const std::string &interface,
+                     const boost::function<void (void)> &callback = boost::function<void (void)>()) :
         m_conn(conn),
         m_path(path),
         m_interface(interface),
+        m_callback(callback),
         m_activated(false)
     {
     }
@@ -736,17 +783,18 @@ class DBusObjectHelper : public DBusObject
     void activate(GDBusMethodTable *methods,
                   GDBusSignalTable *signals,
                   GDBusPropertyTable *properties,
-                  void *user_data) {
-        if (!g_dbus_register_interface(getConnection(), getPath(), getInterface(),
-                                       methods, signals, properties, user_data, NULL)) {
+                  const boost::function<void (void)> &callback) {
+        if (!g_dbus_register_interface_with_callback(getConnection(), getPath(), getInterface(),
+                                       methods, signals, properties, this, NULL, interfaceCallback)) {
             throw std::runtime_error(std::string("g_dbus_register_interface() failed for ") + getPath() + " " + getInterface());
         }
+        m_callback = callback;
         m_activated = true;
     }
 
     void activate() {
-        if (!g_dbus_register_interface(getConnection(), getPath(), getInterface(),
-                                       m_methods.get(), m_signals.get(), NULL, NULL, NULL)) {
+        if (!g_dbus_register_interface_with_callback(getConnection(), getPath(), getInterface(),
+                                       m_methods.get(), m_signals.get(), NULL, this, NULL, interfaceCallback)) {
             throw std::runtime_error(std::string("g_dbus_register_interface() failed for ") + getPath() + " " + getInterface());
         }
         m_activated = true;
@@ -761,6 +809,12 @@ class DBusObjectHelper : public DBusObject
                 throw std::runtime_error(std::string("g_dbus_unregister_interface() failed for ") + getPath() + " " + getInterface());
             }
             m_activated = false;
+        }
+    }
+    static void interfaceCallback(void *userData) {
+        DBusObjectHelper* helper = static_cast<DBusObjectHelper*>(userData);
+        if(!helper->m_callback.empty()) {
+            helper->m_callback();
         }
     }
 };

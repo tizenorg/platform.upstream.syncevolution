@@ -1,4 +1,4 @@
-BACKENDS =  backends/addressbook backends/evolution backends/file backends/sqlite
+BACKENDS =  backends/addressbook backends/evolution backends/file backends/maemo backends/sqlite backends/xmlrpc
 
 service_in_files = org.syncevolution.service.in
 if COND_DBUS
@@ -23,7 +23,7 @@ SUBDIRS = $(SYNTHESIS_SUBDIR) $(DBUS_DIRS) syncevo $(BACKENDS) $(GUI_DIR)
 DIST_SUBDIRS = gdbus dbus syncevo $(BACKENDS) gtk-ui
 BUILT_SOURCES =
 
-AM_CPPFLAGS = $(SUBDIRS:%=-I$(srcdir)/%) -I$(srcdir)/../test -I$(top_srcdir) $(BACKEND_CPPFLAGS) $(GLIB_CFLAGS)
+AM_CPPFLAGS = $(SUBDIRS:%=-I$(srcdir)/%) -I$(srcdir)/../test -I$(top_srcdir) $(BACKEND_CPPFLAGS)
 
 EXTRA_PROGRAMS =
 TESTS =
@@ -41,7 +41,7 @@ SYNCEVOLUTION_DEP += $(SYNCSOURCES)
 endif
 EXTRA_DIST = shlibs.local Makefile-gen.am syncclient_sample_config.xml $(service_in_files)
 
-TEMPLATE_FILES = templates/Funambol/config.ini templates/Funambol/sources/calendar/config.ini templates/Funambol/sources/todo/config.ini templates/Funambol/sources/addressbook/config.ini templates/Funambol/sources/memo/config.ini templates/ScheduleWorld/config.ini templates/ScheduleWorld/sources/calendar/config.ini templates/ScheduleWorld/sources/todo/config.ini templates/ScheduleWorld/sources/addressbook/config.ini templates/ScheduleWorld/sources/memo/config.ini templates/README
+TEMPLATE_FILES = templates/README templates/servers/Funambol/config.ini templates/servers/Funambol/template.ini templates/servers/Funambol/sources/calendar/config.ini templates/servers/Funambol/sources/todo/config.ini templates/servers/Funambol/sources/addressbook/config.ini templates/servers/Funambol/sources/memo/config.ini templates/servers/ScheduleWorld/config.ini templates/servers/ScheduleWorld/template.ini templates/servers/ScheduleWorld/sources/calendar/config.ini templates/servers/ScheduleWorld/sources/todo/config.ini templates/servers/ScheduleWorld/sources/addressbook/config.ini templates/servers/ScheduleWorld/sources/memo/config.ini templates/clients/phone/nokia/S40/7210c/config.ini templates/clients/phone/nokia/S40/7210c/template.ini templates/clients/phone/nokia/S40/7210c/sources/calendar/config.ini templates/clients/phone/nokia/S40/7210c/sources/calendar+todo/config.ini templates/clients/phone/nokia/S40/7210c/sources/todo/config.ini templates/clients/phone/nokia/S40/7210c/sources/addressbook/config.ini templates/clients/phone/nokia/S40/7210c/sources/memo/config.ini templates/clients/default/template.ini templates/clients/SyncEvolution/config.ini templates/clients/SyncEvolution/template.ini templates/clients/SyncEvolution/sources/calendar/config.ini templates/clients/SyncEvolution/sources/todo/config.ini templates/clients/SyncEvolution/sources/addressbook/config.ini templates/clients/SyncEvolution/sources/memo/config.ini
 templatedir = $(datadir)/syncevolution/
 nobase_dist_template_DATA = $(TEMPLATE_FILES)
 
@@ -67,7 +67,7 @@ CORE_SOURCES =
 # When using modules the registration is done inside the
 # module and the register file is unnecessary. However, they
 # still need to be included in "make dist".
-BACKEND_REGISTRIES = backends/addressbook/AddressBookSourceRegister.cpp backends/evolution/EvolutionCalendarSourceRegister.cpp backends/evolution/EvolutionContactSourceRegister.cpp backends/file/FileSyncSourceRegister.cpp backends/sqlite/SQLiteContactSourceRegister.cpp
+BACKEND_REGISTRIES = backends/addressbook/AddressBookSourceRegister.cpp backends/evolution/EvolutionCalendarSourceRegister.cpp backends/evolution/EvolutionContactSourceRegister.cpp backends/file/FileSyncSourceRegister.cpp backends/maemo/MaemoCalendarSourceRegister.cpp backends/sqlite/SQLiteContactSourceRegister.cpp backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
 if ENABLE_MODULES
 EXTRA_DIST += $(BACKEND_REGISTRIES)
 else
@@ -75,7 +75,7 @@ CORE_SOURCES += $(BACKEND_REGISTRIES)
 endif
 
 CORE_CXXFLAGS = $(SYNTHESIS_CFLAGS)
-CORE_LDADD = $(SYNCEVOLUTION_LDADD) syncevo/libsyncevolution.la $(GLIB_LIBS) $(LIBS)
+CORE_LDADD = $(SYNCEVOLUTION_LDADD) syncevo/libsyncevolution.la $(GLIB_LIBS) $(GTHREAD_LIBS) $(GOBJECT_LIBS) $(LIBS)
 CORE_DEP = $(SYNCEVOLUTION_DEP) syncevo/libsyncevolution.la $(SYNTHESIS_DEP)
 CORE_LD_FLAGS = -uSyncEvolution_Module_Version -Wl,--export-dynamic
 
@@ -88,7 +88,9 @@ syncevolution_SOURCES = \
 	CmdlineSyncClient.h \
 	CmdlineSyncClient.cpp \
 	$(CORE_SOURCES)
+if ENABLE_UNIT_TESTS
 nodist_syncevolution_SOURCES = ../test/test.cpp
+endif
 
 # SYNCEVOLUTION_LDADD will be replaced with libsyncebook.la/libsyncecal.la/libsyncsqlite.la
 # if linking statically against them, empty otherwise;
@@ -143,12 +145,13 @@ if COND_DBUS
 syncevo_dbus_server_SOURCES = \
 	syncevo-dbus-server.cpp \
 	$(CORE_SOURCES)
-nodist_syncevo_dbus_server_SOURCES = \
-	../test/test.cpp
+if ENABLE_UNIT_TESTS
+nodist_syncevo_dbus_server_SOURCES = ../test/test.cpp
+endif
 
-syncevo_dbus_server_LDADD = gdbus/libgdbus.la $(CORE_LDADD)
+syncevo_dbus_server_LDADD = gdbus/libgdbus.la $(CORE_LDADD) $(KEYRING_LIBS)
 syncevo_dbus_server_CPPFLAGS = -DHAVE_CONFIG_H -I$(srcdir)/gdbus $(AM_CPPFLAGS)
-syncevo_dbus_server_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS) $(GLIB_CFLAGS) $(DBUS_CFLAGS) $(LIBSOUP_CFLAGS)
+syncevo_dbus_server_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS) $(GLIB_CFLAGS) $(DBUS_CFLAGS) $(LIBSOUP_CFLAGS) $(KEYRING_CFLAGS)
 syncevo_dbus_server_LDFLAGS = $(CORE_LD_FLAGS) $(LIBSOUP_LIBS)
 syncevo_dbus_server_DEPENDENCIES = gdbus/libgdbus.la $(EXTRA_LTLIBRARIES) $(CORE_DEP) $(SYNTHESIS_DEP)
 endif
@@ -165,23 +168,28 @@ client_test_SOURCES = \
 	$(CORE_SOURCES)
 nodist_client_test_SOURCES = ../test/test.cpp
 
-# Always compile the registry files into client-test because that is
-# the only place where they are compiled with
-# ENABLE_INTEGRATION_TESTS.  This works without undefined references
-# because client-test is linked against all shared backend libraries
-# (non-portable, but works).
-# Disabled now, the client test can also be dynamically loaded and registered
-# just the same as syncevolution
-# if ENABLE_MODULES
-# client_test_SOURCES += $(BACKEND_REGISTRIES)
-# endif
-
 # list of test file base files
 #
 # Generated files (testcases/ical20.ics.funambol.tem) are derived from
 # the original base file ($(srcdir)/test/testcases/ical20.ics) by
 # applying a patch ($(srcdir)/test/testcases/ical20.ics.funambol.tem.patch).
 CLIENT_LIB_TEST_FILES = \
+	testcases/lcs/file1.txt \
+	testcases/lcs/file2.txt \
+	testcases/templates/clients/default/template.ini \
+	testcases/templates/clients/SyncEvolution/sources/addressbook/config.ini \
+	testcases/templates/clients/SyncEvolution/sources/memo/config.ini \
+	testcases/templates/clients/SyncEvolution/sources/todo/config.ini \
+	testcases/templates/clients/SyncEvolution/sources/calendar/config.ini \
+	testcases/templates/clients/SyncEvolution/template.ini \
+	testcases/templates/clients/SyncEvolution/config.ini \
+	testcases/templates/clients/phone/nokia/S40/7210c/sources/addressbook/config.ini \
+	testcases/templates/clients/phone/nokia/S40/7210c/sources/memo/config.ini \
+	testcases/templates/clients/phone/nokia/S40/7210c/sources/todo/config.ini \
+	testcases/templates/clients/phone/nokia/S40/7210c/sources/calendar/config.ini \
+	testcases/templates/clients/phone/nokia/S40/7210c/sources/calendar+todo/config.ini \
+	testcases/templates/clients/phone/nokia/S40/7210c/template.ini \
+	testcases/templates/clients/phone/nokia/S40/7210c/config.ini \
 	testcases/vcard21.vcf \
 	testcases/vcard30.vcf \
 	testcases/ical20.ics \
@@ -241,8 +249,11 @@ testcase2patch: $(TEST_FILES_GENERATED)
 	done
 
 # copy base test files
-$(filter-out %.tem, $(filter testcases/%, $(subst $(srcdir)/../test/,,$(CLIENT_LIB_TEST_FILES)))) : % : $(srcdir)/../test/%
-	mkdir -p testcases
+$(filter-out %.tem testcases/templates/%, $(filter testcases/%, $(subst $(srcdir)/../test/,,$(CLIENT_LIB_TEST_FILES)))) : % : $(srcdir)/../test/%
+	mkdir -p ${@D}
+	cp $< $@
+$(filter testcases/templates/%, $(CLIENT_LIB_TEST_FILES)) : testcases/% : $(srcdir)/%
+	mkdir -p ${@D}
 	cp $< $@
 
 # The binary does not really depend on the test cases, only running it does.

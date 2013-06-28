@@ -405,7 +405,8 @@ void TRemoteRuleConfig::clear(void)
   fTreatCopyAsAdd=-1;
   fCompleteFromClientOnly=-1;
   fRequestMaxTime=-1; // not defined
-  fDefaultOutCharset=chs_unknown; // do not set the charset
+  fDefaultOutCharset=chs_unknown; // do not set the default output charset
+  fDefaultInCharset=chs_unknown; // do not set the default input interpretation charset
   // - options that also have a configurable session default
   fUpdateClientDuringSlowsync=-1;
   fUpdateServerDuringSlowsync=-1;
@@ -489,6 +490,8 @@ bool TRemoteRuleConfig::localStartElement(const char *aElementName, const char *
     expectInt32(fRequestMaxTime);
   else if (strucmp(aElementName,"outputcharset")==0)
     expectEnum(sizeof(fDefaultOutCharset),&fDefaultOutCharset,MIMECharSetNames,numCharSets);
+  else if (strucmp(aElementName,"inputcharset")==0)
+    expectEnum(sizeof(fDefaultInCharset),&fDefaultInCharset,MIMECharSetNames,numCharSets);
   else if (strucmp(aElementName,"rejectstatus")==0)
     expectUInt16(fRejectStatusCode);
   else if (strucmp(aElementName,"forceutc")==0)
@@ -981,21 +984,20 @@ TSyncSession::TSyncSession(
   // show starting
   OBJ_PROGRESS_EVENT(getSyncAppBase(),pev_sessionstart,NULL,0,0,0);
   #ifdef SYDEBUG
+  #if defined(SYSYNC_SERVER) && defined(SYSYNC_CLIENT)
+    #define CAN_BE_TEXT "Server+Client"
+  #elif defined(SYSYNC_SERVER)
+    #define CAN_BE_TEXT "Server"
+  #else
+    #define CAN_BE_TEXT "Client"
+  #endif
   if (PDEBUGTEST(DBG_HOT)) {
     // Show Session Start
     PDEBUGPRINTFX(DBG_HOT,(
       "==== %s Session started with SyncML (%s) Engine Version %d.%d.%d.%d",
       IS_SERVER ? "Server" : "Client",
-      #ifdef SYSYNC_SERVER
-      "Server"
-      #endif
-      #if defined(SYSYNC_SERVER) && defined(SYSYNC_CLIENT)
-      "+"
-      #endif
-      #ifdef SYSYNC_CLIENT
-      "Client"
-      #endif
-      , SYSYNC_VERSION_MAJOR,
+      CAN_BE_TEXT,
+      SYSYNC_VERSION_MAJOR,
       SYSYNC_VERSION_MINOR,
       SYSYNC_SUBVERSION,
       SYSYNC_BUILDNUMBER
@@ -1211,7 +1213,7 @@ void TSyncSession::announceDestruction()
   // terminate sync with all datastores
   TLocalDataStorePContainer::iterator pos;
   for (pos=fLocalDataStores.begin(); pos!=fLocalDataStores.end(); ++pos) {
-    // now let datastores cancel eventual direct links to derived TSession
+    // now let datastores cancel possible direct links to derived TSession
     (*pos)->announceAgentDestruction();
   }
 } // TSyncSession::announceDestruction
@@ -1488,6 +1490,7 @@ void TSyncSession::InternalResetSessionEx(bool terminationCall)
   fTreatCopyAsAdd=false;
   fStrictExecOrdering=true; // SyncML standard requires strict ordering (of statuses, but this implies execution of commands, too)
   fDefaultOutCharset=chs_utf8; // SyncML content is usually UTF-8
+  fDefaultInCharset=chs_utf8; // SyncML content is usually UTF-8
   // defaults for possibly remote-dependent behaviour
   fCompleteFromClientOnly=getSessionConfig()->fCompleteFromClientOnly; // conform to standard by default
   fRequestMaxTime=getSessionConfig()->fRequestMaxTime;
@@ -3549,7 +3552,7 @@ localstatus TSyncSession::initSync(
 
   // search for local datastore first
   string cgiOptions;
-  // - search for datastore and obtain eventual CGI
+  // - search for datastore and obtain possible CGI
   fLocalSyncDatastoreP = findLocalDataStoreByURI(SessionRelativeURI(aLocalDatastoreURI),&cgiOptions);
   if (!fLocalSyncDatastoreP) {
     // no such local datastore
@@ -3692,7 +3695,7 @@ bool TSyncSession::processSyncOpItem(
       &ErrorFuncTable,
       &errctx // caller context
     );
-  // not completely handled, use eventually modified status code
+  // not completely handled, use possibly modified status code
   #ifdef SYDEBUG
   if (aStatusCommand.getStatusCode() != errctx.newstatuscode) {
     PDEBUGPRINTFX(DBG_ERROR,("Status: Session Script changed original status=%hd to %hd (original op was %s)",aStatusCommand.getStatusCode(),errctx.newstatuscode,SyncOpNames[errctx.syncop]));
@@ -4012,11 +4015,13 @@ bool TSyncSession::checkCredentials(const char *aUserName, const SmlCredPtr_t aC
     SYSYNC_BUILDNUMBER
   ));
   if (IS_SERVER) {
+    #ifdef SYSYNC_SERVER
     PDEBUGPRINTFX(DBG_HOT,(
       "==== SyncML URL used = '%s', username as sent by remote = '%s'",
       fInitialLocalURI.c_str(),
       fSyncUserName.c_str()
     ));
+    #endif
   } // server
   // return result
   return authok;
@@ -4353,7 +4358,8 @@ localstatus TSyncSession::checkRemoteSpecifics(SmlDevInfDevInfPtr_t aDevInfP)
       if (ruleP->fCompleteFromClientOnly>=0) fCompleteFromClientOnly = ruleP->fCompleteFromClientOnly;
       if (ruleP->fRequestMaxTime>=0) fRequestMaxTime = ruleP->fRequestMaxTime;
       if (ruleP->fDefaultOutCharset!=chs_unknown) fDefaultOutCharset = ruleP->fDefaultOutCharset;
-      // - eventually override decisions that are otherwise made by session
+      if (ruleP->fDefaultInCharset!=chs_unknown) fDefaultInCharset = ruleP->fDefaultInCharset;
+      // - possibly override decisions that are otherwise made by session
       //   Note: this is not a single option because we had this before rule options were tristates.
       if (ruleP->fForceUTC>0) fRemoteCanHandleUTC=true;
       if (ruleP->fForceLocaltime>0) fRemoteCanHandleUTC=false;
@@ -4404,9 +4410,11 @@ localstatus TSyncSession::checkRemoteSpecifics(SmlDevInfDevInfPtr_t aDevInfP)
     	// no devinf -> blind sync attempt: apply best-guess workaround settings
       // Note that a blind sync attempt means that the remote party is at least partly non-compliant, as we always request a devInf!
 		  PDEBUGPRINTFX(DBG_ERROR,("No remote information available -> applying best-guess workaround behaviour options"));
+      #ifndef MINIMAL_CODE
       // set device description
       fRemoteDescName = fRemoteName.empty() ? "[unknown remote]" : fRemoteName.c_str();
       fRemoteDescName += " (no devInf)";
+      #endif // MINIMAL_CODE
       // switch on legacy behaviour (conservative preferred types)
       fLegacyMode = true;
       if (IS_CLIENT) {
@@ -4421,8 +4429,10 @@ localstatus TSyncSession::checkRemoteSpecifics(SmlDevInfDevInfPtr_t aDevInfP)
     }
   }
   // show summary
-  PDEBUGPRINTFX(DBG_HOT+DBG_REMOTEINFO,("Summary of all behaviour options (eventually set by remote rule)"));
+  PDEBUGPRINTFX(DBG_HOT+DBG_REMOTEINFO,("Summary of all behaviour options (possibly set by remote rule)"));
+  #ifndef MINIMAL_CODE
   PDEBUGPRINTFX(DBG_HOT+DBG_REMOTEINFO,("- Remote Description        : %s",fRemoteDescName.c_str()));
+  #endif
   PDEBUGPRINTFX(DBG_HOT+DBG_REMOTEINFO,("- Legacy mode               : %s",boolString(fLegacyMode)));
   PDEBUGPRINTFX(DBG_HOT+DBG_REMOTEINFO,("- Lenient mode              : %s",boolString(fLenientMode)));
   PDEBUGPRINTFX(DBG_HOT+DBG_REMOTEINFO,("- Limited Field Lengths     : %s",boolString(fLimitedRemoteFieldLengths)));
@@ -4446,6 +4456,7 @@ localstatus TSyncSession::checkRemoteSpecifics(SmlDevInfDevInfPtr_t aDevInfP)
   PDEBUGPRINTFX(DBG_HOT+DBG_REMOTEINFO,("- Remote can handle UTC     : %s",boolString(fRemoteCanHandleUTC)));
   PDEBUGPRINTFX(DBG_HOT+DBG_REMOTEINFO,("- Max Request time [sec]    : %ld",static_cast<long>(fRequestMaxTime)));
   PDEBUGPRINTFX(DBG_HOT+DBG_REMOTEINFO,("- Content output charset    : %s",MIMECharSetNames[fDefaultOutCharset]));
+  PDEBUGPRINTFX(DBG_HOT+DBG_REMOTEINFO,("- Content input charset     : %s",MIMECharSetNames[fDefaultInCharset]));
   // done
   return LOCERR_OK;
 } // TSyncSession::checkRemoteSpecifics

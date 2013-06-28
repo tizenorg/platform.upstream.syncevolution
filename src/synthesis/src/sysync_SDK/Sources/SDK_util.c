@@ -26,6 +26,10 @@
 #include <malloc.h>
 #endif
 
+#ifdef ANDROID
+#include "android/log.h"
+#endif
+
 #define MyDB "SDK"                /* local debug name */
 #define SDKversionMask 0xffff00ff /* Old mask for version comparison: Omit OS identifier */
 #define maxmsglen      1024       /* Maximum string length for callback string */
@@ -113,7 +117,11 @@ cAppCharP MyPlatform( void )
     #endif
 
   #elif defined  LINUX
-    p= "PLATFORM:Linux";
+    #ifdef ANDROID
+      p= "PLATFORM:Android";
+    #else
+      p= "PLATFORM:Linux";
+    #endif
 
 /* elif **** for JAVA defined at the Java code ******** */
 /*  p= "PLATFORM:Java" */
@@ -449,7 +457,15 @@ TSyError SDK_Size( void* aCB, uInt32 *sSize )
 
 /* ---------- debug output ----------------------------------- */
 /* prints directly to the screen */
-static void ConsolePuts( char* msg ) { printf( "%s\n", msg ); }
+static void ConsolePuts( cAppCharP msg )
+{
+  #ifdef ANDROID
+    __android_log_write( ANDROID_LOG_DEBUG, "ConsolePuts", msg );
+  #else
+    printf( "%s\n", msg );
+  #endif
+} /* ConsolePuts */
+
 
 #if !defined(SYSYNC_ENGINE) && !defined(UIAPI_LINKED)
   /* the Synthesis SyncML engine has its own implementation */
@@ -552,12 +568,19 @@ static void CallbackVPrintf( DB_Callback aCB, cAppCharP format, va_list args, uI
     char               message[ maxmsglen ];
     char* ptr= (char*)&message;
 
+    #ifdef __GNUC__
+    // need a copy for vasprintf() call
+    va_list copy;
+    va_copy(copy, args);
+    #endif
+
                message[ 0 ]= '\0';                /* start with an empty <msg> */
     vsnprintf( message, maxmsglen, format,args ); /* assemble the message string */
 
     #ifdef __GNUC__
           isMax= strlen(message)==maxmsglen-1;
-      if (isMax) vasprintf( &ptr, format, args );
+      if (isMax) vasprintf( &ptr, format, copy );
+      va_end(copy);
     #endif
 
     switch (outputMode) {

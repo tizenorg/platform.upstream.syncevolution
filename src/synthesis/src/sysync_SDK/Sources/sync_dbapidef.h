@@ -29,14 +29,6 @@
 #include "sync_include.h"
 #include "sync_declarations.h"
 
-#ifdef JNI_SUPPORT
-  #ifdef MACOSX
-    #include <JavaVM/jni.h>
-  #else
-    #include <jni.h>
-  #endif
-#endif
-
 /* export prefix and suffix is dependent on platform and source language */
 #ifdef __cplusplus
   #define ENTRY_C extern "C"
@@ -161,6 +153,8 @@ enum Version {
   VP_CB_Version11        = 0x01050200,
   /** V1.6.0.X : Tunnel support                                  */
   VP_Tunnel              = 0x01060000,
+  /** V1.6.1.X : Correct SetValue support                        */
+  VP_SetValue            = 0x01060100,
   /** V1.6.1.X : Current version, use 'Plugin_Version()'         */
   VP_CurrentVersion      = 0x01060100,
 

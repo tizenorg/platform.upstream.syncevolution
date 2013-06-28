@@ -60,7 +60,7 @@ typedef uInt16 bferr;
 
 typedef enum {
   fopm_update,  // open for read and write
-  fopm_create   // create for read and write (truncate eventually existing)
+  fopm_create   // create for read and write (truncate possibly existing)
 } TFileOpenModes;
 
 // DB version update function:

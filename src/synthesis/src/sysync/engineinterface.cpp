@@ -168,9 +168,9 @@ TSyError TSettingsKeyImpl::GetValueByID(
   // get native type of value (and check validity of ID - invalid IDs must return VALTYPE_UNKNOWN)
   uInt16 valType = GetValueType(aID);
   if (valType==VALTYPE_UNKNOWN) return DB_NotFound;
-  // direct return in case requested type matches native type
+  // direct return in case requested type matches native type or raw data (VALTYPE_BUF) is requested
   if (
-    (aValType == VALTYPE_BUF) ||
+    (aValType == VALTYPE_BUF) || // we want raw buffer data
     ((valType == aValType) &&
      (valType != VALTYPE_TEXT || (fCharSet==chs_utf8 && fLineEndMode==lem_cstr)) &&
      (valType != VALTYPE_TIME64 || ((fTimeMode & TMODE_MODEMASK)==TMODE_LINEARTIME)) )
@@ -183,21 +183,39 @@ TSyError TSettingsKeyImpl::GetValueByID(
       }
       else {
         // low level text routines do not set terminators for simplicity, so make sure we have one here
-        sta=GetValueInternal(aID,aArrayIndex,aBuffer,aBufSize-1,aValSize);
-        // make sure we have a NUL terminator
-        ((appCharP)aBuffer)[aBufSize-1]=0; // ultimate terminator
+        // - request only max one char less than buf can hold, so we always have room for a terminator
+        sta = GetValueInternal(aID,aArrayIndex,aBuffer,aBufSize-1,aValSize);
+        // - make sure we have a NUL terminator at the very end of the buffer in all cases
+        ((appCharP)aBuffer)[aBufSize-1] = 0; // ultimate terminator
+        // - also make sure we have a terminator at the end of the actual string
         if (sta==LOCERR_OK && aValSize<aBufSize)
-          ((appCharP)aBuffer)[aValSize]=0;
-        // return LOCERR_TRUNCATED if ok but buffer is not large enough
+          ((appCharP)aBuffer)[aValSize] = 0;
+        // signal LOCERR_TRUNCATED if ok, but buffer is not large enough
         if (sta==LOCERR_OK && aValSize>aBufSize-1) {
           sta = LOCERR_TRUNCATED;
-          aValSize=aBufSize-1; // return actual size, not untruncated one
+          aValSize = aBufSize-1; // return actual size, not untruncated one
         }
         return sta;
       }
     }
-    else
-      return GetValueInternal(aID,aArrayIndex,aBuffer,aBufSize,aValSize);
+    else {
+    	// non-text, simply return value
+      sta = GetValueInternal(aID,aArrayIndex,aBuffer,aBufSize,aValSize);
+      if (sta==LOCERR_OK && aBufSize && aBuffer && aValSize>aBufSize) {
+      	// not only measuring size, check for truncation
+      	if (aValType==VALTYPE_BUF) {
+        	// in case of buffer, we call this "truncated" (we don't know if the result is usable or not, depends on data itself)
+	        sta = LOCERR_TRUNCATED;
+	      	aValSize = aBufSize; // return actual size, not untruncated one
+        }
+        else {
+        	// in other cases, too small buffer makes result unusable, so we don't call it "truncated"
+          // AND: we return the needed buffer size
+        	sta = LOCERR_BUFTOOSMALL;
+        }
+      }
+      return sta;
+    }
   }
   // some kind of conversion needed
   // - get native size of value first
@@ -316,7 +334,7 @@ TSyError TSettingsKeyImpl::GetValueByID(
               aBufSize>0 ? aBufSize-2 : 0 // max output size (but no limit if measuring actual size)
             ))
               sta = LOCERR_TRUNCATED;
-            // return (eventually truncated) size
+            // return (possibly truncated) size
             aValSize=convStr.size();
             // this will be added as part of the content, and gives a 16bit NUL terminator
             convStr+=(char)0;
@@ -332,7 +350,7 @@ TSyError TSettingsKeyImpl::GetValueByID(
               aBufSize>0 ? aBufSize-1 : 0 // max output size (but no limit if measuring actual size)
             ))
               sta = LOCERR_TRUNCATED;
-            // return (eventually truncated) size
+            // return (possibly truncated) size
             aValSize=convStr.size();
           }
           // if requested, return value into buffer
@@ -406,9 +424,10 @@ TSyError TSettingsKeyImpl::SetValueByID(
         appendUTF16AsUTF8((uInt16 *)aBuffer,aValSize/2,fBigEndian,convStr, true, true);
       }
       else {
-        appendStringAsUTF8((cAppCharP)aBuffer, convStr, fCharSet, lem_cstr, true);
+      	string s; s.assign((cAppCharP)aBuffer,aValSize);
+        appendStringAsUTF8(s.c_str(), convStr, fCharSet, lem_cstr, true);
       }
-      // eventually convert text to native
+      // possibly convert text to native
       switch (valType) {
         case VALTYPE_TIME64:
           // convert text to internal time format
@@ -701,7 +720,8 @@ TSyError TConfigVarKey::SetValueInternal(
   cAppPointer aBuffer, memSize aValSize
 ) {
 	if (!aBuffer) return LOCERR_WRONGUSAGE; // cannot handle NULL values
-  if (!fEngineInterfaceP->getSyncAppBase()->setConfigVar(fVarName.c_str(),(cAppCharP)aBuffer))
+  string v; v.assign((cAppCharP)aBuffer,(size_t)aValSize); // copy because input could be unterminated string
+  if (!fEngineInterfaceP->getSyncAppBase()->setConfigVar(fVarName.c_str(),v.c_str()))
     return DB_NotFound;
   return LOCERR_OK;
 } // TConfigVarKey::SetValueInternal
@@ -878,8 +898,10 @@ TSyError TStructFieldsKey::SetValueInternal(
   else
     siz=aValSize;
   // copy data into struct
-  if (fldinfoP->valType==VALTYPE_TEXT_OBFUS)
-    assignMangledToCString((appCharP)valPtr, (cAppCharP)aBuffer, fldinfoP->valSiz, true); // always use entire buffer and fill it with garbage beyond end of actual data
+  if (fldinfoP->valType==VALTYPE_TEXT_OBFUS) {
+  	string v; v.assign((cAppCharP)aBuffer,aValSize);
+    assignMangledToCString((appCharP)valPtr, v.c_str(), fldinfoP->valSiz, true); // always use entire buffer and fill it with garbage beyond end of actual data
+  }
   else
     memcpy(valPtr,aBuffer,siz);
   // - struct modified, signal that (for derivates that might want to save the record on close)
@@ -1242,6 +1264,7 @@ TSyError TEngineInterface::SessionStep (SessionH aSessionH, uInt16 &aStepCmd, TE
 TSyError TEngineInterface::GetSyncMLBuffer(SessionH aSessionH, bool aForSend, appPointer &aBuffer, memSize &aBufSize)
 {
   Ret_t rc;
+  MemSize_t bufSz; // Note: this is SML_TK definition of memsize!
   // get SML instance for this session (note that "session" could be a SAN checker as well)
   InstanceID_t myInstance = getSmlInstanceOfSession(aSessionH);
   if (myInstance==0)
@@ -1252,16 +1275,18 @@ TSyError TEngineInterface::GetSyncMLBuffer(SessionH aSessionH, bool aForSend, ap
     rc=smlLockReadBuffer(
       myInstance,
       (unsigned char **)&aBuffer, // receives address of buffer containing SyncML to send
-      (long *)&aBufSize // receives size of SyncML to send
+      &bufSz // receives size of SyncML to send
     );
+    aBufSize = bufSz;
   }
   else {
     // we want to write the SyncML buffer
     rc=smlLockWriteBuffer(
       myInstance,
       (unsigned char **)&aBuffer, // receives address of buffer where received SyncML can be put
-      (long *)&aBufSize // capacity of the buffer
+      &bufSz // capacity of the buffer
     );
+    aBufSize = bufSz;
   }
   // check error
   if (rc!=SML_ERR_OK)

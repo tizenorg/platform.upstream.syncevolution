@@ -40,7 +40,7 @@ int vsnprintf(char *s, int sz, const char *formatStr, va_list arg)
 #endif
 
 #ifdef NO_SNPRINTF
-// own implementation (eventually unsafe, if vsnprintf is dummy)
+// own implementation (possibly unsafe, if vsnprintf is dummy)
 int snprintf(char *s, int sz, const char *formatStr, ...)
 {
   va_list	args;

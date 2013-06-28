@@ -47,6 +47,9 @@ SYNCEVOLUTION_SOURCES  = \
 	\
 	util.cpp \
 	util.h \
+	\
+	lcs.h \
+	lcs.cpp \
         \
 	Cmdline.cpp \
         Cmdline.h \
@@ -89,6 +92,7 @@ libsyncevolution_includedir= $(includedir)/syncevo
 libsyncevolution_include_HEADERS = \
 	declarations.h \
 	TrackingSyncSource.h  \
+	FileConfigNode.h \
 								  FilterConfigNode.h \
 								  PrefixConfigNode.h \
 								  SafeConfigNode.h \

@@ -932,7 +932,7 @@ void TODBCApiAgent::InternalResetSession(void)
   TerminateDatastores();
   #ifdef ODBCAPI_SUPPORT
   #ifdef SCRIPT_SUPPORT
-  // commit connection (eventual scripted statements)
+  // commit connection (possible scripted statements)
   commitAndCloseScriptStatement();
   #endif
   // clear parameter maps
@@ -956,7 +956,7 @@ void TODBCApiAgent::ResetSession(void)
 #ifdef ODBCAPI_SUPPORT
 #ifdef SCRIPT_SUPPORT
 
-// commit and close eventually open script statement
+// commit and close possibly open script statement
 void TODBCApiAgent::commitAndCloseScriptStatement(void)
 {
   if (fODBCConnectionHandle!=SQL_NULL_HANDLE) {
@@ -1609,7 +1609,7 @@ void TODBCApiAgent::resetSQLParameterMaps(TParameterMapList &aParamMapList)
 bool TODBCApiAgent::ParseParamSubst(
   string &aSQL, // string to parse
   string::size_type &i, // input=position where % sequence starts in aSQL, output = if result==false: where to continue parsing, else: where to substitute
-  string::size_type &n, // input=number of chars of % sequence eventuall with "(" but nothing more, if result==true: output=number of chars to substitute at i in aSQL
+  string::size_type &n, // input=number of chars of % sequence possibly with "(" but nothing more, if result==true: output=number of chars to substitute at i in aSQL
   TParameterMapList &aParameterMaps, // parameter maps list to add params to
   TMultiFieldItem *aItemP // the involved item for field params
   #ifdef SCRIPT_SUPPORT
@@ -1643,7 +1643,7 @@ bool TODBCApiAgent::ParseParamSubst(
   // now get item field or variable name
   if (aSQL[j]!=',') { i=k+1; n=0; return false; } // continue after closing paranthesis
   ++j;
-  // extract name (without eventual array index)
+  // extract name (without possible array index)
   h = aSQL.find(",",j);
   if (h==string::npos) { h=k; } // no second comma, only field name, use default dbfieldtype
   string fldname;
@@ -1653,7 +1653,7 @@ bool TODBCApiAgent::ParseParamSubst(
   TDBFieldType dbfty=dbft_string; // default to string
   uInt32 colmaxsize=0;
   if (h<k) {
-    // more params specified (database field type and eventually column size)
+    // more params specified (database field type and possibly column size)
     h = aSQL.find(",",j);
     if (h==string::npos) { h=k; } // no third comma, only field type, use default column size)
     // get database field type
@@ -1969,7 +1969,7 @@ SQLHDBC TODBCApiAgent::pullODBCConnectionHandle(void)
   SQLHDBC connhandle = getODBCConnectionHandle();
   fODBCConnectionHandle = SQL_NULL_HANDLE; // owner is caller, must do closing and disposing
   #ifdef SCRIPT_SUPPORT
-  // make sure eventual script statement gets disposed, as connection is now owned by datastore
+  // make sure possible script statement gets disposed, as connection is now owned by datastore
   commitAndCloseScriptStatement();
   #endif
   return connhandle;
@@ -2554,7 +2554,7 @@ bool TODBCApiAgent::getColumnValueAsField(
       // zone works only for timestamps
       // - move to new zone or assign zone if timestamp is still empty or floating
       if (tsfP) {
-      	// first move to original context (to compensate for eventual move to
+      	// first move to original context (to compensate for possible move to
         // fUserTimeContext done when reading timestamp with aMoveToUserContext)
         // Note: this is important for cases where the new zone is floating or dateonly
         // Note: if timestamp field had the "f" flag, it is still floating here, and will not be
@@ -3134,7 +3134,7 @@ bool TODBCApiAgent::getSQLiteColValueAsField(
       // zone works only for timestamps
       // - move to new zone or assign zone if timestamp is still empty or floating
       if (tsfP) {
-      	// first move to original context (to compensate for eventual move to
+      	// first move to original context (to compensate for possible move to
         // fUserTimeContext done when reading timestamp with aMoveToUserContext)
         // Note: this is important for cases where the new zone is floating or dateonly
         // Note: if timestamp field had the "f" flag, it is still floating here, and will not be
@@ -3227,7 +3227,7 @@ void TODBCApiAgent::prepareSQLiteStatement(
 {
   const char *sqltail;
 
-  // discard eventually existing one
+  // discard possibly existing one
   if (aStatement) {
     sqlite3_finalize(aStatement);
     aStatement=NULL;

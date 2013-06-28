@@ -872,10 +872,12 @@ FFLAGS
 ac_ct_F77
 LIBTOOL
 PKG_CONFIG
-PCRE_CFLAGS
-PCRE_LIBS
+FOOBAR_CFLAGS
+FOOBAR_LIBS
 SQLITE3_CFLAGS
 SQLITE3_LIBS
+PCRE_CFLAGS
+PCRE_LIBS
 LIBICAL_CFLAGS
 LIBICAL_LIBS
 LIBECAL_CFLAGS
@@ -905,10 +907,12 @@ CXXCPP
 F77
 FFLAGS
 PKG_CONFIG
-PCRE_CFLAGS
-PCRE_LIBS
+FOOBAR_CFLAGS
+FOOBAR_LIBS
 SQLITE3_CFLAGS
 SQLITE3_LIBS
+PCRE_CFLAGS
+PCRE_LIBS
 LIBICAL_CFLAGS
 LIBICAL_LIBS
 LIBECAL_CFLAGS
@@ -1497,6 +1501,13 @@ Optional Features:
   --enable-fast-install[=PKGS]
                           optimize for fast installation [default=yes]
   --disable-libtool-lock  avoid locking (might break parallel builds)
+  --enable-sqlite         enable the sqlite-based ODBC backend, depends on
+                          libsqlite3, enabled by default
+  --enable-regex          enable regular expression support in scripts,
+                          depends on libpcre, enabled by default
+  --enable-libical        use libical (if necessary, the one in libecal) to
+                          improve time zone support, enabled by default if
+                          necessary libs are found
   --enable-evolution-compatibility
                           build executables which only call Evolution via
                           dlopen/dlsym: this avoids all hard dependencies on
@@ -1539,12 +1550,15 @@ Some influential environment variables:
   F77         Fortran 77 compiler command
   FFLAGS      Fortran 77 compiler flags
   PKG_CONFIG  path to pkg-config utility
-  PCRE_CFLAGS C compiler flags for PCRE, overriding pkg-config
-  PCRE_LIBS   linker flags for PCRE, overriding pkg-config
+  FOOBAR_CFLAGS
+              C compiler flags for FOOBAR, overriding pkg-config
+  FOOBAR_LIBS linker flags for FOOBAR, overriding pkg-config
   SQLITE3_CFLAGS
               C compiler flags for SQLITE3, overriding pkg-config
   SQLITE3_LIBS
               linker flags for SQLITE3, overriding pkg-config
+  PCRE_CFLAGS C compiler flags for PCRE, overriding pkg-config
+  PCRE_LIBS   linker flags for PCRE, overriding pkg-config
   LIBICAL_CFLAGS
               C compiler flags for LIBICAL, overriding pkg-config
   LIBICAL_LIBS
@@ -4834,7 +4848,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 4837 "configure"' > conftest.$ac_ext
+  echo '#line 4851 "configure"' > conftest.$ac_ext
   if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -7414,11 +7428,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7417: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7431: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:7421: \$? = $ac_status" >&5
+   echo "$as_me:7435: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -7704,11 +7718,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7707: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7721: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:7711: \$? = $ac_status" >&5
+   echo "$as_me:7725: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -7808,11 +7822,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7811: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7825: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:7815: \$? = $ac_status" >&5
+   echo "$as_me:7829: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -10185,7 +10199,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 10188 "configure"
+#line 10202 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -10285,7 +10299,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 10288 "configure"
+#line 10302 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -12686,11 +12700,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:12689: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:12703: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:12693: \$? = $ac_status" >&5
+   echo "$as_me:12707: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -12790,11 +12804,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:12793: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:12807: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:12797: \$? = $ac_status" >&5
+   echo "$as_me:12811: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -14388,11 +14402,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14391: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14405: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:14395: \$? = $ac_status" >&5
+   echo "$as_me:14409: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -14492,11 +14506,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14495: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14509: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:14499: \$? = $ac_status" >&5
+   echo "$as_me:14513: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -16712,11 +16726,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:16715: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:16729: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:16719: \$? = $ac_status" >&5
+   echo "$as_me:16733: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -17002,11 +17016,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:17005: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:17019: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:17009: \$? = $ac_status" >&5
+   echo "$as_me:17023: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -17106,11 +17120,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:17109: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:17123: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:17113: \$? = $ac_status" >&5
+   echo "$as_me:17127: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -19955,6 +19969,7 @@ fi
 
 
 
+
 if test "x$ac_cv_env_PKG_CONFIG_set" != "xset"; then
 	if test -n "$ac_tool_prefix"; then
   # Extract the first word of "${ac_tool_prefix}pkg-config", so it can be a program name with args.
@@ -20075,20 +20090,20 @@ echo "${ECHO_T}no" >&6; }
 fi
 
 pkg_failed=no
-{ echo "$as_me:$LINENO: checking for PCRE" >&5
-echo $ECHO_N "checking for PCRE... $ECHO_C" >&6; }
+{ echo "$as_me:$LINENO: checking for FOOBAR" >&5
+echo $ECHO_N "checking for FOOBAR... $ECHO_C" >&6; }
 
 if test -n "$PKG_CONFIG"; then
-    if test -n "$PCRE_CFLAGS"; then
-        pkg_cv_PCRE_CFLAGS="$PCRE_CFLAGS"
+    if test -n "$FOOBAR_CFLAGS"; then
+        pkg_cv_FOOBAR_CFLAGS="$FOOBAR_CFLAGS"
     else
         if test -n "$PKG_CONFIG" && \
-    { (echo "$as_me:$LINENO: \$PKG_CONFIG --exists --print-errors \"libpcre\"") >&5
-  ($PKG_CONFIG --exists --print-errors "libpcre") 2>&5
+    { (echo "$as_me:$LINENO: \$PKG_CONFIG --exists --print-errors \"foobar\"") >&5
+  ($PKG_CONFIG --exists --print-errors "foobar") 2>&5
   ac_status=$?
   echo "$as_me:$LINENO: \$? = $ac_status" >&5
   (exit $ac_status); }; then
-  pkg_cv_PCRE_CFLAGS=`$PKG_CONFIG --cflags "libpcre" 2>/dev/null`
+  pkg_cv_FOOBAR_CFLAGS=`$PKG_CONFIG --cflags "foobar" 2>/dev/null`
 else
   pkg_failed=yes
 fi
@@ -20097,16 +20112,16 @@ else
 	pkg_failed=untried
 fi
 if test -n "$PKG_CONFIG"; then
-    if test -n "$PCRE_LIBS"; then
-        pkg_cv_PCRE_LIBS="$PCRE_LIBS"
+    if test -n "$FOOBAR_LIBS"; then
+        pkg_cv_FOOBAR_LIBS="$FOOBAR_LIBS"
     else
         if test -n "$PKG_CONFIG" && \
-    { (echo "$as_me:$LINENO: \$PKG_CONFIG --exists --print-errors \"libpcre\"") >&5
-  ($PKG_CONFIG --exists --print-errors "libpcre") 2>&5
+    { (echo "$as_me:$LINENO: \$PKG_CONFIG --exists --print-errors \"foobar\"") >&5
+  ($PKG_CONFIG --exists --print-errors "foobar") 2>&5
   ac_status=$?
   echo "$as_me:$LINENO: \$? = $ac_status" >&5
   (exit $ac_status); }; then
-  pkg_cv_PCRE_LIBS=`$PKG_CONFIG --libs "libpcre" 2>/dev/null`
+  pkg_cv_FOOBAR_LIBS=`$PKG_CONFIG --libs "foobar" 2>/dev/null`
 else
   pkg_failed=yes
 fi
@@ -20125,65 +20140,34 @@ else
         _pkg_short_errors_supported=no
 fi
         if test $_pkg_short_errors_supported = yes; then
-	        PCRE_PKG_ERRORS=`$PKG_CONFIG --short-errors --errors-to-stdout --print-errors "libpcre"`
+	        FOOBAR_PKG_ERRORS=`$PKG_CONFIG --short-errors --errors-to-stdout --print-errors "foobar"`
         else
-	        PCRE_PKG_ERRORS=`$PKG_CONFIG --errors-to-stdout --print-errors "libpcre"`
+	        FOOBAR_PKG_ERRORS=`$PKG_CONFIG --errors-to-stdout --print-errors "foobar"`
         fi
 	# Put the nasty error message in config.log where it belongs
-	echo "$PCRE_PKG_ERRORS" >&5
+	echo "$FOOBAR_PKG_ERRORS" >&5
 
-	{ { echo "$as_me:$LINENO: error: Package requirements (libpcre) were not met:
-
-$PCRE_PKG_ERRORS
-
-Consider adjusting the PKG_CONFIG_PATH environment variable if you
-installed software in a non-standard prefix.
-
-Alternatively, you may set the environment variables PCRE_CFLAGS
-and PCRE_LIBS to avoid the need to call pkg-config.
-See the pkg-config man page for more details.
-" >&5
-echo "$as_me: error: Package requirements (libpcre) were not met:
-
-$PCRE_PKG_ERRORS
-
-Consider adjusting the PKG_CONFIG_PATH environment variable if you
-installed software in a non-standard prefix.
-
-Alternatively, you may set the environment variables PCRE_CFLAGS
-and PCRE_LIBS to avoid the need to call pkg-config.
-See the pkg-config man page for more details.
-" >&2;}
-   { (exit 1); exit 1; }; }
+	{ echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+                true
 elif test $pkg_failed = untried; then
-	{ { echo "$as_me:$LINENO: error: The pkg-config script could not be found or is too old.  Make sure it
-is in your PATH or set the PKG_CONFIG environment variable to the full
-path to pkg-config.
-
-Alternatively, you may set the environment variables PCRE_CFLAGS
-and PCRE_LIBS to avoid the need to call pkg-config.
-See the pkg-config man page for more details.
-
-To get pkg-config, see <http://pkg-config.freedesktop.org/>.
-See \`config.log' for more details." >&5
-echo "$as_me: error: The pkg-config script could not be found or is too old.  Make sure it
-is in your PATH or set the PKG_CONFIG environment variable to the full
-path to pkg-config.
-
-Alternatively, you may set the environment variables PCRE_CFLAGS
-and PCRE_LIBS to avoid the need to call pkg-config.
-See the pkg-config man page for more details.
-
-To get pkg-config, see <http://pkg-config.freedesktop.org/>.
-See \`config.log' for more details." >&2;}
-   { (exit 1); exit 1; }; }
+	true
 else
-	PCRE_CFLAGS=$pkg_cv_PCRE_CFLAGS
-	PCRE_LIBS=$pkg_cv_PCRE_LIBS
+	FOOBAR_CFLAGS=$pkg_cv_FOOBAR_CFLAGS
+	FOOBAR_LIBS=$pkg_cv_FOOBAR_LIBS
         { echo "$as_me:$LINENO: result: yes" >&5
 echo "${ECHO_T}yes" >&6; }
-	:
+	true
 fi
+
+# Check whether --enable-sqlite was given.
+if test "${enable_sqlite+set}" = set; then
+  enableval=$enable_sqlite; enable_sqlite=$enableval
+else
+  enable_sqlite="yes"
+fi
+
+if test "$enable_sqlite" == "yes"; then
 
 pkg_failed=no
 { echo "$as_me:$LINENO: checking for SQLITE3" >&5
@@ -20295,6 +20279,109 @@ else
 echo "${ECHO_T}yes" >&6; }
 	:
 fi
+    HAVE_SQLITE=1
+else
+    HAVE_SQLITE=0
+fi
+
+cat >>confdefs.h <<_ACEOF
+#define ONOFF_SQLITE_SUPPORT $HAVE_SQLITE
+_ACEOF
+
+
+# Check whether --enable-regex was given.
+if test "${enable_regex+set}" = set; then
+  enableval=$enable_regex; enable_regex=$enableval
+else
+  enable_regex="yes"
+fi
+
+if test "$enable_regex" == "yes"; then
+
+pkg_failed=no
+{ echo "$as_me:$LINENO: checking for PCRE" >&5
+echo $ECHO_N "checking for PCRE... $ECHO_C" >&6; }
+
+if test -n "$PKG_CONFIG"; then
+    if test -n "$PCRE_CFLAGS"; then
+        pkg_cv_PCRE_CFLAGS="$PCRE_CFLAGS"
+    else
+        if test -n "$PKG_CONFIG" && \
+    { (echo "$as_me:$LINENO: \$PKG_CONFIG --exists --print-errors \"libpcre\"") >&5
+  ($PKG_CONFIG --exists --print-errors "libpcre") 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; then
+  pkg_cv_PCRE_CFLAGS=`$PKG_CONFIG --cflags "libpcre" 2>/dev/null`
+else
+  pkg_failed=yes
+fi
+    fi
+else
+	pkg_failed=untried
+fi
+if test -n "$PKG_CONFIG"; then
+    if test -n "$PCRE_LIBS"; then
+        pkg_cv_PCRE_LIBS="$PCRE_LIBS"
+    else
+        if test -n "$PKG_CONFIG" && \
+    { (echo "$as_me:$LINENO: \$PKG_CONFIG --exists --print-errors \"libpcre\"") >&5
+  ($PKG_CONFIG --exists --print-errors "libpcre") 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; then
+  pkg_cv_PCRE_LIBS=`$PKG_CONFIG --libs "libpcre" 2>/dev/null`
+else
+  pkg_failed=yes
+fi
+    fi
+else
+	pkg_failed=untried
+fi
+
+
+
+if test $pkg_failed = yes; then
+
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
+fi
+        if test $_pkg_short_errors_supported = yes; then
+	        PCRE_PKG_ERRORS=`$PKG_CONFIG --short-errors --errors-to-stdout --print-errors "libpcre"`
+        else
+	        PCRE_PKG_ERRORS=`$PKG_CONFIG --errors-to-stdout --print-errors "libpcre"`
+        fi
+	# Put the nasty error message in config.log where it belongs
+	echo "$PCRE_PKG_ERRORS" >&5
+
+	{ echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+                { { echo "$as_me:$LINENO: error: libpcre not found, required for --enable-regex" >&5
+echo "$as_me: error: libpcre not found, required for --enable-regex" >&2;}
+   { (exit 1); exit 1; }; }
+elif test $pkg_failed = untried; then
+	{ { echo "$as_me:$LINENO: error: libpcre not found, required for --enable-regex" >&5
+echo "$as_me: error: libpcre not found, required for --enable-regex" >&2;}
+   { (exit 1); exit 1; }; }
+else
+	PCRE_CFLAGS=$pkg_cv_PCRE_CFLAGS
+	PCRE_LIBS=$pkg_cv_PCRE_LIBS
+        { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+	HAVE_PCRE=1
+fi
+    HAVE_PCRE=1
+else
+    HAVE_PCRE=0
+fi
+
+cat >>confdefs.h <<_ACEOF
+#define ONOFF_REGEX_SUPPORT $HAVE_PCRE
+_ACEOF
+
+
 if test "${ac_cv_header_zlib_h+set}" = set; then
   { echo "$as_me:$LINENO: checking for zlib.h" >&5
 echo $ECHO_N "checking for zlib.h... $ECHO_C" >&6; }
@@ -20690,6 +20777,14 @@ fi
 
 
 
+# Check whether --enable-libical was given.
+if test "${enable_libical+set}" = set; then
+  enableval=$enable_libical; enable_libical=$enableval
+else
+  enable_libical="yes"
+fi
+
+if test "$enable_libical" == "yes"; then
 
 pkg_failed=no
 { echo "$as_me:$LINENO: checking for LIBICAL" >&5
@@ -20922,6 +21017,7 @@ cat >>confdefs.h <<\_ACEOF
 #define HAVE_LIBICAL 1
 _ACEOF
 
+fi
 fi
 
 # Check whether --enable-evolution-compatibility was given.
@@ -22009,10 +22105,12 @@ FFLAGS!$FFLAGS$ac_delim
 ac_ct_F77!$ac_ct_F77$ac_delim
 LIBTOOL!$LIBTOOL$ac_delim
 PKG_CONFIG!$PKG_CONFIG$ac_delim
-PCRE_CFLAGS!$PCRE_CFLAGS$ac_delim
-PCRE_LIBS!$PCRE_LIBS$ac_delim
+FOOBAR_CFLAGS!$FOOBAR_CFLAGS$ac_delim
+FOOBAR_LIBS!$FOOBAR_LIBS$ac_delim
 SQLITE3_CFLAGS!$SQLITE3_CFLAGS$ac_delim
 SQLITE3_LIBS!$SQLITE3_LIBS$ac_delim
+PCRE_CFLAGS!$PCRE_CFLAGS$ac_delim
+PCRE_LIBS!$PCRE_LIBS$ac_delim
 LIBICAL_CFLAGS!$LIBICAL_CFLAGS$ac_delim
 LIBICAL_LIBS!$LIBICAL_LIBS$ac_delim
 LIBECAL_CFLAGS!$LIBECAL_CFLAGS$ac_delim
@@ -22027,7 +22125,7 @@ LIBOBJS!$LIBOBJS$ac_delim
 LTLIBOBJS!$LTLIBOBJS$ac_delim
 _ACEOF
 
-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 24; then
+  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 26; then
     break
   elif $ac_last_try; then
     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5

@@ -1592,7 +1592,7 @@ bool TTextProfileHandler::parseText(const char *aText, stringSize aTextSize, TMu
             fielddone=true; // cause loop exit, but first check for transition from header to body and set lastwaseoln
           }
           else {
-            // process eventual folding
+            // process possible folding
             if (p<eot && c!=0 && isspace(*p)) {
               // this is a lineend because of folding -> ignore line end and just keep LWSP
               fval+=*p++; // keep the LWSP

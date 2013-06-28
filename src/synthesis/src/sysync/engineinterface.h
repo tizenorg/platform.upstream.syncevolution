@@ -155,7 +155,14 @@ protected:
     return VALTYPE_UNKNOWN; // unknown
   };
 
-  // get value
+  // Internal Get Value in internal format.
+  // Notes:
+  // - all values, even strings can be returned as bare data (no NUL terminator needed, but allowed for VALTYPE_TEXT)
+  // - in all cases, no more than aBufSize bytes may be copied (and in case of strings, if aBufSize equals the string
+  //   size, the routine must return the entire string data, even if this means omitting the terminator)
+  // - in all cases, aValSize must return the actual size of the entire value, regardless of how many bytes could
+  //   actually be copied. Note that this is UNLIKE aValSize for the exposed API GetValue(), which always returns
+  //   the number of bytes returned, even if these are truncated.
   virtual TSyError GetValueInternal(
     sInt32 aID, sInt32 aArrayIndex,
     appPointer aBuffer, memSize aBufSize, memSize &aValSize
@@ -654,9 +661,11 @@ public:
     /// @param aValSize[out] actual size of value.
     ///        For VALTYPE_TEXT, size is string length (IN BYTES) excluding NULL terminator
     ///        Note that this will be set also when return value is LOCERR_BUFTOOSMALL,
-    ///        to indicate the required buffer size
+    ///        to indicate the required buffer size (buffer contents is undefined in case of LOCERR_BUFTOOSMALL).
     ///        For values that can be truncated (strings), LOCERR_TRUNCATED will be returned
-    ///        when returned value is not entire value - aValSize is truncated size then.
+    ///        when returned value is not entire value - aValSize is truncated size then. Use
+    ///        a call with aBufSize==0 to determine actual value size in bytes. Add one character size
+    ///        to the buffer size in case of VALTYPE_TEXT for the NUL terminator.
     /// @return LOCERR_OK on success, SyncML or LOCERR_xxx error code on failure
     EMBVIRTUAL TSyError GetValue(
       KeyH aKeyH, cAppCharP aValueName,
@@ -704,11 +713,13 @@ public:
     /// @param aValSize[out] actual size of value.
     ///        For VALTYPE_TEXT, size is string length (IN BYTES) excluding NULL terminator
     ///        Note that this will be set also when return value is LOCERR_BUFTOOSMALL,
-    ///        to indicate the required buffer size
+    ///        to indicate the required buffer size (buffer contents is undefined in case of LOCERR_BUFTOOSMALL).
     ///        For values that can be truncated (strings), LOCERR_TRUNCATED will be returned
-    ///        when returned value is not entire value - aValSize is truncated size then.
+    ///        when returned value is not entire value - aValSize is truncated size then. Use
+    ///        a call with aBufSize==0 to determine actual value size in bytes. Add one character size
+    ///        to the buffer size in case of VALTYPE_TEXT for the NUL terminator.
     /// @return LOCERR_OK on success, LOCERR_OUTOFRANGE when array index is out of range
-    ///        SyncML or LOCERR_xxx error code on other failure
+    ///        SyncML or LOCERR_xxx error code on other failure.
     EMBVIRTUAL TSyError GetValueByID(
       KeyH aKeyH, sInt32 aID, sInt32 aArrayIndex,
       uInt16 aValType,

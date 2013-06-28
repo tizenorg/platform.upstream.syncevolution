@@ -19,6 +19,10 @@
 namespace sysync {
 
 
+/*! Search for separators */
+bool SepFound( string name, string::size_type &pos, string sep= "!", bool backwards= false );
+
+
 // ---- Bracket (LIB) support
 /*! Returns true, if <name> belongs to an internal LIB.
  *  Returns false for DLL or JNI (Java Native Interface) access

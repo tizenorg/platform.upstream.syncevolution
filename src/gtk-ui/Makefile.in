@@ -54,7 +54,8 @@ PROGRAMS = $(bin_PROGRAMS)
 am_sync_ui_OBJECTS = sync_ui-main.$(OBJEXT) sync_ui-sync-ui.$(OBJEXT) \
 	sync_ui-sync-ui-config.$(OBJEXT) sync_ui-mux-frame.$(OBJEXT) \
 	sync_ui-mux-window.$(OBJEXT) sync_ui-mux-icon-button.$(OBJEXT) \
-	sync_ui-sync-config-widget.$(OBJEXT)
+	sync_ui-sync-config-widget.$(OBJEXT) \
+	sync_ui-gtkinfobar.$(OBJEXT)
 sync_ui_OBJECTS = $(am_sync_ui_OBJECTS)
 am__DEPENDENCIES_1 =
 sync_ui_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
@@ -68,7 +69,8 @@ am__objects_1 = sync_ui_gtk-main.$(OBJEXT) \
 	sync_ui_gtk-mux-frame.$(OBJEXT) \
 	sync_ui_gtk-mux-window.$(OBJEXT) \
 	sync_ui_gtk-mux-icon-button.$(OBJEXT) \
-	sync_ui_gtk-sync-config-widget.$(OBJEXT)
+	sync_ui_gtk-sync-config-widget.$(OBJEXT) \
+	sync_ui_gtk-gtkinfobar.$(OBJEXT)
 am_sync_ui_gtk_OBJECTS = $(am__objects_1)
 nodist_sync_ui_gtk_OBJECTS =
 sync_ui_gtk_OBJECTS = $(am_sync_ui_gtk_OBJECTS) \
@@ -85,7 +87,8 @@ am__objects_2 = sync_ui_moblin-main.$(OBJEXT) \
 	sync_ui_moblin-mux-frame.$(OBJEXT) \
 	sync_ui_moblin-mux-window.$(OBJEXT) \
 	sync_ui_moblin-mux-icon-button.$(OBJEXT) \
-	sync_ui_moblin-sync-config-widget.$(OBJEXT)
+	sync_ui_moblin-sync-config-widget.$(OBJEXT) \
+	sync_ui_moblin-gtkinfobar.$(OBJEXT)
 am_sync_ui_moblin_OBJECTS = $(am__objects_2)
 nodist_sync_ui_moblin_OBJECTS =
 sync_ui_moblin_OBJECTS = $(am_sync_ui_moblin_OBJECTS) \
@@ -189,7 +192,13 @@ GLIB_GENMARSHAL = @GLIB_GENMARSHAL@
 GLIB_LIBS = @GLIB_LIBS@
 GMOFILES = @GMOFILES@
 GMSGFMT = @GMSGFMT@
+GOBJECT_CFLAGS = @GOBJECT_CFLAGS@
+GOBJECT_LIBS = @GOBJECT_LIBS@
 GREP = @GREP@
+GTHREAD_CFLAGS = @GTHREAD_CFLAGS@
+GTHREAD_LIBS = @GTHREAD_LIBS@
+GTK_2_18_CFLAGS = @GTK_2_18_CFLAGS@
+GTK_2_18_LIBS = @GTK_2_18_LIBS@
 GTK_BUILDER_CONV = @GTK_BUILDER_CONV@
 GUI_CFLAGS = @GUI_CFLAGS@
 GUI_DESKTOP_FILES = @GUI_DESKTOP_FILES@
@@ -222,6 +231,8 @@ LIBTOOL = @LIBTOOL@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
+MCALB_CFLAGS = @MCALB_CFLAGS@
+MCALB_LIBS = @MCALB_LIBS@
 MKDIR_P = @MKDIR_P@
 MKINSTALLDIRS = @MKINSTALLDIRS@
 MODIFY_SYNCCOMPARE = @MODIFY_SYNCCOMPARE@
@@ -248,6 +259,7 @@ SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 SQLITE_CFLAGS = @SQLITE_CFLAGS@
 SQLITE_LIBS = @SQLITE_LIBS@
+STABLE_VERSION = @STABLE_VERSION@
 STRIP = @STRIP@
 SYNCEVOLUTION_CXXFLAGS = @SYNCEVOLUTION_CXXFLAGS@
 SYNCEVOLUTION_LDADD = @SYNCEVOLUTION_LDADD@
@@ -269,6 +281,8 @@ UNIQUE_LIBS = @UNIQUE_LIBS@
 USE_NLS = @USE_NLS@
 VERSION = @VERSION@
 XGETTEXT = @XGETTEXT@
+XMLRPC_CFLAGS = @XMLRPC_CFLAGS@
+XMLRPC_LIBS = @XMLRPC_LIBS@
 XSLT = @XSLT@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
@@ -350,7 +364,8 @@ bin_PROGRAMS = $(GUI_PROGRAMS)
 sync_ui_SOURCES = \
 	main.c sync-ui.c sync-ui.h sync-ui-config.c sync-ui-config.h \
 	mux-frame.c mux-frame.h mux-window.c mux-window.h mux-icon-button.c mux-icon-button.h \
-	sync-config-widget.c sync-config-widget.h
+	sync-config-widget.c sync-config-widget.h \
+	gtkinfobar.c gtkinfobar.h
 
 sync_ui_LDADD = $(GUI_LIBS) $(DBUS_GLIB_LIBS) $(top_builddir)/src/dbus/libsyncevo-dbus.la
 sync_ui_CFLAGS = $(GUI_CFLAGS) \
@@ -453,6 +468,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui-gtkinfobar.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui-main.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui-mux-frame.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui-mux-icon-button.Po@am__quote@
@@ -460,6 +476,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui-sync-config-widget.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui-sync-ui-config.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui-sync-ui.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_gtk-gtkinfobar.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_gtk-main.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_gtk-mux-frame.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_gtk-mux-icon-button.Po@am__quote@
@@ -467,6 +484,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_gtk-sync-config-widget.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_gtk-sync-ui-config.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_gtk-sync-ui.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_moblin-gtkinfobar.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_moblin-main.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_moblin-mux-frame.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync_ui_moblin-mux-icon-button.Po@am__quote@
@@ -594,6 +612,20 @@ sync_ui-sync-config-widget.obj: sync-config-widget.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_CPPFLAGS) $(CPPFLAGS) $(sync_ui_CFLAGS) $(CFLAGS) -c -o sync_ui-sync-config-widget.obj `if test -f 'sync-config-widget.c'; then $(CYGPATH_W) 'sync-config-widget.c'; else $(CYGPATH_W) '$(srcdir)/sync-config-widget.c'; fi`
 
+sync_ui-gtkinfobar.o: gtkinfobar.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_CPPFLAGS) $(CPPFLAGS) $(sync_ui_CFLAGS) $(CFLAGS) -MT sync_ui-gtkinfobar.o -MD -MP -MF $(DEPDIR)/sync_ui-gtkinfobar.Tpo -c -o sync_ui-gtkinfobar.o `test -f 'gtkinfobar.c' || echo '$(srcdir)/'`gtkinfobar.c
+@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/sync_ui-gtkinfobar.Tpo $(DEPDIR)/sync_ui-gtkinfobar.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='gtkinfobar.c' object='sync_ui-gtkinfobar.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_CPPFLAGS) $(CPPFLAGS) $(sync_ui_CFLAGS) $(CFLAGS) -c -o sync_ui-gtkinfobar.o `test -f 'gtkinfobar.c' || echo '$(srcdir)/'`gtkinfobar.c
+
+sync_ui-gtkinfobar.obj: gtkinfobar.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_CPPFLAGS) $(CPPFLAGS) $(sync_ui_CFLAGS) $(CFLAGS) -MT sync_ui-gtkinfobar.obj -MD -MP -MF $(DEPDIR)/sync_ui-gtkinfobar.Tpo -c -o sync_ui-gtkinfobar.obj `if test -f 'gtkinfobar.c'; then $(CYGPATH_W) 'gtkinfobar.c'; else $(CYGPATH_W) '$(srcdir)/gtkinfobar.c'; fi`
+@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/sync_ui-gtkinfobar.Tpo $(DEPDIR)/sync_ui-gtkinfobar.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='gtkinfobar.c' object='sync_ui-gtkinfobar.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_CPPFLAGS) $(CPPFLAGS) $(sync_ui_CFLAGS) $(CFLAGS) -c -o sync_ui-gtkinfobar.obj `if test -f 'gtkinfobar.c'; then $(CYGPATH_W) 'gtkinfobar.c'; else $(CYGPATH_W) '$(srcdir)/gtkinfobar.c'; fi`
+
 sync_ui_gtk-main.o: main.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_gtk_CPPFLAGS) $(CPPFLAGS) $(sync_ui_gtk_CFLAGS) $(CFLAGS) -MT sync_ui_gtk-main.o -MD -MP -MF $(DEPDIR)/sync_ui_gtk-main.Tpo -c -o sync_ui_gtk-main.o `test -f 'main.c' || echo '$(srcdir)/'`main.c
 @am__fastdepCC_TRUE@	mv -f $(DEPDIR)/sync_ui_gtk-main.Tpo $(DEPDIR)/sync_ui_gtk-main.Po
@@ -692,6 +724,20 @@ sync_ui_gtk-sync-config-widget.obj: sync-config-widget.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_gtk_CPPFLAGS) $(CPPFLAGS) $(sync_ui_gtk_CFLAGS) $(CFLAGS) -c -o sync_ui_gtk-sync-config-widget.obj `if test -f 'sync-config-widget.c'; then $(CYGPATH_W) 'sync-config-widget.c'; else $(CYGPATH_W) '$(srcdir)/sync-config-widget.c'; fi`
 
+sync_ui_gtk-gtkinfobar.o: gtkinfobar.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_gtk_CPPFLAGS) $(CPPFLAGS) $(sync_ui_gtk_CFLAGS) $(CFLAGS) -MT sync_ui_gtk-gtkinfobar.o -MD -MP -MF $(DEPDIR)/sync_ui_gtk-gtkinfobar.Tpo -c -o sync_ui_gtk-gtkinfobar.o `test -f 'gtkinfobar.c' || echo '$(srcdir)/'`gtkinfobar.c
+@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/sync_ui_gtk-gtkinfobar.Tpo $(DEPDIR)/sync_ui_gtk-gtkinfobar.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='gtkinfobar.c' object='sync_ui_gtk-gtkinfobar.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_gtk_CPPFLAGS) $(CPPFLAGS) $(sync_ui_gtk_CFLAGS) $(CFLAGS) -c -o sync_ui_gtk-gtkinfobar.o `test -f 'gtkinfobar.c' || echo '$(srcdir)/'`gtkinfobar.c
+
+sync_ui_gtk-gtkinfobar.obj: gtkinfobar.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_gtk_CPPFLAGS) $(CPPFLAGS) $(sync_ui_gtk_CFLAGS) $(CFLAGS) -MT sync_ui_gtk-gtkinfobar.obj -MD -MP -MF $(DEPDIR)/sync_ui_gtk-gtkinfobar.Tpo -c -o sync_ui_gtk-gtkinfobar.obj `if test -f 'gtkinfobar.c'; then $(CYGPATH_W) 'gtkinfobar.c'; else $(CYGPATH_W) '$(srcdir)/gtkinfobar.c'; fi`
+@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/sync_ui_gtk-gtkinfobar.Tpo $(DEPDIR)/sync_ui_gtk-gtkinfobar.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='gtkinfobar.c' object='sync_ui_gtk-gtkinfobar.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_gtk_CPPFLAGS) $(CPPFLAGS) $(sync_ui_gtk_CFLAGS) $(CFLAGS) -c -o sync_ui_gtk-gtkinfobar.obj `if test -f 'gtkinfobar.c'; then $(CYGPATH_W) 'gtkinfobar.c'; else $(CYGPATH_W) '$(srcdir)/gtkinfobar.c'; fi`
+
 sync_ui_moblin-main.o: main.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_moblin_CPPFLAGS) $(CPPFLAGS) $(sync_ui_moblin_CFLAGS) $(CFLAGS) -MT sync_ui_moblin-main.o -MD -MP -MF $(DEPDIR)/sync_ui_moblin-main.Tpo -c -o sync_ui_moblin-main.o `test -f 'main.c' || echo '$(srcdir)/'`main.c
 @am__fastdepCC_TRUE@	mv -f $(DEPDIR)/sync_ui_moblin-main.Tpo $(DEPDIR)/sync_ui_moblin-main.Po
@@ -789,6 +835,20 @@ sync_ui_moblin-sync-config-widget.obj: sync-config-widget.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='sync-config-widget.c' object='sync_ui_moblin-sync-config-widget.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_moblin_CPPFLAGS) $(CPPFLAGS) $(sync_ui_moblin_CFLAGS) $(CFLAGS) -c -o sync_ui_moblin-sync-config-widget.obj `if test -f 'sync-config-widget.c'; then $(CYGPATH_W) 'sync-config-widget.c'; else $(CYGPATH_W) '$(srcdir)/sync-config-widget.c'; fi`
+
+sync_ui_moblin-gtkinfobar.o: gtkinfobar.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_moblin_CPPFLAGS) $(CPPFLAGS) $(sync_ui_moblin_CFLAGS) $(CFLAGS) -MT sync_ui_moblin-gtkinfobar.o -MD -MP -MF $(DEPDIR)/sync_ui_moblin-gtkinfobar.Tpo -c -o sync_ui_moblin-gtkinfobar.o `test -f 'gtkinfobar.c' || echo '$(srcdir)/'`gtkinfobar.c
+@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/sync_ui_moblin-gtkinfobar.Tpo $(DEPDIR)/sync_ui_moblin-gtkinfobar.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='gtkinfobar.c' object='sync_ui_moblin-gtkinfobar.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_moblin_CPPFLAGS) $(CPPFLAGS) $(sync_ui_moblin_CFLAGS) $(CFLAGS) -c -o sync_ui_moblin-gtkinfobar.o `test -f 'gtkinfobar.c' || echo '$(srcdir)/'`gtkinfobar.c
+
+sync_ui_moblin-gtkinfobar.obj: gtkinfobar.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_moblin_CPPFLAGS) $(CPPFLAGS) $(sync_ui_moblin_CFLAGS) $(CFLAGS) -MT sync_ui_moblin-gtkinfobar.obj -MD -MP -MF $(DEPDIR)/sync_ui_moblin-gtkinfobar.Tpo -c -o sync_ui_moblin-gtkinfobar.obj `if test -f 'gtkinfobar.c'; then $(CYGPATH_W) 'gtkinfobar.c'; else $(CYGPATH_W) '$(srcdir)/gtkinfobar.c'; fi`
+@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/sync_ui_moblin-gtkinfobar.Tpo $(DEPDIR)/sync_ui_moblin-gtkinfobar.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='gtkinfobar.c' object='sync_ui_moblin-gtkinfobar.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sync_ui_moblin_CPPFLAGS) $(CPPFLAGS) $(sync_ui_moblin_CFLAGS) $(CFLAGS) -c -o sync_ui_moblin-gtkinfobar.obj `if test -f 'gtkinfobar.c'; then $(CYGPATH_W) 'gtkinfobar.c'; else $(CYGPATH_W) '$(srcdir)/gtkinfobar.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

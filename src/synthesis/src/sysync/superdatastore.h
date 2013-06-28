@@ -275,7 +275,7 @@ protected:
   /// @note This must be repeatable without side effects, as server must mark/save suspend state
   ///       after every request (and not just at end of session)
   virtual void logicMarkItemForResend(cAppCharP aLocalID, cAppCharP aRemoteID) {};
-  /// save status information required to eventually perform a resume (as passed to datastore with
+  /// save status information required to possibly perform a resume (as passed to datastore with
   /// markOnlyUngeneratedForResume() and markItemForResume())
   /// (or, in case the session is really complete, make sure that no resume state is left)
   /// @note Must also save tempGUIDs (for server) and pending/unconfirmed maps (for client)

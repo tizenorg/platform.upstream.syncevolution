@@ -42,7 +42,7 @@ uIntArch myThreadID();
 class TThreadObject; // forward
 
 // function executed by thread
-typedef uInt32 (*TThreadFunc)(TThreadObject *aThreadObject, uInt32 aParam);
+typedef uInt32 (*TThreadFunc)(TThreadObject *aThreadObject, uIntArch aParam);
 
 
 // wrapper class for thread
@@ -81,7 +81,7 @@ private:
   uInt32 fStackSize;
   // the thread function
   TThreadFunc fThreadFunc;
-  uInt32 fThreadFuncParam;
+  uIntArch fThreadFuncParam;
   // the termination request flag
   bool fTerminationRequested;
   // the exit code

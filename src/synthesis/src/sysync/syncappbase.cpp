@@ -474,7 +474,7 @@ bool TRootConfig::localStartElement(const char *aElementName, const char **aAttr
 void TRootConfig::localResolve(bool aLastPass)
 {
   // make sure static debug element is resolved so
-  // eventual debug information created by resolving other
+  // possible debug information created by resolving other
   // elements go to the correct locations/files
   // Note: in XML configs, the debug element is resolved immediately
   //       after parsing (has fResolveImmediately set) and will
@@ -3253,9 +3253,9 @@ namespace sysync {
 void TRootConfig::installAgentConfig(void)
 {
   #if defined(XML2GO_SUPPORT)
-  fAgentConfigP = new TXml2goAgentConfig(this); // xml2go (eventually on top of ODBC)
+  fAgentConfigP = new TXml2goAgentConfig(this); // xml2go (possibly on top of ODBC)
   #elif defined(SDK_SUPPORT)
-  fAgentConfigP = new TPluginAgentConfig(this); // plugin/SDK (eventually on top of ODBC)
+  fAgentConfigP = new TPluginAgentConfig(this); // plugin/SDK (possibly on top of ODBC)
   #elif defined(SQL_SUPPORT)
   fAgentConfigP = new TOdbcAgentConfig(this); // ODBC only
   #else

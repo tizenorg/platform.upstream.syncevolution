@@ -992,7 +992,7 @@ timecontext_t SelectTZ( TDaylightSavingZone zone, int bias, int biasDST, lineart
   bool dst, ok;
   bool withDST= zone!=EDstNone;
   timecontext_t t= tctx_tz_unknown;
-  bool special= false; // eventually needed true for NGage
+  bool special= false; // possibly needed true for NGage
 
   int  i; // go thru the whole list of time zones
   for (i=(int)tctx_tz_system+1; i<(int)tctx_numtimezones; i++) {
@@ -1258,7 +1258,7 @@ bool TzResolveMetaContext( timecontext_t &aContext, GZones* g )
 bool TzResolveContext( timecontext_t &aContext, lineartime_t aRefTime, bool aRefTimeUTC, GZones* g )
 {
   sInt32 offs;
-  // resolve eventual meta context (TCTX_SYSTEM at this time)
+  // resolve possible meta context (TCTX_SYSTEM at this time)
   if (!TzResolveMetaContext(aContext,g)) return false;
   // check if already an offset (non-symbolic)
   if (!TCTX_IS_TZ(aContext))

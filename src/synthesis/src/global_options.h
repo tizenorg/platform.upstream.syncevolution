@@ -61,8 +61,8 @@
 #endif
 
 #ifndef SYSYNC_VERSION_MINOR
-#define SYSYNC_VERSION_MINOR        3
-#define SYSYNC_VERSION_MINOR_TXT   "3"
+#define SYSYNC_VERSION_MINOR        4
+#define SYSYNC_VERSION_MINOR_TXT   "4"
 #endif
 
 #ifndef SYSYNC_SUBVERSION

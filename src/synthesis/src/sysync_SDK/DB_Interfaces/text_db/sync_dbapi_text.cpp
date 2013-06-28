@@ -885,7 +885,7 @@ void ThreadMayChangeNow( CContext aContext )
   ContextP         ac= DBC( aContext );
   DEBUG_Exotic_DB( ac->fCB, MyDB,Da_TC, "(%08X)", ac );
 
-                   ac->fNewItem.SaveDB ( false ); // eventually partly save
+                   ac->fNewItem.SaveDB ( false ); // possibly partly save
                    ac->fItemList.SaveDB( false );
 } /* ThreadMayChangeNow */
 

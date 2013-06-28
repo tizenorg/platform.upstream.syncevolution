@@ -29,11 +29,14 @@ typedef struct source_config {
     char *name;
     gboolean supported_locally;
 
+    gboolean stats_set;
+    long status;
     long local_changes;
     long remote_changes;
     long local_rejections;
     long remote_rejections;
 
+    GtkWidget *info_bar; /* info/error bar, after ui has been constructed */
     GtkWidget *label; /* source report label, after ui has been constructed */
     GtkWidget *box; /* source box, after ui has been constructed */
 
@@ -57,7 +60,6 @@ typedef struct server_config {
 } server_config;
 
 gboolean source_config_is_enabled (source_config *source);
-void source_config_update_label (source_config *source);
 void source_config_free (source_config *source);
 
 void server_config_init (server_config *server, SyncevoConfig *config);

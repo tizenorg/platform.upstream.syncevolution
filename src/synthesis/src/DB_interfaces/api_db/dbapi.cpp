@@ -834,8 +834,7 @@ TSyError TDB_Api_Config::Connect( cAppCharP aModName, CContext &globContext,
 
       if   (!err   &&    ( FlagOK  ( ca, Plugin_SE_Auth  ) ||
                            FlagOK  ( ca, Plugin_DV_Admin ) )) {
-                  err= DBApi_Assign( ca, &m.se,           sizeof(m.se),           Plugin_Session  );
-        if (!err) err= DBApi_Assign( ca, &m.se.seAuth,    sizeof(m.se.seAuth),    Plugin_SE_Auth  );
+                  err= DBApi_Assign( ca, &m.se.seAuth,    sizeof(m.se.seAuth),    Plugin_SE_Auth  );
         if (!err) err= DBApi_Assign( ca, &m.se.dvAdmin,   sizeof(m.se.dvAdmin),   Plugin_DV_Admin );
 
         if (!err   &&  Supported( VP_GetDBTime )) {

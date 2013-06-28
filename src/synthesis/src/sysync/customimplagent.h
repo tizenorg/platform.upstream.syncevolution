@@ -207,7 +207,7 @@ protected:
   virtual void CheckDevice(const char *aDeviceID) { /* NOP here */ };
   // - check user/pw (part of SessionLogin process)
   virtual bool CheckLogin(const char *aOriginalUserName, const char *aModifiedUserName, const char *aAuthString, TAuthSecretTypes aAuthStringType, const char *aDeviceID) { return false; /* cannot login */ };
-  // - remote device is analyzed, eventually save status
+  // - remote device is analyzed, possibly save status
   virtual void remoteAnalyzed(void) { /* NOP at this level */ };
   // script contexts
   #endif // BINFILE_ALWAYS_ACTIVE

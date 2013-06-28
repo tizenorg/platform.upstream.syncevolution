@@ -470,7 +470,7 @@ TDebugLoggerBase::~TDebugLoggerBase()
 {
   // make sure debug is finalized
   DebugFinalizeOutput();
-  // make sure eventually left-over history elements are erased
+  // make sure possibly left-over history elements are erased
   while (fBlockHistory) {
     TBlockLevel *bl=fBlockHistory;
     fBlockHistory=bl->fNext;
@@ -492,7 +492,7 @@ lineartime_t TDebugLoggerBase::getSystemNowAs(timecontext_t aContext)
 // install outputter
 void TDebugLoggerBase::installOutput(TDbgOut *aDbgOutP)
 {
-  // get rid of eventually installed previous outputter
+  // get rid of possibly installed previous outputter
   if (fDbgOutP) delete fDbgOutP;
   fDbgOutP=aDbgOutP;
 } // TDebugLoggerBase::installOutput
@@ -603,8 +603,7 @@ void TDebugLoggerBase::DebugOpenBlock(cAppCharP aBlockName, cAppCharP aBlockTitl
 {
   // we need a format and debug not completely off
   if (getMask() && aBlockName) {
-    va_list va;
-    memset(&va, 0, sizeof(va));
+    static va_list va;
     DebugVOpenBlock(aBlockName,aBlockTitle,aCollapsed,NULL,va);
   }
 } // TDebugLoggerBase::DebugOpenBlock
@@ -892,7 +891,7 @@ void TDebugLoggerBase::DebugVOpenBlock(cAppCharP aBlockName, cAppCharP aBlockTit
     // create Block line on current indent level
     string bl;
     string ts;
-    // - preamble, eventually with timestamp
+    // - preamble, possibly with timestamp
     bool withTime = fDbgOptionsP->fTimestampStructure;
     if (withTime)
       StringObjTimestamp(ts,getSystemNowAs(TCTX_SYSTEM));
@@ -1101,7 +1100,7 @@ void TDebugLoggerBase::internalCloseBlocks(cAppCharP aBlockName, cAppCharP aClos
     }
     // now close topmost Block
     string ts,bl;
-    // - get time if needed and eventually put it within indented block
+    // - get time if needed and possibly put it within indented block
     if (withTime) {
       StringObjTimestamp(ts,getSystemNowAs(TCTX_SYSTEM));
       // for XML, the time must be shown before the close tag on a separate line
@@ -1380,7 +1379,7 @@ TDebugLoggerBase *TDebugLogger::getThreadLogger(bool aCreateNew)
   // unknown subthread
   if (fMainThreadID==0) {
     // no current mainthread, let subthread write to main log
-    // Note: this makes sure log info eventually trailing the DebugThreadOutputDone()
+    // Note: this makes sure log info possibly trailing the DebugThreadOutputDone()
     //       also lands in the main log. This is not critical - the only thing that must be
     //       ensured is that starting new threads is made only with DebugDefineMainThread set.
     return this;
@@ -1518,7 +1517,7 @@ void TDebugLogger::DebugThreadOutputDone(bool aRemoveIt)
 
 
 // Used to regain control as main thread (e.g. for the next request of a session which
-// eventually occurs from another thread).
+// possibly occurs from another thread).
 void TDebugLogger::DebugDefineMainThread(void)
 {
   #ifdef MULTI_THREAD_SUPPORT

@@ -371,6 +371,11 @@ struct ClientTestConfig{
     const char *type;
 
     /**
+     * a list of sub configs separated via , if this is a super datastore
+     */
+    const char *subConfigs;
+
+    /**
      * TRUE if the source supports recovery from an interrupted
      * synchronization. Enables the Client::Sync::*::Retry group
      * of tests.
@@ -387,12 +392,14 @@ struct ClientTestConfig{
  * exchange format can register one configuration for each format, but
  * not registering any configuration is also okay.
  *
- * This code depends on the C++ client library test framework and
- * therefore CPPUnit. To avoid a hard dependency on that in the normal
- * "syncevolution" binary, the actual usage of the test Config class
- * is limited to the *Register.cpp files when compiling them for
- * inclusion in the "client-test" binary, i.e., they are protected by
- * #ifdef ENABLE_UNIT_TESTS.
+ * *Using* the registered tests depends on the CPPUnit test framework.
+ * *Registering* does not. Therefore backends should always register *
+ * *themselves for testing and leave it to the test runner
+ * "client-test" whether tests are really executed.
+ *
+ * Unit tests are different. They create hard dependencies on CPPUnit
+ * inside the code that contains them, and thus should be encapsulated
+ * inside #ifdef ENABLE_UNIT_TESTS checks.
  *
  * Sync sources have to work stand-alone without a full SyncClient
  * configuration for all local tests. The minimal configuration prepared
@@ -645,6 +652,13 @@ class SyncSourceBase : public Logger {
          * leave empty when acessing the field list directly
          */
         std::string m_profile;
+
+        /**
+         * the second parameter for MAKE/PARSETEXTWITHPROFILE
+         * which specifies a remote rule to be applied when
+         * converting to and from the backend
+         */
+        std::string m_backendRule;
     
         /** list of supported datatypes in "<use .../>" format */
         std::string m_datatypes;
@@ -1515,6 +1529,7 @@ class SyncSourceAdmin : public virtual SyncSourceBase
     boost::shared_ptr<ConfigNode> m_configNode;
     std::string m_adminPropertyName;
     boost::shared_ptr<ConfigNode> m_mappingNode;
+    bool m_mappingLoaded;
 
     ConfigProps m_mapping;
     ConfigProps::const_iterator m_mappingIterator;

@@ -1169,7 +1169,7 @@ Ret_t xltEncPcdata(XltTagID_t tagId, XltRO_t reqOptFlag, const VoidPtr_t pConten
               // add CDATA
               _tmpStr = (MemPtr_t) "<![CDATA[";
               if ((_err = xltAddToBuffer(_tmpStr, smlLibStrlen((String_t)_tmpStr), pBufMgr)) != SML_ERR_OK) return _err;
-              // search and escape eventually contained ]]> sequences
+              // search and escape possibly contained ]]> sequences
               p=((SmlPcdataPtr_t)pContent)->content;
               len=((SmlPcdataPtr_t)pContent)->length;
               n=0;

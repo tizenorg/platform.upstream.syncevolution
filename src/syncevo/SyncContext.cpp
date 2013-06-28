@@ -54,6 +54,7 @@ using namespace std;
 #include <boost/algorithm/string/split.hpp>
 
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <pwd.h>
 #include <unistd.h>
 #include <signal.h>
@@ -178,25 +179,26 @@ class LogDir : public LoggerBase {
     bool m_readonly;         /**< m_info is not to be written to */
     SyncReport *m_report;    /**< record start/end times here */
 
+    // internal prefix for backup directory name: "SyncEvolution-"
+    static const char* const DIR_PREFIX;
+
     /** set m_logdir and adapt m_prefix accordingly */
     void setLogdir(const string &logdir) {
-        // strip trailing slashes, but not the initial one
-        size_t off = logdir.size();
-        while (off > 0 && logdir[off - 1] == '/') {
-            off--;
-        }
-        m_logdir = logdir.substr(0, off);
+        m_logdir = boost::trim_right_copy_if(logdir, boost::is_any_of("/"));
 
-        string lower = m_client.getServer();
-        boost::to_lower(lower);
+        // the config name has been normalized
+        string peer = m_client.getConfigName();
+
+        // escape "_" and "-" the peer name
+        peer = escapePeer(peer);
 
         if (boost::iends_with(m_logdir, "syncevolution")) {
             // use just the server name as prefix
-            m_prefix = lower;
+            m_prefix = peer;
         } else {
             // SyncEvolution-<server>-<yyyy>-<mm>-<dd>-<hh>-<mm>
-            m_prefix = "SyncEvolution-";
-            m_prefix += lower;
+            m_prefix = DIR_PREFIX;
+            m_prefix += peer;
         }
     }
 
@@ -265,6 +267,22 @@ public:
         m_info->setMode(false);
         m_readonly = true;
     }
+    /*
+     * get the corresponding peer name encoded in the logging dir name.
+     * The dir name must match the format(see startSession). Otherwise,
+     * empty string is returned.
+     */
+    string getPeerNameFromLogdir(const string &dir) {
+        // extract the dir name from the fullpath
+        string iDirPath, iDirName;
+        parseLogDir(dir, iDirPath, iDirName);
+        // extract the peer name from the dir name
+        string dirPrefix, peerName, dateTime;
+        if(parseDirName(iDirName, dirPrefix, peerName, dateTime)) {
+            return unescapePeer(peerName);
+        }
+        return "";
+    }
 
     /**
      * read sync report for session selected with openLogdir()
@@ -313,15 +331,26 @@ public:
                 time_t ts = time(NULL);
                 struct tm *tm = localtime(&ts);
                 stringstream base;
-                base << m_logdir << "/"
-                     << m_prefix
-                     << "-"
+                base << "-"
                      << setfill('0')
                      << setw(4) << tm->tm_year + 1900 << "-"
                      << setw(2) << tm->tm_mon + 1 << "-"
                      << setw(2) << tm->tm_mday << "-"
                      << setw(2) << tm->tm_hour << "-"
                      << setw(2) << tm->tm_min;
+                // make sure no directory name has the same date time with others 
+                // even for different peers
+                std::vector<string> dateTimes;
+                if(isDir(m_logdir)) {
+                    ReadDir dir(m_logdir);
+                    BOOST_FOREACH(const string &entry, dir) {
+                        string dirPrefix, peerName, dateTime;
+                        if(parseDirName(entry, dirPrefix, peerName, dateTime)) {
+                            dateTimes.push_back(dateTime);
+                        }
+                    }
+                    sort(dateTimes.begin(), dateTimes.end());
+                }
                 int seq = 0;
                 while (true) {
                     stringstream path;
@@ -329,8 +358,10 @@ public:
                     if (seq) {
                         path << "-" << seq;
                     }
-                    m_path = path.str();
-                    if (!isDir(m_path)) {
+                    if (!binary_search(dateTimes.begin(), dateTimes.end(), path.str())) {
+                        m_path = m_logdir + "/";
+                        m_path += m_prefix;
+                        m_path += path.str();
                         mkdir_p(m_path);
                         break;
                     } else {
@@ -386,6 +417,10 @@ public:
             boost::shared_ptr<ConfigNode> filenode(new FileConfigNode(m_path, "status.ini", false));
             m_info = new SafeConfigNode(filenode);
             m_info->setMode(false);
+            // Create a status.ini which contains an error.
+            // Will be overwritten later on, unless we crash.
+            m_info->setProperty("status", "500");
+            m_info->setProperty("error", "synchronization process died prematurely");
             writeTimestamp("start", start);
         }
     }
@@ -456,6 +491,17 @@ public:
                           const char *format,
                           va_list args)
     {
+        if (m_report &&
+            level <= ERROR &&
+            m_report->getError().empty()) {
+            va_list argscopy;
+            va_copy(argscopy, args);
+            string error = StringPrintfV(format, argscopy);
+            va_end(argscopy);
+
+            m_report->setError(error);
+        }
+
         if (m_client.getEngine().get()) {
             va_list argscopy;
             va_copy(argscopy, args);
@@ -467,25 +513,123 @@ public:
         m_parentLogger.messagev(level, prefix, file, line, function, format, args);
     }
 
+    /**
+     * Compare two directory by its creation time encoded in the directory name
+     * sort them in ascending order
+     */
+    bool operator()(const string &str1, const string &str2) {
+        string iDirPath1, iStr1;
+        string iDirPath2, iStr2;
+        parseLogDir(str1, iDirPath1, iStr1);
+        parseLogDir(str2, iDirPath2, iStr2);
+        string dirPrefix1, peerName1, dateTime1;
+        parseDirName(iStr1, dirPrefix1, peerName1, dateTime1);
+        string dirPrefix2, peerName2, dateTime2;
+        parseDirName(iStr2, dirPrefix2, peerName2, dateTime2);
+        return dateTime1 < dateTime2;
+    }
+
 private:
-    /** find all entries in a given directory, return as sorted array of full paths */
+    /**
+     * extract backup directory name from a full backup path
+     * for example, a full path "/home/xxx/.cache/syncevolution/default/funambol-2009-12-08-14-05"
+     * is parsed as "/home/xxx/.cache/syncevolution/default" and "funambol-2009-12-08-14-05"
+     */
+    static void parseLogDir(const string &fullpath, string &dirPath, string &dirName) {
+        string iFullpath = boost::trim_right_copy_if(fullpath, boost::is_any_of("/"));
+        size_t off = iFullpath.find_last_of('/');
+        if(off != iFullpath.npos) {
+            dirPath = iFullpath.substr(0, off);
+            dirName = iFullpath.substr(off+1);
+        } else {
+            dirPath = "";
+            dirName = iFullpath;
+        }
+    }
+
+    // escape '-' and '_' for peer name 
+    static string escapePeer(const string &prefix) {
+        string escaped = prefix;
+        boost::replace_all(escaped, "_", "__");
+        boost::replace_all(escaped, "-", "_+");
+        return escaped;
+    }
+
+    // un-escape '_+' and '__' for peer name 
+    static string unescapePeer(const string &escaped) {
+        string prefix = escaped;
+        boost::replace_all(prefix, "_+", "-");
+        boost::replace_all(prefix, "__", "_");
+        return prefix;
+    }
+
+    /**
+     * parse a directory name into dirPrefix(empty or DIR_PREFIX), peerName, dateTime.
+     * If directory name is in the format of '[DIR_PREFIX]-peer[@context]-year-month-day-hour-min'
+     * then parsing is sucessful and these 3 strings are correctly set and true is returned. 
+     * Otherwise, false is returned. 
+     * Here we don't check whether the dir name is matching peer name
+     */
+    static bool parseDirName(const string &dir, string &dirPrefix, string &config, string &dateTime) {
+        string iDir = dir;
+        if (!boost::starts_with(iDir, DIR_PREFIX)) {
+            dirPrefix = "";
+        } else {
+            dirPrefix = DIR_PREFIX;
+            boost::erase_first(iDir, DIR_PREFIX);
+        }
+        size_t off = iDir.find('-');
+        if (off != iDir.npos) {
+            config = iDir.substr(0, off);
+            dateTime = iDir.substr(off);
+            // m_prefix doesn't contain peer name or it equals with dirPrefix plus peerName
+            return checkDirName(dateTime);
+        }
+        return false;
+    }
+
+    /** 
+     * Find all entries in a given directory, return as sorted array of full paths in ascending order.
+     * If m_prefix doesn't contain peer name information, then all log dirs for different peers in the
+     * logdir are returned.
+     */
     void getLogdirs(vector<string> &dirs) {
         if (!isDir(m_logdir)) {
             return;
         }
+        string peer = m_client.getConfigName();
+        string peerName, context;
+        SyncConfig::splitConfigString(peer, peerName, context);
+
         ReadDir dir(m_logdir);
         BOOST_FOREACH(const string &entry, dir) {
-            if (boost::starts_with(entry, m_prefix)) {
-                string remain = boost::erase_first_copy(entry, m_prefix);
-                if(checkDirName(remain)) {
+            string tmpDirPrefix, tmpPeer, tmpDateTime;
+            // if directory name could not be parsed, ignore it
+            if(parseDirName(entry, tmpDirPrefix, tmpPeer, tmpDateTime)) {
+                if(!peerName.empty() && (m_prefix == (tmpDirPrefix + tmpPeer))) {
+                    // if peer name exists, match the logs for the given peer
                     dirs.push_back(m_logdir + "/" + entry);
+                } else if(peerName.empty()) {
+                    // if no peer name and only context, match for all logs under the given context
+                    string tmpName, tmpContext;
+                    SyncConfig::splitConfigString(tmpPeer, tmpName, tmpContext);
+                    if( context == tmpContext && boost::starts_with(m_prefix, tmpDirPrefix)) {
+                        dirs.push_back(m_logdir + "/" + entry);
+                    }
                 }
             }
         }
-        sort(dirs.begin(), dirs.end());
+        // sort vector in ascending order
+        // if no peer name
+        if(peerName.empty()){
+            sort(dirs.begin(), dirs.end(), *this);
+        } else {
+            sort(dirs.begin(), dirs.end());
+        }
     }
+
     // check the dir name is conforming to what format we write
-    bool checkDirName(const string& value) {
+    static bool checkDirName(const string& value) {
         const char* str = value.c_str();
         /** need check whether string after prefix is a valid date-time we wrote, format
          * should be -YYYY-MM-DD-HH-MM and optional sequence number */
@@ -543,6 +687,8 @@ private:
     }
 };
 
+const char* const LogDir::DIR_PREFIX = "SyncEvolution-";
+
 // this class owns the sync sources and (together with
 // a logdir) handles writing of per-sync files as well
 // as the final report 
@@ -556,9 +702,21 @@ public:
         LOGGING_FULL      /**< everything */
     };
 
+    struct SourceConfigSpecials{
+        bool m_forceSlow;
+        string m_alias;
+        SourceConfigSpecials ():
+            m_forceSlow(false),
+            m_alias("")
+        {
+        }
+    };
+
     std::vector<boost::shared_ptr<VirtualSyncSource> >m_virtualDS; /**All configured virtual datastores*/
+    std::map<std::string, SourceConfigSpecials > m_configSpecials; /*Indicating whether the corresponding sync source is forced slow*/
 private:
     LogDir m_logdir;     /**< our logging directory */
+    SyncContext &m_client; /**< the context in which we were instantiated */
     bool m_prepared;     /**< remember whether syncPrepare() dumped databases successfully */
     bool m_doLogging;    /**< true iff the normal logdir handling is enabled
                             (creating and expiring directoties, before/after comparison) */
@@ -614,6 +772,7 @@ public:
 
     SourceList(SyncContext &client, bool doLogging) :
         m_logdir(client),
+        m_client(client),
         m_prepared(false),
         m_doLogging(doLogging),
         m_reportTodo(true),
@@ -752,6 +911,10 @@ public:
                 }
                 if (m_logLevel > LOGGING_QUIET && report) {
                     cout << *report;
+                    std::string slowSync = report->slowSyncExplanation(m_client.getPeer());
+                    if (!slowSync.empty()) {
+                        cout << endl << slowSync;
+                    }
                 }
 
                 // compare databases?
@@ -912,51 +1075,57 @@ void SyncContext::displaySourceProgress(sysync::TProgressEventEnum type,
         /* datastore alerted (extra1=0 for normal, 1 for slow, 2 for first time slow, 
            extra2=1 for resumed session,
            extra3 0=twoway, 1=fromserver, 2=fromclient */
-        SE_LOG_INFO(NULL, NULL, "%s: %s %s sync%s",
-                    source.getName(),
-                    extra2 ? "resuming" : "starting",
-                    extra1 == 0 ? "normal" :
-                    extra1 == 1 ? "slow" :
-                    extra1 == 2 ? "first time" :
-                    "unknown",
-                    extra3 == 0 ? ", two-way" :
-                    extra3 == 1 ? " from server" :
-                    extra3 == 2 ? " from client" :
-                    ", unknown direction");
-
-        SyncMode mode = SYNC_NONE;
-        switch (extra1) {
-        case 0:
-            switch (extra3) {
+        // -1 is used for alerting a restore from backup. Synthesis won't use this
+        if (extra1 != -1) {
+            SE_LOG_INFO(NULL, NULL, "%s: %s %s sync%s",
+                        source.getName(),
+                        extra2 ? "resuming" : "starting",
+                        extra1 == 0 ? "normal" :
+                        extra1 == 1 ? "slow" :
+                        extra1 == 2 ? "first time" :
+                        "unknown",
+                        extra3 == 0 ? ", two-way" :
+                        extra3 == 1 ? " from server" :
+                        extra3 == 2 ? " from client" :
+                        ", unknown direction");
+         
+            SyncMode mode = SYNC_NONE;
+            switch (extra1) {
             case 0:
-                mode = SYNC_TWO_WAY;
+                switch (extra3) {
+                case 0:
+                    mode = SYNC_TWO_WAY;
+                    break;
+                case 1:
+                    mode = SYNC_ONE_WAY_FROM_SERVER;
+                    break;
+                case 2:
+                    mode = SYNC_ONE_WAY_FROM_CLIENT;
+                    break;
+                }
                 break;
             case 1:
-                mode = SYNC_ONE_WAY_FROM_SERVER;
-                break;
             case 2:
-                mode = SYNC_ONE_WAY_FROM_CLIENT;
+                switch (extra3) {
+                case 0:
+                    mode = SYNC_SLOW;
+                    break;
+                case 1:
+                    mode = SYNC_REFRESH_FROM_SERVER;
+                    break;
+                case 2:
+                    mode = SYNC_REFRESH_FROM_CLIENT;
+                    break;
+                }
                 break;
             }
-            break;
-        case 1:
-        case 2:
-            switch (extra3) {
-            case 0:
-                mode = SYNC_SLOW;
-                break;
-            case 1:
-                mode = SYNC_REFRESH_FROM_SERVER;
-                break;
-            case 2:
-                mode = SYNC_REFRESH_FROM_CLIENT;
-                break;
-            }
-            break;
+            source.recordFinalSyncMode(mode);
+            source.recordFirstSync(extra1 == 2);
+            source.recordResumeSync(extra2 == 1);
+        } else {
+            SE_LOG_INFO(NULL, NULL, "%s: restore from backup", source.getName());
+            source.recordFinalSyncMode(SYNC_RESTORE_FROM_BACKUP);
         }
-        source.recordFinalSyncMode(mode);
-        source.recordFirstSync(extra1 == 2);
-        source.recordResumeSync(extra2 == 1);
         break;
     }
     case sysync::PEV_SYNCSTART:
@@ -1004,6 +1173,10 @@ void SyncContext::displaySourceProgress(sysync::TProgressEventEnum type,
            extra3=1 for resumed session) */
         if (source.getFinalSyncMode() == SYNC_NONE) {
             SE_LOG_INFO(NULL, NULL, "%s: inactive", source.getName());
+        } else if(source.getFinalSyncMode() == SYNC_RESTORE_FROM_BACKUP) {
+            SE_LOG_INFO(NULL, NULL, "%s: restore done %s", 
+                        source.getName(),
+                        extra1 ? "unsuccessfully" : "successfully" );
         } else {
             SE_LOG_INFO(NULL, NULL, "%s: %s%s sync done %s",
                         source.getName(),
@@ -1027,6 +1200,15 @@ void SyncContext::displaySourceProgress(sysync::TProgressEventEnum type,
             break;
         case 404:
             SE_LOG_INFO(&source, NULL, "server database not found, check URI '%s'", source.getURI());
+            break;
+        case 0:
+            break;
+        default:
+            // Printing unknown status codes here is of somewhat questionable value,
+            // because even "good" sources will get a bad status when the overall
+            // session turns bad. We also don't have good explanations for the
+            // status here.
+            SE_LOG_ERROR(&source, NULL, "%s", Status2String(SyncMLStatus(extra1)).c_str());
             break;
         }
         source.recordStatus(SyncMLStatus(extra1));
@@ -1215,6 +1397,49 @@ SyncContext *SyncContext::findContext(const char *sessionName)
 void SyncContext::initSources(SourceList &sourceList)
 {
     list<string> configuredSources = getSyncSources();
+
+    // Phase 1, check all virtual sync soruces
+    BOOST_FOREACH(const string &name, configuredSources) {
+        boost::shared_ptr<PersistentSyncSourceConfig> sc(getSyncSourceConfig(name));
+        SyncSourceNodes source = getSyncSourceNodes (name);
+        SourceType sourceType = SyncSource::getSourceType(source);
+        // is the source enabled?
+        string sync = sc->getSync();
+        bool enabled = sync != "disabled";
+        if (enabled) {
+            if (sourceType.m_backend == "virtual") {
+                //This is a virtual sync source, check and enable the referenced
+                //sub syncsources here
+                SyncSourceParams params(name, source);
+                boost::shared_ptr<VirtualSyncSource> vSource = boost::shared_ptr<VirtualSyncSource> (new VirtualSyncSource (params));
+                std::string evoSyncSource = vSource->getDatabaseID();
+                bool valid = true;
+                std::vector<std::string> mappedSources = unescapeJoinedString (evoSyncSource, ',');
+                BOOST_FOREACH (std::string source, mappedSources) {
+                    //check whether the mapped source is really available
+                    boost::shared_ptr<PersistentSyncSourceConfig> source_config 
+                        = getSyncSourceConfig(source);
+                    if (!source_config || !source_config->exists()) {
+                        SE_LOG_ERROR (NULL, NULL, 
+                                "Virtual datasource %s referenced a non-existed datasource %s, check your configuration!",
+                                vSource->getName(), source.c_str());
+                        valid = false;
+                        break;
+                    }
+                }
+                if (valid) {
+                    FilterConfigNode::ConfigFilter vFilter;
+                    vFilter["sync"] = sync;
+                    vFilter["uri"] = sc->getURI();
+                    BOOST_FOREACH (std::string source, mappedSources) {
+                        setConfigFilter (false, source, vFilter);
+                    }
+                }
+                sourceList.m_virtualDS.push_back (vSource);
+            }
+        }
+    }
+
     BOOST_FOREACH(const string &name, configuredSources) {
         boost::shared_ptr<PersistentSyncSourceConfig> sc(getSyncSourceConfig(name));
 
@@ -1225,12 +1450,7 @@ void SyncContext::initSources(SourceList &sourceList)
         string sync = sc->getSync();
         bool enabled = sync != "disabled";
         if (enabled) {
-            if (sourceType.m_backend == "virtual") {
-                //This is a virtual sync source 
-                SyncSourceParams params(name, source);
-                sourceList.m_virtualDS.push_back (
-                        boost::shared_ptr<VirtualSyncSource> (new VirtualSyncSource (params)));
-            } else {
+            if (sourceType.m_backend != "virtual") {
                 string url = getSyncURL();
                 SyncSourceParams params(name,
                         source);
@@ -1241,6 +1461,7 @@ void SyncContext::initSources(SourceList &sourceList)
                 }
                 sourceList.push_back(syncSource);
             }
+            sourceList.m_configSpecials[name].m_alias = sc->getURI();
         } else {
             // the Synthesis engine is never going to see this source,
             // therefore we have to mark it as 100% complete and
@@ -1268,21 +1489,20 @@ void SyncContext::initSources(SourceList &sourceList)
 
 bool SyncContext::transport_cb (void *udata)
 {
-    return static_cast <SyncContext *> (udata) -> processTransportCb();
+    unsigned int interval = reinterpret_cast<uintptr_t>(udata);
+    SE_LOG_INFO(NULL, NULL, "Transport timeout after %u:%02umin",
+                interval / 60,
+                interval % 60);
+    // never cancel the transport, the higher levels will deal
+    // with the timeout
+    return true;
 }
 
-bool SyncContext::processTransportCb()
+void SyncContext::setTransportCallback(int seconds)
 {
-    // TODO: distinguish between client and server. In the server
-    // we have to implement a much higher time out and then disconnect
-    // an unresponsive client.
-
-    //Always return true to continue, we will detect the retry count at
-    //the higher level together with transport error scenarios.
-    SE_LOG_INFO(NULL, NULL, "Transport timeout after %d:%02dmin",
-                m_retryInterval / 60,
-                m_retryInterval % 60);
-    return true;
+    m_agent->setCallback(transport_cb,
+                         reinterpret_cast<void *>(static_cast<uintptr_t>(seconds)),
+                         seconds);
 }
 
 // XML configuration converted to C string constant
@@ -1370,47 +1590,57 @@ void SyncContext::getConfigXML(string &xml, string &configname)
     size_t index;
     unsigned long hash = 0;
 
+    const char *sessioninitscript =
+        "    <sessioninitscript><![CDATA[\n"
+        "      // these variables are possibly modified by rule scripts\n"
+        "      TIMESTAMP mindate; // earliest date remote party can handle\n"
+        "      INTEGER retransfer_body; // if set to true, body is re-sent to client when message is moved from outbox to sent\n"
+        "      mindate=EMPTY; // no limit by default\n"
+        "      retransfer_body=FALSE; // normally, do not retransfer email body (and attachments) when moving items to sent box\n"
+        "      INTEGER delayedabort;\n"
+        "      delayedabort = FALSE;\n"
+        "    ]]></sessioninitscript>\n";
+
+    ostringstream clientorserver;
+    if (m_serverMode) {
+        clientorserver <<
+            "  <server type='plugin'>\n"
+            "    <plugin_module>SyncEvolution</plugin_module>\n"
+            "    <plugin_sessionauth>yes</plugin_sessionauth>\n"
+            "    <plugin_deviceadmin>yes</plugin_deviceadmin>\n"
+            "\n" <<
+            sessioninitscript <<
+            "    <sessiontimeout>300</sessiontimeout>\n"
+            "\n"
+            "    <defaultauth/>\n"
+            "\n"
+            "    <datastore/>\n"
+            "\n"
+            "    <remoterules/>\n"
+            "  </server>\n";
+    } else {
+        clientorserver <<
+            "  <client type='plugin'>\n"
+            "    <binfilespath>$(binfilepath)</binfilespath>\n"
+            "    <defaultauth/>\n"
+            "\n" <<
+            sessioninitscript <<
+            // SyncEvolution has traditionally not folded long lines in
+            // vCard.  Testing showed that servers still have problems with
+            // it, so avoid it by default
+            "    <donotfoldcontent>yes</donotfoldcontent>\n"
+            "\n"
+            "    <fakedeviceid/>\n"
+            "\n"
+            "    <datastore/>\n"
+            "\n"
+            "    <remoterules/>\n"
+            "  </client>\n";
+    }
     substTag(xml,
              "clientorserver",
-             m_serverMode ?
-             "  <server type='plugin'>\n"
-             "    <plugin_module>SyncEvolution</plugin_module>\n"
-             "    <plugin_sessionauth>yes</plugin_sessionauth>\n"
-             "    <plugin_deviceadmin>yes</plugin_deviceadmin>\n"
-             "\n"
-             "    <sessioninitscript><![CDATA[\n"
-             "      // these variables are possibly modified by rule scripts\n"
-             "      TIMESTAMP mindate; // earliest date remote party can handle\n"
-             "      INTEGER retransfer_body; // if set to true, body is re-sent to client when message is moved from outbox to sent\n"
-             "      mindate=EMPTY; // no limit by default\n"
-             "      retransfer_body=FALSE; // normally, do not retransfer email body (and attachments) when moving items to sent box\n"
-             "    ]]></sessioninitscript>\n"
-             "    <sessiontimeout>300</sessiontimeout>\n"
-             "\n"
-             "    <defaultauth/>\n"
-             "\n"
-             "    <datastore/>\n"
-             "\n"
-             "    <remoterules/>\n"
-             "  </server>\n"
-             :
-             "  <client type='plugin'>\n"
-             "    <binfilespath>$(binfilepath)</binfilespath>\n"
-             "    <defaultauth/>\n"
-             "\n"
-             // SyncEvolution has traditionally not folded long lines in
-             // vCard.  Testing showed that servers still have problems with
-             // it, so avoid it by default
-             "    <donotfoldcontent>yes</donotfoldcontent>\n"
-             "\n"
-             "    <fakedeviceid/>\n"
-             "\n"
-             "    <datastore/>\n"
-             "\n"
-             "    <remoterules/>\n"
-             "  </client>\n",
-             true
-             );
+             clientorserver.str(),
+             true);
 
     tag = "<debug/>";
     index = xml.find(tag);
@@ -1480,32 +1710,75 @@ void SyncContext::getConfigXML(string &xml, string &configname)
             }
             datastores << "    <datastore name='" << source->getName() << "' type='plugin'>\n" <<
                 "      <dbtypeid>" << hash << "</dbtypeid>\n" <<
-                fragment <<
-                "    </datastore>\n\n";
+                fragment;
+
+            string mode = source->getSync();
+            const struct SourceList::SourceConfigSpecials &special =
+                m_sourceListPtr->m_configSpecials[source->getName()];
+            if (special.m_forceSlow) {
+                // we *want* a slow sync, but couldn't tell the client -> force it server-side
+                datastores << "      <alertscript> FORCESLOWSYNC(); </alertscript>\n";
+            } else if (mode != "slow" &&
+                       mode != "refresh-from-server" && // is implemented as "delete local data" + "slow sync",
+                                                        // so a slow sync is acceptable in this case
+                       !m_serverMode &&
+                       getPreventSlowSync() &&
+                       source->m_backupBefore.getNumItems() != 0) { // check is only relevant if we have local data;
+                                                                    // if no backup was made (-1), better check
+                // We are not expecting a slow sync => refuse to execute one.
+                // This is the client check for this, server must be handled
+                // differently (TODO, MB #2416).
+                datastores <<
+                    "      <alertscript><![CDATA[\n"
+                    "INTEGER alertcode;\n"
+                    "alertcode = ALERTCODE();\n"
+                    "if (alertcode == 201) {\n" // SLOWSYNC() cannot be used here, refresh-from-client also sets it
+                    "   DEBUGMESSAGE(\"slow sync not expected by SyncEvolution, disabling datastore\");\n"
+                    "   ABORTDATASTORE(" << STATUS_UNEXPECTED_SLOW_SYNC <<
+                    ");\n"
+                    "   // tell UI to abort instead of sending the next message\n"
+                    "   SETSESSIONVAR(\"delayedabort\", 1);\n"
+                    "}\n"
+                    "]]></alertscript>\n";
+            }
+
+            if (m_serverMode && !special.m_alias.empty()) {
+                datastores << " <alias name='" << special.m_alias << "'/>";
+            }
+
+            datastores << "    </datastore>\n\n";
         }
 
         /*If there is super datastore, add it here*/
-        //TODO generate specific superdatastore contents
-        //Now only works for synthesis built-in events+tasks 
+        //TODO generate specific superdatastore contents (MB #8753)
+        //Now only works for synthesis built-in events+tasks
         BOOST_FOREACH (boost::shared_ptr<VirtualSyncSource> vSource, m_sourceListPtr->m_virtualDS) {
+            std::string superType = vSource->getSourceType().m_format;
             std::string evoSyncSource = vSource->getDatabaseID();
-            bool valid = true;
             std::vector<std::string> mappedSources = unescapeJoinedString (evoSyncSource, ',');
-            BOOST_FOREACH (std::string source, mappedSources) {
-                //check whether the mapped source is really available
-                if (! (*m_sourceListPtr)[source]) {
-                    SE_LOG_ERROR (NULL, NULL, 
-                            "Virtual datasource %s referenced a non-existed datasource %s, check your configuration!",
-                            vSource->getName(), source.c_str());
-                    valid = false;
-                    break;
+            //only check the type when user uses forceFormat
+            if (vSource->getSourceType().m_forceFormat) {
+                if (superType.find_last_of (":") != superType.npos) {
+                    superType = superType.substr (superType.find_last_of (":"));
                 }
-                //TODO check the format. Must be the same for the superdatastore and all
-                //sub datastores. If not match, warn user.
-           }
+                BOOST_FOREACH (std::string source, mappedSources) {
+                    //check the data type
+                    SyncSource *subSource = (*m_sourceListPtr)[source];
+                    std::string subType = subSource->getPeerMimeType();
+                    if (subType.empty()) {
+                        subType = subSource->getSourceType().m_format;
+                        if (subType.find_last_of (":") != subType.npos) {
+                            subType = subType.substr (subType.find_last_of (":"));
+                        }
+                    }
+                    if (superType != subType) {
+                        SE_LOG_WARNING (NULL, NULL, 
+                                "Virtual datasource %s and sub datasource %s has different data format, will use the format in virtual datasource",
+                                vSource->getName(), source.c_str());
+                        break;
+                    }
+                }
 
-            if (!valid) {
-                continue;
             }
 
             if (mappedSources.size() !=2) {
@@ -1525,9 +1798,6 @@ void SyncContext::getConfigXML(string &xml, string &configname)
             std::string typesupport;
             typesupport = vSource->getDataTypeSupport();
             if (typesupport.empty()) {
-                //TODO
-                //If the datatype is not set explictly by user, what should
-                //be do?
                 SE_THROW ("datatype format is not set in virtual datasource configuration");
             } 
             datastores << "      <typesupport>\n"
@@ -1743,6 +2013,10 @@ SyncMLStatus SyncContext::sync(SyncReport *report)
                            getPrintChanges() ? SourceList::LOGGING_FULL :
                            SourceList::LOGGING_SUMMARY);
 
+    // careful about scope, this is needed for writing the
+    // report below
+    SyncReport buffer;
+
     SwapContext syncSentinel(this);
     try {
         m_sourceListPtr = &sourceList;
@@ -1765,7 +2039,6 @@ SyncMLStatus SyncContext::sync(SyncReport *report)
             }
         }
 
-        SyncReport buffer;
         if (!report) {
             report = &buffer;
         }
@@ -1865,8 +2138,20 @@ SyncMLStatus SyncContext::sync(SyncReport *report)
     try {
         // Print final report before cleaning up.
         // Status was okay only if all sources succeeded.
+        // When a source or the overall sync was successful,
+        // but some items failed, we report a "partial failure"
+        // status.
         sourceList.updateSyncReport(*report);
         BOOST_FOREACH(SyncSource *source, sourceList) {
+            if (source->getStatus() == STATUS_OK &&
+                (source->getItemStat(SyncSource::ITEM_LOCAL,
+                                     SyncSource::ITEM_ANY,
+                                     SyncSource::ITEM_REJECT) ||
+                 source->getItemStat(SyncSource::ITEM_REMOTE,
+                                     SyncSource::ITEM_ANY,
+                                     SyncSource::ITEM_REJECT))) {
+                source->recordStatus(STATUS_PARTIAL_FAILURE);
+            }
             if (source->getStatus() != STATUS_OK &&
                 status == STATUS_OK) {
                 status = source->getStatus();
@@ -1882,7 +2167,7 @@ SyncMLStatus SyncContext::sync(SyncReport *report)
     return status;
 }
 
-bool SyncContext::initSAN(int retries) 
+bool SyncContext::initSAN() 
 {
     sysync::SanPackage san;
     /* Should be nonce sent by the server in the preceeding sync session */
@@ -1903,11 +2188,33 @@ bool SyncContext::initSAN(int retries)
 
     san.CreateEmptyNotificationBody();
     bool hasSource = false;
+     
+    std::set<std::string> dataSources = m_sourceListPtr->getSources();
+
+    /* For each virtual datasoruce, generate the SAN accoring to it and ignoring
+     * sub datasource in the later phase*/
+    BOOST_FOREACH (boost::shared_ptr<VirtualSyncSource> vSource, m_sourceListPtr->m_virtualDS) {
+            std::string evoSyncSource = vSource->getDatabaseID();
+            std::string sync = vSource->getSync();
+            int mode = StringToSyncMode (sync, true);
+            std::vector<std::string> mappedSources = unescapeJoinedString (evoSyncSource, ',');
+            BOOST_FOREACH (std::string source, mappedSources) {
+                dataSources.erase (source);
+                if (mode == SYNC_SLOW) {
+                    m_sourceListPtr->m_configSpecials[source].m_forceSlow = true;
+                }
+            }
+            dataSources.insert (vSource->getName());
+    }
     /* For each source to be notified do the following: */
-    BOOST_FOREACH (string name, m_sourceListPtr->getSources()) {
+    BOOST_FOREACH (string name, dataSources) {
         boost::shared_ptr<PersistentSyncSourceConfig> sc(getSyncSourceConfig(name));
         string sync = sc->getSync();
         int mode = StringToSyncMode (sync, true);
+        if (mode == SYNC_SLOW) {
+            m_sourceListPtr->m_configSpecials[name].m_forceSlow = true;
+            mode = SA_SYNC_TWO_WAY;
+        }
         if (mode <SYNC_FIRST || mode >SYNC_LAST) {
             SE_LOG_DEV (NULL, NULL, "Ignoring data source %s with an invalid sync mode", name.c_str());
             continue;
@@ -1921,7 +2228,9 @@ bool SyncContext::initSAN(int retries)
         if(sourceType.m_format.empty()) {
             sourceType.m_format = (*m_sourceListPtr)[name]->getPeerMimeType();
         }
-        int contentTypeB = StringToContentType (sourceType.m_format);
+        /*If user did not use force type, we will always use the older type as
+         * this is what most phones support*/
+        int contentTypeB = StringToContentType (sourceType.m_format, sourceType.m_forceFormat);
         if (contentTypeB == WSPCTC_UNKNOWN) {
             contentTypeB = 0;
             SE_LOG_DEBUG (NULL, NULL, "Unknown datasource mimetype, use 0 as default");
@@ -1943,44 +2252,74 @@ bool SyncContext::initSAN(int retries)
         return false;
     }
 
-    /* Create the transport agent */
     try {
         m_agent = createTransportAgent();
-        //register transport callback
-        if (m_retryInterval) {
-            m_agent->setCallback (transport_cb, this, m_retryInterval);
+        // Time out after the complete retry duration. This is the
+        // initial message of a sync, so we don't resend it (just as
+        // in a HTTP SyncML client trying to contact server).
+        if (m_retryDuration) {
+            setTransportCallback(m_retryDuration);
         }
-        int retry = 0;
-        while (retry++ < retries) 
-        {
-            SE_LOG_INFO (NULL, NULL, "Server sending SAN %d", retry);
-            m_agent->setContentType (TransportAgent::m_contentTypeServerAlertedNotificationDS);
-            m_agent->send(reinterpret_cast <char *> (buffer), sanSize);
-            //change content type
-            m_agent->setContentType (getWBXML() ? TransportAgent::m_contentTypeSyncWBXML :
-                    TransportAgent::m_contentTypeSyncML);
-            if (m_agent->wait() == TransportAgent::GOT_REPLY){
-                const char *reply;
-                size_t replyLen;
-                string contentType;
-                m_agent->getReply (reply, replyLen, contentType);
 
-                //sanity check for the reply 
-                if (contentType.empty() || 
-                        contentType.find(TransportAgent::m_contentTypeSyncML) != contentType.npos ||
-                        contentType.find(TransportAgent::m_contentTypeSyncWBXML) != contentType.npos) {
-                    SharedBuffer request (reply, replyLen);
-                    //TODO should generate more reasonable sessionId here
-                    string sessionId ="";
-                    initServer (sessionId, request, contentType);
-                    return true;
-                }
+        SE_LOG_INFO (NULL, NULL, "Server sending SAN");
+        m_agent->setContentType(TransportAgent::m_contentTypeServerAlertedNotificationDS);
+        m_agent->send(reinterpret_cast <char *> (buffer), sanSize);
+        //change content type
+        m_agent->setContentType(getWBXML() ? TransportAgent::m_contentTypeSyncWBXML :
+                                TransportAgent::m_contentTypeSyncML);
+
+        TransportAgent::Status status;
+        do {
+            status = m_agent->wait();
+        } while(status == TransportAgent::ACTIVE);
+        if (status == TransportAgent::GOT_REPLY) {
+            const char *reply;
+            size_t replyLen;
+            string contentType;
+            m_agent->getReply (reply, replyLen, contentType);
+
+            //sanity check for the reply 
+            if (contentType.empty() || 
+                contentType.find(TransportAgent::m_contentTypeSyncML) != contentType.npos ||
+                contentType.find(TransportAgent::m_contentTypeSyncWBXML) != contentType.npos) {
+                SharedBuffer request (reply, replyLen);
+                //TODO should generate more reasonable sessionId here
+                string sessionId ="";
+                initServer (sessionId, request, contentType);
+                return true;
             }
         }
     } catch (TransportException e) {
         SE_LOG_ERROR (NULL, NULL, "TransportException while sending SAN package");
     }
     return false;
+}
+
+static string Step2String(sysync::uInt16 stepcmd)
+{
+    switch (stepcmd) {
+    case sysync::STEPCMD_CLIENTSTART: return "STEPCMD_CLIENTSTART";
+    case sysync::STEPCMD_CLIENTAUTOSTART: return "STEPCMD_CLIENTAUTOSTART";
+    case sysync::STEPCMD_STEP: return "STEPCMD_STEP";
+    case sysync::STEPCMD_GOTDATA: return "STEPCMD_GOTDATA";
+    case sysync::STEPCMD_SENTDATA: return "STEPCMD_SENTDATA";
+    case sysync::STEPCMD_SUSPEND: return "STEPCMD_SUSPEND";
+    case sysync::STEPCMD_ABORT: return "STEPCMD_ABORT";
+    case sysync::STEPCMD_TRANSPFAIL: return "STEPCMD_TRANSPFAIL";
+    case sysync::STEPCMD_TIMEOUT: return "STEPCMD_TIMEOUT";
+    case sysync::STEPCMD_SAN_CHECK: return "STEPCMD_SAN_CHECK";
+    case sysync::STEPCMD_AUTOSYNC_CHECK: return "STEPCMD_AUTOSYNC_CHECK";
+    case sysync::STEPCMD_OK: return "STEPCMD_OK";
+    case sysync::STEPCMD_PROGRESS: return "STEPCMD_PROGRESS";
+    case sysync::STEPCMD_ERROR: return "STEPCMD_ERROR";
+    case sysync::STEPCMD_SENDDATA: return "STEPCMD_SENDDATA";
+    case sysync::STEPCMD_NEEDDATA: return "STEPCMD_NEEDDATA";
+    case sysync::STEPCMD_RESENDDATA: return "STEPCMD_RESENDDATA";
+    case sysync::STEPCMD_DONE: return "STEPCMD_DONE";
+    case sysync::STEPCMD_RESTART: return "STEPCMD_RESTART";
+    case sysync::STEPCMD_NEEDSYNC: return "STEPCMD_NEEDSYNC";
+    default: return StringPrintf("STEPCMD %d", stepcmd);
+    }
 }
 
 SyncMLStatus SyncContext::doSync()
@@ -2034,9 +2373,8 @@ SyncMLStatus SyncContext::doSync()
     
         // open first profile
         SharedKey profile;
-        try {
-            profile = m_engine.OpenSubkey(profiles, sysync::KEYVAL_ID_FIRST);
-        } catch (NoSuchKey error) {
+        profile = m_engine.OpenSubkey(profiles, sysync::KEYVAL_ID_FIRST, true);
+        if (!profile) {
             // no profile exists  yet, create default profile
             profile = m_engine.OpenSubkey(profiles, sysync::KEYVAL_ID_NEW_DEFAULT);
         }
@@ -2053,47 +2391,44 @@ SyncMLStatus SyncContext::doSync()
         // XML snippets (inside <client> and inside <datatypes>).
         targets = m_engine.OpenKeyByPath(profile, "targets");
 
-        try {
-            target = m_engine.OpenSubkey(targets, sysync::KEYVAL_ID_FIRST);
-            while (true) {
-                s = m_engine.GetStrValue(target, "dbname");
-                SyncSource *source = (*m_sourceListPtr)[s];
-                if (source) {
-                    m_engine.SetInt32Value(target, "enabled", 1);
-                    int slow = 0;
-                    int direction = 0;
-                    string mode = source->getSync();
-                    if (!strcasecmp(mode.c_str(), "slow")) {
-                        slow = 1;
-                        direction = 0;
-                    } else if (!strcasecmp(mode.c_str(), "two-way")) {
-                        slow = 0;
-                        direction = 0;
-                    } else if (!strcasecmp(mode.c_str(), "refresh-from-server")) {
-                        slow = 1;
-                        direction = 1;
-                    } else if (!strcasecmp(mode.c_str(), "refresh-from-client")) {
-                        slow = 1;
-                        direction = 2;
-                    } else if (!strcasecmp(mode.c_str(), "one-way-from-server")) {
-                        slow = 0;
-                        direction = 1;
-                    } else if (!strcasecmp(mode.c_str(), "one-way-from-client")) {
-                        slow = 0;
-                        direction = 2;
-                    } else {
-                        source->throwError(string("invalid sync mode: ") + mode);
-                    }
-                    m_engine.SetInt32Value(target, "forceslow", slow);
-                    m_engine.SetInt32Value(target, "syncmode", direction);
-
-                    m_engine.SetStrValue(target, "remotepath", source->getURI());
+        for(target = m_engine.OpenSubkey(targets, sysync::KEYVAL_ID_FIRST, true);
+            target;
+            target = m_engine.OpenSubkey(targets, sysync::KEYVAL_ID_NEXT, true)) {
+            s = m_engine.GetStrValue(target, "dbname");
+            SyncSource *source = (*m_sourceListPtr)[s];
+            if (source) {
+                m_engine.SetInt32Value(target, "enabled", 1);
+                int slow = 0;
+                int direction = 0;
+                string mode = source->getSync();
+                if (!strcasecmp(mode.c_str(), "slow")) {
+                    slow = 1;
+                    direction = 0;
+                } else if (!strcasecmp(mode.c_str(), "two-way")) {
+                    slow = 0;
+                    direction = 0;
+                } else if (!strcasecmp(mode.c_str(), "refresh-from-server")) {
+                    slow = 1;
+                    direction = 1;
+                } else if (!strcasecmp(mode.c_str(), "refresh-from-client")) {
+                    slow = 1;
+                    direction = 2;
+                } else if (!strcasecmp(mode.c_str(), "one-way-from-server")) {
+                    slow = 0;
+                    direction = 1;
+                } else if (!strcasecmp(mode.c_str(), "one-way-from-client")) {
+                    slow = 0;
+                    direction = 2;
                 } else {
-                    m_engine.SetInt32Value(target, "enabled", 0);
+                    source->throwError(string("invalid sync mode: ") + mode);
                 }
-                target = m_engine.OpenSubkey(targets, sysync::KEYVAL_ID_NEXT);
+                m_engine.SetInt32Value(target, "forceslow", slow);
+                m_engine.SetInt32Value(target, "syncmode", direction);
+
+                m_engine.SetStrValue(target, "remotepath", source->getURI());
+            } else {
+                m_engine.SetInt32Value(target, "enabled", 0);
             }
-        } catch (NoSuchKey error) {
         }
 
         // Close all keys so that engine can flush the modified config.
@@ -2150,6 +2485,7 @@ SyncMLStatus SyncContext::doSync()
     bool aborting = false;
     int suspending = 0; 
     time_t sendStart = 0, resendStart = 0;
+    int requestNum = 0;
     sysync::uInt16 previousStepCmd = stepCmd;
     do {
         try {
@@ -2160,17 +2496,26 @@ SyncMLStatus SyncContext::doSync()
             // After exception occurs, stepCmd will be set to abort to force
             // aborting, must avoid to change it back to suspend cmd.
             if (checkForSuspend() && stepCmd == sysync::STEPCMD_GOTDATA) {
+                SE_LOG_DEBUG(NULL, NULL, "suspending before SessionStep() in STEPCMD_GOTDATA as requested by user");
                 stepCmd = sysync::STEPCMD_SUSPEND;
             }
 
-            //check for abort, if so, modify step command for next step.
-            //We think abort is useful when the server is unresponsive or 
-            //too slow to the user; therefore, we can delay abort at other
-            //points to this two points (before sending and before receiving
-            //the data).
-            if (checkForAbort() && (stepCmd == sysync::STEPCMD_RESENDDATA
-                        || stepCmd ==sysync::STEPCMD_SENDDATA 
-                        || stepCmd == sysync::STEPCMD_NEEDDATA)) {
+            // Aborting is useful while waiting for a reply and before
+            // sending a message (which will just lead to us waiting
+            // for the reply, but possibly after doing some slow network
+            // IO for setting up the message send).
+            //
+            // While processing a message we let the engine run, because
+            // that is a) likely to be done soon and b) may reduce the
+            // breakage caused by aborting a running sync.
+            //
+            // This check here covers the "waiting for reply" case.
+            if ((stepCmd == sysync::STEPCMD_RESENDDATA ||
+                 stepCmd == sysync::STEPCMD_SENTDATA ||
+                 stepCmd == sysync::STEPCMD_NEEDDATA) &&
+                checkForAbort()) {
+                SE_LOG_DEBUG(NULL, NULL, "aborting before SessionStep() in %s as requested by script",
+                             Step2String(stepCmd).c_str());
                 stepCmd = sysync::STEPCMD_ABORT;
             }
 
@@ -2178,6 +2523,8 @@ SyncMLStatus SyncContext::doSync()
             // let engine contine with its shutdown
             if (stepCmd == sysync::STEPCMD_ABORT) {
                 if (aborting) {
+                    SE_LOG_DEBUG(NULL, NULL, "engine already notified of abort request, reverting to %s",
+                                 Step2String(previousStepCmd).c_str());
                     stepCmd = previousStepCmd;
                 } else {
                     aborting = true;
@@ -2186,6 +2533,8 @@ SyncMLStatus SyncContext::doSync()
             // same for suspending
             if (stepCmd == sysync::STEPCMD_SUSPEND) {
                 if (suspending) {
+                    SE_LOG_DEBUG(NULL, NULL, "engine already notified of suspend request, reverting to %s",
+                                 Step2String(previousStepCmd).c_str());
                     stepCmd = previousStepCmd;
                     suspending++;
                 } else {
@@ -2200,15 +2549,48 @@ SyncMLStatus SyncContext::doSync()
                 // and wait for response.
             } else {
                 m_engine.SessionStep(session, stepCmd, &progressInfo);
+                reportStepCmd(stepCmd);
             }
 
-            //During suspention we actually insert a STEPCMD_SUSPEND cmd
-            //Should restore to the original step here
-            if(suspending == 1)
-            {
+            if (stepCmd == sysync::STEPCMD_SENDDATA &&
+                checkForScriptAbort(session)) {
+                SE_LOG_DEBUG(NULL, NULL, "aborting after SessionStep() in STEPCMD_SENDDATA as requested by script");
+
+                // Catch outgoing message and abort if requested by script.
+                // Report which sources are affected, based on their status code.
+                list<string> sources;
+                BOOST_FOREACH(SyncSource *source, *m_sourceListPtr) {
+                    if (source->getStatus() == STATUS_UNEXPECTED_SLOW_SYNC) {
+                        sources.push_back(source->getName());
+                    }
+                }
+                string explanation = SyncReport::slowSyncExplanation(m_server,
+                                                                     sources);
+                if (!explanation.empty()) {
+                    string sourceparam = boost::join(sources, " ");
+                    SE_LOG_ERROR(NULL, NULL,
+                                 "Aborting because of unexpected slow sync for source(s): %s",
+                                 sourceparam.c_str());
+                    SE_LOG_INFO(NULL, NULL, "%s", explanation.c_str());
+                } else {
+                    // we should not get here, but if we do, at least log something
+                    SE_LOG_ERROR(NULL, NULL, "aborting as requested by script");
+                }
+                stepCmd = sysync::STEPCMD_ABORT;
+                continue;
+            } else if (stepCmd == sysync::STEPCMD_SENDDATA &&
+                       checkForAbort()) {
+                // Catch outgoing message and abort if requested by user.
+                SE_LOG_DEBUG(NULL, NULL, "aborting after SessionStep() in STEPCMD_SENDDATA as requested by user");
+                stepCmd = sysync::STEPCMD_ABORT;
+                continue;
+            } else if (suspending == 1) {
+                //During suspention we actually insert a STEPCMD_SUSPEND cmd
+                //Should restore to the original step here
                 stepCmd = previousStepCmd;
                 continue;
             }
+
             switch (stepCmd) {
             case sysync::STEPCMD_OK:
                 // no progress info, call step again
@@ -2287,10 +2669,11 @@ SyncMLStatus SyncContext::doSync()
                 sessionKey.reset();
                 
                 sendStart = resendStart = time (NULL);
-                //register transport callback
-                if (m_retryInterval) {
-                    m_agent->setCallback (transport_cb, this, m_retryInterval);
+                int timeout = m_serverMode ? m_retryDuration : m_retryInterval;
+                if (timeout) {
+                    setTransportCallback(timeout);
                 }
+                requestNum ++;
                 // use GetSyncMLBuffer()/RetSyncMLBuffer() to access the data to be
                 // sent or have it copied into caller's buffer using
                 // ReadSyncMLBuffer(), then send it to the server
@@ -2317,7 +2700,12 @@ SyncMLStatus SyncContext::doSync()
                
                 case TransportAgent::TIME_OUT: {
                     time_t duration = time(NULL) - sendStart;
-                    if(duration > m_retryDuration){
+                    // HTTP SyncML servers cannot resend a HTTP POST
+                    // reply.  Other server transports could in theory
+                    // resend, but don't have the necessary D-Bus APIs
+                    // (MB #6370).
+                    if (m_serverMode ||
+                        duration > m_retryDuration){
                         SE_LOG_INFO(NULL, NULL,
                                     "Transport giving up after %d retries and %ld:%02ldmin",
                                     m_retries,
@@ -2368,7 +2756,8 @@ SyncMLStatus SyncContext::doSync()
                 case TransportAgent::FAILED: {
                     time_t curTime = time(NULL);
                     time_t duration = curTime - sendStart;
-                    if (!m_retryInterval || duration > m_retryDuration) {
+                    if (m_serverMode ||
+                        !m_retryInterval || duration > m_retryDuration || requestNum == 1) {
                         SE_LOG_INFO(NULL, NULL,
                                     "Transport giving up after %d retries and %ld:%02ldmin",
                                     m_retries,
@@ -2379,9 +2768,11 @@ SyncMLStatus SyncContext::doSync()
                         // Send might have failed because of abort or
                         // suspend request.
                         if (checkForSuspend()) {
+                            SE_LOG_DEBUG(NULL, NULL, "suspending after TransportAgent::FAILED as requested by user");
                             stepCmd = sysync::STEPCMD_SUSPEND;
                             break;
                         } else if (checkForAbort()) {
+                            SE_LOG_DEBUG(NULL, NULL, "aborting after TransportAgent::FAILED as requested by user");
                             stepCmd = sysync::STEPCMD_ABORT;
                             break;
                         }
@@ -2391,8 +2782,10 @@ SyncMLStatus SyncContext::doSync()
                         if (leftTime >0 ) {
                             if (sleep (leftTime) > 0) {
                                 if (checkForSuspend()) {
+                                    SE_LOG_DEBUG(NULL, NULL, "suspending after premature exit from sleep() caused by user suspend");
                                     stepCmd = sysync::STEPCMD_SUSPEND;
                                 } else {
+                                    SE_LOG_DEBUG(NULL, NULL, "aborting after premature exit from sleep() caused by user abort");
                                     stepCmd = sysync::STEPCMD_ABORT;
                                 }
                                 break;
@@ -2426,10 +2819,12 @@ SyncMLStatus SyncContext::doSync()
                 stepCmd = sysync::STEPCMD_DONE;
             } else {
                 Exception::handle(&status);
+                SE_LOG_DEBUG(NULL, NULL, "aborting after catching fatal error");
                 stepCmd = sysync::STEPCMD_ABORT;
             }
         } catch (...) {
             Exception::handle(&status);
+            SE_LOG_DEBUG(NULL, NULL, "aborting after catching fatal error");
             stepCmd = sysync::STEPCMD_ABORT;
         }
     } while (stepCmd != sysync::STEPCMD_DONE && stepCmd != sysync::STEPCMD_ERROR);
@@ -2574,6 +2969,22 @@ int SyncContext::sleep (int intervals)
     return intervals;
 }
 
+bool SyncContext::checkForScriptAbort(SharedSession session)
+{
+    try {
+        SharedKey sessionKey = m_engine.OpenSessionKey(session);
+        SharedKey contextKey = m_engine.OpenKeyByPath(sessionKey, "/sessionvars");
+        bool abort = m_engine.GetInt32Value(contextKey, "delayedabort");
+        return abort;
+    } catch (NoSuchKey) {
+        // this is necessary because the session might already have
+        // been closed, which removes the variable
+        return false;
+    } catch (BadSynthesisResult) {
+        return false;
+    }
+}
+
 void SyncContext::restore(const string &dirname, RestoreDatabase database)
 {
     if (!exists()) {
@@ -2596,6 +3007,8 @@ void SyncContext::restore(const string &dirname, RestoreDatabase database)
     string datadump = database == DATABASE_BEFORE_SYNC ? "before" : "after";
 
     BOOST_FOREACH(SyncSource *source, sourceList) {
+        // fake a source alert event
+        displaySourceProgress(sysync::PEV_ALERTED, *source, -1, 0, 0);
         source->open();
     }
 
@@ -2614,12 +3027,12 @@ void SyncContext::restore(const string &dirname, RestoreDatabase database)
         BOOST_FOREACH(SyncSource *source, sourceList) {
             SyncSourceReport sourcereport;
             try {
-                SE_LOG_DEBUG(NULL, NULL, "Restoring %s...", source->getName());
+                displaySourceProgress(sysync::PEV_SYNCSTART, *source, 0, 0, 0);
                 sourceList.restoreDatabase(*source,
                                            datadump,
                                            m_dryrun,
                                            sourcereport);
-                SE_LOG_DEBUG(NULL, NULL, "... %s restored.", source->getName());
+                displaySourceProgress(sysync::PEV_SYNCEND, *source, 0, 0, 0);
                 report.addSyncSourceReport(source->getName(), sourcereport);
             } catch (...) {
                 sourcereport.recordStatus(STATUS_FATAL);
@@ -2640,11 +3053,12 @@ void SyncContext::getSessions(vector<string> &dirs)
     logging.previousLogdirs(getLogDir(), dirs);
 }
 
-void SyncContext::readSessionInfo(const string &dir, SyncReport &report)
+string SyncContext::readSessionInfo(const string &dir, SyncReport &report)
 {
     LogDir logging(*this);
     logging.openLogdir(dir);
     logging.readReport(report);
+    return logging.getPeerNameFromLogdir(dir);
 }
 
 SE_END_CXX

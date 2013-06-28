@@ -64,7 +64,7 @@ typedef signed long sIntArch;
 
 
 /* TODO, FIXME %%%% for now, we need uInt32 to be 64bit actually */
-//#define UINT32_HAS_64BITS_ON_ARCH64 1
+/*#define UINT32_HAS_64BITS_ON_ARCH64 1 */
 
 
 #if defined(UINT32_HAS_64BITS_ON_ARCH64) || defined(__PALM_OS__) || (__WORDSIZE < 32)
@@ -134,8 +134,8 @@ typedef const uInt8 *cUInt8P;
 typedef struct ContextType *CContext;
 typedef unsigned long CVersion;
 
-/* - ssize_t is not predefined for Windows CW */
-#if defined _WIN32 && !defined _MSC_VER
+/* - ssize_t is not predefined for Windows CW or EVC */
+#if defined _WIN32 && (!defined _MSC_VER || defined WINCE)
 typedef sInt32 ssize_t;
 #endif
 

@@ -194,10 +194,10 @@ typedef TSyError localstatus;
   #define PlatFormFatalReThrow { ErrDisplay("C++ re-throw attempted"); ErrThrow(999); }
 #elif defined(ANDROID)
   #ifndef PlatFormFatalErr
-    #define PlatFormFatalErr
+    #define PlatFormFatalErr { __android_log_write( ANDROID_LOG_DEBUG, "exc", "PlatFormFatalErr called"); exit(999); }
   #endif
-  #define PlatFormFatalThrow(x)
-  #define PlatFormFatalReThrow
+  #define PlatFormFatalThrow(x) { exception *eP=new x; __android_log_print( ANDROID_LOG_DEBUG, "exc", "C++ exception thrown: %s",eP->what()); exit(999); }
+  #define PlatFormFatalReThrow { __android_log_write( ANDROID_LOG_DEBUG, "exc", "C++ re-throw attempted"); exit(999); }
 #else
   #ifndef PlatFormFatalErr
     #define PlatFormFatalErr { printf("PlatFormFatalErr called"); exit(999); }
@@ -400,7 +400,7 @@ typedef enum {
   psta_sync,            // sync package
   psta_initsync,        // combined initialisation and sync package
   psta_map,             // data update status / map
-  psta_supplement,      // extra packages eventually needed at end of session
+  psta_supplement,      // extra packages possibly needed at end of session
   // number of enums
   numPackageStates
 } TPackageStates;

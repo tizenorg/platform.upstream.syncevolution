@@ -77,9 +77,9 @@ am__libsyncevolution_la_SOURCES_DIST = ConfigTree.h ConfigNode.h \
 	LogRedirect.cpp TransportAgent.h TransportAgent.cpp \
 	CurlTransportAgent.h CurlTransportAgent.cpp \
 	SoupTransportAgent.h SoupTransportAgent.cpp util.cpp util.h \
-	Cmdline.cpp Cmdline.h SyncSource.h SyncSource.cpp \
-	SynthesisDBPlugin.cpp SyncEvolutionXML.c SyncContext.h \
-	SyncContext.cpp SyncConfig.h SyncConfig.cpp \
+	lcs.h lcs.cpp Cmdline.cpp Cmdline.h SyncSource.h \
+	SyncSource.cpp SynthesisDBPlugin.cpp SyncEvolutionXML.c \
+	SyncContext.h SyncContext.cpp SyncConfig.h SyncConfig.cpp \
 	DevNullConfigNode.h MultiplexConfigNode.h \
 	MultiplexConfigNode.cpp FilterConfigNode.h \
 	FilterConfigNode.cpp SafeConfigNode.h SafeConfigNode.cpp \
@@ -98,7 +98,8 @@ am__objects_2 = libsyncevolution_la-eds_abi_wrapper.lo \
 	libsyncevolution_la-TransportAgent.lo \
 	libsyncevolution_la-CurlTransportAgent.lo \
 	libsyncevolution_la-SoupTransportAgent.lo \
-	libsyncevolution_la-util.lo libsyncevolution_la-Cmdline.lo \
+	libsyncevolution_la-util.lo libsyncevolution_la-lcs.lo \
+	libsyncevolution_la-Cmdline.lo \
 	libsyncevolution_la-SyncSource.lo \
 	libsyncevolution_la-SynthesisDBPlugin.lo \
 	libsyncevolution_la-SyncEvolutionXML.lo \
@@ -210,7 +211,13 @@ GLIB_GENMARSHAL = @GLIB_GENMARSHAL@
 GLIB_LIBS = @GLIB_LIBS@
 GMOFILES = @GMOFILES@
 GMSGFMT = @GMSGFMT@
+GOBJECT_CFLAGS = @GOBJECT_CFLAGS@
+GOBJECT_LIBS = @GOBJECT_LIBS@
 GREP = @GREP@
+GTHREAD_CFLAGS = @GTHREAD_CFLAGS@
+GTHREAD_LIBS = @GTHREAD_LIBS@
+GTK_2_18_CFLAGS = @GTK_2_18_CFLAGS@
+GTK_2_18_LIBS = @GTK_2_18_LIBS@
 GTK_BUILDER_CONV = @GTK_BUILDER_CONV@
 GUI_CFLAGS = @GUI_CFLAGS@
 GUI_DESKTOP_FILES = @GUI_DESKTOP_FILES@
@@ -243,6 +250,8 @@ LIBTOOL = @LIBTOOL@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
+MCALB_CFLAGS = @MCALB_CFLAGS@
+MCALB_LIBS = @MCALB_LIBS@
 MKDIR_P = @MKDIR_P@
 MKINSTALLDIRS = @MKINSTALLDIRS@
 MODIFY_SYNCCOMPARE = @MODIFY_SYNCCOMPARE@
@@ -269,6 +278,7 @@ SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 SQLITE_CFLAGS = @SQLITE_CFLAGS@
 SQLITE_LIBS = @SQLITE_LIBS@
+STABLE_VERSION = @STABLE_VERSION@
 STRIP = @STRIP@
 
 # applies to sources in SyncEvolution repository, but not
@@ -295,6 +305,8 @@ UNIQUE_LIBS = @UNIQUE_LIBS@
 USE_NLS = @USE_NLS@
 VERSION = @VERSION@
 XGETTEXT = @XGETTEXT@
+XMLRPC_CFLAGS = @XMLRPC_CFLAGS@
+XMLRPC_LIBS = @XMLRPC_LIBS@
 XSLT = @XSLT@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
@@ -359,10 +371,11 @@ SYNCEVOLUTION_SOURCES = ConfigTree.h ConfigNode.h HashConfigNode.h \
 	LogStdout.h LogStdout.cpp LogRedirect.h LogRedirect.cpp \
 	TransportAgent.h TransportAgent.cpp CurlTransportAgent.h \
 	CurlTransportAgent.cpp SoupTransportAgent.h \
-	SoupTransportAgent.cpp util.cpp util.h Cmdline.cpp Cmdline.h \
-	SyncSource.h SyncSource.cpp SynthesisDBPlugin.cpp \
-	SyncEvolutionXML.c SyncContext.h SyncContext.cpp SyncConfig.h \
-	SyncConfig.cpp DevNullConfigNode.h MultiplexConfigNode.h \
+	SoupTransportAgent.cpp util.cpp util.h lcs.h lcs.cpp \
+	Cmdline.cpp Cmdline.h SyncSource.h SyncSource.cpp \
+	SynthesisDBPlugin.cpp SyncEvolutionXML.c SyncContext.h \
+	SyncContext.cpp SyncConfig.h SyncConfig.cpp \
+	DevNullConfigNode.h MultiplexConfigNode.h \
 	MultiplexConfigNode.cpp FilterConfigNode.h \
 	FilterConfigNode.cpp SafeConfigNode.h SafeConfigNode.cpp \
 	PrefixConfigNode.h PrefixConfigNode.cpp FileConfigNode.h \
@@ -372,6 +385,7 @@ libsyncevolution_includedir = $(includedir)/syncevo
 libsyncevolution_include_HEADERS = \
 	declarations.h \
 	TrackingSyncSource.h  \
+	FileConfigNode.h \
 								  FilterConfigNode.h \
 								  PrefixConfigNode.h \
 								  SafeConfigNode.h \
@@ -491,6 +505,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-TrackingSyncSource.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-TransportAgent.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-eds_abi_wrapper.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-lcs.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-util.Plo@am__quote@
 
 .c.o:
@@ -611,6 +626,13 @@ libsyncevolution_la-util.lo: util.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='util.cpp' object='libsyncevolution_la-util.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -c -o libsyncevolution_la-util.lo `test -f 'util.cpp' || echo '$(srcdir)/'`util.cpp
+
+libsyncevolution_la-lcs.lo: lcs.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -MT libsyncevolution_la-lcs.lo -MD -MP -MF $(DEPDIR)/libsyncevolution_la-lcs.Tpo -c -o libsyncevolution_la-lcs.lo `test -f 'lcs.cpp' || echo '$(srcdir)/'`lcs.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsyncevolution_la-lcs.Tpo $(DEPDIR)/libsyncevolution_la-lcs.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='lcs.cpp' object='libsyncevolution_la-lcs.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -c -o libsyncevolution_la-lcs.lo `test -f 'lcs.cpp' || echo '$(srcdir)/'`lcs.cpp
 
 libsyncevolution_la-Cmdline.lo: Cmdline.cpp
 @am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -MT libsyncevolution_la-Cmdline.lo -MD -MP -MF $(DEPDIR)/libsyncevolution_la-Cmdline.Tpo -c -o libsyncevolution_la-Cmdline.lo `test -f 'Cmdline.cpp' || echo '$(srcdir)/'`Cmdline.cpp

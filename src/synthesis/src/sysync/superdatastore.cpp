@@ -285,7 +285,7 @@ TAlertCommand *TSuperDataStore::engProcessSyncAlert(
         aLastRemoteAnchor,      // last anchor of client
         aNextRemoteAnchor,      // next anchor of client
         aTargetURI,             // target URI as sent by remote, no processing at all
-        aIdentifyingTargetURI,  // target URI (without eventual CGI)
+        aIdentifyingTargetURI,  // target URI (without possible CGI)
         aTargetURIOptions,      // filtering CGI (NULL or empty if none)
         aTargetFilter,          // DS 1.2 filter, NULL if none
         aSourceURI,             // source URI
@@ -314,7 +314,7 @@ TAlertCommand *TSuperDataStore::engProcessSyncAlert(
       aLastRemoteAnchor,      // last anchor of client
       aNextRemoteAnchor,      // next anchor of client
       aTargetURI,             // target URI as sent by remote, no processing at all
-      aIdentifyingTargetURI,  // target URI (without eventual CGI)
+      aIdentifyingTargetURI,  // target URI (without possible CGI)
       aTargetURIOptions,      // filtering CGI (NULL or empty if none)
       aTargetFilter,          // DS 1.2 filter, NULL if none
       aSourceURI,             // source URI
@@ -1040,7 +1040,7 @@ localstatus TSuperDataStore::engSaveSuspendState(bool aAnyway)
   if (aAnyway || !isAborted()) {
     // only save if DS 1.2 and supported by DB
     if ((fSessionP->getSyncMLVersion()>=syncml_vers_1_2) && dsResumeSupportedInDB()) {
-      PDEBUGBLOCKDESC("SuperSaveSuspendState","Saving state for suspend/resume");
+      PDEBUGBLOCKFMT(("SuperSaveSuspendState","Saving superdatastore suspend/resume state","superdatastore=%s",getName()));
       // save alert state
       fResumeAlertCode=fAlertCode;
       TSubDSLinkList::iterator pos;
@@ -1050,11 +1050,12 @@ localstatus TSuperDataStore::engSaveSuspendState(bool aAnyway)
           // save partial state if any
           if (pos->fDatastoreLinkP->fPartialItemState!=pi_state_save_outgoing) {
             // ONLY if we have no request for saving an outgoing item state already,
-            // we eventually need to save a pending incoming item
+            // we possibly need to save a pending incoming item
             // if there is an incompletely received item, let it update Partial Item (fPIxxx) state
             // (if it is an item of this datastore, that is).
-            if (fSessionP->fIncompleteDataCommandP)
+            if (fSessionP->fIncompleteDataCommandP) {
               fSessionP->fIncompleteDataCommandP->updatePartialItemState(pos->fDatastoreLinkP);
+            }
           }
           // mark ungenerated
           pos->fDatastoreLinkP->logicMarkOnlyUngeneratedForResume();
@@ -1063,7 +1064,7 @@ localstatus TSuperDataStore::engSaveSuspendState(bool aAnyway)
         /// localEngineDS, so markPendingForResume() on existing commands will
         /// directly reach the correct datastore
         /// @note markItemForResume() will get the localID as presented to
-        /// remote, that is in case of superdatastores prefixed that needs to be removed
+        /// remote, that is in case of superdatastores with prefixes that need to be removed
         fSessionP->markPendingForResume(this);
       }
       // let all subdatastores logicSaveResumeMarks() to make all this persistent

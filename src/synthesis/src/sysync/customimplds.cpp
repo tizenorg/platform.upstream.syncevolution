@@ -349,7 +349,7 @@ void TCustomDSConfig::ResolveDSScripts(void)
 {
   // resolve
   if (!fDSScriptsResolved) {
-    // resolve eventual API level scripts first
+    // resolve possible API level scripts first
     apiResolveScripts();
     // resolve start and end scripts first
     TScriptContext::resolveScript(getSyncAppBase(),fAdminReadyScript,fResolveContextP,NULL);
@@ -442,15 +442,17 @@ void TCustomDSConfig::addTypeLimits(TLocalEngineDS *aLocalDatastoreP, TSyncSessi
 
 
 // proptotype to make compiler happy
-bool parseMap(TCustomDSConfig *aCustomDSConfig, TConfigElement *cfgP, bool aIsArray, TFieldListConfig *aFieldListP, TFieldMapList &aFieldMapList, const char **aAttributes);
+bool parseMap(TCustomDSConfig *aCustomDSConfig, TConfigElement *cfgP, bool aIsArray, TFieldListConfig *aFieldListP, TFieldMapList &aFieldMapList, const char **aAttributes, bool aUpdateParams);
 
 // parse map items
-bool parseMap(TCustomDSConfig *aCustomDSConfig, TConfigElement *cfgP, bool aIsArray, TFieldListConfig *aFieldListP, TFieldMapList &aFieldMapList, const char **aAttributes)
+bool parseMap(TCustomDSConfig *aCustomDSConfig, TConfigElement *cfgP, bool aIsArray, TFieldListConfig *aFieldListP, TFieldMapList &aFieldMapList, const char **aAttributes, bool aUpdateParams)
 {
-  TFieldMapItem *mapitemP;
+  TFieldMapItem *mapitemP = NULL;
   sInt16 fid = VARIDX_UNDEFINED;
 
-  // base field reference is possible for arrays too, to specify the relevant array size
+	// get name
+  const char* nam = cfgP->getAttr(aAttributes,"name");
+  // get base field reference is possible for arrays too, to specify the relevant array size
   const char* ref = cfgP->getAttr(aAttributes,aIsArray ? "sizefrom" : "references");
   if (ref) {
     // get fid for referenced field
@@ -461,24 +463,42 @@ bool parseMap(TCustomDSConfig *aCustomDSConfig, TConfigElement *cfgP, bool aIsAr
     fid = TConfigElement::getFieldIndex(ref,aCustomDSConfig->fFieldMappings.fFieldListP);
     #endif
   }
-  #ifdef ARRAYDBTABLES_SUPPORT
-  if (aIsArray) {
-    // array container
-    mapitemP = aCustomDSConfig->newFieldMapArrayItem(aCustomDSConfig,cfgP);
-    // save size field reference if any
-    mapitemP->fid=fid;
-    // extra attributes for derived classes
-    mapitemP->checkAttrs(aAttributes);
-    // let array container parse details
-    cfgP->expectChildParsing(*mapitemP);
+	// now decide what to do
+	if (aUpdateParams) {
+  	// only updating params of existing map (non-arrays only!)
+		// - search for existing map item by name
+    TFieldMapList::iterator pos;
+    for (pos=aFieldMapList.begin(); pos!=aFieldMapList.end(); pos++) {
+      // check for name
+      TFieldMapItem *fmiP = static_cast<TFieldMapItem *>(*pos);
+      if (strucmp(nam,fmiP->getName())==0) {
+      	// found it
+      	mapitemP = fmiP;
+      }
+    }
+    if (!mapitemP) {
+      return cfgP->fail("mapredefine must refer to an existing map");
+		}
+	}
+  else {
+  	// creating a new map
+    #ifdef ARRAYDBTABLES_SUPPORT
+    if (aIsArray) {
+      // array container
+      mapitemP = aCustomDSConfig->newFieldMapArrayItem(aCustomDSConfig,cfgP);
+      // save size field reference if any
+      mapitemP->fid=fid;
+      // extra attributes for derived classes
+      mapitemP->checkAttrs(aAttributes);
+      // let array container parse details
+      cfgP->expectChildParsing(*mapitemP);
+    }
+    #endif
   }
-  else
-  #endif
-  {
+  if (!aIsArray) {
     // simple map
     cfgP->expectEmpty(); // plain maps may not have content
     // process creation of map item
-    const char* nam = cfgP->getAttr(aAttributes,"name");
     const char* type = cfgP->getAttr(aAttributes,"type");
     const char* mode = cfgP->getAttr(aAttributes,"mode");
     bool truncate = true;
@@ -525,8 +545,10 @@ bool parseMap(TCustomDSConfig *aCustomDSConfig, TConfigElement *cfgP, bool aIsAr
     sInt16 setno=0; // default to 0
     if (!cfgP->getAttrShort(aAttributes,"set_no",setno,true))
       cfgP->fail("invalid set_no specification");
-    // create mapitem, name is SQL field name
-    mapitemP = aCustomDSConfig->newFieldMapItem(nam,cfgP);
+    // create mapitem, name is DB field name
+		if (!aUpdateParams) {
+	    mapitemP = aCustomDSConfig->newFieldMapItem(nam,cfgP);
+    }
     mapitemP->fid=fid;
     mapitemP->dbfieldtype=(TDBFieldType)ty;
     mapitemP->readable=rd;
@@ -542,8 +564,10 @@ bool parseMap(TCustomDSConfig *aCustomDSConfig, TConfigElement *cfgP, bool aIsAr
     // extra attributes for derived classes
     mapitemP->checkAttrs(aAttributes);
   } // if normal map
-  // - and add it to the list
-  aFieldMapList.push_back(mapitemP);
+  if (!aUpdateParams) {
+    // - and add it to the list
+    aFieldMapList.push_back(mapitemP);
+  }
   return true;
 } // parseMap
 
@@ -647,8 +671,8 @@ bool TFieldMapArrayItem::localStartElement(const char *aElementName, const char 
     // early resolve basic map scripts so map entries can refer to local vars
     if (!fScriptsResolved) ResolveArrayScripts();
     #endif
-    // now parse map
-    return parseMap(fCustomDSConfigP,this,false,fCustomDSConfigP->fFieldMappings.fFieldListP,fArrayFieldMapList,aAttributes);
+    // now parse new map item
+    return parseMap(fCustomDSConfigP,this,false,fCustomDSConfigP->fFieldMappings.fFieldListP,fArrayFieldMapList,aAttributes, false);
   }
   /* nested arrays not yet supported
   // %%%% Note: if we do support them, we need to update
@@ -659,7 +683,7 @@ bool TFieldMapArrayItem::localStartElement(const char *aElementName, const char 
     if (!fScriptsResolved) ResolveArrayScripts();
     #endif
     // now parse nested array map
-    return parseMap(fBaseFieldMappings,this,true,fFieldListP,fArrayFieldMapList,aAttributes);
+    return parseMap(fBaseFieldMappings,this,true,fFieldListP,fArrayFieldMapList,aAttributes, false);
   */
   else if (strucmp(aElementName,"maxrepeat")==0)
     expectInt16(fMaxRepeat);
@@ -798,7 +822,11 @@ bool TFieldMappings::localStartElement(const char *aElementName, const char **aA
     dscfgP->ResolveDSScripts();
     #endif
     // now parse map
-    return parseMap(dscfgP,this,false,fFieldListP,fFieldMapList,aAttributes);
+    return parseMap(dscfgP,this,false,fFieldListP,fFieldMapList,aAttributes, false);
+  }
+  else if (strucmp(aElementName,"mapredefine")==0) {
+    // allow specifying parameters for some maps in a automap generated mappings list
+    return parseMap(dscfgP,this,false,fFieldListP,fFieldMapList,aAttributes, true);
   }
   else if (strucmp(aElementName,"automap")==0) {
     // auto-create map entries for all fields in the field list
@@ -839,7 +867,7 @@ bool TFieldMappings::localStartElement(const char *aElementName, const char **aA
     dscfgP->ResolveDSScripts();
     #endif
     // now parse array map
-    return parseMap(dscfgP,this,true,fFieldListP,fFieldMapList,aAttributes);
+    return parseMap(dscfgP,this,true,fFieldListP,fFieldMapList,aAttributes,false);
   }
   #endif
   #ifdef SCRIPT_SUPPORT
@@ -961,15 +989,15 @@ void TCustomImplDS::InternalResetDataStore(void)
   for (pos=fFinalisationQueue.begin();pos!=fFinalisationQueue.end();pos++)
   	delete (*pos); // delete the item
   fFinalisationQueue.clear();
-  #ifndef SCRIPT_SUPPORT
+  #ifndef BINFILE_ALWAYS_ACTIVE
   fGetPhase=gph_done; // must be initialized first by startDataRead
   fGetPhasePrepared=false;
   // Clear map table and sync set lists
   fMapTable.clear();
-  #endif // not SCRIPT_SUPPORT
+  #endif // BINFILE_ALWAYS_ACTIVE
   #ifdef BASED_ON_BINFILE_CLIENT
   fSyncSetLoaded=false;
-  #endif // SCRIPT_SUPPORT
+  #endif // BASED_ON_BINFILE_CLIENT
   fNoSingleItemRead=false; // assume we can read single items
   if (fAgentP) {
     // forget script context
@@ -1103,7 +1131,7 @@ bool TCustomImplDS::deleteAllMaps(void)
   for (pos=fMapTable.begin();pos!=fMapTable.end();pos++) {
     (*pos).deleted=true; // deleted
   }
-  PDEBUGPRINTFX(DBG_ADMIN+DBG_EXOTIC,("deleteAllMaps: all existing map entries (%lu) now marked deleted=1",(unsigned long)fMapTable.size()));
+  PDEBUGPRINTFX(DBG_ADMIN+DBG_EXOTIC,("deleteAllMaps: all existing map entries (%ld) now marked deleted=1",(long)fMapTable.size()));
   return allok;
 } // TCustomImplDS::deleteAllMaps
 
@@ -1149,7 +1177,7 @@ TMapContainer::iterator TCustomImplDS::findMapByRemoteID(const char *aRemoteID)
 #ifdef SYSYNC_SERVER
 
 // - called when a item in the sync set changes its localID (due to local DB internals)
-//   Datastore must make sure that eventually cached items get updated
+//   Datastore must make sure that possibly cached items get updated
 void TCustomImplDS::dsLocalIdHasChanged(const char *aOldID, const char *aNewID)
 {
   // find item in map
@@ -1393,6 +1421,34 @@ bool TCustomImplDS::dsReplaceWritesAllDBFields(void)
 } // TCustomImplDS::dsReplaceWritesAllDBFields
 
 
+#ifndef BINFILE_ALWAYS_ACTIVE
+
+// returns true if DB implementation supports resume (saving of resume marks, alert code, pending maps, tempGUIDs)
+bool TCustomImplDS::dsResumeSupportedInDB(void)
+{
+	#ifdef BASED_ON_BINFILE_CLIENT
+	if (binfileDSActive())
+  	return inherited::dsResumeSupportedInDB();
+  else
+  #endif
+		return fConfigP && fConfigP->fResumeSupport;
+} // TCustomImplDS::dsResumeSupportedInDB
+
+
+// returns true if DB implementation supports resuming in midst of a chunked item (can save fPIxxx.. and related admin data)
+bool TCustomImplDS::dsResumeChunkedSupportedInDB(void)
+{
+	#ifdef BASED_ON_BINFILE_CLIENT
+	if (binfileDSActive())
+  	return inherited::dsResumeChunkedSupportedInDB();
+  else
+  #endif
+		return fConfigP && fConfigP->fResumeItemSupport;
+} // TCustomImplDS::dsResumeChunkedSupportedInDB
+
+#endif // BINFILE_ALWAYS_ACTIVE
+
+
 #ifdef OBJECT_FILTERING
 
 // - returns true if DB implementation can also apply special filters like CGI-options
@@ -1485,7 +1541,7 @@ localstatus TCustomImplDS::implMakeAdminReady(
     //       so this will build the entire context at once.
     if (!fScriptContextP) {
       // Rebuild order MUST be same as resolving order (see ResolveDSScripts())
-      // - scripts in eventual derivates
+      // - scripts in possible derivates
       apiRebuildScriptContexts();
       // - adminready and end scripts outside the fieldmappings
       TScriptContext::rebuildContext(fSessionP->getSyncAppBase(),fConfigP->fAdminReadyScript,fScriptContextP,fSessionP);
@@ -1603,10 +1659,11 @@ localstatus TCustomImplDS::implStartDataRead()
     if (sta==LOCERR_OK) {
       // now make sure the syncset is loaded
       if (!makeSyncSetLoaded(
-        fSlowSync
+        fSlowSync // all items with data needed for slow sync
         #ifdef OBJECT_FILTERING
-        || fFilteringNeededForAll
+        || fFilteringNeededForAll // all item data needed for dynamic filtering
         #endif
+        || CRC_CHANGE_DETECTION // all item data needed when binfile must detect changes using CRC
       ))
         sta = 510; // error
     }
@@ -2202,7 +2259,7 @@ localstatus TCustomImplDS::implGetItem(
                     // - Those that were successfully modified in the suspended part of a session, but get modified
                     //   AGAIN between suspend and this resume will NOT be detected as changes any more. Therefore, for
                     //   items we see here that don't have the mapflag_useforresume, we need to check additionally if
-                    //   they eventually have changed AFTER THE LAST SUSPEND SAVE
+                    //   they possibly have changed AFTER THE LAST SUSPEND SAVE
                     if ((*pos).mapflags & mapflag_useforresume) {
                       PDEBUGPRINTFX(DBG_ADMIN+DBG_EXOTIC,("Resuming and found marked-for-resume -> send replace"));
                       sop=sop_wants_replace;
@@ -2516,7 +2573,7 @@ localstatus TCustomImplDS::implReviewReadItem(
   // get the operation
   TSyncOperation sop = aItem.getSyncOp();
   // NOTE: Don't touch map if this is a for-reference-only (meaning that the map is
-  //   already ok, and it is included here ONLY to find eventual slowsync matches)!
+  //   already ok, and it is included here ONLY to find possible slowsync matches)!
   if (sop!=sop_reference_only) {
     // Adjust map flags or create map if needed
     if (fSlowSync || sop==sop_add || sop==sop_wants_add) {
@@ -2714,7 +2771,7 @@ bool TCustomImplDS::implProcessItem(
     aStatusCommand.setStatusCode(510); // default DB error
     switch (sop) {
       /// @todo sop_copy is now implemented by read/add sequence
-      ///       in localEngineDS, but will be moved here later eventually
+      ///       in localEngineDS, but will be moved here later possibly
       case sop_add :
         // add item and retrieve new localID for it
         sta = apiAddItem(*myitemP,localID);
@@ -2744,7 +2801,7 @@ bool TCustomImplDS::implProcessItem(
           }
           // - status ok
           aStatusCommand.setStatusCode(201); // item added
-          // - add or update map entry (in client case, remoteID is irrelevant and eventually is not saved)
+          // - add or update map entry (in client case, remoteID is irrelevant and possibly is not saved)
           modifyMap(mapentry_normal,localID.c_str(),remoteID,0,false);
           ok=true;
         }
@@ -2931,14 +2988,14 @@ localstatus TCustomImplDS::SaveAdminData(bool aSessionFinished, bool aSuccessful
     if (IS_CLIENT) {
     	#ifdef SYSYNC_CLIENT
       // - now pending maps (unsent ones)
-      PDEBUGPRINTFX(DBG_ADMIN+DBG_EXOTIC,("SaveAdminData: adding %lu entries from fPendingAddMap as mapentry_pendingmap",(unsigned long)fPendingAddMaps.size()));
+      PDEBUGPRINTFX(DBG_ADMIN+DBG_EXOTIC,("SaveAdminData: adding %ld entries from fPendingAddMap as mapentry_pendingmap",(long)fPendingAddMaps.size()));
       for (spos=fPendingAddMaps.begin();spos!=fPendingAddMaps.end();spos++) {
         string locID = (*spos).first;
         dsFinalizeLocalID(locID); // make sure we have the permanent version in case datastore implementation did deliver temp IDs
         modifyMap(mapentry_pendingmap, locID.c_str(), (*spos).second.c_str(), 0, false);
       }
       // - now pending maps (sent, but not seen status yet)
-      PDEBUGPRINTFX(DBG_ADMIN+DBG_EXOTIC,("SaveAdminData: adding %lu entries from fUnconfirmedMaps as mapentry_pendingmap/mapflag_pendingMapStatus",(long unsigned)fUnconfirmedMaps.size()));
+      PDEBUGPRINTFX(DBG_ADMIN+DBG_EXOTIC,("SaveAdminData: adding %ld entries from fUnconfirmedMaps as mapentry_pendingmap/mapflag_pendingMapStatus",(long)fUnconfirmedMaps.size()));
       for (spos=fUnconfirmedMaps.begin();spos!=fUnconfirmedMaps.end();spos++) {
         modifyMap(mapentry_pendingmap, (*spos).first.c_str(), (*spos).second.c_str(), mapflag_pendingMapStatus, false);
       }
@@ -2947,7 +3004,7 @@ localstatus TCustomImplDS::SaveAdminData(bool aSessionFinished, bool aSuccessful
     else {
     	#ifdef SYSYNC_SERVER
       // - the tempguid maps
-      PDEBUGPRINTFX(DBG_ADMIN+DBG_EXOTIC,("SaveAdminData: adding %lu entries from fTempGUIDMap as mapentry_tempidmap",(unsigned long)fTempGUIDMap.size()));
+      PDEBUGPRINTFX(DBG_ADMIN+DBG_EXOTIC,("SaveAdminData: adding %ld entries from fTempGUIDMap as mapentry_tempidmap",(long)fTempGUIDMap.size()));
       for (spos=fTempGUIDMap.begin();spos!=fTempGUIDMap.end();spos++) {
         modifyMap(mapentry_tempidmap, (*spos).second.c_str(), (*spos).first.c_str(), 0, false);
       }
@@ -2993,7 +3050,7 @@ localstatus TCustomImplDS::implSaveEndOfSession(bool aUpdateAnchors)
         }
         #endif
       }
-      // also update opaque reference string eventually needed in DS API implementations
+      // also update opaque reference string possibly needed in DS API implementations
       fPreviousToRemoteSyncIdentifier = fCurrentSyncIdentifier;
     }
     // updating anchor means invalidating last Suspend
@@ -3073,7 +3130,7 @@ localstatus TCustomImplDS::zapSyncSet(void)
 
 #ifndef BINFILE_ALWAYS_ACTIVE
 
-// - save status information required to eventually perform a resume (as passed to datastore with
+// - save status information required to possibly perform a resume (as passed to datastore with
 //   implMarkOnlyUngeneratedForResume() and implMarkItemForResume())
 //   (or, in case the session is really complete, make sure that no resume state is left)
 localstatus TCustomImplDS::implSaveResumeMarks(void)
@@ -3085,7 +3142,6 @@ localstatus TCustomImplDS::implSaveResumeMarks(void)
   }
   #endif // BASED_ON_BINFILE_CLIENT
 
-  PDEBUGBLOCKCOLL("SaveResumeMarks");
   // update anchoring info for resume
   if (fConfigP->fSyncTimeStampAtEnd) {
     // if datastore cannot explicitly set modification timestamps, best time to save is current time
@@ -3095,12 +3151,10 @@ localstatus TCustomImplDS::implSaveResumeMarks(void)
     // if datastore can set modification timestamps, best time to save is start of sync
     fPreviousSuspendCmpRef = fCurrentSyncTime;
   }
-  // also update opaque reference string eventually needed in DS API implementations
+  // also update opaque reference string possibly needed in DS API implementations
   fPreviousSuspendIdentifier = fCurrentSyncIdentifier;
   // save admin data now
-  localstatus sta=SaveAdminData(false,false); // not end of session, not successful end either
-  PDEBUGENDBLOCK("SaveResumeMarks");
-  return sta;
+  return SaveAdminData(false,false); // not end of session, not successful end either
 } // TCustomImplDS::implSaveResumeMarks
 
 
@@ -3139,7 +3193,42 @@ bool TCustomImplDS::makeSyncSetLoaded(bool aNeedAll)
 } // TCustomImplDS::makeSyncSetLoaded
 
 
-/// get first item's ID and modification status from the sync set
+/// get first item from the sync set. Caller obtains ownership if aItemP is not NULL after return
+/// @return false if no item found
+bool TCustomImplDS::getFirstItem(TSyncItem *&aItemP)
+{
+  // reset the iterator
+  fSyncSetPos = fSyncSetList.begin();
+  // now get first item's info
+  return getNextItem(aItemP);
+} // TCustomImplDS::getFirstItem
+
+
+/// get next item from the sync set. Caller obtains ownership if aItemP is not NULL after return
+/// @return false if no item found
+bool TCustomImplDS::getNextItem(TSyncItem *&aItemP)
+{
+  if (!fSyncSetLoaded)
+    return false; // no syncset, nothing to report
+  if (fSyncSetPos!=fSyncSetList.end()) {
+    // get the info
+    TSyError sta = getItemFromSyncSetItem(*fSyncSetPos,aItemP);
+    if (sta==LOCERR_OK) {
+      // advance to next item in sync set
+      fSyncSetPos++;
+      // successful
+      return true;
+    }
+  }
+  // no more items (or problem getting item)
+  return false;
+} // TCustomImplDS::getNextItem
+
+
+
+#ifdef CHANGEDETECTION_AVAILABLE
+
+/// get first item from the sync set, including data
 /// @return false if no item found
 bool TCustomImplDS::getFirstItemInfo(localid_out_t &aLocalID, bool &aItemHasChanged)
 {
@@ -3173,6 +3262,7 @@ bool TCustomImplDS::getNextItemInfo(localid_out_t &aLocalID, bool &aItemHasChang
   return false;
 } // TCustomImplDS::getNextItemInfo
 
+#endif // CHANGEDETECTION_AVAILABLE
 
 
 /// get item by local ID from the sync set. Caller obtains ownership if aItemP is not NULL after return
@@ -3187,12 +3277,19 @@ localstatus TCustomImplDS::getItemByID(localid_t aLocalID, TSyncItem *&aItemP)
   TSyncSetList::iterator syncsetpos = findInSyncSet(localid.c_str());
   if (syncsetpos==fSyncSetList.end())
     return 404; // not found
-  // return item already fetched or fetch it if not fetched before
-  TSyncSetItem *syncsetitemP = (*syncsetpos);
-  if (syncsetitemP->itemP) {
+  // return sync item from syncset item (fetches data now if not fetched before)
+  return getItemFromSyncSetItem(*syncsetpos,aItemP);
+} // TCustomImplDS::getItemByID
+
+
+// private helper: get item with data from sync set list. Retrieves item if not already
+// there from loading the sync set
+localstatus TCustomImplDS::getItemFromSyncSetItem(TSyncSetItem *aSyncSetItemP, TSyncItem *&aItemP)
+{
+  if (aSyncSetItemP->itemP) {
     // already fetched - pass it to caller and remove link in syncsetitem
-    aItemP = syncsetitemP->itemP;
-    syncsetitemP->itemP = NULL; // syncsetitem does not own it any longer
+    aItemP = aSyncSetItemP->itemP;
+    aSyncSetItemP->itemP = NULL; // syncsetitem does not own it any longer
   }
   else {
     // item not yet fetched (or already retrieved once), fetch it now
@@ -3202,17 +3299,17 @@ localstatus TCustomImplDS::getItemByID(localid_t aLocalID, TSyncItem *&aItemP)
     if (!aItemP)
       return 510;
     // - assign local id, as it is required by DoDataSubstitutions
-    aItemP->setLocalID(syncsetitemP->localid.c_str());
+    aItemP->setLocalID(aSyncSetItemP->localid.c_str());
     // - set default operation
     aItemP->setSyncOp(sop_replace);
     // Now fetch item (read phase)
-    localstatus sta=apiFetchItem(*((TMultiFieldItem *)aItemP),true,syncsetitemP);
+    localstatus sta=apiFetchItem(*((TMultiFieldItem *)aItemP),true,aSyncSetItemP);
     if (sta!=LOCERR_OK)
       return sta; // error
   }
   // ok
   return LOCERR_OK;
-} // TCustomImplDS::getItemByID
+} // TCustomImplDS::getItemFromSyncSetItem
 
 
 /// update item by local ID in the sync set. Caller retains ownership of aItemP
@@ -3297,17 +3394,9 @@ localstatus TCustomImplDS::zapDatastore(void)
     // make sure we have the sync set
     if (!makeSyncSetLoaded(false)) return 510; // error
   }
-  // Zap the sync set in this datastore (will eventually call zapSyncSet)
+  // Zap the sync set in this datastore (will possibly call zapSyncSet)
   return apiZapSyncSet();
 } // TCustomImplDS::zapDatastore
-
-
-/// get error code for last routine call that returned !=LOCERR_OK
-/// @return platform specific DB error code
-uInt32 TCustomImplDS::lastDBError(void)
-{
-  return 0; // none available
-} // TCustomImplDS::lastDBError
 
 
 #endif // BASED_ON_BINFILE_CLIENT connecting methods

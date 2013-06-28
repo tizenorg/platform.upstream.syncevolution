@@ -423,7 +423,7 @@ public:
   */
   #ifdef ODBCAPI_SUPPORT
   // ODBC utils
-  // - commit and close eventually open script statement
+  // - commit and close possibly open script statement
   void commitAndCloseScriptStatement(void);
   #ifdef SCRIPT_SUPPORT
   // - get statement for executing scripted SQL
@@ -565,7 +565,7 @@ protected:
   virtual void CheckDevice(const char *aDeviceID);
   // - check user/pw (part of SessionLogin process)
   virtual bool CheckLogin(const char *aOriginalUserName, const char *aModifiedUserName, const char *aAuthString, TAuthSecretTypes aAuthStringType, const char *aDeviceID);
-  // - remote device is analyzed, eventually save status
+  // - remote device is analyzed, possibly save status
   virtual void remoteAnalyzed(void);
   #endif // HAS_SQL_ADMIN
   #ifdef SYSYNC_SERVER

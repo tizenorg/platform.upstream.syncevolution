@@ -387,16 +387,17 @@ public:
   virtual void setParentLocalID(const char *aParentLocalID) { fParentObjectID=aParentLocalID; };
 private:
   // fetch BLOB from DPAPI
-  void fetchBlob(size_t aNeededSize);
+  void fetchBlob(size_t aNeededSize, bool aNeedsTotalSize, bool aNeedsAllData);
   // Vars
   TPluginApiDS *fApiDsP; // datastore which can be asked to retrieve data
   bool fIsStringBLOB; // if set, the blob must be treated as a string (applying DB charset conversions)
   string fBlobID; // object ID of blob
   string fParentObjectID; // id of parent object (will be updated in case parent signals ID change)
   size_t fBlobSize; // total size of the BLOB
+  bool fBlobSizeKnown; // set if fBlobSize is valid (can also be 0 for KNOWN empty blob)
   size_t fFetchedSize; // how much we have already retrieved (and is in fBlobBuffer)
   size_t fBufferSize; // how much room we have in the buffer
-  void *fBlobBuffer; // buffer for blob already retrieved (NULL if nothing yet)
+  uInt8P fBlobBuffer; // buffer for blob already retrieved (NULL if nothing yet)
 }; // TApiBlobProxy
 
 #endif

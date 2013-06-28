@@ -47,11 +47,14 @@ enum TSyErrorEnum {
   DB_Forbidden = 403,
   /** object not found / unassigned field */
   DB_NotFound = 404,
-  /** command not allowed (eventually: at this time)*/
+  /** command not allowed (possibly: only at this time)*/
   DB_NotAllowed = 405,
 
   /** proxy authentication required */
   DB_ProxyAuth = 407,
+
+  /** item already exists */
+  DB_AlreadyExists = 418,
 
   /** command failed / fatal DB error */
   DB_Fatal = 500,
@@ -166,8 +169,23 @@ enum TSyErrorEnum {
   /** undefined error message */
   LOCERR_UNDEFINED = 20999,
 
-  /** local codes signalling SyncML status are shown as LOCAL_STATUS_CODE+<SyncML-Statuscode> */
-  LOCAL_STATUS_CODE = 10000
+  /**
+   * A range of error codes not used by the engine itself, start and
+   * end included. Can be used to pass application specific error
+   * codes from the DB layer up to the UI.
+   */
+  APP_STATUS_CODE_START = 22000,
+  APP_STATUS_CODE_END = 22999,
+
+  /**
+   * Local codes signalling SyncML status are shown as LOCAL_STATUS_CODE+<SyncML-Statuscode>.
+   * This applies to codes >= LOCAL_STATUS_CODE and <= LOCAL_STATUS_CODE_END = 10599.
+   *
+   * For example, 500 = DB_Fatal = fatal error signaled by peer.
+   * 10500 = LOCAL_STATUS_CODE + DB_Fatal = fatal error encountered locally.
+   */
+  LOCAL_STATUS_CODE = 10000,
+  LOCAL_STATUS_CODE_END = 10599
 };
 
 #ifdef __cplusplus

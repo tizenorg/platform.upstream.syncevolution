@@ -44,14 +44,6 @@ static string Sgn   ( string s,
        string SgnI  ( string s )   { return  Sgn( s, "I" ); }
        string SgnV  ( string s )   { return  Sgn( s, "V" ); }
 
-//static string RefS  ( bool a64bit, string s= "" ) { if (a64bit) return "J" + s;
-//                                                    else        return "I" + s; }
-
-//static string SgnS_X( bool a64bit, string s= "" ) { return Sgn( RefS( a64bit, s ),"S" ); }
-//static string SgnI_X( bool a64bit, string s= "" ) { return Sgn( RefS( a64bit, s ),"I" ); }
-//static string SgnZ_X( bool a64bit, string s= "" ) { return Sgn( RefS( a64bit, s ),"Z" ); }
-//static string SgnV_X( bool a64bit, string s= "" ) { return Sgn( RefS( a64bit, s ),"V" ); }
-
 
 class JSgn {
   public:
@@ -89,9 +81,6 @@ TSyError DBApi_DLLAssign( appPointer aMod, appPointer aField, memSize aFieldSize
        j.f64bit= a64bit;
   if  (j.f64bit) { j.fvr= jvl; j.fr= "J"; }
   else           { j.fvr= jvi; j.fr= "I"; }
-
-//string        jvr= jvi; string jr= "I";
-//if (a64bit) { jvr= jvl;        jr= "J"; }
 
   string js_ = j.SgnS_X();                        // "(I)S"
   string jsT = j.SgnS_X( jt  );                   // "(ILjava/lang/String;)S"
@@ -338,15 +327,15 @@ TSyError DBApi_DLLAssign( appPointer aMod, appPointer aField, memSize aFieldSize
     const char* proc_delB= "";
     if (keyCur) proc_delB= Da_DB;
 
-    js1 = j.SgnS_X( jii                      // "(ILItemID;Ljava/lang/String;LVAR_byteArray; ...
-                  + jt                       // ... LVAR_int;LVAR_int;ZLVAR_boolean;)S"
+    js1 = j.SgnS_X( jii                                     // "(ILItemID;Ljava/lang/String;LVAR_byteArray; ...
+                  + jt                                      // ... LVAR_int;LVAR_int;ZLVAR_boolean;)S"
                   + LCP( jP, c_VAR_byteArray )
-                  + jvi
-                  + jvi + "Z"
+                  + j.fvr
+                  + j.fvr + "Z"
                   + LCP( jP, c_VAR_bool ) );
 
-    js2 = j.SgnS_X( jii + jt + "[BIIZZ"   ); // "(ILItemID;Ljava/lang/String;[BIIZZ)S"
-    js3 = j.SgnS_X( jii + jt              ); // "(ILItemID;Ljava/lang/String;)S"
+    js2 = j.SgnS_X( jii + jt + "[B" + j.fr + j.fr + "ZZ" ); // "(ILItemID;Ljava/lang/String;[BIIZZ)S"
+    js3 = j.SgnS_X( jii + jt                             ); // "(ILItemID;Ljava/lang/String;)S"
 
     return ConnectFunctions( aMod, aField,aFieldSize, true,
           // ---- datastore data ----

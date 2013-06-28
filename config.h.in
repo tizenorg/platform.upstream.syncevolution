@@ -21,6 +21,9 @@
 /* file available */
 #undef ENABLE_FILE
 
+/* enable integration tests inside the final library */
+#undef ENABLE_INTEGRATION_TESTS
+
 /* enable libcurl transport */
 #undef ENABLE_LIBCURL
 
@@ -29,6 +32,9 @@
 
 /* enable Maemo hacks */
 #undef ENABLE_MAEMO
+
+/* Maemo 5 calendar available */
+#undef ENABLE_MAEMO_CALENDAR
 
 /* enable dynamically opening sync source backends */
 #undef ENABLE_MODULES
@@ -60,6 +66,9 @@
 /* enable unit tests inside the library's source code */
 #undef ENABLE_UNIT_TESTS
 
+/* XMLRPC available */
+#undef ENABLE_XMLRPC
+
 /* avoid hard dependency on Evolution shared objects */
 #undef EVOLUTION_COMPATIBILITY
 
@@ -69,8 +78,17 @@
 /* define if gnome keyring version is above 2.20 */
 #undef GNOME_KEYRING_220
 
+/* we have GTK+ 2.18 or better */
+#undef GTK_2_18
+
 /* Define to 1 if you have the `bind_textdomain_codeset' function. */
 #undef HAVE_BIND_TEXTDOMAIN_CODESET
+
+/* base libbluetooth functions accept bufsize parameter */
+#undef HAVE_BLUEZ_BUFSIZE
+
+/* libbluetooth has _safe variants */
+#undef HAVE_BLUEZ_SAFE
 
 /* define if the Boost library is available */
 #undef HAVE_BOOST

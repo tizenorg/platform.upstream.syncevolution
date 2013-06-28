@@ -56,7 +56,7 @@ private:
   bool fWriteStarted; ///< set if write has started
   #ifdef SYSYNC_CLIENT
   bool fEoC; ///< end of changes
-  #ifdef CLIENT_USES_SERVER_DB
+  #if defined(CLIENT_USES_SERVER_DB) && !defined(SYSYNC_SERVER)
   TSyncItemPContainer fItems; ///< list of data items, used to simulate maps in server DB
   #endif
   #endif
@@ -130,7 +130,7 @@ protected:
   virtual localstatus dsAfterStateChange(TLocalEngineDSState aOldState,TLocalEngineDSState aNewState);
   #ifdef SYSYNC_SERVER
   // - called when a item in the sync set changes its localID (due to local DB internals)
-  //   Datastore must make sure that eventually cached items get updated
+  //   Datastore must make sure that possibly cached items get updated
   virtual void dsLocalIdHasChanged(const char *aOldID, const char *aNewID);
   #endif
   /// @}
@@ -155,11 +155,11 @@ protected:
   /// called to mark an already sent item as "to-be-resent", e.g. due to temporary
   /// error status conditions, by localID or remoteID (latter only in server case).
   virtual void logicMarkItemForResend(cAppCharP aLocalID, cAppCharP aRemoteID);
-  /// save status information required to eventually perform a resume (as passed to datastore with
+  /// save status information required to possibly perform a resume (as passed to datastore with
   /// markOnlyUngeneratedForResume(), markItemForResume() and markItemForResend())
   /// (or, in case the session is really complete, make sure that no resume state is left)
   /// @note Must also save tempGUIDs (for server) and pending/unconfirmed maps (for client)
-  virtual localstatus logicSaveResumeMarks(void) { return implSaveResumeMarks(); };
+  virtual localstatus logicSaveResumeMarks(void);
 
   /// called to process incoming item operation
   /// @note Method must take ownership of syncitemP in all cases
@@ -180,13 +180,13 @@ protected:
 
 
   /// @name implXXXX methods defining the interface to TStdLogicDS.
-  ///   Only these will be called by TLocalEnginDS
+  ///   Only these will be called by TLocalEngineDS
   /// @Note some of these are virtuals ONLY for being derived by superdatastore, NEVER by locic or other derivates
   ///   We use the SUPERDS_VIRTUAL macro for these, which is empty in case we don't have superdatastores, then
   ///   these can be non-virtual.
   /// @{
   //
-  /// save status information required to eventually perform a resume (as passed to datastore with
+  /// save status information required to possibly perform a resume (as passed to datastore with
   /// markOnlyUngeneratedForResume() and markItemForResume())
   /// (or, in case the session is really complete, make sure that no resume state is left)
   /// @note Must also save tempGUIDs (for server) and pending/unconfirmed maps (for client)
@@ -219,19 +219,23 @@ protected:
   virtual localstatus implStartDataRead() = 0;
   /// get item from DB
   virtual localstatus implGetItem(
-    bool &aEof,
-    bool &aChanged,
-    TSyncItem* &aSyncItemP
+    bool &aEof, ///< set if no more items
+    bool &aChanged, ///< if set on entry, only changed items will be reported, otherwise all will be returned and aChanged denotes if items has changed or not
+    TSyncItem* &aSyncItemP ///< will receive the item
   ) = 0;
   /// end of read
   virtual localstatus implEndDataRead(void) = 0;
   /// start of write
   virtual localstatus implStartDataWrite(void) = 0;
+  /// Returns true when DB can track syncop changes (i.e. having the DB report
+  /// items as added again when stdlogic filters have decided they fell out of the syncset,
+  /// and has announced this to the DB using implReviewReadItem(). 
+  virtual bool implTracksSyncopChanges(void) { return false; }; // derived DB class needs to confirm true if   
 	/// review reported entry (allows post-processing such as map deleting)
 	/// MUST be called after implStartDataWrite, before any actual writing,
 	/// for each item obtained in implGetItem
 	virtual localstatus implReviewReadItem(
-	  TSyncItem &aItem         // the item
+	  TSyncItem &aItem         ///< the item
 	) = 0;
 	#ifdef SYSYNC_SERVER
   /// called to set maps.
@@ -288,12 +292,6 @@ private:
     bool aDoCommit,                // if not set, entire map operation must be undone
     TStatusCommand &aStatusCommand // status, must be set on error or non-200-status
   );
-  // - called for SyncML 1.1 if remote wants number of changes.
-  //   Must return -1 no NOC value can be returned
-  //   NOTE: we implement it here only for server, as it is not really needed
-  //   for clients normally - if it is needed, client's agent must provide
-  //   it as CustDBDatastore has no own list it can use to count in client case.
-  virtual sInt32 getNumberOfChanges(void);
   /// called to generate sync sub-commands as client for remote server
   /// @return true if now finished for this datastore
   virtual bool logicGenerateSyncCommandsAsServer(
@@ -318,6 +316,14 @@ private:
   
   // - determine if this is a first time sync situation
   virtual bool isFirstTimeSync(void) { return fFirstTimeSync; };
+
+protected:
+  // - called for SyncML 1.1 if remote wants number of changes.
+  //   Must return -1 no NOC value can be returned
+  //   NOTE: we implement it here only for server, as it is not really needed
+  //   for clients normally - if it is needed, client's agent must provide
+  //   it as CustDBDatastore has no own list it can use to count in client case.
+  virtual sInt32 getNumberOfChanges(void);
 
 public:
   // Simple custom DB access interface methods
@@ -353,8 +359,8 @@ private:
   // - can be called to check if performStartSync() should be terminated
   bool shouldExitStartSync(void);
   #ifdef MULTI_THREAD_DATASTORE
-    bool threadedStartSync(void);
-    TThreadObject fStartSyncThread; // the wrapper object for the startSync thread
+  bool threadedStartSync(void);
+  TThreadObject fStartSyncThread; // the wrapper object for the startSync thread
   #endif
 }; // TStdLogicDS
 

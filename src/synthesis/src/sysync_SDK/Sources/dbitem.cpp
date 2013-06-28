@@ -493,6 +493,7 @@ TSyError TDBItem::UpdateField( void* aCB, cAppCharP fKey,
       hdI->len  += newLen-oldLen; // adapt the whole length
       actI->field= fVal;          // and assign value of the new field
       err= LOCERR_OK;             // the new value is assigned, everything is ok
+      fChanged= true;             // must be marked for a change
       break;
     } // if
   } // while
@@ -853,7 +854,7 @@ TSyError TDBItem::LoadDB( bool withKey, cAppCharP aPrefix, void* aCB )
       if (s.empty() && feof( f )) break; // .. until end of file
 
       q= (char*)s.c_str();
-      // remove eventual UTF-8 lead-in
+      // remove possible UTF-8 lead-in
       if ((q[0] & 0xFF) == 0xEF &&
           (q[1] & 0xFF) == 0xBB &&
           (q[2] & 0xFF) == 0xBF) {

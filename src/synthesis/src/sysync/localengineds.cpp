@@ -297,16 +297,6 @@ public:
   #endif // SYSYNC_TARGET_OPTIONS
 
 
-  // string DBNAME()
-  // returns name of DB
-  static void func_DBName(TItemField *&aTermP, TScriptContext *aFuncContextP)
-  {
-    aTermP->setAsString(
-      static_cast<TLocalEngineDS *>(aFuncContextP->getCallerContext())->getName()
-    );
-  }; // func_DBName
-
-
   // integer SLOWSYNC()
   // returns true if we are in slow sync
   static void func_SlowSync(TItemField *&aTermP, TScriptContext *aFuncContextP)
@@ -413,6 +403,31 @@ public:
   }; // func_SetConflictStrategy
 
 
+  // string DBNAME()
+  // returns name of DB
+  static void func_DBName(TItemField *&aTermP, TScriptContext *aFuncContextP)
+  {
+    aTermP->setAsString(
+      static_cast<TLocalEngineDS *>(aFuncContextP->getCallerContext())->getName()
+    );
+  }; // func_DBName
+
+  // void ABORTDATASTORE(integer statuscode)
+  static void func_AbortDatastore(TItemField *&aTermP, TScriptContext *aFuncContextP)
+  {
+    static_cast<TLocalEngineDS *>(aFuncContextP->getCallerContext())->engAbortDataStoreSync(aFuncContextP->getLocalVar(0)->getAsInteger(),true); // we cause the abort locally
+  } // func_AbortDatastore
+
+  // string LOCALDBNAME()
+  // returns name of local DB with which it was identified for the sync
+  static void func_LocalDBName(TItemField *&aTermP, TScriptContext *aFuncContextP)
+  {
+    aTermP->setAsString(
+      static_cast<TLocalEngineDS *>(aFuncContextP->getCallerContext())->getIdentifyingName()
+    );
+  }; // func_LocalDBName
+
+
   // string REMOTEDBNAME()
   // returns remote datastore's full name (as used by the remote in <sync> command, may contain subpath and CGI)
   static void func_RemoteDBName(TItemField *&aTermP, TScriptContext *aFuncContextP)
@@ -420,7 +435,7 @@ public:
     TLocalEngineDS *dsP = static_cast<TLocalEngineDS *>(aFuncContextP->getCallerContext());
     aTermP->setAsString(dsP->getRemoteDatastore()->getFullName());
   }; // func_RemoteDBName
-
+  
 
   #ifdef SYSYNC_CLIENT
 
@@ -477,7 +492,7 @@ public:
       // BEFORE&EQ;20070808T000000Z&AND;SINCE&EQ;20070807T000000Z
       lineartime_t now = getSystemNowAs(TCTX_UTC,aFuncContextP->getSessionZones());
       string ts;
-      // AND-chain with eventually existing filter
+      // AND-chain with possibly existing filter
       cAppCharP sep = "";
       if (!dsP->fRemoteRecordFilterQuery.empty())
         sep = "&AND;";
@@ -512,6 +527,7 @@ const uInt8 param_FilterArg[] = { VAL(fty_string) };
 const uInt8 param_DateArg[] = { VAL(fty_timestamp) };
 const uInt8 param_IntArg[] = { VAL(fty_integer) };
 const uInt8 param_StrArg[] = { VAL(fty_string) };
+const uInt8 param_OneInteger[] = { VAL(fty_integer) };
 
 const TBuiltInFuncDef DBFuncDefs[] = {
   #ifdef OBJECT_FILTERING
@@ -540,7 +556,6 @@ const TBuiltInFuncDef DBFuncDefs[] = {
   { "SETDEFAULTSIZELIMIT", TLDSfuncs::func_SetDefaultLimit, fty_none, 1, param_IntArg },
   { "DBHANDLESOPTS", TLDSfuncs::func_DBHandlesOpts, fty_integer, 0, NULL },
   #endif
-  { "DBNAME", TLDSfuncs::func_DBName, fty_string, 0, NULL },
   { "ALERTCODE", TLDSfuncs::func_AlertCode, fty_integer, 0, NULL },
   { "SETALERTCODE", TLDSfuncs::func_SetAlertCode, fty_none, 1, param_IntArg },
   { "SLOWSYNC", TLDSfuncs::func_SlowSync, fty_integer, 0, NULL },
@@ -551,7 +566,10 @@ const TBuiltInFuncDef DBFuncDefs[] = {
   { "SETREADONLY", TLDSfuncs::func_SetReadOnly, fty_none, 1, param_IntArg },
   { "FIRSTTIMESYNC", TLDSfuncs::func_FirstTimeSync, fty_integer, 0, NULL },
   { "SETCONFLICTSTRATEGY", TLDSfuncs::func_SetConflictStrategy, fty_none, 1, param_StrArg },
+  { "DBNAME", TLDSfuncs::func_DBName, fty_string, 0, NULL },
+  { "LOCALDBNAME", TLDSfuncs::func_LocalDBName, fty_string, 0, NULL },
   { "REMOTEDBNAME", TLDSfuncs::func_RemoteDBName, fty_string, 0, NULL },
+  { "ABORTDATASTORE", TLDSfuncs::func_AbortDatastore, fty_none, 1, param_OneInteger },
 };
 
 // functions for all datastores
@@ -871,6 +889,7 @@ void TLocalDSConfig::clear(void)
   #ifdef OBJECT_FILTERING
   // - filters
   fRemoteAcceptFilter.erase();
+  fSilentlyDiscardUnaccepted=false;
   fLocalDBFilterConf.erase();
   fMakePassFilter.erase();
   fInvisibleFilter.erase();
@@ -926,6 +945,14 @@ bool TLocalDSConfig::localStartElement(const char *aElementName, const char **aA
     expectBool(fTryUpdateDeleted);
   else if (strucmp(aElementName,"alwayssendlocalid")==0)
     expectBool(fAlwaysSendLocalID);
+  else if (strucmp(aElementName,"alias")==0) {
+   	// get a name
+    string name;
+		if (!getAttrExpanded(aAttributes, "name", name, true))
+      return fail("Missing 'name' attribute in 'alias'");
+    fAliasNames.push_back(name);
+    expectEmpty();
+	}    
   #endif
   else if (strucmp(aElementName,"maxitemspermessage")==0)
     expectUInt32(fMaxItemsPerMessage);
@@ -933,6 +960,8 @@ bool TLocalDSConfig::localStartElement(const char *aElementName, const char **aA
   // filtering
   else if (strucmp(aElementName,"acceptfilter")==0)
     expectString(fRemoteAcceptFilter);
+  else if (strucmp(aElementName,"silentdiscard")==0)
+    expectBool(fSilentlyDiscardUnaccepted);
   else if (strucmp(aElementName,"localdbfilter")==0)
     expectString(fLocalDBFilterConf);
   else if (strucmp(aElementName,"makepassfilter")==0)
@@ -1083,6 +1112,20 @@ void TLocalDSConfig::addTypeLimits(TLocalEngineDS *aLocalDatastoreP, TSyncSessio
 } // TLocalDSConfig::addTypeLimits
 
 
+// Check for alias names
+uInt16 TLocalDSConfig::isDatastoreAlias(cAppCharP aDatastoreURI)
+{
+	// only servers have (and may need) aliases
+	#ifdef SYSYNC_SERVER
+  for (TStringList::iterator pos = fAliasNames.begin(); pos!=fAliasNames.end(); pos++) {
+  	if (*pos == aDatastoreURI)
+    	return (*pos).size(); // return size of match
+  }
+  #endif
+  return 0;
+} // TLocalDSConfig::isDatastoreAlias
+
+
 
 
 /*
@@ -1095,7 +1138,7 @@ void TLocalDSConfig::addTypeLimits(TLocalEngineDS *aLocalDatastoreP, TSyncSessio
 ///  half-destructed datastore!)
 void TLocalEngineDS::InternalResetDataStore(void)
 {
-  // eventually complete, if not already done (should be, by engFinishDataStoreSync() !)
+  // possibly complete, if not already done (should be, by engFinishDataStoreSync() !)
   if (fLocalDSState>dssta_idle)
     changeState(dssta_completed); // complete NOW, opportunity to show stats, etc.
   // switch down to idle
@@ -1326,8 +1369,29 @@ uInt16 TLocalEngineDS::isDatastore(const char *aDatastoreURI)
   string basename;
   analyzeName(aDatastoreURI,&basename);
   // compare only base name
-  return TSyncDataStore::isDatastore(basename.c_str());
+  // - compare with main name
+  int res = inherited::isDatastore(basename.c_str());
+  if (res==0) {
+		// Not main name: compare with aliases
+	  res = fDSConfigP->isDatastoreAlias(basename.c_str());
+  }
+  return res;
 } // TLocalEngineDS::isDatastore
+
+
+
+/// get DB specific error message text for dbg log, or empty string if none
+/// @return platform specific DB error text
+string TLocalEngineDS::lastDBErrorText(void)
+{
+  string s;
+  s.erase();
+  uInt32 err = lastDBError();
+  if (isDBError(err)) {
+	  StringObjPrintf(s," (DB specific error code = %ld)",(long)lastDBError());
+  }
+  return s;
+} // TLocalEngineDS::lastDBErrorText
 
 
 #ifdef SYSYNC_CLIENT
@@ -1467,7 +1531,7 @@ void TLocalEngineDS::adjustLocalIDforSize(string &aLocalID, sInt32 maxguidsize, 
     if (aLocalID.length()+prefixsize>(uInt32)maxguidsize) { //BCPPB needed unsigned cast
       // real GUID is too long, we need to create a temp
       string tempguid;
-      StringObjPrintf(tempguid,"#%lu",(unsigned long)fTempGUIDMap.size()+1); // as list only grows, we have unique tempuids for sure
+      StringObjPrintf(tempguid,"#%ld",(long)fTempGUIDMap.size()+1); // as list only grows, we have unique tempuids for sure
       fTempGUIDMap[tempguid]=aLocalID;
       PDEBUGPRINTFX(DBG_DATA,(
         "translated realLocalID='%s' to tempLocalID='%s'",
@@ -1594,7 +1658,7 @@ bool TLocalEngineDS::checkFilterkeywordTerm(
     }
     else {
       PDEBUGPRINTFX(DBG_ERROR,("invalid ISO datetime for BEFORE: '%s'",aVal));
-      return true; // add it to filter, eventually this is not meant to be a filterkeyword
+      return true; // add it to filter, possibly this is not meant to be a filterkeyword
     }
   }
   else if (strucmp(aIdent,"SINCE")==0) {
@@ -1603,25 +1667,25 @@ bool TLocalEngineDS::checkFilterkeywordTerm(
     }
     else {
       PDEBUGPRINTFX(DBG_ERROR,("invalid ISO datetime for SINCE: '%s'",aVal));
-      return true; // add it to filter, eventually this is not meant to be a filterkeyword
+      return true; // add it to filter, possibly this is not meant to be a filterkeyword
     }
   }
   else if (strucmp(aIdent,"MAXSIZE")==0) {
     if (StrToFieldinteger(aVal,fSizeLimit)==0) {
       PDEBUGPRINTFX(DBG_ERROR,("invalid integer for MAXSIZE: '%s'",aVal));
-      return true; // add it to filter, eventually this is not meant to be a filterkeyword
+      return true; // add it to filter, possibly this is not meant to be a filterkeyword
     }
   }
   else if (strucmp(aIdent,"MAXCOUNT")==0) {
     if (StrToULong(aVal,fMaxItemCount)==0) {
       PDEBUGPRINTFX(DBG_ERROR,("invalid integer for MAXSIZE: '%s'",aVal));
-      return true; // add it to filter, eventually this is not meant to be a filterkeyword
+      return true; // add it to filter, possibly this is not meant to be a filterkeyword
     }
   }
   else if (strucmp(aIdent,"NOATT")==0) {
     if (!StrToBool(aVal,fNoAttachments)==0) {
       PDEBUGPRINTFX(DBG_ERROR,("invalid boolean for NOATT: '%s'",aVal));
-      return true; // add it to filter, eventually this is not meant to be a filterkeyword
+      return true; // add it to filter, possibly this is not meant to be a filterkeyword
     }
   }
   else if (strucmp(aIdent,"DBOPTIONS")==0) {
@@ -1639,7 +1703,7 @@ bool TLocalEngineDS::checkFilterkeywordTerm(
 
 
 /// @brief parse "syncml:filtertype-cgi" filter, convert into internal filter syntax
-///  and eventually sets some special filter options (fDateRangeStart, fDateRangeEnd)
+///  and possibly sets some special filter options (fDateRangeStart, fDateRangeEnd)
 ///  based on "filterkeywords" available for the type passed (DS 1.2).
 ///  For parsing DS 1.1/1.0 TAF-style filters, aItemType can be NULL, no type-specific
 ///  filterkeywords can be parsed then.
@@ -1695,7 +1759,7 @@ const char *TLocalEngineDS::parseFilterCGI(cAppCharP aCGI, TSyncItemType *aItemT
       }
       // skip spaces
       while (isspace(*p)) p++;
-      // next must be comparison operator, eventually preceeded by modifiers
+      // next must be comparison operator, possibly preceeded by modifiers
       op[0]=0; op[1]=0; op[2]=0;
       assigntomaketrue=false;
       specialvalue=false;
@@ -1771,7 +1835,7 @@ const char *TLocalEngineDS::parseFilterCGI(cAppCharP aCGI, TSyncItemType *aItemT
         val += (char)c;
       } // value
       // now we have identifier, op and value
-      // - check and eventually sort out filterkeyword terms
+      // - check and possibly sort out filterkeyword terms
       termtofilter = checkFilterkeywordTerm(ident.c_str(),assigntomaketrue,op,caseinsensitive,val.c_str(),specialvalue,aItemTypeP);
       // - add to filter if not handled already by other mechanism
       if (termtofilter) {
@@ -1842,7 +1906,7 @@ void TLocalEngineDS::analyzeName(
   string *aCGIP
 )
 {
-  const char *p,*q=NULL, *r; // BCPPB needed const, gcc3.2.2 needed NULL
+  const char *p,*q=NULL, *r;
   r=strchr(aDatastoreURI,'?');
   p=strchr(aDatastoreURI,'/');
   if (r && p>r) p=NULL; // if slash is in CGI, ignore it
@@ -1906,7 +1970,7 @@ const char *TLocalEngineDS::parseOption(
     // make temporary filter (or TAF) expression
     aArguments=parseFilterCGI(aArguments,fLocalSendToRemoteTypeP,fTargetAddressFilter); // if type being used for sending to remote is known here, use it
     // Note: TAF filters are always evaluated internally as we need all SyncSet records
-    //       regardless of eventual TAF suppression (for slowsync matching etc.)
+    //       regardless of possible TAF suppression (for slowsync matching etc.)
     return aArguments; // end of filter pattern
   }
   #endif
@@ -2195,6 +2259,10 @@ TAlertCommand *TLocalEngineDS::engProcessSyncAlert(
   localstatus sta=LOCERR_OK;
 
   SYSYNC_TRY {
+    if (IS_SERVER) {
+      // save the identifying URI
+      fIdentifyingDBName = aIdentifyingTargetURI;
+    }
     // determine status of read-only option
     fReadOnly=
       fSessionP->getReadOnly() || // session level read-only flag (probably set by login)
@@ -2262,7 +2330,7 @@ TAlertCommand *TLocalEngineDS::engProcessSyncAlert(
       &DBFuncTable,
       this // caller context
     );
-    aAlertCode=fAlertCode; // get eventually modified version back (SETALERTCODE)
+    aAlertCode=fAlertCode; // get possibly modified version back (SETALERTCODE)
     #endif
     // if we process a sync alert now, we haven't started sync or map generation
     #ifdef SYSYNC_SERVER
@@ -2621,7 +2689,7 @@ bool TLocalEngineDS::engHandleAlertStatus(TSyError aStatusCode)
   // now check status code
   if (aStatusCode==508) {
     // remote party needs slow sync
-    PDEBUGPRINTFX(DBG_HOT,("engHandleAlertStatus: Remote party needs SlowSync, switching to slowsync (AFTER alert, cancelling eventual Resume)"));
+    PDEBUGPRINTFX(DBG_HOT,("engHandleAlertStatus: Remote party needs SlowSync, switching to slowsync (AFTER alert, cancelling possible Resume)"));
     // Note: in server and client cases, this mode change may happen AFTER alert command exchange
     // - switch to slow sync
     fSlowSync=true;
@@ -2953,7 +3021,7 @@ bool TLocalEngineDS::engHandleSyncOpStatus(TStatusCommand *aStatusCmdP,TSyncOpCo
   #endif
   if (localID) {
     #ifdef SUPERDATASTORES
-    // remove eventual prefix if this item was sent in the <sync> command context of a superdatastore
+    // remove possible prefix if this item was sent in the <sync> command context of a superdatastore
     if (fAsSubDatastoreOf) {
       // let superdatastore remove the prefix for me
       localID = fAsSubDatastoreOf->removeSubDSPrefix(localID,this);
@@ -3109,7 +3177,7 @@ bool TLocalEngineDS::engHandleSyncOpStatus(TStatusCommand *aStatusCmdP,TSyncOpCo
     PDEBUGPRINTFX(DBG_ERROR,("Status: %hd: Handled by session script (original op was %s)",statuscode,SyncOpNames[sop]));
     return true;
   }
-  // not completely handled, use eventually modified status code
+  // not completely handled, use possibly modified status code
   #ifdef SYDEBUG
   if (statuscode != errctx.newstatuscode) {
     PDEBUGPRINTFX(DBG_ERROR,("Status: Script changed original status=%hd to %hd (original op was %s)",statuscode,errctx.newstatuscode,SyncOpNames[errctx.syncop]));
@@ -3231,6 +3299,8 @@ localstatus TLocalEngineDS::engPrepareClientSyncAlert(TSuperDataStore *aAsSubDat
     this // datastore pointer needed for context
   );
   #endif
+  // - save the identifying name of the DB
+  fIdentifyingDBName = fLocalDBPath;
   // - get information about last session out of database
   sta=engInitSyncAnchors(
     relativeURI(fLocalDBPath.c_str()),
@@ -3313,7 +3383,7 @@ localstatus TLocalEngineDS::engGenerateClientSyncAlert(
     );
   }
   // - URIs
-  itemP->source=newLocation(fLocalDBPath.c_str());
+  itemP->source=newLocation(fLocalDBPath.c_str()); // local DB ID
   itemP->target=newLocation(fRemoteDBPath.c_str()); // use remote path as configured in client settings
   // - add DS 1.2 filters
   if (!fRemoteRecordFilterQuery.empty() || false /* %%% field level filter */) {
@@ -3856,7 +3926,7 @@ void TLocalEngineDS::engServerStartOfSyncMessage(void)
 
 // called whenever Message of Sync Package ends or after last queued Sync command is executed
 // - aEndOfAllSyncCommands is true when at end of Sync-data-from-remote packet
-//   AND all eventually queued sync/syncop commands have been processed.
+//   AND all possibly queued sync/syncop commands have been processed.
 void TLocalEngineDS::engEndOfSyncFromRemote(bool aEndOfAllSyncCommands)
 {
   // is called for all local datastores, including superdatastore, even inactive ones, so check state first
@@ -4003,7 +4073,7 @@ void TLocalEngineDS::engAbortDataStoreSync(TSyError aStatusCode, bool aLocalProb
     // NOTE: before we have made the sync set ready, WE MUST NOT resume, because making the sync
     //   set ready includes zapping it on slow refreshes, and this is only done when not resuming
     //   (so saving a suspend state before dssta_syncsetready would cause that the zapping is
-    //   eventually skipped)
+    //   possibly skipped)
     if (!testState(dssta_syncsetready)) preventResuming(); // prevent resuming before sync set is ready
     // save resume (or non-resumable!) status only if this is NOT A TIMEOUT, because if it is a
     // (server) timeout, suspend state was saved at end of last request, and writing again here would destroy
@@ -4486,7 +4556,7 @@ void TLocalEngineDS::initPostFetchFiltering(void)
     fFilteringNeeded=fTypeFilteringNeeded;
     // NOTE: if type filtering is needed, it's the responsibility of initPostFetchFiltering() of
     //       the type to check (using the DBHANDLESOPTS() script func) if DB does already handle
-    //       the range filters and such and eventually avoid type filtering then.
+    //       the range filters and such and possibly avoid type filtering then.
     // then check for standard filter requirements
     #ifdef SYDEBUG
     #ifdef SYNCML_TAF_SUPPORT
@@ -4505,7 +4575,7 @@ void TLocalEngineDS::initPostFetchFiltering(void)
         fFilteringNeededForAll=true;
       // always return true if there is something to filter at all
       if (
-        fLocalDBFilter.empty() ||
+        !fLocalDBFilter.empty() ||
         !fDSConfigP->fInvisibleFilter.empty() ||
         !fSyncSetFilter.empty() ||
         !fDSConfigP->fRemoteAcceptFilter.empty()
@@ -4589,7 +4659,8 @@ bool TLocalEngineDS::isAcceptable(TSyncItem *aSyncItemP, TStatusCommand &aStatus
   // test acceptance
   if (aSyncItemP->testFilter(fDSConfigP->fRemoteAcceptFilter.c_str())) return true; // ok
   // not accepted, set 415 error
-  aStatusCommand.setStatusCode(415);
+  if (!fDSConfigP->fSilentlyDiscardUnaccepted)
+  	aStatusCommand.setStatusCode(415);
   ADDDEBUGITEM(aStatusCommand,"Received item does not pass acceptance filter");
   PDEBUGPRINTFX(DBG_ERROR,(
     "Received item does not pass acceptance filter: %s",
@@ -4785,7 +4856,7 @@ bool TLocalEngineDS::engProcessSyncOpItem(
     else {
       // we have the remote type, now determine matching local type
       // - first check if this is compatible with the existing localTypeP (which
-      //   was eventually selected by remote rule match
+      //   was possibly selected by remote rule match
       if (!localTypeP->supportsType(remoteTypeP->getTypeName(),remoteTypeP->getTypeVers(),false)) {
         // current default local type does not support specified remote type
         // - find a matching local type
@@ -4849,7 +4920,7 @@ bool TLocalEngineDS::engProcessSyncOpItem(
         &ErrorFuncTable,
         &errctx // caller context
       );
-    // use eventually modified status code
+    // use possibly modified status code
     #ifdef SYDEBUG
     if (aStatusCommand.getStatusCode() != errctx.newstatuscode) {
       PDEBUGPRINTFX(DBG_ERROR,("Status: Datastore script changed original status=%hd to %hd (original op was %s)",aStatusCommand.getStatusCode(),errctx.newstatuscode,SyncOpNames[errctx.syncop]));
@@ -5000,7 +5071,7 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
   fDeleteWins = fDSConfigP->fDeleteWins; // default to configured value
   fRejectStatus = -1; // no rejection
   // - now check
-  //   check reads and eventually modifies:
+  //   check reads and possibly modifies:
   //   - fEchoItemOp : if not sop_none, the incoming item is echoed back to the remote with the specified syncop
   //   - fItemConflictStrategy : might be changed from the pre-set datastore default
   //   - fForceConflict : if set, a conflict is forced by adding the corresponding local item (if any) to the list of items to be sent
@@ -5023,7 +5094,7 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
     echoItemP->setRemoteID(aSyncItemP->getRemoteID());
     // - set sop
     echoItemP->setSyncOp(fEchoItemOp);
-    // - now check for eventual conflict
+    // - now check for possible conflict
     if (!fSlowSync) {
       conflictingItemP = getConflictingItemByRemoteID(aSyncItemP);
       // remove item if there is one that would conflict with the echo
@@ -5288,7 +5359,7 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
                 }
                 else {
                   PDEBUGPRINTFX(DBG_PROTO+DBG_HOT,("Conflict of Client Replace with Server delete -> try to update already deleted item (as it might still exist in syncset)"));
-                  // apply replace (and in case of !fDeleteWins, eventual implicit add)
+                  // apply replace (and in case of !fDeleteWins, possible implicit add)
                   fPreventAdd=fDeleteWins; // we want implicit add only if delete cannot win
                   remainsvisible=!fDeleteWins; // we want to see the item in the sync set if delete does not win!
                   ok=logicProcessRemoteItem(aSyncItemP,aStatusCommand,remainsvisible);
@@ -5301,7 +5372,7 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
                   }
                   else {
                     // update of invisible item successful, but it will still be deleted from client
-                    // Note: eventually, the update was apparently successful, but only because an UPDATE with no
+                    // Note: possibly, the update was apparently successful, but only because an UPDATE with no
                     //   target does not report an error. So effectively, no update might have happened.
                     PDEBUGPRINTFX(DBG_PROTO,("Updated already deleted server item, but delete still wins -> client item will be deleted"));
                     fLocalItemsUpdated++;
@@ -5458,7 +5529,7 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
             }
             else {
               // - item sent by client has lost and can be deleted now
-              //   %%% eventually add option here to archive item in some way
+              //   %%% possibly add option here to archive item in some way
               //       BUT ONLY IF NOT fReadOnly
               delete aSyncItemP;
             }
@@ -5558,7 +5629,7 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
           aStatusCommand.setStatusCode(syncop==sop_add ? 201 : 200); // default is: simply ok. But if original op was Add, MUST return 201 status (SCTS requires it)
           bool matchingok=false;
           // - do not update map yet, as we still don't know if client item will
-          //   eventually be added instead of mapped
+          //   possibly be added instead of mapped
           // Note: ONLY in case this is a reference-only item, the map is already updated!
           bool mapupdated = syncop==sop_reference_only;
           // - determine which one is winning
@@ -5656,7 +5727,7 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
             }
           } // if not ignoreUpdate
           // Update server map now if required
-          // - NOTE THAT THIS IS VERY IMPORTANT TO DO BEFORE any eventual
+          // - NOTE THAT THIS IS VERY IMPORTANT TO DO BEFORE any possible
           //   replaces, because replacing the matchingItem can only be
           //   done via its remoteID, which is, at this moment, probably not
           //   valid. After Mapping, it is ensured that the mapped remoteID
@@ -5788,8 +5859,13 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
     default :
       SYSYNC_THROW(TSyncException("Unknown sync op in TLocalEngineDS::processRemoteItemAsServer"));
   } // switch
-  if (ok)
+  if (ok) {
     OBJ_PROGRESS_EVENT(fSessionP->getSyncAppBase(),pev_itemprocessed,fDSConfigP,fLocalItemsAdded,fLocalItemsUpdated,fLocalItemsDeleted);
+  }
+  else {
+  	// if the DB has a error string to show, add it here
+		aStatusCommand.addItemString(lastDBErrorText().c_str());
+  }
   // done
   return ok;
 } // TLocalEngineDS::engProcessRemoteItemAsServer
@@ -5805,7 +5881,7 @@ void TLocalEngineDS::engRequestEnded(void)
     // before the next request. Note that the we cannot wait for session timeout, as the resume attempt
     // from the client probably arrives much earlier.
     // Note: It is ESSENTIAL not to save the state until sync set is ready, because saving state will
-    //   cause DB access, and DB access is not permitted while sync set is eventually still loading
+    //   cause DB access, and DB access is not permitted while sync set is possibly still loading
     //   (possibly in a separate thread!). So dssta_syncmodestable (as in <=3.0.0.2) is NOT enough here!
     if (testState(dssta_syncsetready)) {
       // make sure all unsent items are marked for resume
@@ -5868,7 +5944,7 @@ bool TLocalEngineDS::engProcessRemoteItemAsClient(
   // - must be in correct sync state
   if (!testState(dssta_syncgendone)) {
     // Modifications from server not allowed before client has done sync gen
-    // %%% we could eventually relax this one, depending on the DB
+    // %%% we could possibly relax this one, depending on the DB
     aStatusCommand.setStatusCode(403);
     PDEBUGPRINTFX(DBG_ERROR,("Server command not allowed before client has sent entire <sync>"));
     delete aSyncItemP;
@@ -5901,7 +5977,7 @@ bool TLocalEngineDS::engProcessRemoteItemAsClient(
     fDeleteWins = fDSConfigP->fDeleteWins; // default to configured value
     fRejectStatus = -1; // no rejection
     // - now check
-    //   check reads and eventually modifies:
+    //   check reads and possibly modifies:
     //   - fEchoItemOp : if not sop_none, the incoming item is echoed back to the remote with the specified syncop
     //   - fItemConflictStrategy : might be changed from the pre-set datastore default
     //   - fForceConflict : if set, a conflict is forced by adding the corresponding local item (if any) to the list of items to be sent
@@ -6024,7 +6100,13 @@ bool TLocalEngineDS::engProcessRemoteItemAsClient(
         SYSYNC_THROW(TSyncException("Unknown sync op in TLocalEngineDS::processRemoteItemAsClient"));
     } // switch
     // processed
-    if (ok) OBJ_PROGRESS_EVENT(fSessionP->getSyncAppBase(),pev_itemprocessed,fDSConfigP,fLocalItemsAdded,fLocalItemsUpdated,fLocalItemsDeleted);
+    if (ok) {
+    	OBJ_PROGRESS_EVENT(fSessionP->getSyncAppBase(),pev_itemprocessed,fDSConfigP,fLocalItemsAdded,fLocalItemsUpdated,fLocalItemsDeleted);
+    }
+    else {
+      // if the DB has a error string to show, add it here
+      aStatusCommand.addItemString(lastDBErrorText().c_str());    
+    }
     return ok;
   }
 } // TLocalEngineDS::processRemoteItemAsClient
@@ -6374,13 +6456,13 @@ localstatus TLocalEngineDS::engSaveSuspendState(bool aAnyway)
   if (aAnyway || !isAborted()) {
     // only save if DS 1.2 and supported by DB
     if ((fSessionP->getSyncMLVersion()>=syncml_vers_1_2) && dsResumeSupportedInDB()) {
-      PDEBUGBLOCKDESC("SaveSuspendState","Saving state for suspend/resume");
+		  PDEBUGBLOCKFMT(("SaveSuspendState","Saving state for suspend/resume","datastore=%s",getName()));
       // save alert state (if not explicitly prevented)
       fResumeAlertCode=fPreventResuming ? 0 : fAlertCode;
       if (fResumeAlertCode) {
         if (fPartialItemState!=pi_state_save_outgoing) {
           // ONLY if we have no request for saving an outgoing item state already,
-          // we eventually need to save a pending incoming item
+          // we possibly need to save a pending incoming item
           // if there is an incompletely received item, let it update Partial Item (fPIxxx) state
           // (if it is an item of this datastore, that is).
           if (fSessionP->fIncompleteDataCommandP)

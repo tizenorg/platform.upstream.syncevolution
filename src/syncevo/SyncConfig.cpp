@@ -28,12 +28,15 @@
 #include <syncevo/VolatileConfigNode.h>
 #include <syncevo/DevNullConfigNode.h>
 #include <syncevo/MultiplexConfigNode.h>
+#include <syncevo/lcs.h>
+#include <test.h>
 #include <synthesis/timeutil.h>
 
 #include <boost/foreach.hpp>
 #include <iterator>
 #include <algorithm>
 #include <functional>
+#include <queue>
 
 #include <unistd.h>
 #include "config.h"
@@ -80,6 +83,14 @@ void SyncConfig::normalizeConfigString(const string &config, string &normal, str
     context = "";
     normal = config;
     boost::to_lower(normal);
+    BOOST_FOREACH(char &character, normal) {
+        if (!isprint(character) ||
+            character == '/' ||
+            character == '\\' ||
+            character == ':') {
+            character = '_';
+        }
+    }
     if (boost::ends_with(normal, "@default")) {
         context = "default";
         normal.resize(normal.size() - strlen("@default"));
@@ -151,7 +162,7 @@ SyncConfig::SyncConfig(const string &peer,
         // when ignoring their context. Peer list is sorted by name,
         // therefore shorter config names (= without context) are
         // found first, as intended.
-        BOOST_FOREACH(const StringPair &entry, getServers()) {
+        BOOST_FOREACH(const StringPair &entry, getConfigs()) {
             string entry_peer, entry_context;
             splitConfigString(entry.first, entry_peer, entry_context);
             if (m_peer == entry_peer) {
@@ -310,7 +321,7 @@ string SyncConfig::getRootPath() const
 
 void SyncConfig::addPeers(const string &root,
                           const std::string &configname,
-                          SyncConfig::ServerList &res) {
+                          SyncConfig::ConfigList &res) {
     FileConfigTree tree(root, "", false);
     list<string> servers = tree.getChildren("");
     BOOST_FOREACH(const string &server, servers) {
@@ -328,18 +339,18 @@ void SyncConfig::addPeers(const string &root,
         if (!access((root + "/" + peerPath).c_str(), F_OK)) {
             // not a real HTTP server, search for peers
             BOOST_FOREACH(const string &peer, tree.getChildren(peerPath)) {
-                res.push_back(pair<string, string>(normalizeConfigString(peer + "@" + server),
-                                                   root + "/" + peerPath + "/" + peer));
+                res.push_back(pair<string, string> (normalizeConfigString(peer + "@" + server),
+                                                  root + "/" + peerPath + "/" + peer));
             }
         } else if (!access((root + "/" + server + "/" + configname).c_str(), F_OK)) {
-            res.push_back(pair<string, string>(server, root + "/" + server));
+            res.push_back(pair<string, string> (server, root + "/" + server));
         }
     }
 }
 
-SyncConfig::ServerList SyncConfig::getServers()
+SyncConfig::ConfigList SyncConfig::getConfigs()
 {
-    ServerList res;
+    ConfigList res;
 
     addPeers(getOldRoot(), "config.txt", res);
     addPeers(getNewRoot(), "config.ini", res);
@@ -350,51 +361,106 @@ SyncConfig::ServerList SyncConfig::getServers()
     return res;
 }
 
-SyncConfig::ServerList SyncConfig::getServerTemplates()
+/* Get a list of all templates, both for any phones listed in @peers*/
+SyncConfig::TemplateList SyncConfig::getPeerTemplates(const DeviceList &peers)
 {
-    class TmpList : public ServerList {
-    public:
-        void addDefaultTemplate(const string &server, const string &url) {
-            BOOST_FOREACH(const value_type &entry, static_cast<ServerList &>(*this)) {
-                if (boost::iequals(entry.first, server)) {
-                    // already present
-                    return;
-                }
-            }
-            push_back(value_type(server, url));
-        }
-    } result;
+    TemplateList result1, result2;
+    result1 = matchPeerTemplates (peers);
+    result2 = getBuiltInTemplates();
 
-    // scan TEMPLATE_DIR for templates
-    string templateDir(TEMPLATE_DIR);
-    if (isDir(templateDir)) {
-        ReadDir dir(templateDir);
-        BOOST_FOREACH(const string &entry, dir) {
-            if (isDir(templateDir + "/" + entry)) {
-                boost::shared_ptr<SyncConfig> config = SyncConfig::createServerTemplate(entry);
-                string comment = config->getWebURL();
-                if (comment.empty()) {
-                    comment = templateDir + "/" + entry;
+    result1.insert (result1.end(), result2.begin(), result2.end());
+    return result1;
+}
+
+
+SyncConfig::TemplateList SyncConfig::getBuiltInTemplates()
+{
+    class TmpList : public TemplateList {
+        public:
+            void addDefaultTemplate(const string &server, const string &url) {
+                BOOST_FOREACH(const boost::shared_ptr<TemplateDescription> entry, static_cast<TemplateList &>(*this)) {
+                    if (boost::iequals(entry->m_name, server)) {
+                        //already present 
+                        return;
+                    }
                 }
-                result.push_back(ServerList::value_type(entry, comment));
+                push_back (boost::shared_ptr<TemplateDescription> (new TemplateDescription(server, url)));
             }
-        }
-    }
+    } result;
 
     // builtin templates if not present
     result.addDefaultTemplate("Funambol", "http://my.funambol.com");
-    result.addDefaultTemplate("ScheduleWorld", "http://sync.scheduleworld.com");
+    result.addDefaultTemplate("ScheduleWorld", "http://www.scheduleworld.com");
     result.addDefaultTemplate("Synthesis", "http://www.synthesis.ch");
     result.addDefaultTemplate("Memotoo", "http://www.memotoo.com");
     result.addDefaultTemplate("Google", "http://m.google.com/sync");
     result.addDefaultTemplate("ZYB", "http://www.zyb.com");
     result.addDefaultTemplate("Mobical", "http://www.mobical.net");
+    result.addDefaultTemplate("Oracle", "http://www.oracle.com/technology/products/beehive/index.html");
+    result.addDefaultTemplate("Goosync", "http://www.goosync.com/");
+    result.addDefaultTemplate("SyncEvolution", "http://www.syncevolution.org");
 
-    result.sort();
+    result.sort (TemplateDescription::compare_op);
     return result;
 }
 
-boost::shared_ptr<SyncConfig> SyncConfig::createServerTemplate(const string &server)
+static string SyncEvolutionTemplateDir()
+{
+    string templateDir(TEMPLATE_DIR);
+    const char *envvar = getenv("SYNCEVOLUTION_TEMPLATE_DIR");
+    if (envvar) {
+        templateDir = envvar;
+    }
+    return templateDir;
+}
+
+SyncConfig::TemplateList SyncConfig::matchPeerTemplates(const DeviceList &peers, bool fuzzyMatch)
+{
+    TemplateList result;
+    // match against all possible templates without any assumption on directory
+    // layout, the match is entirely based on the metadata template.ini
+    string templateDir(SyncEvolutionTemplateDir());
+    std::queue <std::string, std::list<std::string> > directories;
+    if (isDir(templateDir)) {
+        directories.push (templateDir);
+    } 
+    while (!directories.empty()) {
+        string sDir = directories.front();
+        directories.pop();
+        if (!TemplateConfig::isTemplateConfig(sDir)) {
+            ReadDir dir(sDir);
+            //not a template folder, check all sub directories
+            BOOST_FOREACH(const string &entry, dir) {
+                if (isDir(sDir + "/" + entry)) {
+                    directories.push (sDir + "/" + entry);
+                }
+            }
+        } else {
+            TemplateConfig templateConf (sDir);
+            BOOST_FOREACH (const DeviceList::value_type &entry, peers){
+                int rank = templateConf.metaMatch (entry.first, entry.second);
+                if (fuzzyMatch){
+                    if (rank > TemplateConfig::NO_MATCH) {
+                        result.push_back (boost::shared_ptr<TemplateDescription>(
+                                    new TemplateDescription(templateConf.getName(),
+                                        templateConf.getDescription(), rank, entry.first, sDir, templateConf.getFingerprint())));
+                    }
+                } else if (rank == TemplateConfig::BEST_MATCH){
+                    result.push_back (boost::shared_ptr<TemplateDescription>(
+                                new TemplateDescription(templateConf.getName(),
+                                    templateConf.getDescription(), rank, entry.first, sDir, templateConf.getFingerprint())));
+                    break;
+                }
+            }
+        }
+    }
+
+    result.sort (TemplateDescription::compare_op);
+    return result;
+}
+
+
+boost::shared_ptr<SyncConfig> SyncConfig::createPeerTemplate(const string &server)
 {
     if (server.empty()) {
         // Empty template name => no such template. This check is
@@ -405,24 +471,26 @@ boost::shared_ptr<SyncConfig> SyncConfig::createServerTemplate(const string &ser
     }
 
     // case insensitive search for read-only file template config
-    string templateConfig(TEMPLATE_DIR);
-    const char *envvar = getenv("SYNCEVOLUTION_TEMPLATE_DIR");
-    if (envvar) {
-        templateConfig = envvar;
-    }
-    if (isDir(templateConfig)) {
-        ReadDir dir(templateConfig);
-        templateConfig = dir.find(boost::iequals(server, "default") ?
-                                  string("ScheduleWorld") : server,
-                                  false);
-    } else {
-        templateConfig = "";
-    }
+    string templateConfig(SyncEvolutionTemplateDir());
 
-    if (templateConfig.empty()) {
-        // not found, avoid reading current directory by using one which doesn't exist
-        templateConfig = "/dev/null";
+    // before starting another fuzzy match process, first try to load the
+    // template directly taking the parameter as the path
+    if (isDir (server) && TemplateConfig::isTemplateConfig(server)) {
+        templateConfig = server;
+    } else {
+        SyncConfig::DeviceList devices;
+        devices.push_back (std::make_pair(server, MATCH_ALL));
+        templateConfig = "";
+        TemplateList templates = matchPeerTemplates (devices, false);
+        if (!templates.empty()) {
+            templateConfig = templates.front()->m_path;
+        }
+        if (templateConfig.empty()) {
+            // not found, avoid reading current directory by using one which doesn't exist
+            templateConfig = "/dev/null";
+        }
     }
+    
     boost::shared_ptr<FileConfigTree> tree(new FileConfigTree(templateConfig, "", false));
     tree->setReadOnly(true);
     boost::shared_ptr<SyncConfig> config(new SyncConfig(server, tree));
@@ -507,7 +575,7 @@ boost::shared_ptr<SyncConfig> SyncConfig::createServerTemplate(const string &ser
     if (boost::iequals(server, "scheduleworld") ||
         boost::iequals(server, "default")) {
         config->setSyncURL("http://sync.scheduleworld.com/funambol/ds");
-        config->setWebURL("http://sync.scheduleworld.com");
+        config->setWebURL("http://www.scheduleworld.com");
         config->setConsumerReady(true);
         source = config->getSyncSourceConfig("addressbook");
         source->setURI("card3");
@@ -585,10 +653,12 @@ boost::shared_ptr<SyncConfig> SyncConfig::createServerTemplate(const string &ser
     } else if (boost::iequals(server, "zyb")) {
         config->setSyncURL("http://sync.zyb.com");
         config->setWebURL("http://www.zyb.com");
+        config->setConsumerReady(true);
         source = config->getSyncSourceConfig("addressbook");
         source->setURI("contacts");
         source = config->getSyncSourceConfig("calendar");
         source->setURI("calendar");
+        source->setSync("disabled");
         source = config->getSyncSourceConfig("todo");
         source->setURI("task");
         source->setSync("disabled");
@@ -607,6 +677,40 @@ boost::shared_ptr<SyncConfig> SyncConfig::createServerTemplate(const string &ser
         source->setURI("task");
         source = config->getSyncSourceConfig("memo");
         source->setURI("pnote");
+    } else if (boost::iequals(server, "oracle")) {
+        config->setSyncURL("https://your.company/mobilesync/server");
+        config->setWebURL("http://www.oracle.com/technology/products/beehive/");
+        source = config->getSyncSourceConfig("addressbook");
+        source->setURI("./contacts");
+        source = config->getSyncSourceConfig("calendar");
+        source->setURI("./calendar/events");
+        source = config->getSyncSourceConfig("todo");
+        source->setURI("./calendar/tasks");
+        source = config->getSyncSourceConfig("memo");
+        source->setURI("./notes");
+    } else if (boost::iequals(server, "goosync")) {
+        config->setSyncURL("http://sync2.goosync.com/");
+        config->setWebURL("http://www.goosync.com/");
+        source = config->getSyncSourceConfig("addressbook");
+        source->setURI("contacts");
+        source = config->getSyncSourceConfig("calendar");
+        source->setURI("calendar");
+        source = config->getSyncSourceConfig("todo");
+        source->setURI("tasks");
+        source = config->getSyncSourceConfig("memo");
+        source->setURI("");
+    } else if (boost::iequals(server, "syncevolution")) {
+        config->setSyncURL("http://yourserver:port");
+        config->setWebURL("http://www.syncevolution.org");
+        config->setConsumerReady(false);
+        source = config->getSyncSourceConfig("addressbook");
+        source->setURI("addressbook");
+        source = config->getSyncSourceConfig("calendar");
+        source->setURI("calendar");
+        source = config->getSyncSourceConfig("todo");
+        source->setURI("todo");
+        source = config->getSyncSourceConfig("memo");
+        source->setURI("memo");
     } else {
         config.reset();
     }
@@ -821,6 +925,36 @@ static PasswordConfigProperty syncPropPassword("password",
                                                "env variable: password = ${<name of environment variable>}\n",
                                                "",
                                                "SyncML server");
+static BoolConfigProperty syncPropPreventSlowSync("preventSlowSync",
+                                                  "During a slow sync, the SyncML server must match all items\n"
+                                                  "of the client with its own items and detect which ones it\n"
+                                                  "already has based on properties of the items. This is slow\n"
+                                                  "(client must send all its data) and can lead to duplicates\n"
+                                                  "(when the server fails to match correctly).\n"
+                                                  "It is therefore sometimes desirable to wipe out data on one\n"
+                                                  "side with a refresh-from-client/server sync instead of doing\n"
+                                                  "a slow sync.\n"
+                                                  "When this option is enabled, slow syncs that could cause problems\n"
+                                                  "are not allowed to proceed. Instead, the affected sources are\n"
+                                                  "skipped, allowing the user to choose a suitable sync mode in\n"
+                                                  "the next run (slow sync selected explicitly, refresh sync).\n"
+                                                  "The following situations are handled:\n"
+                                                  "- running as client with no local data => unproblematic,\n"
+                                                  "  slow sync is allowed to proceed automatically\n"
+                                                  "- running as client with local data => client has no\n"
+                                                  "  information about server, so slow sync might be problematic\n"
+                                                  "  and is prevented\n"
+                                                  "- client has data, server asks for slow sync because all its data\n"
+                                                  "  was deleted (done by Memotoo and Mobical, because they treat\n"
+                                                  "  this as 'user wants to start from scratch') => the sync would\n"
+                                                  "  recreate all the client's data, even if the user really wanted\n"
+                                                  "  to have it deleted, therefore slow sync is prevented\n"
+                                                  "Slow syncs are not yet detected when running as server and in the\n"
+                                                  "client when the server's anchor is wrong.\n"
+                                                  "This option is not enabled by default because it forces users\n"
+                                                  "to deal with slow syncs, which is a deviation from previous\n"
+                                                  "behavior.",
+                                                  "0");
 static BoolConfigProperty syncPropUseProxy("useProxy",
                                            "set to T to choose an HTTP proxy explicitly; otherwise the default\n"
                                            "proxy settings of the underlying HTTP transport mechanism are used;\n"
@@ -917,6 +1051,10 @@ static BoolConfigProperty syncPropPeerIsClient("PeerIsClient",
                                           "Indicates whether this configuration is about a\n"
                                           "client peer or server peer.\n",
                                           "0");
+static SafeConfigProperty syncPropPeerName("PeerName",
+                                           "An arbitrary name for the peer referenced by this config.\n"
+                                           "Might be used by a GUI. The command line tool always uses the\n"
+                                           "the configuration name.");
 static ConfigProperty syncPropRemoteIdentifier("remoteIdentifier",
                                       "the identifier sent to the remote peer for a server initiated sync.\n"
                                       "if not set, deviceId will be used instead\n",
@@ -1002,6 +1140,7 @@ ConfigPropertyRegistry &SyncConfig::getRegistry()
         registry.push_back(&syncPropLogLevel);
         registry.push_back(&syncPropPrintChanges);
         registry.push_back(&syncPropMaxLogDirs);
+        registry.push_back(&syncPropPreventSlowSync);
         registry.push_back(&syncPropUseProxy);
         registry.push_back(&syncPropProxyHost);
         registry.push_back(&syncPropProxyUsername);
@@ -1011,6 +1150,7 @@ ConfigPropertyRegistry &SyncConfig::getRegistry()
         registry.push_back(&syncPropRetryInterval);
         registry.push_back(&syncPropRemoteIdentifier);
         registry.push_back(&syncPropPeerIsClient);
+        registry.push_back(&syncPropPeerName);
         registry.push_back(&syncPropDevID);
         registry.push_back(&syncPropRemoteDevID);
         registry.push_back(&syncPropWBXML);
@@ -1209,12 +1349,41 @@ ConfigPasswordKey ProxyPasswordConfigProperty::getPasswordKey(const string &desc
 }
 
 void SyncConfig::setPassword(const string &value, bool temporarily) { m_cachedPassword = ""; syncPropPassword.setProperty(*getNode(syncPropPassword), value, temporarily); }
-bool SyncConfig::getUseProxy() const { return syncPropUseProxy.getPropertyValue(*getNode(syncPropUseProxy)); }
+
+bool SyncConfig::getPreventSlowSync() const { return syncPropPreventSlowSync.getPropertyValue(*getNode(syncPropPreventSlowSync)); }
+void SyncConfig::setPreventSlowSync(bool value, bool temporarily) { syncPropPreventSlowSync.setProperty(*getNode(syncPropPreventSlowSync), value, temporarily); }
+
+static const char *ProxyString = "http_proxy";
+
+/* Reads http_proxy from environment, if not available returns configured value */
+bool SyncConfig::getUseProxy() const {
+    char *proxy = getenv(ProxyString);
+    if (!proxy ) {
+        return syncPropUseProxy.getPropertyValue(*getNode(syncPropUseProxy));
+    } else if (strlen(proxy)>0) {
+        return TRUE;
+    } else {
+        return FALSE;
+    }
+}
+
 void SyncConfig::setUseProxy(bool value, bool temporarily) { syncPropUseProxy.setProperty(*getNode(syncPropUseProxy), value, temporarily); }
-const char *SyncConfig::getProxyHost() const { return m_stringCache.getProperty(*getNode(syncPropProxyHost), syncPropProxyHost); }
+
+/* If http_proxy set in the environment returns it, otherwise configured value */
+const char *SyncConfig::getProxyHost() const {
+    char *proxy = getenv(ProxyString);
+    if (!proxy) {
+        return m_stringCache.getProperty(*getNode(syncPropUseProxy),syncPropProxyHost); 
+    } else {
+        return m_stringCache.storeString(syncPropProxyHost.getName(), proxy);
+    }
+}
+
 void SyncConfig::setProxyHost(const string &value, bool temporarily) { syncPropProxyHost.setProperty(*getNode(syncPropProxyHost), value, temporarily); }
+
 const char *SyncConfig::getProxyUsername() const { return m_stringCache.getProperty(*getNode(syncPropProxyUsername), syncPropProxyUsername); }
 void SyncConfig::setProxyUsername(const string &value, bool temporarily) { syncPropProxyUsername.setProperty(*getNode(syncPropProxyUsername), value, temporarily); }
+
 const char *SyncConfig::getProxyPassword() const {
     string password = syncPropProxyPassword.getCachedProperty(*getNode(syncPropProxyPassword), m_cachedProxyPassword);
     return m_stringCache.storeString(syncPropProxyPassword.getName(), password);
@@ -1257,6 +1426,9 @@ void SyncConfig::setRemoteIdentifier (const string &value, bool temporarily) { r
 
 bool SyncConfig::getPeerIsClient() const { return syncPropPeerIsClient.getPropertyValue(*getNode(syncPropPeerIsClient)); }
 void SyncConfig::setPeerIsClient(bool value, bool temporarily) { syncPropPeerIsClient.setProperty(*getNode(syncPropPeerIsClient), value, temporarily); }
+
+string SyncConfig::getPeerName() const { return syncPropPeerName.getProperty(*getNode(syncPropPeerName)); }
+void SyncConfig::setPeerName(const string &name) { syncPropPeerName.setProperty(*getNode(syncPropPeerName), name); }
 
 bool SyncConfig::getPrintChanges() const { return syncPropPrintChanges.getPropertyValue(*getNode(syncPropPrintChanges)); }
 void SyncConfig::setPrintChanges(bool value, bool temporarily) { syncPropPrintChanges.setProperty(*getNode(syncPropPrintChanges), value, temporarily); }
@@ -1407,8 +1579,8 @@ void SyncConfig::removeSyncSource(const string &name)
             m_tree->remove(pathName);
             // ... and the peer-specific ones of *all* peers
             BOOST_FOREACH(const std::string peer,
-                          m_tree->getChildren("peers")) {
-                m_tree->remove(string("peers/") + peer + "/sources/" + lower);
+                          m_tree->getChildren(m_contextPath + "/peers")) {
+                m_tree->remove(m_contextPath + "/peers/" + peer + "/sources/" + lower);
             }
         } else {
             // remove only inside the selected peer
@@ -1468,7 +1640,7 @@ static void copyProperties(const ConfigNode &fromProps,
 }
 
 void SyncConfig::copy(const SyncConfig &other,
-                               const set<string> *sourceFilter)
+                      const set<string> *sourceSet)
 {
     for (int i = 0; i < 2; i++ ) {
         boost::shared_ptr<const FilterConfigNode> fromSyncProps(other.getProperties(i));
@@ -1480,25 +1652,29 @@ void SyncConfig::copy(const SyncConfig &other,
                        SyncConfig::getRegistry());
     }
 
-    list<string> sources = other.getSyncSources();
-    BOOST_FOREACH(const string &sourceName, sources) {
-        if (!sourceFilter ||
-            sourceFilter->find(sourceName) != sourceFilter->end()) {
-            ConstSyncSourceNodes fromNodes = other.getSyncSourceNodes(sourceName);
-            SyncSourceNodes toNodes = this->getSyncSourceNodes(sourceName);
-
-            for (int i = 0; i < 2; i++ ) {
-                copyProperties(*fromNodes.getProperties(i),
-                               *toNodes.getProperties(i),
-                               i,
-                               !m_peerPath.empty(),
-                               SyncSourceConfig::getRegistry());
-            }
-            copyProperties(*fromNodes.getTrackingNode(),
-                           *toNodes.getTrackingNode());
-            copyProperties(*fromNodes.getServerNode(),
-                           *toNodes.getServerNode());
+    list<string> sources;
+    if (!sourceSet) {
+        sources = other.getSyncSources();
+    } else {
+        BOOST_FOREACH(const string &sourceName, *sourceSet) {
+            sources.push_back(sourceName);
         }
+    }
+    BOOST_FOREACH(const string &sourceName, sources) {
+        ConstSyncSourceNodes fromNodes = other.getSyncSourceNodes(sourceName);
+        SyncSourceNodes toNodes = this->getSyncSourceNodes(sourceName);
+
+        for (int i = 0; i < 2; i++ ) {
+            copyProperties(*fromNodes.getProperties(i),
+                           *toNodes.getProperties(i),
+                           i,
+                           !m_peerPath.empty(),
+                           SyncSourceConfig::getRegistry());
+        }
+        copyProperties(*fromNodes.getTrackingNode(),
+                       *toNodes.getTrackingNode());
+        copyProperties(*fromNodes.getServerNode(),
+                       *toNodes.getServerNode());
     }
 }
 
@@ -1549,6 +1725,11 @@ public:
                              "Some of them have a default format that is used\n"
                              "automatically unless specified differently.\n"
                              "Sometimes the format must be specified.\n"
+                             "\n"
+                             "This property can be set for individual peers as\n"
+                             "well as for the context. Different peers in the\n"
+                             "same context can use different formats, but the\n"
+                             "backend must be consistent.\n"
                              "\n"
                              "A special 'virtual' backend combines several other\n"
                              "data sources and presents them as one set of items\n"
@@ -1855,5 +2036,151 @@ ConfigPasswordKey EvolutionPasswordConfigProperty::getPasswordKey(const string &
     return key;
 }
 
+// Used for built-in templates
+SyncConfig::TemplateDescription::TemplateDescription (const std::string &name, const std::string &description)
+:   m_name (name), m_description (description)
+{
+    m_rank = TemplateConfig::LEVEL3_MATCH;
+    m_fingerprint = "";
+    m_path = "";
+    m_matchedModel = name;
+}
+
+/* Ranking of template description is controled by the rank field, larger the
+ * better
+ */
+bool SyncConfig::TemplateDescription::compare_op (boost::shared_ptr<SyncConfig::TemplateDescription> &left, boost::shared_ptr<SyncConfig::TemplateDescription> &right)
+{
+    //first sort against the fingerprint string
+    if (left->m_fingerprint != right->m_fingerprint) {
+        return (left->m_fingerprint < right->m_fingerprint);
+    }
+    // sort against the rank
+    if (right->m_rank != left->m_rank) {
+        return (right->m_rank < left->m_rank);
+    }
+    // sort against the config name
+    return (left->m_name < right->m_name);
+}
+
+TemplateConfig::TemplateConfig (const string &path)
+    : m_metaNode (new FileConfigNode (path, "template.ini", true)),
+    m_name("")
+{
+    m_metaNode->readProperties(m_metaProps);
+}
+
+bool TemplateConfig::isTemplateConfig (const string &dir) 
+{
+    return !ReadDir(dir).find ("template.ini", false).empty();
+}
+
+int TemplateConfig::serverModeMatch (SyncConfig::MatchMode mode)
+{
+    std::string peerIsClient = m_metaProps["peerIsClient"];
+
+    //not a match if serverMode does not match
+    if ((peerIsClient.empty() || peerIsClient == "0") && mode == SyncConfig::MATCH_FOR_SERVER_MODE) {
+        return NO_MATCH;
+    }
+    if (peerIsClient == "1" && mode == SyncConfig::MATCH_FOR_CLIENT_MODE){
+        return NO_MATCH;
+    }
+    return BEST_MATCH;
+}
+
+/**
+ * The matching is based on Least common string algorithm
+ * */
+int TemplateConfig::fingerprintMatch (const string &fingerprint)
+{
+    //if input "", match all
+    if (fingerprint.empty()) {
+        return LEVEL3_MATCH;
+    }
+
+    std::string fingerprintProp = m_metaProps["fingerprint"];
+    std::vector <string> subfingerprints = unescapeJoinedString (fingerprintProp, ',');
+    std::string input = fingerprint;
+    boost::to_lower(input);
+    //return the largest match value
+    int max = NO_MATCH;
+    BOOST_FOREACH (std::string sub, subfingerprints){
+        if (boost::iequals (sub, "default")){
+            if (LEVEL1_MATCH > max) {
+                max = LEVEL1_MATCH;
+            }
+            continue;
+        }
+
+        std::vector< LCS::Entry <char> > result;
+        std::string match = sub;
+        boost::to_lower(match);
+        LCS::lcs(match, input, std::back_inserter(result), LCS::accessor_sequence<std::string>());
+        int score = result.size() *2 *BEST_MATCH /(sub.size() + fingerprint.size()) ;
+        if (score > max) {
+            max = score;
+        }
+    }
+    return max;
+}
+
+int TemplateConfig::metaMatch (const std::string &fingerprint, SyncConfig::MatchMode mode)
+{
+    int serverMatch = serverModeMatch (mode);
+    if (serverMatch == NO_MATCH){
+        return NO_MATCH;
+    }
+    int fMatch = fingerprintMatch (fingerprint);
+    return (serverMatch *1 + fMatch *3) >>2;
+}
+
+string TemplateConfig::getDescription(){
+    return m_metaProps["description"];
+}
+
+string TemplateConfig::getFingerprint(){
+    return m_metaProps["fingerprint"];
+}
+
+string TemplateConfig::getName(){
+    if (m_name.empty()){
+        std::string fingerprintProp = m_metaProps["fingerprint"];
+        if (!fingerprintProp.empty()){
+            std::vector<std::string> subfingerprints = unescapeJoinedString (fingerprintProp, ',');
+            m_name = subfingerprints[0];
+        }
+    }
+    return m_name;
+}
+
+#ifdef ENABLE_UNIT_TESTS
+
+class SyncConfigTest : public CppUnit::TestFixture {
+    CPPUNIT_TEST_SUITE(SyncConfigTest);
+    CPPUNIT_TEST(normalize);
+    CPPUNIT_TEST_SUITE_END();
+
+private:
+    void normalize()
+    {
+        CPPUNIT_ASSERT_EQUAL(std::string("@default"),
+                             SyncConfig::normalizeConfigString(""));
+        CPPUNIT_ASSERT_EQUAL(std::string("@default"),
+                             SyncConfig::normalizeConfigString("@default"));
+        CPPUNIT_ASSERT_EQUAL(std::string("@default"),
+                             SyncConfig::normalizeConfigString("@DeFaULT"));
+        CPPUNIT_ASSERT_EQUAL(std::string("foobar"),
+                             SyncConfig::normalizeConfigString("FooBar"));
+        CPPUNIT_ASSERT_EQUAL(std::string("foobar@something"),
+                             SyncConfig::normalizeConfigString("FooBar@Something"));
+        CPPUNIT_ASSERT_EQUAL(std::string("foo_bar_x_y_z"),
+                             SyncConfig::normalizeConfigString("Foo/bar\\x:y:z"));
+    }
+};
+
+SYNCEVOLUTION_TEST_SUITE_REGISTRATION(SyncConfigTest);
+
+#endif // ENABLE_UNIT_TESTS
 
 SE_END_CXX

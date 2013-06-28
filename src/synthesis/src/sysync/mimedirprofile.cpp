@@ -571,7 +571,7 @@ bool TMIMEProfileConfig::localStartElement(const char *aElementName, const char 
       if (!nam || *nam==0)
         return fail("'property' must have 'name' attribute");
       // - check grouping
-      if (!fLastProperty || strucmp(fLastProperty->TCFG_CSTR(propname),nam)!=0) {
+      if (!fLastProperty || strucmp(TCFG_CSTR(fLastProperty->propname),nam)!=0) {
         // first property in group
         fPropertyGroupID++; // new group ID
       }
@@ -611,12 +611,22 @@ bool TMIMEProfileConfig::localStartElement(const char *aElementName, const char 
       if (!valsep) valsep=";"; // default to semicolon if not defined
       const char *altvalsep= getAttr(aAttributes,"altvalueseparator");
       if (!altvalsep) altvalsep=""; // default to none if not defined
+      // - group field ID
+      sInt16 groupFieldID = FID_NOT_SUPPORTED; // no group field ID by default
+      cAppCharP gfin = getAttr(aAttributes, "groupfield");
+      if (gfin) {
+    		groupFieldID = fFieldListP->fieldIndex(gfin);
+        if (groupFieldID==VARIDX_UNDEFINED) {
+          fail("'groupfield' '%s' does not exist in field list '%s'",gfin,fFieldListP->getName());
+          return false;
+        }
+      }
       // - delayed processing
       sInt16 delayedprocessing=0; // default to 0
       if (!getAttrShort(aAttributes,"delayedparsing",delayedprocessing,true))
         return fail ("bad 'delayedparsing' specification");
       // - create property now and open new level of parsing
-      fOpenProperty=fOpenProfile->addProperty(nam,numval,mandatory,showprop,suppressempty,delayedprocessing,*valsep,fPropertyGroupID,canfilter,modeDep, *altvalsep);
+      fOpenProperty=fOpenProfile->addProperty(nam,numval,mandatory,showprop,suppressempty,delayedprocessing,*valsep,fPropertyGroupID,canfilter,modeDep, *altvalsep, groupFieldID);
       fLastProperty=fOpenProperty; // for group checking
       #ifndef NO_REMOTE_RULES
       // - add rule dependency (pointer will be resolved later)
@@ -678,7 +688,7 @@ static void resolveRemoteRuleDeps(TProfileDefinition *aProfileP, TAgentConfig *a
       // check for rule-dependent props
       if (propP->dependsOnRemoterule) {
         propP->ruleDependency=NULL; // assume the "other" rule entry
-        if (!propP->TCFG_ISEMPTY(dependencyRuleName)) {
+        if (!TCFG_ISEMPTY(propP->dependencyRuleName)) {
           // find remote rule
           TRemoteRulesList::iterator pos;
           for(pos=aSessionConfigP->fRemoteRulesList.begin();pos!=aSessionConfigP->fRemoteRulesList.end();pos++) {
@@ -794,7 +804,7 @@ const
     // check plain match
     if (
       (enumP->enummode==enm_translate || enumP->enummode==enm_ignore) &&
-      strucmp(aName,enumP->TCFG_CSTR(enumtext),n)==0
+      strucmp(aName,TCFG_CSTR(enumP->enumtext),n)==0
     ) break; // found full match
     // check prefix match
     else if (
@@ -806,7 +816,7 @@ const
     	// default value entry
     	defaultenumP=enumP; // anyway: remember default value entry
       // allow searching default value by name (for "has","hasnot" parsing via getExtIDbit())
-      if (!(enumP->TCFG_ISEMPTY(enumtext)) && strucmp(aName,enumP->TCFG_CSTR(enumtext),n)==0)
+      if (!(TCFG_ISEMPTY(enumP->enumtext)) && strucmp(aName,TCFG_CSTR(enumP->enumtext),n)==0)
       	break; // found named default value
     }
     // check next
@@ -919,7 +929,7 @@ TPropNameExtension::~TPropNameExtension()
 } // TPropNameExtension::~TPropNameExtension
 
 
-TPropertyDefinition::TPropertyDefinition(const char* aName, sInt16 aNumVals, bool aMandatory, bool aShowInCTCap, bool aSuppressEmpty, uInt16 aDelayedProcessing, char aValuesep, char aAltValuesep, uInt16 aPropertyGroupID, bool aCanFilter, TMimeDirMode aModeDep)
+TPropertyDefinition::TPropertyDefinition(const char* aName, sInt16 aNumVals, bool aMandatory, bool aShowInCTCap, bool aSuppressEmpty, uInt16 aDelayedProcessing, char aValuesep, char aAltValuesep, uInt16 aPropertyGroupID, bool aCanFilter, TMimeDirMode aModeDep, sInt16 aGroupFieldID)
 {
   next = NULL;
   TCFG_ASSIGN(propname,aName);
@@ -929,6 +939,7 @@ TPropertyDefinition::TPropertyDefinition(const char* aName, sInt16 aNumVals, boo
   expandlist = false; // not expanding value list into repeating property by default
   valuesep = aValuesep; // separator for structured-value and value-list properties
   altvaluesep = aAltValuesep; // alternate separator for structured-value and value-list properties (for parsing only)
+  groupFieldID = aGroupFieldID; // fid for field that contains the group tag (prefix to the property name, like "a" in "a.TEL:079122327")
   propGroup = aPropertyGroupID; // property group ID
   if (aNumVals==NUMVAL_LIST || aNumVals==NUMVAL_REP_LIST) {
     // value list
@@ -1023,7 +1034,7 @@ TParameterDefinition *TPropertyDefinition::findParameter(const char *aNam, sInt1
 {
   TParameterDefinition *paramP = parameterDefs;
   while (paramP) {
-    if (strucmp(aNam,paramP->TCFG_CSTR(paramname),aLen)==0)
+    if (strucmp(aNam,TCFG_CSTR(paramP->paramname),aLen)==0)
       return paramP; // found
     paramP=paramP->next; // next
   }
@@ -1091,12 +1102,13 @@ TPropertyDefinition *TProfileDefinition::addProperty(
   uInt16 aPropertyGroupID, // property group ID (alternatives for same-named properties should have same ID>0)
   bool aCanFilter, // can be filtered -> show in filter cap
   TMimeDirMode aModeDep, // property valid only for specific MIME mode
-  char aAltValuesep // alternate separator (for parsing)
+  char aAltValuesep, // alternate separator (for parsing)
+  sInt16 aGroupFieldID // group field ID
 )
 {
   TPropertyDefinition **propPP=&propertyDefs;
   while (*propPP!=NULL) propPP=&((*propPP)->next);
-  *propPP=new TPropertyDefinition(aName,aNumValues,aMandatory,aShowInCTCap,aSuppressEmpty,aDelayedProcessing,aValuesep,aAltValuesep,aPropertyGroupID,aCanFilter,aModeDep);
+  *propPP=new TPropertyDefinition(aName,aNumValues,aMandatory,aShowInCTCap,aSuppressEmpty,aDelayedProcessing,aValuesep,aAltValuesep,aPropertyGroupID,aCanFilter,aModeDep,aGroupFieldID);
   // return new property
   return *propPP;
 } // TProfileDefinition::addProperty
@@ -1218,6 +1230,7 @@ TMimeDirProfileHandler::TMimeDirProfileHandler(
   fReceiverTimeContext = TCTX_UNKNOWN; // none in particular
   fDontSendEmptyProperties = false; // send all defined properties
   fDefaultOutCharset = chs_utf8; // standard
+  fDefaultInCharset = chs_utf8; // standard
   fDoQuote8BitContent = false; // no quoting needed per se
   fDoNotFoldContent = false; // standard requires folding
   fTreatRemoteTimeAsLocal = false; // only for broken implementations
@@ -1387,7 +1400,7 @@ bool TMimeDirProfileHandler::fieldToMIMEString(
         }
       }
       else {
-        // remote cannot handle UTC or time is floating (eventually dateonly or duration)
+        // remote cannot handle UTC or time is floating (possibly dateonly or duration)
         if (tsFldP->isFloating()) {
           // floating, show as-is
           ts = tsFldP->getTimestampAs(TCTX_UNKNOWN);
@@ -1420,7 +1433,7 @@ bool TMimeDirProfileHandler::fieldToMIMEString(
     case CONVMODE_TZ:
     case CONVMODE_TZID:
     case CONVMODE_DAYLIGHT:
-      // use now as default point in time for eventual offset calculations
+      // use now as default point in time for possible offset calculations
       ts = getSession()->getSystemNowAs(TCTX_SYSTEM);
       // if no field is specified, the item context is used (which defaults to
       // the session's user context)
@@ -1860,7 +1873,7 @@ static void decodeValue(
       seqlen=1; // assume logical char consists of single byte
       chrs[0]=c;
       do {
-        seqlen=appendCharsAsUTF8(chrs,aVal,aCharset,seqlen); // add char (eventually with UTF8 expansion) to aVal
+        seqlen=appendCharsAsUTF8(chrs,aVal,aCharset,seqlen); // add char (possibly with UTF8 expansion) to aVal
         if (seqlen<=1) break; // done
         // need more bytes to encode entire char
         for (int i=1;i<seqlen;i++) {
@@ -1926,7 +1939,7 @@ static void decodeValue(
       seqlen=1; // assume logical char consists of single byte
       chrs[0]=c;
       do {
-        seqlen=appendCharsAsUTF8(chrs,aVal,aCharset,seqlen); // add char (eventually with UTF8 expansion) to aVal
+        seqlen=appendCharsAsUTF8(chrs,aVal,aCharset,seqlen); // add char (possibly with UTF8 expansion) to aVal
         if (seqlen<=1) break; // done
         // need more bytes to encode entire char
         for (int i=1;i<seqlen;i++) {
@@ -1969,7 +1982,7 @@ static void encodeValues(
     aEncoding, // desired encoding
     aDoNotFoldContent ?
     0                     // disable insertion of soft line breaks
-    : MIME_MAXLINESIZE-1, // limit to standard MIME-linesize, leave one free for eventual extra folding space
+    : MIME_MAXLINESIZE-1, // limit to standard MIME-linesize, leave one free for possible extra folding space
     aPropertytext.size() % MIME_MAXLINESIZE, // current line size
     true // insert CRs only for softbreaks (for post-processing by folding)
   );
@@ -2641,8 +2654,19 @@ sInt16 TMimeDirProfileHandler::generateProperty(
 
   // - reset TZID presence flag
   fPropTZIDtctx = TCTX_UNKNOWN;
-  // - init string with name and (eventually) parameters that are constant over all repetitions
-  proptext=aPrefix;
+  // - start with empty text
+  proptext.erase();
+  // - first set group if there is one
+  if (aPropP->groupFieldID!=FID_NOT_SUPPORTED) {
+    // get group name
+    TItemField *g_fldP = aItem.getArrayFieldAdjusted(aPropP->groupFieldID+aBaseOffset, aRepeatOffset, true);
+    if (g_fldP && !g_fldP->isEmpty()) {
+			g_fldP->appendToString(proptext);
+      proptext += '.'; // group separator
+    }
+  }
+  // - append name and (possibly) parameters that are constant over all repetitions
+  proptext += aPrefix;
   bool anyvaluessupported=false; // at least one of the main values must be supported by the remote in order to generate property at all
   bool arrayexhausted=false; // flag will be set if a main value was not generated because array exhausted
   // - append parameter values
@@ -2685,7 +2709,7 @@ sInt16 TMimeDirProfileHandler::generateProperty(
         aBaseOffset, // offset relative to base field
         aRepeatOffset, // additional offset or array index
         elemtext,
-        aPropP->valuesep, // use valuelist separator between multiple values eventually generated from a list in a single field (e.g. CATEGORIES)
+        aPropP->valuesep, // use valuelist separator between multiple values possibly generated from a list in a single field (e.g. CATEGORIES)
         aMimeMode,
         false, // not a param
         true, // always escape ; in valuelist properties
@@ -2896,7 +2920,7 @@ void TMimeDirProfileHandler::generateMimeDir(TMultiFieldItem &aItem, string &aSt
       s.append(fVTimeZonePendingProfileP->levelName);
       finalizeProperty(s.c_str(),vtz,fMimeDirMode,false,false);
     } // for
-    // now insert the VTIMEZONE into the output string (so eventually making it appear BEFORE the
+    // now insert the VTIMEZONE into the output string (so possibly making it appear BEFORE the
     // properties that use TZIDs)
     aString.insert(fVTimeZoneInsertPos, vtz);
     // done
@@ -2925,7 +2949,7 @@ void TMimeDirProfileHandler::generateLevels(
       aItem.getField(fid)->getAsString(val);
       if (enumP) {
         // if enumdefs, content must match first enumdef's enumval (NOT enumtext!!)
-        dolevel = strucmp(val.c_str(),enumP->TCFG_CSTR(enumval))==0;
+        dolevel = strucmp(val.c_str(),TCFG_CSTR(enumP->enumval))==0;
       }
       else {
         // just being not empty enables level
@@ -3025,7 +3049,7 @@ void TMimeDirProfileHandler::generateLevels(
           expandProperty(
             aItem,
             aString,
-            expandPropP->TCFG_CSTR(propname), // the prefix consists of the property name
+            TCFG_CSTR(expandPropP->propname), // the prefix consists of the property name
             expandPropP, // the property definition
             fMimeDirMode // MIME-DIR mode
           );
@@ -3035,7 +3059,7 @@ void TMimeDirProfileHandler::generateLevels(
       // generate sublevels, if any
       const TProfileDefinition *subprofileP = aProfileP->subLevels;
       while (subprofileP) {
-        // generate sublevels (eventually, none is generated)
+        // generate sublevels (possibly, none is generated)
         generateLevels(aItem,aString,subprofileP);
         // next
         subprofileP=subprofileP->next;
@@ -3152,7 +3176,7 @@ bool TMimeDirProfileHandler::MIMEStringToField(
           // Now tctx is the default zone to bet set for ALL values that are in floating notation
           // - check for special handling of misbehaving remotes
           if (fTreatRemoteTimeAsLocal || fTreatRemoteTimeAsUTC) {
-            // ignore time zone specs which might be present eventually
+            // ignore time zone specs which might be present possibly
             tsFldP->setAsISO8601(aText, tctx, true);
             // now force time zone to item/user context or UTC depending on flag settings
             tctx = fTreatRemoteTimeAsLocal ? fItemTimeContext : TCTX_UTC;
@@ -3550,12 +3574,14 @@ bool TMimeDirProfileHandler::parseValue(
 
 // parse given property
 bool TMimeDirProfileHandler::parseProperty(
-  const char *&aText, // where to start interpreting property, will be updated past end of what was scanned
+  cAppCharP &aText, // where to start interpreting property, will be updated past end of what was scanned
   TMultiFieldItem &aItem, // item to store data into
   const TPropertyDefinition *aPropP, // the property definition
   sInt16 *aRepArray,  // array[repeatID], holding current repetition COUNT for a certain nameExts entry
   sInt16 aRepArraySize, // size of array (for security)
-  TMimeDirMode aMimeMode // MIME mode (older or newer vXXX format compatibility)
+  TMimeDirMode aMimeMode, // MIME mode (older or newer vXXX format compatibility)
+  cAppCharP aGroupName, // property group ("a" in "a.TEL:131723612")
+  size_t aGroupNameLen
 )
 {
   TNameExtIDMap nameextmap;
@@ -3581,7 +3607,7 @@ bool TMimeDirProfileHandler::parseProperty(
 
   // init
   encoding=enc_none; // no encoding by default
-  charset=aMimeMode==mimo_standard ? chs_utf8 : chs_ansi; // UTF8 for real MIME-DIR (same as enclosing SyncML doc), ANSI encoding for pre-MIME-DIR (as used by T39m or V3i e.g.)
+  charset=aMimeMode==mimo_standard ? chs_utf8 : fDefaultInCharset; // always UTF8 for real MIME-DIR (same as enclosing SyncML doc), for mimo_old depends on <inputcharset> remote rule option (normally UTF-8)
   nameextmap=0; // no name extensions detected so far
   fieldoffsetfound=(aPropP->nameExts==NULL); // no first pass needed at all w/o nameExts, just use offs=0
   valuelist=aPropP->valuelist; // cache flag
@@ -3700,7 +3726,7 @@ bool TMimeDirProfileHandler::parseProperty(
         // check for match
         if (
           mimeModeMatch(paramP->modeDependency) &&
-          ((defaultparam && paramP->defaultparam) || strucmp(pname.c_str(),paramP->TCFG_CSTR(paramname))==0)
+          ((defaultparam && paramP->defaultparam) || strucmp(pname.c_str(),TCFG_CSTR(paramP->paramname))==0)
         ) {
           // param name found
           // - process value (list)
@@ -3711,8 +3737,8 @@ bool TMimeDirProfileHandler::parseProperty(
               if (!paramP->convdef.enumdefs) {
                 DEBUGPRINTFX(DBG_PARSE,(
                   "parseProperty: extendsname param w/o enum : %s;%s",
-                  aPropP->TCFG_CSTR(propname),
-                  paramP->TCFG_CSTR(paramname)
+                  TCFG_CSTR(aPropP->propname),
+                  TCFG_CSTR(paramP->paramname)
                 ));
                 return false;
               }
@@ -3780,6 +3806,7 @@ bool TMimeDirProfileHandler::parseProperty(
     TPropNameExtension *propnameextP = aPropP->nameExts;
     if (propnameextP) {
       bool dostore=false;
+      bool repoffsByGroup = false;
       while (propnameextP) {
         // check if entry matches parsed extendsname param values
         if (
@@ -3793,56 +3820,88 @@ bool TMimeDirProfileHandler::parseProperty(
           maxrep=propnameextP->maxRepeat;
           if (maxrep==REP_REWRITE) {
             dostore=true; // we can store
-            break; // unlimited repeat allowed but stored in same fields (overwrite)
+            break; // unlimited repeat allowed but stored in same fields (overwrite), no need for index search by group 
           }
-          // check current repetition
+          // find index where to store this repetition
           repid=propnameextP->repeatID;
           if (repid>=aRepArraySize)
             SYSYNC_THROW(TSyncException(DEBUGTEXT("TMimeDirProfileHandler::parseProperty: repID too high","mdit11")));
-          if (aRepArray[repid]<maxrep || maxrep==REP_ARRAY) {
-            // not exhausted, we can use this entry
-            // - calculate repeat offset to be used
-            repinc=propnameextP->repeatInc;
-            // note: repArray will be updated below (if property not empty or !overwriteempty)
-            dostore=true; // we can store
-            do {
-              repoffset=aRepArray[repid] * repinc;
-              // - set flag if repeat offset should be incremented after storing an empty property or not
-              overwriteempty=propnameextP->overwriteEmpty;
-              // - check if target property main value is empty (must be, or we will skip that repetition)
-              dostore=false; // if no field exists, we do not store
-              for (sInt16 e=0; e<aPropP->numValues; e++) {
-                if (aPropP->convdefs[e].fieldid==FID_NOT_SUPPORTED)
-                  continue; // no field, no need to check it
-                sInt16 e_fid=aPropP->convdefs[e].fieldid+baseoffset;
-                sInt16 e_rep=repoffset;
-                aItem.adjustFidAndIndex(e_fid,e_rep);
-                // - get base field
-                TItemField *e_basefldP = aItem.getField(e_fid);
-                TItemField *e_fldP = NULL;
-                if (e_basefldP)
-                  e_fldP=e_basefldP->getArrayField(e_rep,true); // get leaf field, if it exists
-                if (!e_basefldP || (e_fldP && e_fldP->isAssigned())) {
-                  // base field of one of the main fields does not exist or leaf field is already assigned
-                  // -> skip that repetition
-                  dostore=false;
+          // check if a group ID determines the repoffset (not possible for valuelists)
+          if (aPropP->groupFieldID!=FID_NOT_SUPPORTED && !valuelist) {
+            // search in group field
+            string s;
+            bool someGroups = false;
+            for (sInt16 n=0; n<maxrep || maxrep==REP_ARRAY; n++) {
+              sInt16 g_repoffset = n*propnameextP->repeatInc; // original repeatoffset (not adjusted yet)            
+              TItemField *g_fldP =  aItem.getArrayFieldAdjusted(aPropP->groupFieldID+baseoffset,g_repoffset,true); // get leaf field, if it exists
+              if (!g_fldP) break; // group field for that repetition does not (yet) exist, array exhausted
+              // compare group name
+              if (g_fldP->isAssigned()) {
+                someGroups = someGroups || !g_fldP->isEmpty(); // when we find a non-empty group field, we have at least one group detected
+                if (someGroups) {
+                  // don't use repetitions already used by SOME of the fields in the group
+                  // for auto-assigning new groups (or ungrouped occurrences)
+                  if (aRepArray[repid]<n+1) aRepArray[repid] = n+1;
+                }
+                // check if group matches (only if there is a group at all)
+                g_fldP->getAsString(s);
+                if (aGroupName && strucmp(aGroupName,s.c_str(),aGroupNameLen)==0) {
+                  repoffsByGroup = true;
+                  dostore = true;
+                  repoffset = g_repoffset;
+                  PDEBUGPRINTFX(DBG_PARSE+DBG_EXOTIC,("parseProperty: found group '%s' at repoffset=%d (repcount=%d)",s.c_str(),repoffset,n));
                   break;
                 }
-                else
-                  dostore=true; // at least one field exists, we might store
               }
-              // check if we can test more repetitions
-              if (!dostore) {
-                if (aRepArray[repid]+1<maxrep || maxrep==REP_ARRAY) {
-                  // we can increment and try next repetition
-                  aRepArray[repid]++;
+            } // for all possible repetitions
+            // minrep now contains minimal repetition count for !repoffsByGroup case
+          } // if grouped property
+          if (!repoffsByGroup) {
+            if (aRepArray[repid]<maxrep || maxrep==REP_ARRAY) {
+              // not exhausted, we can use this entry
+              // - calculate repeat offset to be used
+              repinc=propnameextP->repeatInc;
+              // note: repArray will be updated below (if property not empty or !overwriteempty)
+              dostore=true; // we can store
+              do {
+                repoffset = aRepArray[repid]*repinc;
+                // - set flag if repeat offset should be incremented after storing an empty property or not
+                overwriteempty = propnameextP->overwriteEmpty;
+                // - check if target property main value is empty (must be, or we will skip that repetition)
+                dostore = false; // if no field exists, we do not store
+                for (sInt16 e=0; e<aPropP->numValues; e++) {
+                  if (aPropP->convdefs[e].fieldid==FID_NOT_SUPPORTED)
+                    continue; // no field, no need to check it
+                  sInt16 e_fid = aPropP->convdefs[e].fieldid+baseoffset;
+                  sInt16 e_rep = repoffset;
+                  aItem.adjustFidAndIndex(e_fid,e_rep);
+                  // - get base field
+                  TItemField *e_basefldP = aItem.getField(e_fid);
+                  TItemField *e_fldP = NULL;
+                  if (e_basefldP)
+                    e_fldP=e_basefldP->getArrayField(e_rep,true); // get leaf field, if it exists
+                  if (!e_basefldP || (e_fldP && e_fldP->isAssigned())) {
+                    // base field of one of the main fields does not exist or leaf field is already assigned
+                    // -> skip that repetition
+                    dostore = false;
+                    break;
+                  }
+                  else
+                    dostore = true; // at least one field exists, we might store
                 }
-                else
-                  break; // no more possible repetitions with this position rule (check next rule)
-              }
-            } while (!dostore);
-            if (dostore) break; // we can store now
-          } // if repeat not yet exhausted
+                // check if we can test more repetitions
+                if (!dostore) {
+                  if (aRepArray[repid]+1<maxrep || maxrep==REP_ARRAY) {
+                    // we can increment and try next repetition
+                    aRepArray[repid]++;
+                  }
+                  else
+                    break; // no more possible repetitions with this position rule (check next rule)
+                }
+              } while (!dostore);
+              if (dostore) break; // we can store now
+            } // if repeat not yet exhausted
+          } // if repoffset no already found
         } // if position rule matches
         // next
         propnameextP=propnameextP->next;
@@ -3855,7 +3914,13 @@ bool TMimeDirProfileHandler::parseProperty(
     } // if name extension list not empty
     // Now baseoffset/repoffset are valid to be used for storage
   } while(true); // until parameter pass 1 & pass 2 done
-  // parameters are all processed by now
+  // parameters are all processed by now, decision made to store data (if !dostore, routine exits above)
+  // - store the group tag value if we have one
+  if (aPropP->groupFieldID!=FID_NOT_SUPPORTED) {
+		TItemField *g_fldP =  aItem.getArrayFieldAdjusted(aPropP->groupFieldID+baseoffset,repoffset,false);
+    if (g_fldP)
+    	g_fldP->setAsString(aGroupName,aGroupNameLen); // store the group name (aGroupName might be NULL, that's ok)
+  }
   // - read value(s)
   char sep=':'; // first value starts with colon
   // repeat until we have all values
@@ -3865,7 +3930,7 @@ bool TMimeDirProfileHandler::parseProperty(
       // Note: for valuelists, this is the normal loop exit case as we are not limited by numValues
       if (!valuelist) {
         // New behaviour: omitting values is ok (needed e.g. for T39m)
-        DEBUGPRINTFX(DBG_PARSE,("TMimeDirProfileHandler::parseProperty: %s does not specify all values",aPropP->TCFG_CSTR(propname)));
+        DEBUGPRINTFX(DBG_PARSE,("TMimeDirProfileHandler::parseProperty: %s does not specify all values",TCFG_CSTR(aPropP->propname)));
       }
       #endif
       break; // all available values read
@@ -3896,7 +3961,7 @@ bool TMimeDirProfileHandler::parseProperty(
       )) {
         PDEBUGPRINTFX(DBG_PARSE+DBG_EXOTIC,(
           "TMimeDirProfileHandler::parseProperty: %s: value not parsed: %s",
-          aPropP->TCFG_CSTR(propname),
+          TCFG_CSTR(aPropP->propname),
           val.c_str()
         ));
         return false;
@@ -3912,7 +3977,7 @@ bool TMimeDirProfileHandler::parseProperty(
       // value cannot be stored
       PDEBUGPRINTFX(DBG_PARSE+DBG_EXOTIC,(
         "TMimeDirProfileHandler::parseProperty: %s: value not stored because repeat exhausted: %s",
-        aPropP->TCFG_CSTR(propname),
+        TCFG_CSTR(aPropP->propname),
         val.c_str()
       ));
     }
@@ -3925,10 +3990,8 @@ bool TMimeDirProfileHandler::parseProperty(
 	  for (sInt16 j=0; j<aPropP->numValues; j++) {
       sInt16 fid=aPropP->convdefs[j].fieldid;
       if (fid>=0) {
-        fid += baseoffset;
-        aItem.adjustFidAndIndex(fid,repoffset);
         // requesting the pointer creates the field if it does not already exist
-        aItem.getArrayField(fid,repoffset,false);
+        aItem.getArrayFieldAdjusted(fid+baseoffset,repoffset,false);
       }
     }    
   }
@@ -3980,8 +4043,8 @@ bool TMimeDirProfileHandler::parseLevels(
 )
 {
   appChar c;
-  cAppCharP p, propname;
-  sInt32 n;
+  cAppCharP p, propname, groupname;
+  sInt32 n, gn;
   sInt16 foundmandatory=0;
   const sInt16 maxreps = 50;
   sInt16 repArray[maxreps];
@@ -4000,10 +4063,10 @@ bool TMimeDirProfileHandler::parseLevels(
     const TEnumerationDef *enumP = aProfileP->levelConvdef.enumdefs;
     if (enumP) {
       // if enumdefs, content is set to first enumdef's enumval (NOT enumtext!!)
-      aItem.getField(fid)->setAsString(enumP->TCFG_CSTR(enumval));
+      aItem.getField(fid)->setAsString(TCFG_CSTR(enumP->enumval));
     }
   }
-  // skip eventual leading extra LF and CR and whitespace here
+  // skip possible leading extra LF and CR and whitespace here
   // NOTE: Magically server sends XML CDATA with 0x0D 0x0D 0x0A for example
   while (isspace(*aText)) aText++;
   // parse input text property by property
@@ -4015,7 +4078,9 @@ bool TMimeDirProfileHandler::parseLevels(
     p=aText;
     propname = p; // assume name starts at beginning of text
     n = 0;
-    // determine property name end
+    groupname = NULL; // assume no group
+    gn = 0;
+    // determine property name end (and maybe group name)
     do {
       c=*p;
       if (!c) {
@@ -4026,9 +4091,14 @@ bool TMimeDirProfileHandler::parseLevels(
       if (c==':' || c==';') break;
       // handle grouping
       if (c=='.') {
-        // %%% add capability to save group names in fields
-        propname = p+1; // skip group
+      	// this is a group name (or element of it)
+        // - remember the group name
+      	if (!groupname) groupname = propname;
+        gn = p-groupname; // size of groupname
+        // - prop name starts after group name (and dot)
+        propname = ++p; // skip group
         n = 0;
+        continue;
       }
       // next char
       p++; n++;
@@ -4040,7 +4110,7 @@ bool TMimeDirProfileHandler::parseLevels(
     if (strucmp(propname,"BEGIN",n)==0) {
       // BEGIN encountered
       p = propname+n;
-      // - skip eventual parameters for broken implementations like Intellisync/Synchrologic
+      // - skip possible parameters for broken implementations like Intellisync/Synchrologic
       if (*p==';') while (*p && *p!=':') p++;
       // - isolate value
       size_t l=0; const char *lnam=p+1;
@@ -4049,7 +4119,7 @@ bool TMimeDirProfileHandler::parseLevels(
       n=0; // prevent false advancing at end of prop loop
       if (atStart) {
         // value must be level name, else this is a bad profile
-        if (strucmp(lnam,aProfileP->TCFG_CSTR(levelName),l)!=0) {
+        if (strucmp(lnam,TCFG_CSTR(aProfileP->levelName),l)!=0) {
           POBJDEBUGPRINTFX(getSession(),DBG_ERROR,("parseMimeDir: root level BEGIN has bad value: %s",aText));
           return false;
         }
@@ -4065,7 +4135,7 @@ bool TMimeDirProfileHandler::parseLevels(
             // check
             if (
               mimeModeMatch(subprofileP->modeDependency) &&
-              strucmp(lnam,subprofileP->TCFG_CSTR(levelName),l)==0
+              strucmp(lnam,TCFG_CSTR(subprofileP->levelName),l)==0
             ) {
               // sublevel found, process
               while ((uInt8)(*p)<0x20) p++; // advance scanning pointer to beginning of next property
@@ -4123,7 +4193,7 @@ bool TMimeDirProfileHandler::parseLevels(
     else if (strucmp(propname,"END",n)==0) {
       // END encountered
       p = propname+n;
-      // - skip eventual parameters for broken implementations like Intellisync/Synchrologic
+      // - skip possible parameters for broken implementations like Intellisync/Synchrologic
       if (*p==';') while (*p && *p!=':') p++;
       // - isolate value
       size_t l=0; const char *lnam=p+1;
@@ -4137,7 +4207,7 @@ bool TMimeDirProfileHandler::parseLevels(
       }
       else {
         // should be end of active level, check name
-        if (strucmp(lnam,aProfileP->TCFG_CSTR(levelName),l)!=0) {
+        if (strucmp(lnam,TCFG_CSTR(aProfileP->levelName),l)!=0) {
           POBJDEBUGPRINTFX(getSession(),DBG_ERROR,("parseMimeDir: unexpected END value: %s",aText));
           return false;
         }
@@ -4164,7 +4234,7 @@ bool TMimeDirProfileHandler::parseLevels(
         // compare
         if (
           mimeModeMatch(propP->modeDependency) && // none or matching mode dependency
-          strucmp(propname,propP->TCFG_CSTR(propname),n)==0
+          strucmp(propname,TCFG_CSTR(propP->propname),n)==0
         ) {
           // found property def with matching name (and MIME mode)
           // check all in group (=all subsequent with same name)
@@ -4215,10 +4285,12 @@ bool TMimeDirProfileHandler::parseLevels(
             if (parsePropP) {
               if (parsePropP->delayedProcessing) {
                 // buffer parameters needed to parse later
-                PDEBUGPRINTFX(DBG_PARSE+DBG_EXOTIC,("parseMimeDir: property %s parsing delayed, rank=%hd",parsePropP->TCFG_CSTR(propname),parsePropP->delayedProcessing));
+                PDEBUGPRINTFX(DBG_PARSE+DBG_EXOTIC,("parseMimeDir: property %s parsing delayed, rank=%hd",TCFG_CSTR(parsePropP->propname),parsePropP->delayedProcessing));
                 TDelayedPropParseParams dppp;
                 dppp.delaylevel = parsePropP->delayedProcessing;
                 dppp.start = p;
+                dppp.groupname = groupname;
+                dppp.groupnameLen = gn;
                 dppp.propDefP = parsePropP;
                 TDelayedParsingPropsList::iterator pos;
                 for (pos=fDelayedProps.begin(); pos!=fDelayedProps.end(); pos++) {
@@ -4243,7 +4315,9 @@ bool TMimeDirProfileHandler::parseLevels(
                 parsePropP, // the (matching) property definition
                 repArray,
                 maxreps,
-                fMimeDirMode // MIME-DIR mode
+                fMimeDirMode, // MIME-DIR mode
+                groupname,
+                gn
               )) {
                 // property parsed successfully
                 propparsed=true;
@@ -4252,8 +4326,7 @@ bool TMimeDirProfileHandler::parseLevels(
                 break; // parse next
               }
               // if not successfully parsed, continue with next property which
-              // can have the same name, but different parameter definitions
-              // eventually
+              // can have the same name, but possibly different parameter definitions
             } // if parseProp
           } // while same property group (poperties with same name)
           #ifdef NO_REMOTE_RULES
@@ -4270,7 +4343,7 @@ bool TMimeDirProfileHandler::parseLevels(
     } // else: neither BEGIN nor END
     if (!propparsed) {
       // unknown property
-      PDEBUGPRINTFX(DBG_PARSE,("parseMimeDir: property unknown: %" FMT_LENGTH(".30") "s",FMT_LENGTH_LIMITED(30,aText)));
+      PDEBUGPRINTFX(DBG_PARSE,("parseMimeDir: property not parsed (unknown or not storable): %" FMT_LENGTH(".30") "s",FMT_LENGTH_LIMITED(30,aText)));
       // skip parsed part (the name)
       p=propname+n;
     }
@@ -4310,7 +4383,9 @@ bool TMimeDirProfileHandler::parseLevels(
         (*pos).propDefP, // the (matching) property definition
         repArray,
         maxreps,
-        fMimeDirMode // MIME-DIR mode
+        fMimeDirMode, // MIME-DIR mode
+        (*pos).groupname,
+        (*pos).groupnameLen
       )) {
         // count mandarory properties found
         //%%% moved this to when we queue the delayed props, as mandatory count is per-profile
@@ -4353,6 +4428,7 @@ void TMimeDirProfileHandler::getOptionsFromDatastore(void)
     fReceiverTimeContext = fRelatedDatastoreP->getSession()->fUserTimeContext; // default to user context
     fDontSendEmptyProperties = fRelatedDatastoreP->getSession()->fDontSendEmptyProperties;
     fDefaultOutCharset = fRelatedDatastoreP->getSession()->fDefaultOutCharset;
+    fDefaultInCharset = fRelatedDatastoreP->getSession()->fDefaultInCharset;
     fDoQuote8BitContent = fRelatedDatastoreP->getSession()->fDoQuote8BitContent;
     fDoNotFoldContent = fRelatedDatastoreP->getSession()->fDoNotFoldContent;
     fTreatRemoteTimeAsLocal = fRelatedDatastoreP->getSession()->fTreatRemoteTimeAsLocal;
@@ -4665,7 +4741,7 @@ void TMimeDirProfileHandler::enumerateProperties(const TProfileDefinition *aProf
               dataType = propDataTypeNames[dt];
           }
           // - add property data descriptor
-          propdataP->prop = newDevInfCTData(propP->TCFG_CSTR(propname),sz,noTruncate,maxOccur,dataType);
+          propdataP->prop = newDevInfCTData(TCFG_CSTR(propP->propname),sz,noTruncate,maxOccur,dataType);
           if (propP->convdefs && propP->convdefs->convmode==CONVMODE_VERSION) {
             // special case: add version valenum
             addPCDataStringToList(aItemTypeP->getTypeVers(),&(propdataP->prop->valenum));
@@ -4851,7 +4927,7 @@ void TMimeDirProfileHandler::setfieldoptions(
   if (aPropP) {
     // get name of CTCap property
     propname = smlPCDataToCharP(aPropP->name);
-    // get eventual maxSize
+    // get possible maxSize
     if (aPropP->maxsize) {
       if (getSession()->fIgnoreDevInfMaxSize) {
         // remote rule flags maxsize as invalid (like in E90), flag it as unknown (but possibly limited)
@@ -4862,11 +4938,11 @@ void TMimeDirProfileHandler::setfieldoptions(
         StrToLong(smlPCDataToCharP(aPropP->maxsize),propsize);
       }
     }
-    // get eventual maxOccur
+    // get possible maxOccur
     if (aPropP->maxoccur) {
       StrToLong(smlPCDataToCharP(aPropP->maxoccur),maxOccur);
     }
-    // get eventual noTruncate
+    // get possible noTruncate
     if (aPropP->flags & SmlDevInfNoTruncate_f)
       noTruncate=true;
     // check for BEGIN to check for enabled sublevels
@@ -4894,7 +4970,7 @@ void TMimeDirProfileHandler::setfieldoptions(
     // compare
     if (
       (propname==NULL && propdefP->mandatory) ||
-      (propname && (strucmp(propname,propdefP->TCFG_CSTR(propname))==0))
+      (propname && (strucmp(propname,TCFG_CSTR(propdefP->propname))==0))
     ) {
       // match (or enabling mandatory) -> enable all fields that are related to this property
       // - values

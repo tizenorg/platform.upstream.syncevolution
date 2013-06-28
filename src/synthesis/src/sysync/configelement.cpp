@@ -668,7 +668,7 @@ bool TConfigElement::endElement(const char *aElementName, bool aIsDelegated)
           // Note: normal empty elements are NOT considered nested elements by default, only if
           //       they request endnested mode explicitly
         	if (fParseMode==pamo_endnested)
-	          nestedElementEnd(); // inform eventual parser of nested element that a nested element ends here
+	          nestedElementEnd(); // inform possible parser of nested element that a nested element ends here
           // back to nested
         	fParseMode=pamo_nested;
         }
@@ -692,7 +692,7 @@ bool TConfigElement::endElement(const char *aElementName, bool aIsDelegated)
           }
           else {
           	// end of active nested element
-            nestedElementEnd(); // inform eventual parser of nested element
+            nestedElementEnd(); // inform possible parser of nested element
             if (fNest==0) {
               // if back on nest level 0, switch to pamo_element
               fParseMode = pamo_element;

@@ -189,7 +189,7 @@ SML_API Ret_t smlStartMessageExt(InstanceID_t id, SmlSyncHdrPtr_t pContent, SmlV
   smlSetOutgoingBegin(id);
   #endif
 
-  // eventually, this will cause a buffer reset (if nothing is
+  // possibly, this will cause a buffer reset (if nothing is
   // unread in the buffer), and will auto-readjust the OutgoingBegin.
   rc = smlLockWriteBuffer(id, &pCurrentWritePosition, &freeSize);
 

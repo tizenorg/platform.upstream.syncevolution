@@ -20,6 +20,10 @@
  * be called by the SyncML engine. A linkable library is available
  * (for C++) as well.
  *
+ * For more detailed information about the DBApi interface
+ * please consult the SDK_manual.pdf which contains a tutorial,
+ * detailed descriptions and some example code.
+ *
  * The flow for accessing the datastores is always the same:
  * The SyncML engine will call these routines step by step
  *
@@ -42,7 +46,6 @@
  *   9)  StartDataWrite
  *  10)  any number of random calls to:
  *         -  InsertItem
- *         -  FinalizeLocalID
  *         -  UpdateItem
  *         -  DeleteItem
  *         -  DeleteSyncSet
@@ -50,7 +53,8 @@
  *         -  WriteBlob
  *         -  ReadBlob
  *         -  DeleteBlob
- *         - [AdaptItem]   (optional)
+ *         - [AdaptItem]      (optional)
+ *         -  FinalizeLocalID (at the end)
  *  11)  EndDataWrite
  *
  *  12) [Write Admin Data] (optional)
@@ -670,8 +674,7 @@ _ENTRY_ bool ReadNextMapItem( CContext aContext, MapID mID, bool aFirst );
 /*! Map table handling: Insert a map item of this context
  *
  *  @param  <aContext>   The datastore context
- *  @param  <mID>        MapID ( with \<localID>,\<remoteID>, <flags> and \<ident> ).
- *                       A new item with <localID> will be added.
+ *  @param  <mID>        MapID ( with \<localID>,\<remoteID>, \<flags> and \<ident> ).
  *
  *  @return  error code, if this MapID can't be inserted, or if already existing
  *
@@ -683,9 +686,9 @@ _ENTRY_ TSyError InsertMapItem( CContext aContext, cMapID mID );
 /*! Map table handling: Update a map item of this context
  *
  *  @param  <aContext>   The datastore context
- *  @param  <mID>        MapID ( with \<localID>,\<remoteID>, <flags> and \<ident> ).
- *                       If there is already a MapID element with localID, it
- *                       will be update, else created.
+ *  @param  <mID>        MapID ( with \<localID>,\<remoteID>, \<flags> and \<ident> ).
+ *                       If there is already a MapID element with \<localID> and \<ident>,
+ *                       it will be updated, else created.
  *
  *  @return  error code, if this MapID can't be updated (e.g. not yet existing).
  *
@@ -697,9 +700,9 @@ _ENTRY_ TSyError UpdateMapItem( CContext aContext, cMapID mID );
 /*! Map table handling: Delete a map item of this context
  *
  *  @param  <aContext>   The datastore context
- *  @param  <mID>        MapID ( with \<localID>,\<remoteID>, <flags> and \<ident> ).
+ *  @param  <mID>        MapID ( with \<localID>,\<remoteID>, \<flags> and \<ident> ).
  *
- *  @return  error code, if this MapID can't be deleted,
+ *  @return  error code, if this MapID can't deleted,
  *                    or if this MapID does not exist.
  *
  *  USED ONLY WITH \<plugin_datastoredadmin>

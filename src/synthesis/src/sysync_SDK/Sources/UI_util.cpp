@@ -37,9 +37,6 @@
 // -----------------------------------
 
 
-#define MyMod "UI_util" // debug name
-
-
 
 namespace sysync {
 
@@ -114,10 +111,7 @@ TSyError UI_Connect( UI_Call_In &aCI, appPointer &aDLL, bool &aIsServer,
   CVersion   engVersion;
   appPointer fFunc;
 
-  typedef TSyError (*GetCEProc)( UI_Call_In* aCI, CVersion *aEngVersion,
-                                                  CVersion  aPrgVersion,
-                                                  uInt16    aDebugFlags );
-  GetCEProc fConnectEngine= NULL;
+  ConnectEngine_Func fConnectEngine= NULL;
 
   aIsServer = false;
   do {
@@ -135,14 +129,14 @@ TSyError UI_Connect( UI_Call_In &aCI, appPointer &aDLL, bool &aIsServer,
 
     if (IsLib( name.c_str() )) {
       if (name == "[]") {
-#ifdef DBAPI_LINKED
-        fConnectEngine= SYSYNC_EXTERNAL(ConnectEngine);
-#endif
+        #ifdef DBAPI_LINKED
+          fConnectEngine= SYSYNC_EXTERNAL(ConnectEngine);
+        #endif
       } else if (name == "[server:]") {
         aIsServer=true;
-#ifdef DBAPI_SRV_LINKED
-        fConnectEngine= SySync_srv_ConnectEngine;
-#endif
+        #ifdef DBAPI_SRV_LINKED
+          fConnectEngine= SySync_srv_ConnectEngine;
+        #endif
       }
 
       break;
@@ -172,12 +166,12 @@ TSyError UI_Connect( UI_Call_In &aCI, appPointer &aDLL, bool &aIsServer,
 
     cAppCharP              fN= SyFName;
     err=   DLL_Func( aDLL, fN,   fFunc );
-    fConnectEngine=   (GetCEProc)fFunc;
+    fConnectEngine=   (ConnectEngine_Func)fFunc;
     if   (dbg) printf( "func err=%d '%s' %s\n", err, fN, RefStr( (void*)fConnectEngine ).c_str() );
 
     if (!fConnectEngine) { fN=   FName;
       err= DLL_Func( aDLL, fN,   fFunc );
-      fConnectEngine= (GetCEProc)fFunc;
+      fConnectEngine= (ConnectEngine_Func)fFunc;
       if (dbg) printf( "func err=%d '%s' %s\n", err, fN, RefStr( (void*)fConnectEngine ).c_str() );
    } // if
 
@@ -202,19 +196,19 @@ TSyError UI_Disconnect( UI_Call_In aCI, appPointer aDLL, bool aIsServer )
   TSyError       err= 0;
   appPointer   fFunc;
 
-  typedef TSyError (*GetDEProc)( UI_Call_In aCI );
-  GetDEProc fDisconnectEngine= NULL;
+  DisconnectEngine_Func fDisconnectEngine= NULL;
 
   do {
     if (aDLL==NULL) {
       if (aIsServer) {
-#ifdef DBAPI_LINKED
-        fDisconnectEngine= SYSYNC_EXTERNAL(DisconnectEngine);
-#endif
-      } else {
-#ifdef DBAPI_SRV_LINKED
-        fDisconnectEngine= SySync_srv_DisconnectEngine;
-#endif
+        #ifdef DBAPI_LINKED
+          fDisconnectEngine= SYSYNC_EXTERNAL(DisconnectEngine);
+        #endif
+      }
+      else {
+        #ifdef DBAPI_SRV_LINKED
+          fDisconnectEngine= SySync_srv_DisconnectEngine;
+        #endif
       }
 
       break;
@@ -225,13 +219,13 @@ TSyError UI_Disconnect( UI_Call_In aCI, appPointer aDLL, bool aIsServer )
       FName = "srv_DisconnectEngine";
     }
 
-    cAppCharP                 fN= SyFName;
-    err=      DLL_Func( aDLL, fN,   fFunc );
-    fDisconnectEngine=   (GetDEProc)fFunc;
+    cAppCharP                             fN= SyFName;
+    err=                  DLL_Func( aDLL, fN,   fFunc );
+    fDisconnectEngine=   (DisconnectEngine_Func)fFunc;
 
-    if (!fDisconnectEngine) { fN=   FName;
-      err=    DLL_Func( aDLL, fN,   fFunc );
-      fDisconnectEngine= (GetDEProc)fFunc;
+    if (!fDisconnectEngine)             { fN=   FName;
+      err=                DLL_Func( aDLL, fN,   fFunc );
+      fDisconnectEngine= (DisconnectEngine_Func)fFunc;
     } // if
 
   //printf( "func err=%d %08X\n", err, fConnectEngine );
@@ -247,37 +241,6 @@ TSyError UI_Disconnect( UI_Call_In aCI, appPointer aDLL, bool aIsServer )
   return NotFnd( aCI, "DisconnectEngine" );
 } // UI_Disconnect
 
-
-
-// <uContext> will be casted to the UIContext* structure
-UIContext* UiC( CContext uContext ) { return (UIContext*)uContext; }
-
-
-// Create a UI context
-TSyError UI_CreateContext( CContext &uContext, cAppCharP aEngineName,
-                           CVersion  aPrgVersion,
-                           uInt16    aDebugFlags )
-{
-  TSyError err;
-  UIContext*           uc= new UIContext;
-  bool isServer;
-  err=     UI_Connect( uc->uCI, uc->uDLL, isServer, aEngineName, aPrgVersion, aDebugFlags );
-                       uc->uName=         aEngineName;
-  DEBUG_DB           ( uc->uCI, MyMod,"UI_CreateContext", "'%s'", uc->uName.c_str() );
-  uContext=  (CContext)uc;
-  return err;
-} // UI_CreateContext
-
-
-
-// Delete a UI context
-TSyError UI_DeleteContext( CContext uContext )
-{
-  UIContext* uc= UiC( uContext );
-  DEBUG_DB ( uc->uCI, MyMod,"UI_DeleteContext", "'%s'", uc->uName.c_str() );
-  delete     uc;      // delete context
-  return LOCERR_OK;
-} // UI_DeleteContext
 
 
 } // namespace sysync
