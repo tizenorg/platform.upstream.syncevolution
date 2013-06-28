@@ -1,4 +1,4 @@
-BACKENDS =  backends/addressbook backends/evolution backends/file backends/sqlite
+BACKENDS =  backends/addressbook backends/evolution backends/file backends/maemo backends/sqlite backends/xmlrpc
 
 service_in_files = org.Moblin.SyncEvolution.service.in
 if COND_DBUS
@@ -23,7 +23,7 @@ SUBDIRS = $(SYNTHESIS_SUBDIR) $(DBUS_DIR) syncevo $(BACKENDS) $(GUI_DIR)
 DIST_SUBDIRS = dbus syncevo $(BACKENDS) gtk-ui
 BUILT_SOURCES =
 
-AM_CPPFLAGS = $(SUBDIRS:%=-I$(srcdir)/%) -I$(srcdir)/../test -I$(top_srcdir) $(BACKEND_CPPFLAGS) $(GLIB_CFLAGS)
+AM_CPPFLAGS = $(SUBDIRS:%=-I$(srcdir)/%) -I$(srcdir)/../test -I$(top_srcdir) $(BACKEND_CPPFLAGS)
 
 EXTRA_PROGRAMS =
 TESTS =
@@ -41,8 +41,9 @@ SYNCEVOLUTION_DEP += $(SYNCSOURCES)
 endif
 EXTRA_DIST = shlibs.local Makefile-gen.am syncclient_sample_config.xml $(service_in_files)
 
-TEMPLATE_FILES = default/syncevolution/Funambol/config.ini default/syncevolution/Funambol/sources/calendar/config.ini default/syncevolution/Funambol/sources/todo/config.ini default/syncevolution/Funambol/sources/addressbook/config.ini default/syncevolution/Funambol/sources/memo/config.ini default/syncevolution/ScheduleWorld/config.ini default/syncevolution/ScheduleWorld/sources/calendar/config.ini default/syncevolution/ScheduleWorld/sources/todo/config.ini default/syncevolution/ScheduleWorld/sources/addressbook/config.ini default/syncevolution/ScheduleWorld/sources/memo/config.ini 
-nobase_dist_sysconf_DATA = $(TEMPLATE_FILES)
+TEMPLATE_FILES = templates/Funambol/config.ini templates/Funambol/sources/calendar/config.ini templates/Funambol/sources/todo/config.ini templates/Funambol/sources/addressbook/config.ini templates/Funambol/sources/memo/config.ini templates/ScheduleWorld/config.ini templates/ScheduleWorld/sources/calendar/config.ini templates/ScheduleWorld/sources/todo/config.ini templates/ScheduleWorld/sources/addressbook/config.ini templates/ScheduleWorld/sources/memo/config.ini templates/README
+templatedir = $(datadir)/syncevolution/
+nobase_dist_template_DATA = $(TEMPLATE_FILES)
 
 DISTCLEANFILES = synccompare
 MAINTAINERCLEANFILES = Makefile.in
@@ -66,7 +67,7 @@ CORE_SOURCES =
 # When using modules the registration is done inside the
 # module and the register file is unnecessary. However, they
 # still need to be included in "make dist".
-BACKEND_REGISTRIES = backends/addressbook/AddressBookSourceRegister.cpp backends/evolution/EvolutionCalendarSourceRegister.cpp backends/evolution/EvolutionContactSourceRegister.cpp backends/file/FileSyncSourceRegister.cpp backends/sqlite/SQLiteContactSourceRegister.cpp
+BACKEND_REGISTRIES = backends/addressbook/AddressBookSourceRegister.cpp backends/evolution/EvolutionCalendarSourceRegister.cpp backends/evolution/EvolutionContactSourceRegister.cpp backends/file/FileSyncSourceRegister.cpp backends/maemo/MaemoCalendarSourceRegister.cpp backends/sqlite/SQLiteContactSourceRegister.cpp backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
 if ENABLE_MODULES
 EXTRA_DIST += $(BACKEND_REGISTRIES)
 else
@@ -74,7 +75,7 @@ CORE_SOURCES += $(BACKEND_REGISTRIES)
 endif
 
 CORE_CXXFLAGS = $(SYNTHESIS_CFLAGS)
-CORE_LDADD = $(SYNCEVOLUTION_LDADD) syncevo/libsyncevolution.la $(GLIB_LIBS) $(LIBS)
+CORE_LDADD = $(SYNCEVOLUTION_LDADD) syncevo/libsyncevolution.la $(GLIB_LIBS) $(GTHREAD_LIBS) $(GOBJECT_LIBS) $(LIBS)
 CORE_DEP = $(SYNCEVOLUTION_DEP) syncevo/libsyncevolution.la $(SYNTHESIS_DEP)
 CORE_LD_FLAGS = -uSyncEvolution_Module_Version -Wl,--export-dynamic
 
@@ -87,7 +88,9 @@ syncevolution_SOURCES = \
 	CmdlineSyncClient.h \
 	CmdlineSyncClient.cpp \
 	$(CORE_SOURCES)
+if ENABLE_UNIT_TESTS
 nodist_syncevolution_SOURCES = ../test/test.cpp
+endif
 
 # SYNCEVOLUTION_LDADD will be replaced with libsyncebook.la/libsyncecal.la/libsyncsqlite.la
 # if linking statically against them, empty otherwise;
@@ -144,8 +147,11 @@ syncevo_dbus_server_SOURCES = \
 	DBusSyncClient.cpp DBusSyncClient.h \
 	$(CORE_SOURCES)
 nodist_syncevo_dbus_server_SOURCES = \
-	dbus/interfaces/syncevo-marshal.c \
+	dbus/interfaces/syncevo-marshal.c
+if ENABLE_UNIT_TESTS
+nodist_syncevo_dbus_server_SOURCES += \
 	../test/test.cpp
+endif
 
 syncevo_dbus_server_LDADD = $(DBUS_GLIB_LIBS) $(KEYRING_LIBS) $(CORE_LDADD)
 syncevo_dbus_server_CPPFLAGS = -DHAVE_CONFIG_H -Idbus/interfaces $(DBUS_GLIB_CFLAGS) $(KEYRING_CFLAGS) $(AM_CPPFLAGS)
@@ -165,17 +171,6 @@ client_test_SOURCES = \
 	../test/client-test-main.cpp \
 	$(CORE_SOURCES)
 nodist_client_test_SOURCES = ../test/test.cpp
-
-# Always compile the registry files into client-test because that is
-# the only place where they are compiled with
-# ENABLE_INTEGRATION_TESTS.  This works without undefined references
-# because client-test is linked against all shared backend libraries
-# (non-portable, but works).
-# Disabled now, the client test can also be dynamically loaded and registered
-# just the same as syncevolution
-# if ENABLE_MODULES
-# client_test_SOURCES += $(BACKEND_REGISTRIES)
-# endif
 
 # list of test file base files
 #
@@ -200,8 +195,8 @@ CLIENT_LIB_TEST_FILES += $(TEST_FILES_GENERATED)
 
 client_test_CPPFLAGS = -DHAVE_CONFIG_H -DENABLE_INTEGRATION_TESTS -DENABLE_UNIT_TESTS $(AM_CPPFLAGS)
 client_test_CXXFLAGS = `cppunit-config --cflags` $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS)
-client_test_LDFLAGS = `cppunit-config --libs` `nm synccevo/.libs/libsyncevolution.a | grep funambolAutoRegisterRegistry | sed -e 's/.* /-u /'` $(CORE_LD_FLAGS)
-client_test_LDADD = $(CORE_LDADD) 
+client_test_LDFLAGS = `cppunit-config --libs` `nm syncevo/.libs/libsyncevolution.a | grep funambolAutoRegisterRegistry | sed -e 's/.* /-u /'` $(CORE_LD_FLAGS)
+client_test_LDADD = $(CORE_LDADD) $(SYNTHESIS_ENGINE)
 # These dependencies are intentionally a bit too broad:
 # they ensure that all files are in place to *run* client-test.
 

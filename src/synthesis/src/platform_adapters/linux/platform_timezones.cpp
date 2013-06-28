@@ -133,7 +133,8 @@ static void ICAL_FREE(char *str)
    // new-style Evolution libical: memory must be freed by caller
 #   define ICAL_FREE(_x) free(_x)
 #  else
-#   define ICAL_FREE(_x) free(_x)
+    // old-style libical: memory is stored in buffers owned by libical
+#   define ICAL_FREE(_x)
 #  endif
 # endif
 #endif

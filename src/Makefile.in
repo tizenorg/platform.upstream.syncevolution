@@ -42,20 +42,23 @@ bin_PROGRAMS = syncevolution$(EXEEXT) $(am__EXEEXT_2)
 @ENABLE_MODULES_FALSE@am__append_2 = $(SYNCSOURCES)
 @ENABLE_MODULES_TRUE@am__append_3 = $(BACKEND_REGISTRIES)
 @ENABLE_MODULES_FALSE@am__append_4 = $(BACKEND_REGISTRIES)
+@COND_DBUS_TRUE@@ENABLE_UNIT_TESTS_TRUE@am__append_5 = \
+@COND_DBUS_TRUE@@ENABLE_UNIT_TESTS_TRUE@	../test/test.cpp
+
 
 # distribute test system?
 # yes: install client-test in bindir, test files in datadir
-@ENABLE_TESTING_TRUE@am__append_5 = client-test
 @ENABLE_TESTING_TRUE@am__append_6 = client-test
+@ENABLE_TESTING_TRUE@am__append_7 = client-test
 # The "all" dependency causes a rebuild even if the actual input files
 # haven't changed. If client-test is part of the regular targets built
 # by "all", then it must not depend on all!
-@ENABLE_TESTING_FALSE@am__append_7 = client-test
-@ENABLE_TESTING_FALSE@am__append_8 = $(CLIENT_LIB_TEST_FILES)
-@ENABLE_TESTING_FALSE@am__append_9 = all
+@ENABLE_TESTING_FALSE@am__append_8 = client-test
+@ENABLE_TESTING_FALSE@am__append_9 = $(CLIENT_LIB_TEST_FILES)
+@ENABLE_TESTING_FALSE@am__append_10 = all
 subdir = src
 DIST_COMMON = $(am__nobase_dist_doc_DATA_DIST) \
-	$(nobase_dist_sysconf_DATA) $(srcdir)/Makefile.am \
+	$(nobase_dist_template_DATA) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4-repo/ax_boost_base.m4 \
@@ -69,7 +72,7 @@ CONFIG_CLEAN_FILES =
 @ENABLE_TESTING_TRUE@am__EXEEXT_2 = client-test$(EXEEXT)
 am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(libexecdir)" \
 	"$(DESTDIR)$(bindir)" "$(DESTDIR)$(docdir)" \
-	"$(DESTDIR)$(sysconfdir)" "$(DESTDIR)$(servicedir)"
+	"$(DESTDIR)$(templatedir)" "$(DESTDIR)$(servicedir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 libexecPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS) $(libexec_PROGRAMS)
@@ -79,6 +82,7 @@ am__DEPENDENCIES_1 =
 @ENABLE_MODULES_FALSE@am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
 am__DEPENDENCIES_3 = $(am__DEPENDENCIES_2)
 am__DEPENDENCIES_4 = $(am__DEPENDENCIES_3) syncevo/libsyncevolution.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 abort_redirect_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) \
@@ -91,12 +95,16 @@ am__client_test_SOURCES_DIST = client-test-app.cpp \
 	backends/evolution/EvolutionCalendarSourceRegister.cpp \
 	backends/evolution/EvolutionContactSourceRegister.cpp \
 	backends/file/FileSyncSourceRegister.cpp \
-	backends/sqlite/SQLiteContactSourceRegister.cpp
+	backends/maemo/MaemoCalendarSourceRegister.cpp \
+	backends/sqlite/SQLiteContactSourceRegister.cpp \
+	backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
 am__objects_1 = client_test-AddressBookSourceRegister.$(OBJEXT) \
 	client_test-EvolutionCalendarSourceRegister.$(OBJEXT) \
 	client_test-EvolutionContactSourceRegister.$(OBJEXT) \
 	client_test-FileSyncSourceRegister.$(OBJEXT) \
-	client_test-SQLiteContactSourceRegister.$(OBJEXT)
+	client_test-MaemoCalendarSourceRegister.$(OBJEXT) \
+	client_test-SQLiteContactSourceRegister.$(OBJEXT) \
+	client_test-XMLRPCSyncSourceRegister.$(OBJEXT)
 @ENABLE_MODULES_FALSE@am__objects_2 = $(am__objects_1)
 am__objects_3 = $(am__objects_2)
 am_client_test_OBJECTS = client_test-client-test-app.$(OBJEXT) \
@@ -118,21 +126,26 @@ am__syncevo_dbus_server_SOURCES_DIST = syncevo-dbus-server.cpp \
 	backends/evolution/EvolutionCalendarSourceRegister.cpp \
 	backends/evolution/EvolutionContactSourceRegister.cpp \
 	backends/file/FileSyncSourceRegister.cpp \
-	backends/sqlite/SQLiteContactSourceRegister.cpp
+	backends/maemo/MaemoCalendarSourceRegister.cpp \
+	backends/sqlite/SQLiteContactSourceRegister.cpp \
+	backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
 am__objects_7 =  \
 	syncevo_dbus_server-AddressBookSourceRegister.$(OBJEXT) \
 	syncevo_dbus_server-EvolutionCalendarSourceRegister.$(OBJEXT) \
 	syncevo_dbus_server-EvolutionContactSourceRegister.$(OBJEXT) \
 	syncevo_dbus_server-FileSyncSourceRegister.$(OBJEXT) \
-	syncevo_dbus_server-SQLiteContactSourceRegister.$(OBJEXT)
+	syncevo_dbus_server-MaemoCalendarSourceRegister.$(OBJEXT) \
+	syncevo_dbus_server-SQLiteContactSourceRegister.$(OBJEXT) \
+	syncevo_dbus_server-XMLRPCSyncSourceRegister.$(OBJEXT)
 @ENABLE_MODULES_FALSE@am__objects_8 = $(am__objects_7)
 am__objects_9 = $(am__objects_8)
 @COND_DBUS_TRUE@am_syncevo_dbus_server_OBJECTS = syncevo_dbus_server-syncevo-dbus-server.$(OBJEXT) \
 @COND_DBUS_TRUE@	syncevo_dbus_server-DBusSyncClient.$(OBJEXT) \
 @COND_DBUS_TRUE@	$(am__objects_9)
+@COND_DBUS_TRUE@@ENABLE_UNIT_TESTS_TRUE@am__objects_10 = syncevo_dbus_server-test.$(OBJEXT)
 @COND_DBUS_TRUE@nodist_syncevo_dbus_server_OBJECTS =  \
 @COND_DBUS_TRUE@	syncevo_dbus_server-syncevo-marshal.$(OBJEXT) \
-@COND_DBUS_TRUE@	syncevo_dbus_server-test.$(OBJEXT)
+@COND_DBUS_TRUE@	$(am__objects_10)
 syncevo_dbus_server_OBJECTS = $(am_syncevo_dbus_server_OBJECTS) \
 	$(nodist_syncevo_dbus_server_OBJECTS)
 syncevo_dbus_server_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
@@ -145,17 +158,22 @@ am__syncevolution_SOURCES_DIST = syncevolution.cpp CmdlineSyncClient.h \
 	backends/evolution/EvolutionCalendarSourceRegister.cpp \
 	backends/evolution/EvolutionContactSourceRegister.cpp \
 	backends/file/FileSyncSourceRegister.cpp \
-	backends/sqlite/SQLiteContactSourceRegister.cpp
-am__objects_10 = syncevolution-AddressBookSourceRegister.$(OBJEXT) \
+	backends/maemo/MaemoCalendarSourceRegister.cpp \
+	backends/sqlite/SQLiteContactSourceRegister.cpp \
+	backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
+am__objects_11 = syncevolution-AddressBookSourceRegister.$(OBJEXT) \
 	syncevolution-EvolutionCalendarSourceRegister.$(OBJEXT) \
 	syncevolution-EvolutionContactSourceRegister.$(OBJEXT) \
 	syncevolution-FileSyncSourceRegister.$(OBJEXT) \
-	syncevolution-SQLiteContactSourceRegister.$(OBJEXT)
-@ENABLE_MODULES_FALSE@am__objects_11 = $(am__objects_10)
-am__objects_12 = $(am__objects_11)
+	syncevolution-MaemoCalendarSourceRegister.$(OBJEXT) \
+	syncevolution-SQLiteContactSourceRegister.$(OBJEXT) \
+	syncevolution-XMLRPCSyncSourceRegister.$(OBJEXT)
+@ENABLE_MODULES_FALSE@am__objects_12 = $(am__objects_11)
+am__objects_13 = $(am__objects_12)
 am_syncevolution_OBJECTS = syncevolution-syncevolution.$(OBJEXT) \
-	syncevolution-CmdlineSyncClient.$(OBJEXT) $(am__objects_12)
-nodist_syncevolution_OBJECTS = syncevolution-test.$(OBJEXT)
+	syncevolution-CmdlineSyncClient.$(OBJEXT) $(am__objects_13)
+@ENABLE_UNIT_TESTS_TRUE@nodist_syncevolution_OBJECTS =  \
+@ENABLE_UNIT_TESTS_TRUE@	syncevolution-test.$(OBJEXT)
 syncevolution_OBJECTS = $(am_syncevolution_OBJECTS) \
 	$(nodist_syncevolution_OBJECTS)
 syncevolution_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
@@ -210,9 +228,9 @@ am__vpath_adj = case $$p in \
   esac;
 am__strip_dir = `echo $$p | sed -e 's|^.*/||'`;
 nobase_dist_docDATA_INSTALL = $(install_sh_DATA)
-nobase_dist_sysconfDATA_INSTALL = $(install_sh_DATA)
+nobase_dist_templateDATA_INSTALL = $(install_sh_DATA)
 serviceDATA_INSTALL = $(INSTALL_DATA)
-DATA = $(nobase_dist_doc_DATA) $(nobase_dist_sysconf_DATA) \
+DATA = $(nobase_dist_doc_DATA) $(nobase_dist_template_DATA) \
 	$(service_DATA)
 RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
   distclean-recursive maintainer-clean-recursive
@@ -279,7 +297,11 @@ GLIB_GENMARSHAL = @GLIB_GENMARSHAL@
 GLIB_LIBS = @GLIB_LIBS@
 GMOFILES = @GMOFILES@
 GMSGFMT = @GMSGFMT@
+GOBJECT_CFLAGS = @GOBJECT_CFLAGS@
+GOBJECT_LIBS = @GOBJECT_LIBS@
 GREP = @GREP@
+GTHREAD_CFLAGS = @GTHREAD_CFLAGS@
+GTHREAD_LIBS = @GTHREAD_LIBS@
 GTK_BUILDER_CONV = @GTK_BUILDER_CONV@
 GUI_CFLAGS = @GUI_CFLAGS@
 GUI_DESKTOP_FILES = @GUI_DESKTOP_FILES@
@@ -310,6 +332,8 @@ LIBTOOL = @LIBTOOL@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
+MCALB_CFLAGS = @MCALB_CFLAGS@
+MCALB_LIBS = @MCALB_LIBS@
 MKDIR_P = @MKDIR_P@
 MKINSTALLDIRS = @MKINSTALLDIRS@
 MODIFY_SYNCCOMPARE = @MODIFY_SYNCCOMPARE@
@@ -356,6 +380,8 @@ UNIQUE_LIBS = @UNIQUE_LIBS@
 USE_NLS = @USE_NLS@
 VERSION = @VERSION@
 XGETTEXT = @XGETTEXT@
+XMLRPC_CFLAGS = @XMLRPC_CFLAGS@
+XMLRPC_LIBS = @XMLRPC_LIBS@
 XSLT = @XSLT@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
@@ -410,7 +436,7 @@ sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-BACKENDS = backends/addressbook backends/evolution backends/file backends/sqlite
+BACKENDS = backends/addressbook backends/evolution backends/file backends/maemo backends/sqlite backends/xmlrpc
 service_in_files = org.Moblin.SyncEvolution.service.in
 @COND_DBUS_TRUE@servicedir = $(DBUS_SERVICES_DIR)
 @COND_DBUS_TRUE@service_DATA = $(service_in_files:.service.in=.service)
@@ -421,13 +447,14 @@ service_in_files = org.Moblin.SyncEvolution.service.in
 SUBDIRS = $(SYNTHESIS_SUBDIR) $(DBUS_DIR) syncevo $(BACKENDS) $(GUI_DIR)
 DIST_SUBDIRS = dbus syncevo $(BACKENDS) gtk-ui
 BUILT_SOURCES = 
-AM_CPPFLAGS = $(SUBDIRS:%=-I$(srcdir)/%) -I$(srcdir)/../test -I$(top_srcdir) $(BACKEND_CPPFLAGS) $(GLIB_CFLAGS)
+AM_CPPFLAGS = $(SUBDIRS:%=-I$(srcdir)/%) -I$(srcdir)/../test -I$(top_srcdir) $(BACKEND_CPPFLAGS)
 bin_SCRIPTS = synccompare
 SYNCEVOLUTION_DEP = $(am__append_2)
 EXTRA_DIST = shlibs.local Makefile-gen.am syncclient_sample_config.xml \
 	$(service_in_files) $(am__append_3)
-TEMPLATE_FILES = default/syncevolution/Funambol/config.ini default/syncevolution/Funambol/sources/calendar/config.ini default/syncevolution/Funambol/sources/todo/config.ini default/syncevolution/Funambol/sources/addressbook/config.ini default/syncevolution/Funambol/sources/memo/config.ini default/syncevolution/ScheduleWorld/config.ini default/syncevolution/ScheduleWorld/sources/calendar/config.ini default/syncevolution/ScheduleWorld/sources/todo/config.ini default/syncevolution/ScheduleWorld/sources/addressbook/config.ini default/syncevolution/ScheduleWorld/sources/memo/config.ini 
-nobase_dist_sysconf_DATA = $(TEMPLATE_FILES)
+TEMPLATE_FILES = templates/Funambol/config.ini templates/Funambol/sources/calendar/config.ini templates/Funambol/sources/todo/config.ini templates/Funambol/sources/addressbook/config.ini templates/Funambol/sources/memo/config.ini templates/ScheduleWorld/config.ini templates/ScheduleWorld/sources/calendar/config.ini templates/ScheduleWorld/sources/todo/config.ini templates/ScheduleWorld/sources/addressbook/config.ini templates/ScheduleWorld/sources/memo/config.ini templates/README
+templatedir = $(datadir)/syncevolution/
+nobase_dist_template_DATA = $(TEMPLATE_FILES)
 DISTCLEANFILES = synccompare
 MAINTAINERCLEANFILES = Makefile.in
 CLEANFILES = libstdc++.a client-test $(CLIENT_LIB_TEST_FILES) \
@@ -443,9 +470,9 @@ CORE_SOURCES = $(am__append_4)
 # When using modules the registration is done inside the
 # module and the register file is unnecessary. However, they
 # still need to be included in "make dist".
-BACKEND_REGISTRIES = backends/addressbook/AddressBookSourceRegister.cpp backends/evolution/EvolutionCalendarSourceRegister.cpp backends/evolution/EvolutionContactSourceRegister.cpp backends/file/FileSyncSourceRegister.cpp backends/sqlite/SQLiteContactSourceRegister.cpp
+BACKEND_REGISTRIES = backends/addressbook/AddressBookSourceRegister.cpp backends/evolution/EvolutionCalendarSourceRegister.cpp backends/evolution/EvolutionContactSourceRegister.cpp backends/file/FileSyncSourceRegister.cpp backends/maemo/MaemoCalendarSourceRegister.cpp backends/sqlite/SQLiteContactSourceRegister.cpp backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
 CORE_CXXFLAGS = $(SYNTHESIS_CFLAGS)
-CORE_LDADD = $(SYNCEVOLUTION_LDADD) syncevo/libsyncevolution.la $(GLIB_LIBS) $(LIBS)
+CORE_LDADD = $(SYNCEVOLUTION_LDADD) syncevo/libsyncevolution.la $(GLIB_LIBS) $(GTHREAD_LIBS) $(GOBJECT_LIBS) $(LIBS)
 CORE_DEP = $(SYNCEVOLUTION_DEP) syncevo/libsyncevolution.la $(SYNTHESIS_DEP)
 CORE_LD_FLAGS = -uSyncEvolution_Module_Version -Wl,--export-dynamic
 syncevolution_SOURCES = \
@@ -454,7 +481,7 @@ syncevolution_SOURCES = \
 	CmdlineSyncClient.cpp \
 	$(CORE_SOURCES)
 
-nodist_syncevolution_SOURCES = ../test/test.cpp
+@ENABLE_UNIT_TESTS_TRUE@nodist_syncevolution_SOURCES = ../test/test.cpp
 
 # SYNCEVOLUTION_LDADD will be replaced with libsyncebook.la/libsyncecal.la/libsyncsqlite.la
 # if linking statically against them, empty otherwise;
@@ -468,10 +495,9 @@ syncevolution_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) # $(SYNTHESIS_DEP)
 @COND_DBUS_TRUE@	DBusSyncClient.cpp DBusSyncClient.h \
 @COND_DBUS_TRUE@	$(CORE_SOURCES)
 
-@COND_DBUS_TRUE@nodist_syncevo_dbus_server_SOURCES = \
+@COND_DBUS_TRUE@nodist_syncevo_dbus_server_SOURCES =  \
 @COND_DBUS_TRUE@	dbus/interfaces/syncevo-marshal.c \
-@COND_DBUS_TRUE@	../test/test.cpp
-
+@COND_DBUS_TRUE@	$(am__append_5)
 @COND_DBUS_TRUE@syncevo_dbus_server_LDADD = $(DBUS_GLIB_LIBS) $(KEYRING_LIBS) $(CORE_LDADD)
 @COND_DBUS_TRUE@syncevo_dbus_server_CPPFLAGS = -DHAVE_CONFIG_H -Idbus/interfaces $(DBUS_GLIB_CFLAGS) $(KEYRING_CFLAGS) $(AM_CPPFLAGS)
 @COND_DBUS_TRUE@syncevo_dbus_server_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS)
@@ -489,18 +515,7 @@ client_test_SOURCES = \
 	../test/client-test-main.cpp \
 	$(CORE_SOURCES)
 
-nodist_client_test_SOURCES = ../test/test.cpp $(am__append_8)
-
-# Always compile the registry files into client-test because that is
-# the only place where they are compiled with
-# ENABLE_INTEGRATION_TESTS.  This works without undefined references
-# because client-test is linked against all shared backend libraries
-# (non-portable, but works).
-# Disabled now, the client test can also be dynamically loaded and registered
-# just the same as syncevolution
-# if ENABLE_MODULES
-# client_test_SOURCES += $(BACKEND_REGISTRIES)
-# endif
+nodist_client_test_SOURCES = ../test/test.cpp $(am__append_9)
 
 # list of test file base files
 #
@@ -520,15 +535,15 @@ TEST_FILES_GENERATED = $(subst .patch,,$(subst $(srcdir)/../test/,,$(TEST_FILES_
 TEST_FILES_PATCHED = $(wildcard testcases/*.tem)
 client_test_CPPFLAGS = -DHAVE_CONFIG_H -DENABLE_INTEGRATION_TESTS -DENABLE_UNIT_TESTS $(AM_CPPFLAGS)
 client_test_CXXFLAGS = `cppunit-config --cflags` $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS)
-client_test_LDFLAGS = `cppunit-config --libs` `nm synccevo/.libs/libsyncevolution.a | grep funambolAutoRegisterRegistry | sed -e 's/.* /-u /'` $(CORE_LD_FLAGS)
-client_test_LDADD = $(CORE_LDADD) 
+client_test_LDFLAGS = `cppunit-config --libs` `nm syncevo/.libs/libsyncevolution.a | grep funambolAutoRegisterRegistry | sed -e 's/.* /-u /'` $(CORE_LD_FLAGS)
+client_test_LDADD = $(CORE_LDADD) $(SYNTHESIS_ENGINE)
 
 # The binary does not really depend on the test cases, only running it does.
 # Listing the dependencies here is done to ensure that one doesn't accidentally
 # runs the binary with out-dated auxiliary files.
 client_test_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) \
 	$(CLIENT_LIB_TEST_FILES) testcase2patch synccompare \
-	$(am__append_9)
+	$(am__append_10)
 @ENABLE_TESTING_TRUE@nobase_dist_doc_DATA = $(CLIENT_LIB_TEST_FILES)
 abort_redirect_SOURCES = ../test/abort-redirect.cpp
 abort_redirect_CPPFLAGS = -DHAVE_CONFIG_H $(AM_CPPFLAGS)
@@ -670,7 +685,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-EvolutionCalendarSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-EvolutionContactSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-FileSyncSourceRegister.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-MaemoCalendarSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-SQLiteContactSourceRegister.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-XMLRPCSyncSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-client-test-app.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-client-test-main.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-test.Po@am__quote@
@@ -679,7 +696,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-EvolutionCalendarSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-EvolutionContactSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-FileSyncSourceRegister.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-MaemoCalendarSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-SQLiteContactSourceRegister.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-XMLRPCSyncSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-syncevo-dbus-server.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-syncevo-marshal.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-test.Po@am__quote@
@@ -688,7 +707,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-EvolutionCalendarSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-EvolutionContactSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-FileSyncSourceRegister.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-MaemoCalendarSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-SQLiteContactSourceRegister.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-XMLRPCSyncSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-syncevolution.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-test.Po@am__quote@
 
@@ -860,6 +881,20 @@ client_test-FileSyncSourceRegister.obj: backends/file/FileSyncSourceRegister.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-FileSyncSourceRegister.obj `if test -f 'backends/file/FileSyncSourceRegister.cpp'; then $(CYGPATH_W) 'backends/file/FileSyncSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/file/FileSyncSourceRegister.cpp'; fi`
 
+client_test-MaemoCalendarSourceRegister.o: backends/maemo/MaemoCalendarSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-MaemoCalendarSourceRegister.o -MD -MP -MF $(DEPDIR)/client_test-MaemoCalendarSourceRegister.Tpo -c -o client_test-MaemoCalendarSourceRegister.o `test -f 'backends/maemo/MaemoCalendarSourceRegister.cpp' || echo '$(srcdir)/'`backends/maemo/MaemoCalendarSourceRegister.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/client_test-MaemoCalendarSourceRegister.Tpo $(DEPDIR)/client_test-MaemoCalendarSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/maemo/MaemoCalendarSourceRegister.cpp' object='client_test-MaemoCalendarSourceRegister.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-MaemoCalendarSourceRegister.o `test -f 'backends/maemo/MaemoCalendarSourceRegister.cpp' || echo '$(srcdir)/'`backends/maemo/MaemoCalendarSourceRegister.cpp
+
+client_test-MaemoCalendarSourceRegister.obj: backends/maemo/MaemoCalendarSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-MaemoCalendarSourceRegister.obj -MD -MP -MF $(DEPDIR)/client_test-MaemoCalendarSourceRegister.Tpo -c -o client_test-MaemoCalendarSourceRegister.obj `if test -f 'backends/maemo/MaemoCalendarSourceRegister.cpp'; then $(CYGPATH_W) 'backends/maemo/MaemoCalendarSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/maemo/MaemoCalendarSourceRegister.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/client_test-MaemoCalendarSourceRegister.Tpo $(DEPDIR)/client_test-MaemoCalendarSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/maemo/MaemoCalendarSourceRegister.cpp' object='client_test-MaemoCalendarSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-MaemoCalendarSourceRegister.obj `if test -f 'backends/maemo/MaemoCalendarSourceRegister.cpp'; then $(CYGPATH_W) 'backends/maemo/MaemoCalendarSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/maemo/MaemoCalendarSourceRegister.cpp'; fi`
+
 client_test-SQLiteContactSourceRegister.o: backends/sqlite/SQLiteContactSourceRegister.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-SQLiteContactSourceRegister.o -MD -MP -MF $(DEPDIR)/client_test-SQLiteContactSourceRegister.Tpo -c -o client_test-SQLiteContactSourceRegister.o `test -f 'backends/sqlite/SQLiteContactSourceRegister.cpp' || echo '$(srcdir)/'`backends/sqlite/SQLiteContactSourceRegister.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/client_test-SQLiteContactSourceRegister.Tpo $(DEPDIR)/client_test-SQLiteContactSourceRegister.Po
@@ -873,6 +908,20 @@ client_test-SQLiteContactSourceRegister.obj: backends/sqlite/SQLiteContactSource
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/sqlite/SQLiteContactSourceRegister.cpp' object='client_test-SQLiteContactSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-SQLiteContactSourceRegister.obj `if test -f 'backends/sqlite/SQLiteContactSourceRegister.cpp'; then $(CYGPATH_W) 'backends/sqlite/SQLiteContactSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/sqlite/SQLiteContactSourceRegister.cpp'; fi`
+
+client_test-XMLRPCSyncSourceRegister.o: backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-XMLRPCSyncSourceRegister.o -MD -MP -MF $(DEPDIR)/client_test-XMLRPCSyncSourceRegister.Tpo -c -o client_test-XMLRPCSyncSourceRegister.o `test -f 'backends/xmlrpc/XMLRPCSyncSourceRegister.cpp' || echo '$(srcdir)/'`backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/client_test-XMLRPCSyncSourceRegister.Tpo $(DEPDIR)/client_test-XMLRPCSyncSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/xmlrpc/XMLRPCSyncSourceRegister.cpp' object='client_test-XMLRPCSyncSourceRegister.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-XMLRPCSyncSourceRegister.o `test -f 'backends/xmlrpc/XMLRPCSyncSourceRegister.cpp' || echo '$(srcdir)/'`backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
+
+client_test-XMLRPCSyncSourceRegister.obj: backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-XMLRPCSyncSourceRegister.obj -MD -MP -MF $(DEPDIR)/client_test-XMLRPCSyncSourceRegister.Tpo -c -o client_test-XMLRPCSyncSourceRegister.obj `if test -f 'backends/xmlrpc/XMLRPCSyncSourceRegister.cpp'; then $(CYGPATH_W) 'backends/xmlrpc/XMLRPCSyncSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/xmlrpc/XMLRPCSyncSourceRegister.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/client_test-XMLRPCSyncSourceRegister.Tpo $(DEPDIR)/client_test-XMLRPCSyncSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/xmlrpc/XMLRPCSyncSourceRegister.cpp' object='client_test-XMLRPCSyncSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-XMLRPCSyncSourceRegister.obj `if test -f 'backends/xmlrpc/XMLRPCSyncSourceRegister.cpp'; then $(CYGPATH_W) 'backends/xmlrpc/XMLRPCSyncSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/xmlrpc/XMLRPCSyncSourceRegister.cpp'; fi`
 
 client_test-test.o: ../test/test.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-test.o -MD -MP -MF $(DEPDIR)/client_test-test.Tpo -c -o client_test-test.o `test -f '../test/test.cpp' || echo '$(srcdir)/'`../test/test.cpp
@@ -972,6 +1021,20 @@ syncevo_dbus_server-FileSyncSourceRegister.obj: backends/file/FileSyncSourceRegi
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-FileSyncSourceRegister.obj `if test -f 'backends/file/FileSyncSourceRegister.cpp'; then $(CYGPATH_W) 'backends/file/FileSyncSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/file/FileSyncSourceRegister.cpp'; fi`
 
+syncevo_dbus_server-MaemoCalendarSourceRegister.o: backends/maemo/MaemoCalendarSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-MaemoCalendarSourceRegister.o -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-MaemoCalendarSourceRegister.Tpo -c -o syncevo_dbus_server-MaemoCalendarSourceRegister.o `test -f 'backends/maemo/MaemoCalendarSourceRegister.cpp' || echo '$(srcdir)/'`backends/maemo/MaemoCalendarSourceRegister.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-MaemoCalendarSourceRegister.Tpo $(DEPDIR)/syncevo_dbus_server-MaemoCalendarSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/maemo/MaemoCalendarSourceRegister.cpp' object='syncevo_dbus_server-MaemoCalendarSourceRegister.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-MaemoCalendarSourceRegister.o `test -f 'backends/maemo/MaemoCalendarSourceRegister.cpp' || echo '$(srcdir)/'`backends/maemo/MaemoCalendarSourceRegister.cpp
+
+syncevo_dbus_server-MaemoCalendarSourceRegister.obj: backends/maemo/MaemoCalendarSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-MaemoCalendarSourceRegister.obj -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-MaemoCalendarSourceRegister.Tpo -c -o syncevo_dbus_server-MaemoCalendarSourceRegister.obj `if test -f 'backends/maemo/MaemoCalendarSourceRegister.cpp'; then $(CYGPATH_W) 'backends/maemo/MaemoCalendarSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/maemo/MaemoCalendarSourceRegister.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-MaemoCalendarSourceRegister.Tpo $(DEPDIR)/syncevo_dbus_server-MaemoCalendarSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/maemo/MaemoCalendarSourceRegister.cpp' object='syncevo_dbus_server-MaemoCalendarSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-MaemoCalendarSourceRegister.obj `if test -f 'backends/maemo/MaemoCalendarSourceRegister.cpp'; then $(CYGPATH_W) 'backends/maemo/MaemoCalendarSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/maemo/MaemoCalendarSourceRegister.cpp'; fi`
+
 syncevo_dbus_server-SQLiteContactSourceRegister.o: backends/sqlite/SQLiteContactSourceRegister.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-SQLiteContactSourceRegister.o -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-SQLiteContactSourceRegister.Tpo -c -o syncevo_dbus_server-SQLiteContactSourceRegister.o `test -f 'backends/sqlite/SQLiteContactSourceRegister.cpp' || echo '$(srcdir)/'`backends/sqlite/SQLiteContactSourceRegister.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-SQLiteContactSourceRegister.Tpo $(DEPDIR)/syncevo_dbus_server-SQLiteContactSourceRegister.Po
@@ -985,6 +1048,20 @@ syncevo_dbus_server-SQLiteContactSourceRegister.obj: backends/sqlite/SQLiteConta
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/sqlite/SQLiteContactSourceRegister.cpp' object='syncevo_dbus_server-SQLiteContactSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-SQLiteContactSourceRegister.obj `if test -f 'backends/sqlite/SQLiteContactSourceRegister.cpp'; then $(CYGPATH_W) 'backends/sqlite/SQLiteContactSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/sqlite/SQLiteContactSourceRegister.cpp'; fi`
+
+syncevo_dbus_server-XMLRPCSyncSourceRegister.o: backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-XMLRPCSyncSourceRegister.o -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-XMLRPCSyncSourceRegister.Tpo -c -o syncevo_dbus_server-XMLRPCSyncSourceRegister.o `test -f 'backends/xmlrpc/XMLRPCSyncSourceRegister.cpp' || echo '$(srcdir)/'`backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-XMLRPCSyncSourceRegister.Tpo $(DEPDIR)/syncevo_dbus_server-XMLRPCSyncSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/xmlrpc/XMLRPCSyncSourceRegister.cpp' object='syncevo_dbus_server-XMLRPCSyncSourceRegister.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-XMLRPCSyncSourceRegister.o `test -f 'backends/xmlrpc/XMLRPCSyncSourceRegister.cpp' || echo '$(srcdir)/'`backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
+
+syncevo_dbus_server-XMLRPCSyncSourceRegister.obj: backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-XMLRPCSyncSourceRegister.obj -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-XMLRPCSyncSourceRegister.Tpo -c -o syncevo_dbus_server-XMLRPCSyncSourceRegister.obj `if test -f 'backends/xmlrpc/XMLRPCSyncSourceRegister.cpp'; then $(CYGPATH_W) 'backends/xmlrpc/XMLRPCSyncSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/xmlrpc/XMLRPCSyncSourceRegister.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-XMLRPCSyncSourceRegister.Tpo $(DEPDIR)/syncevo_dbus_server-XMLRPCSyncSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/xmlrpc/XMLRPCSyncSourceRegister.cpp' object='syncevo_dbus_server-XMLRPCSyncSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-XMLRPCSyncSourceRegister.obj `if test -f 'backends/xmlrpc/XMLRPCSyncSourceRegister.cpp'; then $(CYGPATH_W) 'backends/xmlrpc/XMLRPCSyncSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/xmlrpc/XMLRPCSyncSourceRegister.cpp'; fi`
 
 syncevo_dbus_server-test.o: ../test/test.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-test.o -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-test.Tpo -c -o syncevo_dbus_server-test.o `test -f '../test/test.cpp' || echo '$(srcdir)/'`../test/test.cpp
@@ -1084,6 +1161,20 @@ syncevolution-FileSyncSourceRegister.obj: backends/file/FileSyncSourceRegister.c
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -c -o syncevolution-FileSyncSourceRegister.obj `if test -f 'backends/file/FileSyncSourceRegister.cpp'; then $(CYGPATH_W) 'backends/file/FileSyncSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/file/FileSyncSourceRegister.cpp'; fi`
 
+syncevolution-MaemoCalendarSourceRegister.o: backends/maemo/MaemoCalendarSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -MT syncevolution-MaemoCalendarSourceRegister.o -MD -MP -MF $(DEPDIR)/syncevolution-MaemoCalendarSourceRegister.Tpo -c -o syncevolution-MaemoCalendarSourceRegister.o `test -f 'backends/maemo/MaemoCalendarSourceRegister.cpp' || echo '$(srcdir)/'`backends/maemo/MaemoCalendarSourceRegister.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevolution-MaemoCalendarSourceRegister.Tpo $(DEPDIR)/syncevolution-MaemoCalendarSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/maemo/MaemoCalendarSourceRegister.cpp' object='syncevolution-MaemoCalendarSourceRegister.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -c -o syncevolution-MaemoCalendarSourceRegister.o `test -f 'backends/maemo/MaemoCalendarSourceRegister.cpp' || echo '$(srcdir)/'`backends/maemo/MaemoCalendarSourceRegister.cpp
+
+syncevolution-MaemoCalendarSourceRegister.obj: backends/maemo/MaemoCalendarSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -MT syncevolution-MaemoCalendarSourceRegister.obj -MD -MP -MF $(DEPDIR)/syncevolution-MaemoCalendarSourceRegister.Tpo -c -o syncevolution-MaemoCalendarSourceRegister.obj `if test -f 'backends/maemo/MaemoCalendarSourceRegister.cpp'; then $(CYGPATH_W) 'backends/maemo/MaemoCalendarSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/maemo/MaemoCalendarSourceRegister.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevolution-MaemoCalendarSourceRegister.Tpo $(DEPDIR)/syncevolution-MaemoCalendarSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/maemo/MaemoCalendarSourceRegister.cpp' object='syncevolution-MaemoCalendarSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -c -o syncevolution-MaemoCalendarSourceRegister.obj `if test -f 'backends/maemo/MaemoCalendarSourceRegister.cpp'; then $(CYGPATH_W) 'backends/maemo/MaemoCalendarSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/maemo/MaemoCalendarSourceRegister.cpp'; fi`
+
 syncevolution-SQLiteContactSourceRegister.o: backends/sqlite/SQLiteContactSourceRegister.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -MT syncevolution-SQLiteContactSourceRegister.o -MD -MP -MF $(DEPDIR)/syncevolution-SQLiteContactSourceRegister.Tpo -c -o syncevolution-SQLiteContactSourceRegister.o `test -f 'backends/sqlite/SQLiteContactSourceRegister.cpp' || echo '$(srcdir)/'`backends/sqlite/SQLiteContactSourceRegister.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevolution-SQLiteContactSourceRegister.Tpo $(DEPDIR)/syncevolution-SQLiteContactSourceRegister.Po
@@ -1097,6 +1188,20 @@ syncevolution-SQLiteContactSourceRegister.obj: backends/sqlite/SQLiteContactSour
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/sqlite/SQLiteContactSourceRegister.cpp' object='syncevolution-SQLiteContactSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -c -o syncevolution-SQLiteContactSourceRegister.obj `if test -f 'backends/sqlite/SQLiteContactSourceRegister.cpp'; then $(CYGPATH_W) 'backends/sqlite/SQLiteContactSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/sqlite/SQLiteContactSourceRegister.cpp'; fi`
+
+syncevolution-XMLRPCSyncSourceRegister.o: backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -MT syncevolution-XMLRPCSyncSourceRegister.o -MD -MP -MF $(DEPDIR)/syncevolution-XMLRPCSyncSourceRegister.Tpo -c -o syncevolution-XMLRPCSyncSourceRegister.o `test -f 'backends/xmlrpc/XMLRPCSyncSourceRegister.cpp' || echo '$(srcdir)/'`backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevolution-XMLRPCSyncSourceRegister.Tpo $(DEPDIR)/syncevolution-XMLRPCSyncSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/xmlrpc/XMLRPCSyncSourceRegister.cpp' object='syncevolution-XMLRPCSyncSourceRegister.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -c -o syncevolution-XMLRPCSyncSourceRegister.o `test -f 'backends/xmlrpc/XMLRPCSyncSourceRegister.cpp' || echo '$(srcdir)/'`backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
+
+syncevolution-XMLRPCSyncSourceRegister.obj: backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -MT syncevolution-XMLRPCSyncSourceRegister.obj -MD -MP -MF $(DEPDIR)/syncevolution-XMLRPCSyncSourceRegister.Tpo -c -o syncevolution-XMLRPCSyncSourceRegister.obj `if test -f 'backends/xmlrpc/XMLRPCSyncSourceRegister.cpp'; then $(CYGPATH_W) 'backends/xmlrpc/XMLRPCSyncSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/xmlrpc/XMLRPCSyncSourceRegister.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevolution-XMLRPCSyncSourceRegister.Tpo $(DEPDIR)/syncevolution-XMLRPCSyncSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/xmlrpc/XMLRPCSyncSourceRegister.cpp' object='syncevolution-XMLRPCSyncSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -c -o syncevolution-XMLRPCSyncSourceRegister.obj `if test -f 'backends/xmlrpc/XMLRPCSyncSourceRegister.cpp'; then $(CYGPATH_W) 'backends/xmlrpc/XMLRPCSyncSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/xmlrpc/XMLRPCSyncSourceRegister.cpp'; fi`
 
 syncevolution-test.o: ../test/test.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -MT syncevolution-test.o -MD -MP -MF $(DEPDIR)/syncevolution-test.Tpo -c -o syncevolution-test.o `test -f '../test/test.cpp' || echo '$(srcdir)/'`../test/test.cpp
@@ -1136,24 +1241,24 @@ uninstall-nobase_dist_docDATA:
 	  echo " rm -f '$(DESTDIR)$(docdir)/$$f'"; \
 	  rm -f "$(DESTDIR)$(docdir)/$$f"; \
 	done
-install-nobase_dist_sysconfDATA: $(nobase_dist_sysconf_DATA)
+install-nobase_dist_templateDATA: $(nobase_dist_template_DATA)
 	@$(NORMAL_INSTALL)
-	test -z "$(sysconfdir)" || $(MKDIR_P) "$(DESTDIR)$(sysconfdir)"
+	test -z "$(templatedir)" || $(MKDIR_P) "$(DESTDIR)$(templatedir)"
 	@$(am__vpath_adj_setup) \
-	list='$(nobase_dist_sysconf_DATA)'; for p in $$list; do \
+	list='$(nobase_dist_template_DATA)'; for p in $$list; do \
 	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
 	  $(am__vpath_adj) \
-	  echo " $(nobase_dist_sysconfDATA_INSTALL) '$$d$$p' '$(DESTDIR)$(sysconfdir)/$$f'"; \
-	  $(nobase_dist_sysconfDATA_INSTALL) "$$d$$p" "$(DESTDIR)$(sysconfdir)/$$f"; \
+	  echo " $(nobase_dist_templateDATA_INSTALL) '$$d$$p' '$(DESTDIR)$(templatedir)/$$f'"; \
+	  $(nobase_dist_templateDATA_INSTALL) "$$d$$p" "$(DESTDIR)$(templatedir)/$$f"; \
 	done
 
-uninstall-nobase_dist_sysconfDATA:
+uninstall-nobase_dist_templateDATA:
 	@$(NORMAL_UNINSTALL)
 	@$(am__vpath_adj_setup) \
-	list='$(nobase_dist_sysconf_DATA)'; for p in $$list; do \
+	list='$(nobase_dist_template_DATA)'; for p in $$list; do \
 	  $(am__vpath_adj) \
-	  echo " rm -f '$(DESTDIR)$(sysconfdir)/$$f'"; \
-	  rm -f "$(DESTDIR)$(sysconfdir)/$$f"; \
+	  echo " rm -f '$(DESTDIR)$(templatedir)/$$f'"; \
+	  rm -f "$(DESTDIR)$(templatedir)/$$f"; \
 	done
 install-serviceDATA: $(service_DATA)
 	@$(NORMAL_INSTALL)
@@ -1429,7 +1534,7 @@ check: $(BUILT_SOURCES)
 all-am: Makefile $(PROGRAMS) $(SCRIPTS) $(DATA)
 installdirs: installdirs-recursive
 installdirs-am:
-	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(libexecdir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(docdir)" "$(DESTDIR)$(sysconfdir)" "$(DESTDIR)$(servicedir)"; do \
+	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(libexecdir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(docdir)" "$(DESTDIR)$(templatedir)" "$(DESTDIR)$(servicedir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: $(BUILT_SOURCES)
@@ -1482,12 +1587,13 @@ info: info-recursive
 
 info-am:
 
-install-data-am: install-nobase_dist_docDATA install-serviceDATA
+install-data-am: install-nobase_dist_docDATA \
+	install-nobase_dist_templateDATA install-serviceDATA
 
 install-dvi: install-dvi-recursive
 
 install-exec-am: install-binPROGRAMS install-binSCRIPTS \
-	install-libexecPROGRAMS install-nobase_dist_sysconfDATA
+	install-libexecPROGRAMS
 
 install-html: install-html-recursive
 
@@ -1521,7 +1627,7 @@ ps-am:
 
 uninstall-am: uninstall-binPROGRAMS uninstall-binSCRIPTS \
 	uninstall-libexecPROGRAMS uninstall-nobase_dist_docDATA \
-	uninstall-nobase_dist_sysconfDATA uninstall-serviceDATA
+	uninstall-nobase_dist_templateDATA uninstall-serviceDATA
 
 .MAKE: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) install-am \
 	install-strip
@@ -1537,7 +1643,7 @@ uninstall-am: uninstall-binPROGRAMS uninstall-binSCRIPTS \
 	install-exec install-exec-am install-html install-html-am \
 	install-info install-info-am install-libexecPROGRAMS \
 	install-man install-nobase_dist_docDATA \
-	install-nobase_dist_sysconfDATA install-pdf install-pdf-am \
+	install-nobase_dist_templateDATA install-pdf install-pdf-am \
 	install-ps install-ps-am install-serviceDATA install-strip \
 	installcheck installcheck-am installdirs installdirs-am \
 	maintainer-clean maintainer-clean-generic mostlyclean \
@@ -1545,7 +1651,7 @@ uninstall-am: uninstall-binPROGRAMS uninstall-binSCRIPTS \
 	pdf pdf-am ps ps-am tags tags-recursive uninstall uninstall-am \
 	uninstall-binPROGRAMS uninstall-binSCRIPTS \
 	uninstall-libexecPROGRAMS uninstall-nobase_dist_docDATA \
-	uninstall-nobase_dist_sysconfDATA uninstall-serviceDATA
+	uninstall-nobase_dist_templateDATA uninstall-serviceDATA
 
 @COND_DBUS_TRUE@$(service_DATA): $(service_in_files) Makefile
 @COND_DBUS_TRUE@	@sed -e "s|\@libexecdir\@|$(libexecdir)|" $< > $@

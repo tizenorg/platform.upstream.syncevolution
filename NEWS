@@ -1,3 +1,235 @@
+SyncEvolution 0.9.x -> 1.0 alpha 1, 02.12.2010
+==============================================
+
+A development snapshot, released "because we can" :-)
+
+In particular, we can:
+* synchronize directly with a phone over Bluetooth/OBEX
+* accept Bluetooth/OBEX connections in cooperation with obexd 0.19
+* run SyncEvolution as a rudimentary HTTP SyncML server
+* be reasonably sure that it compiles and runs as well as 0.9.x because
+  it passes the same nightly testing without known regressions
+
+The main goal of this release is to get feedback on where we are going
+with 1.0 and its SyncML server and direct synchronization features. If
+you want to get involved, now is a good time because a) there is
+something which works and b) there is still time to influence the
+final 1.0, scheduled for March 2010.
+
+This is definitely work in progress. Only a source snapshot is made
+available, not the usual set of binaries. If you can, compile the latest
+source directly from the git repositories and recheck before reporting
+issues: http://syncevolution.org/development
+
+Documentation is lacking at the moment. Watch the "Development"
+section (http://syncevolution.org/development) for HOWTOs or ask on
+the mailing list (http://syncevolution.org/support). Contributions
+welcome, as always.
+
+Here is a more complete list of features compared to the stable
+release. The full (and up-to-date) list can be retrieved from the
+Moblin Bugzilla (MB) issue tracking system with this query:
+http://bugzilla.moblin.org/showdependencytree.cgi?id=7892&hide_resolved=0
+
+Implemented features are marked with a plus +, open ones with a minus -.
+
+Improved sync-UI:
++ settings for HTTP servers are now done inside the list of
+  all configs and server templates instead of poping up a
+  separate window
++ uses the new D-Bus API
++ no longer uses private gconf key to select default peer,
+  replaced by "defaultPeer" in SyncEvolution config
+- the design is a bit tentative and not all of it is implemented;
+  for example, the triangle in front of server entries cannot
+  be used to unfold the entry, only the "setup now" button does
+  that (MB #8315)
+- recovery features like restoring from backup and handling of
+  unexpected slow syncs (MB #2416) are missing
+
+Redesigned and reimplemented D-Bus API:
++ central syncevo-dbus-server controls configurations and sync sessions:
+  http://syncevolution.org/development/direct-synchronization-aka-syncml-server
++ accepts incoming SyncML connection requests and messages received by
+  independent transport stubs (obexd, HTTP server, ...)
++ can be used by multiple user interfaces at once
++ fully documented, see src/dbus/interfaces
++ no longer depends on dbus-glib with hand-written glue code for C++,
+  instead uses gdbus plus automatic C++ binding generated via C++ templates
+- 'syncevolution' command line tool bypasses D-Bus server and runs
+  sync sessions itself (MB #5043)
+- waiting for peer not reported over D-Bus and not shown in sync-ui (MB #2229)
+- interactive password request not implemented yet (MB #6376)
+- availability of peers not detected (connected for HTTP, paired for
+  Bluetooth; MB #7700)
+- once started, syncevo-dbus-server keeps running forever (MB #7711)
+- restoring backups only possible via command line (MB #8144)
+
+Revised configuration layout (MB #8048, design document at
+http://syncevolution.org/development/configuration-handling):
++ several peer-independent sync and source properties are shared
+  between multiple peers
++ they can be accessed without selecting a specific peer, by using an
+  empty config name or with the new "@<specific context>" syntax
++ user interface in command line and D-Bus API unchanged
++ old configurations can be read and written, without causing
+  unwanted slow syncs when moving between stable and unstable
+  SyncEvolution versions
++ old configurations can be migrated with the "--migrate" command
+  line switch; however, then older SyncEvolution can no longer
+  access them and migrating more than one old configuration causes
+  the second or later configuration to loose its "deviceId" property
+  (which is shared now), causing a slow sync once
+- users of the sync-ui will not know about the --migrate option,
+  so if they have only one configuration, it should be migrated
+  automatically
+
+SyncML server in general:
++ incoming connections are accepted by syncevo-dbus-server via
+  the D-Bus Connection API; because this is a "personal SyncML
+  server", all local data is meant to belong to a single user,
+  and only one sync session can be active at any point in time
++ different users on the same machine can run their own server,
+  as long as they ensure that listening for incoming connections
+  does not conflict with each other (different port in HTTP)
+- suspend/resume support is untested (MB #2425)
+- an HTTP client which stops sending messages blocks the
+  server forever (MB #7710)
+- automatic backup of server databases is inefficient (done
+  even when client is not allowed to do a sync; always backs up
+  all data, including sources which are not active; MB #7708)
+- the progress events and statistics reported for a SyncML client
+  are not generated when running as SyncML server, will require
+  a fair amount of refactoring in the Synthesis engine (MB #7709)
+- the Synthesis serverexample config contains workarounds for
+  specific phones, but SyncEvolution does not currently use those;
+  adding new workarounds should be made very simple (MB #7712)
+
+HTTP SyncML server:
++ test/syncevo-http-server.py provides an experimental HTTP server
+  based on Python and Twisted
+- a configuration must be created for each peer manually, including
+  a remoteDeviceId value that contains the peer's SyncML device ID
+  (MB #7838)
+
+OBEX SyncML server ("sync with phones"):
++ peers are contacted via a builtin transport that uses libopenobex (MB #5188)
++ Server Alerted Notification (SAN) message triggers syncs
+- a configuration must be created for each peer manually, including
+  a syncURL that contains the peer's MAC address (MB #7838) and correct
+  settings for generating the SAN message (MB #7871)
+- should be integrated into the system's Bluetooth pairing (MB #7089)
+
+OBEX SyncML client:
++ obexd 0.19 contains a plugin which passes SyncML messages to syncevo-dbus-server
+- parsing of SAN message is rudimentary and depends on an existing local
+  configuration, needs to be refined depending on which SyncML server software
+  it is meant to work with (MB #6175)
+
+Automatic sync (MB #6378):
+- no support for the various server push notification mechanisms
+- no intelligent detection of local changes
+- no regular background sync
+- depends on safe handling of concurrent editing, which is blocked
+  by merging of a new Evolution Data Server API (MB #3479)
+
+Upgrading from 0.9.x:
+
+* Upgrading and downgrading should work seamlessly when using existing
+  configurations. But this being an alpha, better ensure that you have
+  backups of both your data and your configurations in
+  ~/.config/syncevolution.
+
+* The new configuration layout is only used when creating new
+  configurations or explicitly invoking "syncevolution --migrate" (see
+  above). Such configs cannot be used by older SyncEvolution releases.
+
+
+SyncEvolution 0.9.1 -> 0.9.2, 23.01.2010
+========================================
+Synthesis SyncML Engine version: see src/synthesis/ChangeLog
+
+New Maemo 5/Nokia N900 calendar backend and packages, brought to you
+by Ove Kaaven. These packages are available via the Maemo extras-devel
+repository. Bug reports can be submitted both in http://bugs.maemo.org
+and http://bugzilla.moblin.org. The latter is the tracker that is
+monitored by the SyncEvolution team, which will also incorporate
+patches. In general, Ove is the main maintainer of the new backend.
+
+New XMLRPC backend, contributed by Franz Knipp/M-otion. It accesses
+data inside a web service via a SOUP API and thus allows synchronizing
+it via SyncML. See src/backends/xmlrpc/README for more information.
+
+Added templates for Oracle Beehive and Goosync. Both are not currently
+part of the regular testing.
+
+In addition to that, 0.9.2 is an incremental update, with several
+updated translations and addressing all of the issues reported by
+users for 0.9.1:
+
+- vCard dialects: added "X-GENDER/X-SIP" (used by Maemo) and X-SKYPE
+  (used by Maemo and recent Evolution, MB #8948)
+
+- Evolution Address Book: avoid picking CouchDB by default (MB #7877, evolution-couchdb #479110)
+
+  CouchDB address books are appended at the end of the local database
+  list, otherwise preserving the order of address books. The initial
+  release of evolution-couchdb in Ubuntu 9.10 is unusable because it
+  does not support the REV property.
+
+  Reordering the entries ensures that the CouchDB address book is not
+  used as the default database by SyncEvolution, as it happened in
+  Ubuntu 9.10.  Users can still pick it intentionally via
+  "evolutionsource".
+
+- installation: templates now in $(datadir)/syncevolution/templates (MB #7808)
+  This are files used internally, meant to be extended by distributors.
+  Storing them in /etc is no longer supported, but also unlikely to be
+  needed. Added warnings that these files cannot simply be copied into
+  .config because they are not complete configurations.
+
+- installation: "make install" populates $(docdir) (MB #7168)
+  Previously README, COPYING, NEWS, and server READMEs were copied
+  into syncevolution.org .tar.gz/.deb/.rpm archives as part of
+  custom make rules and thus missing in other installations.
+
+- building: --with-boost had no effect (MB#7856), detect incorrect
+  use of --with-synthesis-src, workaround for lack of --with-docdir
+  in older autoconf, do not unnecessarily depend on CPPUnit header
+  files and GNOME/EDS libs (MB#8338), workaround for libtool bug
+  ("cannot install `syncecal.la' to a directory not ending in ..."),
+
+- clarified documentation of properties for file backend (MB#8146)
+  
+- stderr redirection: detect "error" messages and show them (MB#7655)
+  The "GConf Error: Failed to contact configuration server..." error
+  message was suppressed by the code which catches noise from libraries
+  invoked by SyncEvolution. Now it is printed as ERROR, making it
+  easier to detect why running SyncEvolution inside cron needs
+  additional changes:
+  http://www.estamos.de/blog/2009/05/08/running-syncevolution-as-cron-job/
+
+- importing contacts from SyncML server without full name (MB#5664):
+  Evolution expects the name to be set and shows an empty string if
+  it is missing. Now the name is re-added by appending first, middle and
+  last name.
+
+- Evolution calendar: work around 'cannot encode item' problem (MB #7879)
+  Happens when the calendar file contains broken events which reference
+  a timezone that is not defined. Now the event is treated like one in
+  the local timezone.
+
+- "http_proxy" env variable is supported regardless which HTTP transport
+  is used (MB#8177).
+
+- avoid crashes when libecal sets neither error nor pointer (MB#8005)
+  and when aborting a running sync in the syncevo-dbus-server (MB#8385)
+
+Upgrading from 0.9.1:
+
+* nothing to do, upgrading and downgrading should work seamlessly
+
+
 SyncEvolution 0.9 -> 0.9.1, 26.10.2009
 ======================================
 Synthesis SyncML Engine version: see src/synthesis/ChangeLog

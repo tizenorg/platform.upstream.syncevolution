@@ -11,6 +11,7 @@ EXTRA_DIST = \
 	description \
 	configure-pre.in \
 	configure-post.in \
+	gen-autotools.sh \
 	autogen.sh \
 	Makefile-gen.am \
 	Doxyfile
@@ -98,11 +99,9 @@ PKGS = $(addprefix syncevolution-evolution-, 2.6 2.8 2.12)
 #
 # --replaces is necessary for migrating from syncevolution-evolution-<evover>
 # to syncevolution-evolution (as per http://wiki.debian.org/Renaming_a_Package)
-deb rpm : dist/$(distdir) dist/debian/control doc-pak description-pak
+deb rpm : dist/$(distdir) dist/debian/control description-pak
 	tmpdir=`mktemp -d $$HOME/syncevolution.XXXXXXXXXX` && \
 	trap "rm -rf $$tmpdir" EXIT && \
-	docdir="$(docdir)" && \
-        if [ ! "$$docdir" ]; then docdir="$(datadir)/doc/$(PACKAGE)"; fi && \
 	fakeroot checkinstall </dev/null \
 		$(TYPE_$@) \
 		$(REQUIRES_$@) \
@@ -119,7 +118,7 @@ deb rpm : dist/$(distdir) dist/debian/control doc-pak description-pak
 		--pkgsource='http://sourceforge.net/project/showfiles.php?group_id=146288' \
 		--pkgaltsource='http://www.estamos.de/projects/SyncML/' \
 		--pkggroup='gnome' \
-		--docdir=":$$docdir" cp -r `pwd`/$</usr/* /usr
+		cp -r `pwd`/$</usr/* /usr
 	if [ $@ == "rpm" ]; then cp /usr/src/rpm/RPMS/*/${PKGNAME}-${VERSION}-2.*.rpm .; fi
 
 .PHONY: dist/$(distdir) clean_dist
@@ -130,18 +129,17 @@ dist/$(distdir): all
 	rm -rf $(call DEV_FILE_PATTERN, $@)
 clean-local: clean_dist
 clean_dist:
-	rm -rf dist doc-pak description-pak
+	rm -rf dist description-pak
+
+# install doc files via normal autotools
+dist_doc_DATA = README NEWS COPYING $(TEST_README_FILES)
 
 # required by dpkg-shlibdeps
 dist/debian/control:
 	mkdir -p ${@D}
 	touch $@
 
-doc-pak : README NEWS COPYING $(TEST_README_FILES)
-	rm -rf $@
-	mkdir $@
-	cp $+ $@
-
+# for checkinstall
 description-pak : description
 	cp $< $@
 
@@ -164,7 +162,7 @@ clean-html:
 # Because backend-related variables need to be substituted in
 # Makefile-gen.am and configure.in we need an explicit rule to redo that work
 # so that "make" rebuilds derived files correctly.
-CONFIG_SUBS =  src/backends/addressbook/configure-sub.in src/backends/evolution/configure-sub.in src/backends/file/configure-sub.in src/backends/sqlite/configure-sub.in
+CONFIG_SUBS =  src/backends/addressbook/configure-sub.in src/backends/evolution/configure-sub.in src/backends/file/configure-sub.in src/backends/maemo/configure-sub.in src/backends/sqlite/configure-sub.in src/backends/xmlrpc/configure-sub.in
 $(srcdir)/configure.in: configure-pre.in configure-post.in $(CONFIG_SUBS)
 	rm -f $@
 	cat $(srcdir)/configure-pre.in >>$@

@@ -18,6 +18,9 @@
 /* file available */
 #undef ENABLE_FILE
 
+/* enable integration tests inside the final library */
+#undef ENABLE_INTEGRATION_TESTS
+
 /* enable libcurl transport */
 #undef ENABLE_LIBCURL
 
@@ -26,6 +29,9 @@
 
 /* enable Maemo hacks */
 #undef ENABLE_MAEMO
+
+/* Maemo 5 calendar available */
+#undef ENABLE_MAEMO_CALENDAR
 
 /* enable dynamically opening sync source backends */
 #undef ENABLE_MODULES
@@ -44,6 +50,9 @@
 
 /* enable unit tests inside the library's source code */
 #undef ENABLE_UNIT_TESTS
+
+/* XMLRPC available */
+#undef ENABLE_XMLRPC
 
 /* avoid hard dependency on Evolution shared objects */
 #undef EVOLUTION_COMPATIBILITY

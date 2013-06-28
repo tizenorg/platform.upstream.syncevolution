@@ -1050,7 +1050,7 @@ public:
                               "config.ini:# SSLServerCertificates = \n"
                               "config.ini:# SSLVerifyServer = 1\n"
                               "config.ini:# SSLVerifyHost = 1\n"
-                              "config.ini:WebURL = http://sync.scheduleworld.com\n"
+                              "config.ini:WebURL = http://www.scheduleworld.com\n"
                               "config.ini:# IconURI = \n"
                               "config.ini:ConsumerReady = 1\n"
                               "sources/addressbook/.internal.ini:# last = 0\n"
@@ -1250,9 +1250,11 @@ protected:
         CPPUNIT_ASSERT_EQUAL_DIFF("Available configuration templates:\n"
                                   "   Funambol = http://my.funambol.com\n"
                                   "   Google = http://m.google.com/sync\n"
+                                  "   Goosync = http://www.goosync.com/\n"
                                   "   Memotoo = http://www.memotoo.com\n"
                                   "   Mobical = http://www.mobical.net\n"
-                                  "   ScheduleWorld = http://sync.scheduleworld.com\n"
+                                  "   Oracle = http://www.oracle.com/technology/products/beehive/index.html\n"
+                                  "   ScheduleWorld = http://www.scheduleworld.com\n"
                                   "   Synthesis = http://www.synthesis.ch\n"
                                   "   ZYB = http://www.zyb.com\n",
                                   help.m_out.str());
@@ -1797,7 +1799,7 @@ private:
                              "syncURL = http://my.funambol.com/sync");
 
         boost::replace_first(config,
-                             "WebURL = http://sync.scheduleworld.com",
+                             "WebURL = http://www.scheduleworld.com",
                              "WebURL = http://my.funambol.com");
 
         boost::replace_first(config,
@@ -1835,7 +1837,7 @@ private:
                              "syncURL = http://www.synthesis.ch/sync");
 
         boost::replace_first(config,
-                             "WebURL = http://sync.scheduleworld.com",
+                             "WebURL = http://www.scheduleworld.com",
                              "WebURL = http://www.synthesis.ch");        
 
         boost::replace_first(config,

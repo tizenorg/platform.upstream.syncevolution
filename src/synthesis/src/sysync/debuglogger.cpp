@@ -603,7 +603,7 @@ void TDebugLoggerBase::DebugOpenBlock(cAppCharP aBlockName, cAppCharP aBlockTitl
 {
   // we need a format and debug not completely off
   if (getMask() && aBlockName) {
-    va_list va;
+    static va_list va;
     DebugVOpenBlock(aBlockName,aBlockTitle,aCollapsed,NULL,va);
   }
 } // TDebugLoggerBase::DebugOpenBlock
