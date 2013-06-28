@@ -27,6 +27,7 @@
 #include <syncevo/DBusTraits.h>
 #include <syncevo/SuspendFlags.h>
 #include <syncevo/LogRedirect.h>
+#include <syncevo/BoostHelper.h>
 
 #include <synthesis/syerror.h>
 
@@ -58,6 +59,15 @@ LocalTransportAgent::LocalTransportAgent(SyncContext *server,
            GMainLoopCXX(static_cast<GMainLoop *>(loop)) /* increase reference */ :
            GMainLoopCXX(g_main_loop_new(NULL, false), false) /* use reference handed to us by _new */)
 {
+}
+
+boost::shared_ptr<LocalTransportAgent> LocalTransportAgent::create(SyncContext *server,
+                                                                   const std::string &clientContext,
+                                                                   void *loop)
+{
+    boost::shared_ptr<LocalTransportAgent> self(new LocalTransportAgent(server, clientContext, loop));
+    self->m_self = self;
+    return self;
 }
 
 LocalTransportAgent::~LocalTransportAgent()
@@ -198,7 +208,7 @@ void LocalTransportAgent::onChildConnect(const GDBusCXX::DBusConnectionPtr &conn
                                           m_server->getSyncPassword()),
                                m_server->getConfigProps(),
                                sources,
-                               boost::bind(&LocalTransportAgent::storeReplyMsg, this, _1, _2, _3));
+                               boost::bind(&LocalTransportAgent::storeReplyMsg, m_self, _1, _2, _3));
 }
 
 void LocalTransportAgent::onFailure(const std::string &error)
@@ -528,7 +538,8 @@ public:
     };
 
     GDBusCXX::EmitSignal2<std::string,
-                          std::string> m_logOutput;
+                          std::string,
+                          true /* ignore transmission failures */> m_logOutput;
 };
 
 class LocalTransportAgentChild : public TransportAgent, private LoggerBase
@@ -621,6 +632,15 @@ class LocalTransportAgentChild : public TransportAgent, private LoggerBase
         }
     }
 
+    static void onParentQuit()
+    {
+        // Never free this state blocker. We can only abort and
+        // quit from now on.
+        static boost::shared_ptr<SuspendFlags::StateBlocker> abortGuard;
+        SE_LOG_ERROR(NULL, NULL, "sync parent quit unexpectedly");
+        abortGuard = SuspendFlags::getSuspendFlags().abort();
+    }
+
     void onConnect(const GDBusCXX::DBusConnectionPtr &conn)
     {
         SE_LOG_DEBUG(NULL, NULL, "child connected to parent");
@@ -667,6 +687,10 @@ class LocalTransportAgentChild : public TransportAgent, private LoggerBase
         setMsgToParent(reply, "sync() was called");
         Logger::setProcessName(clientContext);
         SE_LOG_DEBUG(NULL, NULL, "Sync() called, starting the sync");
+        const char *delay = getenv("SYNCEVOLUTION_LOCAL_CHILD_DELAY2");
+        if (delay) {
+            Sleep(atoi(delay));
+        }
 
         // initialize sync context
         m_client.reset(new SyncContext(std::string("target-config") + clientContext,
@@ -814,7 +838,7 @@ class LocalTransportAgentChild : public TransportAgent, private LoggerBase
 public:
     LocalTransportAgentChild() :
         m_ret(0),
-        m_parentLogger(new LogRedirect(false)),
+        m_parentLogger(new LogRedirect(true)), // redirect all output via D-Bus
         m_forkexec(SyncEvo::ForkExecChild::create()),
         m_reportSent(false),
         m_status(INACTIVE)
@@ -823,6 +847,17 @@ public:
 
         m_forkexec->m_onConnect.connect(boost::bind(&LocalTransportAgentChild::onConnect, this, _1));
         m_forkexec->m_onFailure.connect(boost::bind(&LocalTransportAgentChild::onFailure, this, _1, _2));
+        // When parent quits, we need to abort whatever we do and shut
+        // down. There's no way how we can complete our work without it.
+        //
+        // Note that another way how this process can detect the
+        // death of the parent is when it currently is waiting for
+        // completion of a method call to the parent, like a request
+        // for a password. However, that does not cover failures
+        // like the parent not asking us to sync in the first place
+        // and also does not work with libdbus (https://bugs.freedesktop.org/show_bug.cgi?id=49728).
+        m_forkexec->m_onQuit.connect(onParentQuit);
+
         m_forkexec->connect();
     }
 
@@ -1042,15 +1077,16 @@ int LocalTransportMain(int argc, char **argv)
 
     SyncContext::initMain("syncevo-local-sync");
 
-    // Out stderr is either connected to the original stderr (when
+    // Our stderr is either connected to the original stderr (when
     // SYNCEVOLUTION_DEBUG is set) or the local sync's parent
     // LogRedirect. However, that stderr is not normally used.
-    // Instead we install our own LogRedirect (to get output like the
-    // one from libneon into the child log) in
-    // LocalTransportAgentChild and send all logging output
-    // to the local sync parent via D-Bus, to be forwarded to the
-    // user as part of the normal message stream of the
-    // sync session.
+    // Instead we install our own LogRedirect for both stdout (for
+    // Execute() and synccompare, which then knows that it needs to
+    // capture the output) and stderr (to get output like the one from
+    // libneon into the child log) in LocalTransportAgentChild and
+    // send all logging output to the local sync parent via D-Bus, to
+    // be forwarded to the user as part of the normal message stream
+    // of the sync session.
     setvbuf(stderr, NULL, _IONBF, 0);
     setvbuf(stdout, NULL, _IONBF, 0);
 

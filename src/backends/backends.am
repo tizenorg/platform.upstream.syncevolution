@@ -1,7 +1,3 @@
-# This is a stupid workaround for an absolute path in SYNCEVOLUTION_LIBS.
-# See AUTOTOOLS-TODO for details.
-@SYNCEVOLUTION_LIBS@: src/syncevo/libsyncevolution.la ; @true
-
 BACKENDS = src/backends/activesync src/backends/addressbook src/backends/akonadi src/backends/evolution src/backends/file src/backends/gnome src/backends/kcalextended src/backends/kde src/backends/maemo src/backends/qtcontacts src/backends/sqlite src/backends/webdav src/backends/xmlrpc
 
 BACKEND_REGISTRIES = src/backends/activesync/ActiveSyncSourceRegister.cpp src/backends/addressbook/AddressBookSourceRegister.cpp src/backends/akonadi/AkonadiSyncSourceRegister.cpp src/backends/evolution/EvolutionCalendarSourceRegister.cpp src/backends/evolution/EvolutionContactSourceRegister.cpp src/backends/file/FileSyncSourceRegister.cpp src/backends/gnome/GNOMEPlatformRegister.cpp src/backends/kcalextended/KCalExtendedSourceRegister.cpp src/backends/kde/KDEPlatformRegister.cpp src/backends/maemo/MaemoCalendarSourceRegister.cpp src/backends/qtcontacts/QtContactsSourceRegister.cpp src/backends/sqlite/SQLiteContactSourceRegister.cpp src/backends/webdav/WebDAVSourceRegister.cpp src/backends/xmlrpc/XMLRPCSyncSourceRegister.cpp

@@ -146,7 +146,7 @@ DIST_COMMON = README $(am__configure_deps) $(am__dist_doc_DATA_DIST) \
 	$(top_srcdir)/src/testcases.am AUTHORS COPYING ChangeLog \
 	INSTALL NEWS compile config.guess config.sub depcomp \
 	install-sh ltmain.sh missing mkinstalldirs
-bin_PROGRAMS = $(am__EXEEXT_4) $(am__append_65) $(am__append_69) \
+bin_PROGRAMS = $(am__EXEEXT_4) $(am__append_66) $(am__append_70) \
 	$(am__EXEEXT_5)
 libexec_PROGRAMS = src/syncevo-local-sync$(EXEEXT) $(am__EXEEXT_6)
 noinst_PROGRAMS = $(am__EXEEXT_7) $(am__EXEEXT_8) $(am__EXEEXT_9) \
@@ -217,20 +217,21 @@ EXTRA_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2) $(am__EXEEXT_3) \
 @COND_CORE_TRUE@am__append_26 = src/syncevo/SyncEvolutionXML.c \
 @COND_CORE_TRUE@	src/syncevo/CmdlineHelp.c \
 @COND_CORE_TRUE@	src/backends/webdav/syncevo-webdav-lookup
-@COND_CORE_TRUE@am__append_27 = src/syncevo/GenSyncEvolutionXML
-@COND_CORE_TRUE@am__append_28 = src/syncevo/CmdlineHelp.c
-@COND_CORE_TRUE@am__append_29 = src/syncevo/readme2c.pl \
+@COND_CORE_TRUE@@ENABLE_MODULES_TRUE@am__append_27 = -ldl
+@COND_CORE_TRUE@am__append_28 = src/syncevo/GenSyncEvolutionXML
+@COND_CORE_TRUE@am__append_29 = src/syncevo/CmdlineHelp.c
+@COND_CORE_TRUE@am__append_30 = src/syncevo/readme2c.pl \
 @COND_CORE_TRUE@	src/syncevo/installcheck-local.sh \
 @COND_CORE_TRUE@	test/Algorithm/Diff.pm \
 @COND_CORE_TRUE@	test/syncevo-http-server.py \
 @COND_CORE_TRUE@	test/syncevo-phone-config.py \
 @COND_CORE_TRUE@	test/synccompare.pl test/log2html.py \
 @COND_CORE_TRUE@	test/run_src_client_test.sh
-@COND_CORE_TRUE@am__append_30 = src_syncevo_install_check_local
-@COND_CORE_TRUE@am__append_31 = -I$(top_srcdir)/src/syncevo \
+@COND_CORE_TRUE@am__append_31 = src_syncevo_install_check_local
+@COND_CORE_TRUE@am__append_32 = -I$(top_srcdir)/src/syncevo \
 @COND_CORE_TRUE@	$(addprefix -I$(top_srcdir)/,$(BACKENDS)) \
 @COND_CORE_TRUE@	-I$(SYNTHESIS_SUBDIR)
-@COND_CORE_TRUE@am__append_32 = $(src_backends_activesync_lib) \
+@COND_CORE_TRUE@am__append_33 = $(src_backends_activesync_lib) \
 @COND_CORE_TRUE@	$(src_backends_addressbook_lib) \
 @COND_CORE_TRUE@	$(src_backends_akonadi_lib) \
 @COND_CORE_TRUE@	$(src_backends_evolution_lib) \
@@ -243,7 +244,7 @@ EXTRA_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2) $(am__EXEEXT_3) \
 @COND_CORE_TRUE@	$(src_backends_sqlite_lib) \
 @COND_CORE_TRUE@	$(src_backends_webdav_lib) \
 @COND_CORE_TRUE@	$(src_backends_xmlrpc_lib)
-@COND_CORE_TRUE@@ENABLE_MODULES_FALSE@am__append_33 = $(src_backends_activesync_lib) \
+@COND_CORE_TRUE@@ENABLE_MODULES_FALSE@am__append_34 = $(src_backends_activesync_lib) \
 @COND_CORE_TRUE@@ENABLE_MODULES_FALSE@	$(src_backends_addressbook_lib) \
 @COND_CORE_TRUE@@ENABLE_MODULES_FALSE@	$(src_backends_akonadi_lib) \
 @COND_CORE_TRUE@@ENABLE_MODULES_FALSE@	$(src_backends_evolution_lib) \
@@ -256,72 +257,72 @@ EXTRA_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2) $(am__EXEEXT_3) \
 @COND_CORE_TRUE@@ENABLE_MODULES_FALSE@	$(src_backends_sqlite_lib) \
 @COND_CORE_TRUE@@ENABLE_MODULES_FALSE@	$(src_backends_webdav_lib) \
 @COND_CORE_TRUE@@ENABLE_MODULES_FALSE@	$(src_backends_xmlrpc_lib)
-@COND_CORE_TRUE@@ENABLE_ECAL_TRUE@am__append_34 = \
+@COND_CORE_TRUE@@ENABLE_ECAL_TRUE@am__append_35 = \
 @COND_CORE_TRUE@@ENABLE_ECAL_TRUE@  src/backends/evolution/e-cal-check-timezones.c \
 @COND_CORE_TRUE@@ENABLE_ECAL_TRUE@  src/backends/evolution/e-cal-check-timezones.h
 
-@COND_CORE_TRUE@@ENABLE_MODULES_TRUE@am__append_35 = \
+@COND_CORE_TRUE@@ENABLE_MODULES_TRUE@am__append_36 = \
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@  src/backends/gnome/GNOMEPlatformRegister.cpp
 
-@COND_CORE_TRUE@@ENABLE_MODULES_TRUE@am__append_36 = \
+@COND_CORE_TRUE@@ENABLE_MODULES_TRUE@am__append_37 = \
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@  src/backends/kde/KDEPlatformRegister.cpp
 
-@COND_CORE_TRUE@am__append_37 =  \
+@COND_CORE_TRUE@am__append_38 =  \
 @COND_CORE_TRUE@	src/backends/webdav/syncevo-webdav-lookup \
 @COND_CORE_TRUE@	src/synccompare
-@COND_CORE_TRUE@@NEON_COMPATIBILITY_TRUE@am__append_38 = webdav_so_check
-@COND_CORE_TRUE@@ENABLE_MODULES_TRUE@am__append_39 = $(DESTDIR)/$(src_backends_webdav_backenddir)/syncdav.so
-@COND_CORE_TRUE@am__append_40 = src/syncevolution
-@COND_CORE_FALSE@am__append_41 = -I$(top_srcdir)/$(SYNTHESIS_SUBDIR_INCLUDES)
-@COND_DOC_TRUE@am__append_42 = src/dbus/interfaces/syncevo-dbus-api-doc.html
-@COND_GUI_TRUE@am__append_43 = $(src_dbus_glib_lib)
-@COND_GUI_TRUE@am__append_44 = src/dbus/glib/syncevo-dbus.pc
-@COND_GUI_TRUE@am__append_45 = \
+@COND_CORE_TRUE@@NEON_COMPATIBILITY_TRUE@am__append_39 = webdav_so_check
+@COND_CORE_TRUE@@ENABLE_MODULES_TRUE@am__append_40 = $(DESTDIR)/$(src_backends_webdav_backenddir)/syncdav.so
+@COND_CORE_TRUE@am__append_41 = src/syncevolution
+@COND_CORE_FALSE@am__append_42 = -I$(top_srcdir)/$(SYNTHESIS_SUBDIR_INCLUDES)
+@COND_DOC_TRUE@am__append_43 = src/dbus/interfaces/syncevo-dbus-api-doc.html
+@COND_GUI_TRUE@am__append_44 = $(src_dbus_glib_lib)
+@COND_GUI_TRUE@am__append_45 = src/dbus/glib/syncevo-dbus.pc
+@COND_GUI_TRUE@am__append_46 = \
 @COND_GUI_TRUE@  src/dbus/glib/syncevo-dbus.pc.in \
 @COND_GUI_TRUE@  src/dbus/glib/syncevo-marshal.list \
 @COND_GUI_TRUE@  src/dbus/glib/README
 
 
 #pkgconfigdir is defined in $(top_srcdir)/setup-variables.am
-@COND_GUI_TRUE@am__append_46 = src/dbus/glib/syncevo-dbus.pc
-@COND_GUI_TRUE@am__append_47 = src/dbus/glib/test-syncevo-dbus
-@COND_GUI_TRUE@am__append_48 = $(src_dbus_glib_built_sources)
+@COND_GUI_TRUE@am__append_47 = src/dbus/glib/syncevo-dbus.pc
+@COND_GUI_TRUE@am__append_48 = src/dbus/glib/test-syncevo-dbus
 @COND_GUI_TRUE@am__append_49 = $(src_dbus_glib_built_sources)
-@ENABLE_QT_DBUS_TRUE@am__append_50 = $(src_dbus_qt_libsyncevolution_qt_dbus_libraries)
-@ENABLE_QT_DBUS_TRUE@am__append_51 = $(src_dbus_qt_built_sources)
-@ENABLE_QT_DBUS_TRUE@am__append_52 = $(src_dbus_qt_libsyncevolution_qt_dbus_libraries)
-@ENABLE_QT_DBUS_TRUE@am__append_53 = src/dbus/qt/Makefile.in
-@ENABLE_QT_DBUS_TRUE@am__append_54 = $(src_dbus_qt_built_sources) \
+@COND_GUI_TRUE@am__append_50 = $(src_dbus_glib_built_sources)
+@ENABLE_QT_DBUS_TRUE@am__append_51 = $(src_dbus_qt_libsyncevolution_qt_dbus_libraries)
+@ENABLE_QT_DBUS_TRUE@am__append_52 = $(src_dbus_qt_built_sources)
+@ENABLE_QT_DBUS_TRUE@am__append_53 = $(src_dbus_qt_libsyncevolution_qt_dbus_libraries)
+@ENABLE_QT_DBUS_TRUE@am__append_54 = src/dbus/qt/Makefile.in
+@ENABLE_QT_DBUS_TRUE@am__append_55 = $(src_dbus_qt_built_sources) \
 @ENABLE_QT_DBUS_TRUE@  src/dbus/qt/stamp-server \
 @ENABLE_QT_DBUS_TRUE@  src/dbus/qt/stamp-session \
 @ENABLE_QT_DBUS_TRUE@  src/dbus/qt/stamp-connection
 
-@ENABLE_QT_DBUS_TRUE@am__append_55 = src/dbus/qt/syncevolution-qt-dbus.pc
-@ENABLE_QT_DBUS_TRUE@am__append_56 = \
+@ENABLE_QT_DBUS_TRUE@am__append_56 = src/dbus/qt/syncevolution-qt-dbus.pc
+@ENABLE_QT_DBUS_TRUE@am__append_57 = \
 @ENABLE_QT_DBUS_TRUE@  src/dbus/qt/syncevolution-qt-dbus.pc.in
 
 #pkgconfigdir is defined in $(top_srcdir)/setup-variables.am
-@ENABLE_QT_DBUS_TRUE@am__append_57 = src/dbus/qt/syncevolution-qt-dbus.pc
+@ENABLE_QT_DBUS_TRUE@am__append_58 = src/dbus/qt/syncevolution-qt-dbus.pc
 
 # Session helper: syncevo-dbus-helper 
-@COND_DBUS_TRUE@am__append_58 =  \
+@COND_DBUS_TRUE@am__append_59 =  \
 @COND_DBUS_TRUE@	src/dbus/server/libsyncevodbusserver.la \
 @COND_DBUS_TRUE@	src/dbus/server/libsyncevodbushelper.la
-@COND_DBUS_TRUE@am__append_59 = src/dbus/server/bluetooth_products.ini
+@COND_DBUS_TRUE@am__append_60 = src/dbus/server/bluetooth_products.ini
 
 # Deal with .service, .desktop and startup script files.
-@COND_DBUS_TRUE@am__append_60 = \
+@COND_DBUS_TRUE@am__append_61 = \
 @COND_DBUS_TRUE@  $(src_dbus_server_service_files) \
 @COND_DBUS_TRUE@  $(src_dbus_server_desktop) \
 @COND_DBUS_TRUE@  $(src_dbus_server_script)
 
-@COND_DBUS_TRUE@am__append_61 = $(src_dbus_server_script)
-@COND_DBUS_TRUE@am__append_62 = \
+@COND_DBUS_TRUE@am__append_62 = $(src_dbus_server_script)
+@COND_DBUS_TRUE@am__append_63 = \
 @COND_DBUS_TRUE@  $(src_dbus_server_service_files_in) \
 @COND_DBUS_TRUE@  $(src_dbus_server_script_in) \
 @COND_DBUS_TRUE@  $(src_dbus_server_desktop_in)
 
-@COND_GTK2_TRUE@@COND_GUI_TRUE@am__append_63 = src/gtk-ui/README \
+@COND_GTK2_TRUE@@COND_GUI_TRUE@am__append_64 = src/gtk-ui/README \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@	$(src_gtk_ui_applications_in_files)
 
 # sync-ui: default GUI, could be plain GTK or Moblin UX
@@ -329,17 +330,17 @@ EXTRA_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2) $(am__EXEEXT_3) \
 # sync-ui-moblin: Moblin UX
 #
 # The later two are built when --enable-gui=all was used.
-@COND_GTK2_TRUE@@COND_GUI_TRUE@am__append_64 = \
+@COND_GTK2_TRUE@@COND_GUI_TRUE@am__append_65 = \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@  src/gtk-ui/sync-ui \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@  src/gtk-ui/sync-ui-gtk \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@  src/gtk-ui/sync-ui-moblin
 
-@COND_GTK2_TRUE@@COND_GUI_TRUE@am__append_65 = @GUI_PROGRAMS@
-@COND_GTK2_TRUE@@COND_GUI_TRUE@am__append_66 = \
+@COND_GTK2_TRUE@@COND_GUI_TRUE@am__append_66 = @GUI_PROGRAMS@
+@COND_GTK2_TRUE@@COND_GUI_TRUE@am__append_67 = \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@  src/gtk-ui/sync-moblin.desktop \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@  $(src_gtk_ui_applications_generated)
 
-@COND_GTK2_FALSE@@COND_GUI_TRUE@am__append_67 = src/gtk3-ui/README \
+@COND_GTK2_FALSE@@COND_GUI_TRUE@am__append_68 = src/gtk3-ui/README \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@	$(src_gtk3_ui_applications_in_files)
 
 # sync-ui: default GUI, could be plain GTK or Moblin UX
@@ -347,20 +348,20 @@ EXTRA_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2) $(am__EXEEXT_3) \
 # sync-ui-moblin: Moblin UX
 #
 # The later two are built when --enable-gui=all was used.
-@COND_GTK2_FALSE@@COND_GUI_TRUE@am__append_68 = \
+@COND_GTK2_FALSE@@COND_GUI_TRUE@am__append_69 = \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@  src/gtk3-ui/sync-ui \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@  src/gtk3-ui/sync-ui-gtk \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@  src/gtk3-ui/sync-ui-moblin
 
-@COND_GTK2_FALSE@@COND_GUI_TRUE@am__append_69 = @GUI_PROGRAMS@
-@COND_GTK2_FALSE@@COND_GUI_TRUE@am__append_70 = \
+@COND_GTK2_FALSE@@COND_GUI_TRUE@am__append_70 = @GUI_PROGRAMS@
+@COND_GTK2_FALSE@@COND_GUI_TRUE@am__append_71 = \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@  src/gtk3-ui/sync-moblin.desktop \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@  $(src_gtk3_ui_applications_generated)
 
-@COND_DBUS_TRUE@am__append_71 = src/syncevo-http-server
+@COND_DBUS_TRUE@am__append_72 = src/syncevo-http-server
 # SYNCEVOLUTION_LDADD is defined in configure script.
-@ENABLE_MODULES_FALSE@am__append_72 = @SYNCSOURCES@
 @ENABLE_MODULES_FALSE@am__append_73 = @SYNCSOURCES@
+@ENABLE_MODULES_FALSE@am__append_74 = @SYNCSOURCES@
 
 # The files which register backends have to be compiled into
 # "client-test" and "syncevolution" in order to pull in the
@@ -371,30 +372,30 @@ EXTRA_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2) $(am__EXEEXT_3) \
 # When using modules the registration is done inside the
 # module and the register file is unnecessary. However, they
 # still need to be included in "make dist".
-@ENABLE_MODULES_TRUE@am__append_74 = $(BACKEND_REGISTRIES)
-@ENABLE_MODULES_FALSE@am__append_75 = $(BACKEND_REGISTRIES)
-@COND_DBUS_TRUE@am__append_76 = $(gdbus_build_dir)/libgdbussyncevo.la
+@ENABLE_MODULES_TRUE@am__append_75 = $(BACKEND_REGISTRIES)
+@ENABLE_MODULES_FALSE@am__append_76 = $(BACKEND_REGISTRIES)
 @COND_DBUS_TRUE@am__append_77 = $(gdbus_build_dir)/libgdbussyncevo.la
+@COND_DBUS_TRUE@am__append_78 = $(gdbus_build_dir)/libgdbussyncevo.la
 
 # Do the linking here, as with all SyncEvolution executables.
 # Sources are compiled in dbus/server.
 # DBus Server
 
 # syncevo-dbus-server's helper binary
-@COND_DBUS_TRUE@am__append_78 = src/syncevo-dbus-server \
+@COND_DBUS_TRUE@am__append_79 = src/syncevo-dbus-server \
 @COND_DBUS_TRUE@	src/syncevo-dbus-helper
 
 # distribute test system?
 # yes: install client-test in bindir, test files in datadir
-@ENABLE_TESTING_TRUE@am__append_79 = test/run_src_client_test.sh
-@ENABLE_TESTING_TRUE@am__append_80 = src/client-test
+@ENABLE_TESTING_TRUE@am__append_80 = test/run_src_client_test.sh
+@ENABLE_TESTING_TRUE@am__append_81 = src/client-test
 # The "all" dependency causes a rebuild even if the actual input files
 # haven't changed. If client-test is part of the regular targets built
 # by "all", then it must not depend on all!
-@ENABLE_TESTING_FALSE@am__append_81 = src/client-test
-@ENABLE_TESTING_FALSE@am__append_82 = $(CLIENT_LIB_TEST_FILES)
-@ENABLE_TESTING_FALSE@am__append_83 = all
-@COND_CORE_TRUE@am__append_84 = test/abort-redirect.cpp \
+@ENABLE_TESTING_FALSE@am__append_82 = src/client-test
+@ENABLE_TESTING_FALSE@am__append_83 = $(CLIENT_LIB_TEST_FILES)
+@ENABLE_TESTING_FALSE@am__append_84 = all
+@COND_CORE_TRUE@am__append_85 = test/abort-redirect.cpp \
 @COND_CORE_TRUE@	test/ClientTest.h test/ClientTestAssert.h \
 @COND_CORE_TRUE@	test/ClientTest.cpp test/client-test-main.cpp \
 @COND_CORE_TRUE@	test/test.h test/test.cpp test/COPYING \
@@ -418,23 +419,26 @@ EXTRA_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2) $(am__EXEEXT_3) \
 @COND_CORE_TRUE@	$(wildcard test/testcases/*.patch)
 
 # generic D-Bus client/server tests
-@COND_CORE_TRUE@@COND_DBUS_TRUE@am__append_85 = test/dbus-client-server
-@COND_CORE_TRUE@@COND_DBUS_TRUE@@ENABLE_UNIT_TESTS_TRUE@am__append_86 = test/test.cpp
-@COND_CORE_TRUE@am__append_87 = po
-@COND_CORE_TRUE@am__append_88 = README NEWS COPYING $(TEST_README_FILES) test/syncevo-http-server-logging.conf
-@COND_CORE_TRUE@am__append_89 = $(disted_docs)
+@COND_CORE_TRUE@@COND_DBUS_TRUE@am__append_86 = test/dbus-client-server
+@COND_CORE_TRUE@@COND_DBUS_TRUE@@ENABLE_UNIT_TESTS_TRUE@am__append_87 = test/test.cpp
+@COND_CORE_TRUE@am__append_88 = po
+@COND_CORE_TRUE@am__append_89 = README NEWS COPYING $(TEST_README_FILES) test/syncevo-http-server-logging.conf
 @COND_CORE_TRUE@am__append_90 = $(disted_docs)
-@COND_CORE_TRUE@@COND_HTML_README_TRUE@am__append_91 = README.html
-# do not distribute in tarball.
+@COND_CORE_TRUE@am__append_91 = $(disted_docs)
 @COND_CORE_TRUE@@COND_HTML_README_TRUE@am__append_92 = README.html
-@COND_CORE_TRUE@@COND_MAN_PAGES_TRUE@am__append_93 = syncevolution.1
+# do not distribute in tarball.
+@COND_CORE_TRUE@@COND_HTML_README_TRUE@am__append_93 = README.html
+@COND_CORE_TRUE@@COND_MAN_PAGES_TRUE@am__append_94 = syncevolution.1
 
 # check .so (relevant for modular builds) and main syncevolution binary
 # (relevant in that case and for static builds) for dependencies on
 # problematic libraries and symbols
 #
 # ical_strdup is an exception because it is in SyncEvolution.
-@ENABLE_EVOLUTION_COMPATIBILITY_TRUE@am__append_94 = toplevel_so_check
+@ENABLE_EVOLUTION_COMPATIBILITY_TRUE@am__append_95 = toplevel_so_check
+# libneon is intentionally not linked against, to choose between
+# GNUTLS and OpenSSL at runtime.
+@NEON_COMPATIBILITY_TRUE@am__append_96 = -e 'symbol ne_.*syncdav.so'
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4-repo/autotroll.m4 \
@@ -1004,7 +1008,9 @@ src_gdbusxx_libgdbussyncevo_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 @COND_GIO_GDBUS_TRUE@@ENABLE_MODULES_FALSE@am_src_gdbusxx_libgdbussyncevo_la_rpath =
 @COND_GIO_GDBUS_TRUE@@ENABLE_MODULES_TRUE@am_src_gdbusxx_libgdbussyncevo_la_rpath =  \
 @COND_GIO_GDBUS_TRUE@@ENABLE_MODULES_TRUE@	-rpath $(libdir)
-src_gnome_bluetooth_libgbtsyncevolution_la_LIBADD =
+@ENABLE_GNOME_BLUETOOTH_PANEL_TRUE@src_gnome_bluetooth_libgbtsyncevolution_la_DEPENDENCIES =  \
+@ENABLE_GNOME_BLUETOOTH_PANEL_TRUE@	$(am__DEPENDENCIES_1) \
+@ENABLE_GNOME_BLUETOOTH_PANEL_TRUE@	$(am__DEPENDENCIES_1)
 am__src_gnome_bluetooth_libgbtsyncevolution_la_SOURCES_DIST =  \
 	src/gnome-bluetooth/syncevolution.c
 @ENABLE_GNOME_BLUETOOTH_PANEL_TRUE@am_src_gnome_bluetooth_libgbtsyncevolution_la_OBJECTS = src/gnome-bluetooth/src_gnome_bluetooth_libgbtsyncevolution_la-syncevolution.lo
@@ -1049,10 +1055,11 @@ am__src_syncevo_libsyncevolution_la_SOURCES_DIST =  \
 	src/syncevo/SoupTransportAgent.cpp \
 	src/syncevo/LocalTransportAgent.h \
 	src/syncevo/LocalTransportAgent.cpp src/syncevo/util.cpp \
-	src/syncevo/util.h src/syncevo/Timespec.h src/syncevo/lcs.h \
-	src/syncevo/lcs.cpp src/syncevo/ForkExec.cpp \
-	src/syncevo/ForkExec.h src/syncevo/Cmdline.cpp \
-	src/syncevo/Cmdline.h src/syncevo/CmdlineSyncClient.h \
+	src/syncevo/util.h src/syncevo/BoostHelper.h \
+	src/syncevo/Timespec.h src/syncevo/lcs.h src/syncevo/lcs.cpp \
+	src/syncevo/ForkExec.cpp src/syncevo/ForkExec.h \
+	src/syncevo/Cmdline.cpp src/syncevo/Cmdline.h \
+	src/syncevo/CmdlineSyncClient.h \
 	src/syncevo/CmdlineSyncClient.cpp src/syncevo/SyncSource.h \
 	src/syncevo/SyncSource.cpp src/syncevo/SynthesisDBPlugin.cpp \
 	src/syncevo/SuspendFlags.h src/syncevo/SuspendFlags.cpp \
@@ -1863,12 +1870,13 @@ am__src_syncevo_libsyncevolution_include_HEADERS_DIST =  \
 	src/syncevo/LogSyslog.h src/syncevo/FilterConfigNode.h \
 	src/syncevo/PrefixConfigNode.h src/syncevo/SafeConfigNode.h \
 	src/syncevo/SyncConfig.h src/syncevo/SyncSource.h \
-	src/syncevo/util.h src/syncevo/SuspendFlags.h \
-	src/syncevo/SyncContext.h src/syncevo/Timespec.h \
-	src/syncevo/UserInterface.h src/syncevo/SynthesisEngine.h \
-	src/syncevo/Logging.h src/syncevo/SyncML.h \
-	src/syncevo/eds_abi_wrapper.h src/syncevo/icalstrdup.h \
-	src/syncevo/SmartPtr.h src/syncevo/ConfigNode.h
+	src/syncevo/util.h src/syncevo/BoostHelper.h \
+	src/syncevo/SuspendFlags.h src/syncevo/SyncContext.h \
+	src/syncevo/Timespec.h src/syncevo/UserInterface.h \
+	src/syncevo/SynthesisEngine.h src/syncevo/Logging.h \
+	src/syncevo/SyncML.h src/syncevo/eds_abi_wrapper.h \
+	src/syncevo/icalstrdup.h src/syncevo/SmartPtr.h \
+	src/syncevo/ConfigNode.h
 HEADERS = $(nodist_src_dbus_qt_libsyncevolution_qt_dbus_include_HEADERS) \
 	$(src_dbus_glib_libsyncevo_dbus_include_HEADERS) \
 	$(src_syncevo_libsyncevolution_include_HEADERS)
@@ -1975,6 +1983,8 @@ ECAL_LIBS = @ECAL_LIBS@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
+EDS_VERSION_CFLAGS = @EDS_VERSION_CFLAGS@
+EDS_VERSION_LIBS = @EDS_VERSION_LIBS@
 EGREP = @EGREP@
 EPACKAGE_CFLAGS = @EPACKAGE_CFLAGS@
 EPACKAGE_LIBS = @EPACKAGE_LIBS@
@@ -2115,7 +2125,7 @@ STABLE_VERSION = @STABLE_VERSION@
 STRIP = @STRIP@
 SYNCEVOLUTION_CFLAGS = @SYNCEVOLUTION_CFLAGS@
 SYNCEVOLUTION_CXXFLAGS = @SYNCEVOLUTION_CXXFLAGS@
-SYNCEVOLUTION_LDADD = @SYNCEVOLUTION_LDADD@ $(am__append_72)
+SYNCEVOLUTION_LDADD = @SYNCEVOLUTION_LDADD@ $(am__append_73)
 SYNCEVOLUTION_LIBS = @SYNCEVOLUTION_LIBS@
 SYNCEVOLUTION_LOCALEDIR = @SYNCEVOLUTION_LOCALEDIR@
 SYNCEVO_WFLAGS = @SYNCEVO_WFLAGS@
@@ -2201,62 +2211,75 @@ top_srcdir = @top_srcdir@
 
 # clean variables
 CLEANFILES = $(am__append_26) $(src_dbus_interfaces_built_sources) \
-	$(am__append_49) $(am__append_54) $(am__append_60) \
-	$(am__append_66) $(am__append_70) src/libstdc++.a \
+	$(am__append_50) $(am__append_55) $(am__append_61) \
+	$(am__append_67) $(am__append_71) src/libstdc++.a \
 	src/client-test $(CLIENT_LIB_TEST_FILES) \
 	src/syncevo-http-server src/syncevo-phone-config \
 	src/synclog2html src/ClientTest.cpp.html \
 	src/abort-redirect.log README.patched.rst syncevolution.1 \
 	README README.html
-DISTCLEANFILES = $(am__append_25) $(am__append_44) $(am__append_55) \
+DISTCLEANFILES = $(am__append_25) $(am__append_45) $(am__append_56) \
 	src/synccompare src/synthesis-includes/Makefile
-MAINTAINERCLEANFILES = $(am__append_6) $(am__append_53) Makefile.in \
+MAINTAINERCLEANFILES = $(am__append_6) $(am__append_54) Makefile.in \
 	config.h.in config.guess config.sub configure depcomp \
 	install-sh ltmain.sh missing mkinstalldirs
-MOSTLYCLEANFILES = $(am__append_32) $(am__append_52)
+MOSTLYCLEANFILES = $(am__append_33) $(am__append_53)
 
 # standard arch dependent pkg-config dir
 pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA = $(am__append_24) $(am__append_46) $(am__append_57)
+pkgconfig_DATA = $(am__append_24) $(am__append_47) $(am__append_58)
 
 # standard variables with standard prefixes
-dist_doc_DATA = $(am__append_90)
+dist_doc_DATA = $(am__append_91)
 dist_noinst_DATA = $(am__append_9) $(am__append_14) \
 	src/dbus/interfaces/spec-strip-docs.xsl \
 	src/dbus/interfaces/spec-to-docbook.xsl \
 	src/dbus/interfaces/syncevo-connection-full.xml \
 	src/dbus/interfaces/syncevo-server-full.xml \
 	src/dbus/interfaces/syncevo-session-full.xml \
-	src/dbus/interfaces/README $(am__append_45) $(am__append_56) \
-	$(am__append_62) $(am__append_63) $(am__append_67) \
+	src/dbus/interfaces/README $(am__append_46) $(am__append_57) \
+	$(am__append_63) $(am__append_64) $(am__append_68) \
 	src/shlibs.local src/synthesis-includes/Makefile.am \
-	src/synthesis-includes/Makefile.in $(am__append_74) \
-	$(am__append_84) HACKING LICENSE.txt LICENSE.LGPL-21 \
+	src/synthesis-includes/Makefile.in $(am__append_75) \
+	$(am__append_85) HACKING LICENSE.txt LICENSE.LGPL-21 \
 	README.rst description autogen.sh Doxyfile po/LINGUAS.README
-dist_pkgdata_DATA = $(am__append_59)
-doc_DATA = $(am__append_42) $(am__append_92)
+dist_pkgdata_DATA = $(am__append_60)
+doc_DATA = $(am__append_43) $(am__append_93)
 
 # generate syntax-highlighted version of ClientTest.cpp for HTML
 # version of .log test results
 nodist_noinst_DATA = src/ClientTest.cpp.html
 lib_LTLIBRARIES = $(am__append_4) $(am__append_10) $(am__append_17) \
-	$(am__append_43) $(am__append_50)
-noinst_LTLIBRARIES = $(am__append_5) $(am__append_11) $(am__append_33) \
-	$(am__append_58)
+	$(am__append_44) $(am__append_51)
+noinst_LTLIBRARIES = $(am__append_5) $(am__append_11) $(am__append_34) \
+	$(am__append_59)
 
 # helper script for testing
-bin_SCRIPTS = $(am__append_37) src/synclog2html
+bin_SCRIPTS = $(am__append_38) src/synclog2html
 dist_noinst_SCRIPTS = build/gen-git-version.sh build/source2html.py \
-	$(am__append_29)
-libexec_SCRIPTS = $(am__append_61)
-nodist_bin_SCRIPTS = $(am__append_71) src/syncevo-phone-config
+	$(am__append_30)
+libexec_SCRIPTS = $(am__append_62)
+nodist_bin_SCRIPTS = $(am__append_72) src/syncevo-phone-config
 
 # other
 
 # include Synthesis in distribution: package only files in git if using a git checkout
+#
+# Need to run autogen.sh in $(distdir)-synthesis and not the final
+# $(distdir)/src/synthesis because recent autotools do not copy
+# files like config.sub when invoked in $(distdir)/src/synthesis
+# (automake 1.11.5, autoconf 2.69), probably because they are
+# found in a parent directory. However, these files are needed
+# later on during the recursive libsynthesis configure+make.
 all_dist_hooks = src_dist_hook dot_dist_hook
-all_local_installchecks = $(am__append_30) $(am__append_38) \
-	$(am__append_94)
+
+# Check that no executable or shared object depends on symbols in
+# libraries that it does not link against. Unnecessarily linking
+# against libs is okay, that can be caught and fixed by
+# -Wl,--as-needed. Depends on dpkg-shlibdeps, skipped if that is
+# not available.
+all_local_installchecks = $(am__append_31) $(am__append_39) \
+	$(am__append_95) toplevel_link_check
 # These dependencies are intentionally a bit too broad:
 # they ensure that all files are in place to *run* client-test.
 
@@ -2295,11 +2318,11 @@ all_local_installchecks = $(am__append_30) $(am__append_38) \
 # Build "html" inside the build dir, using source files
 # from the SyncEvolution source directory and (if built)
 # the installed client-api.build directory.
-all_phonies = $(am__append_27) $(TEST_FILES_GENERATED) testcase2patch \
+all_phonies = $(am__append_28) $(TEST_FILES_GENERATED) testcase2patch \
 	src/templates test valgrind checkinstall/dist/$(distdir) \
 	clean_dist doc clean-html
-BUILT_SOURCES = $(am__append_28) $(src_dbus_interfaces_built_sources) \
-	$(am__append_48) $(am__append_51)
+BUILT_SOURCES = $(am__append_29) $(src_dbus_interfaces_built_sources) \
+	$(am__append_49) $(am__append_52)
 DIST_SUBDIRS = po
 EXTRA_DIST = build/export-foreign-git.sh build/export-gdbus.sh \
 	build/export-synthesis-xml.sh build/gen-backends-am.sh \
@@ -2308,8 +2331,8 @@ EXTRA_DIST = build/export-foreign-git.sh build/export-gdbus.sh \
 	build/import-gdbus.sh build/import-synthesis-xml.sh \
 	build/update-copyrights.sh src/gtk-ui/ui.xml \
 	src/gtk3-ui/ui.xml
-SUBDIRS = $(am__append_1) $(am__append_2) . $(am__append_87)
-TESTS = $(am__append_79)
+SUBDIRS = $(am__append_1) $(am__append_2) . $(am__append_88)
+TESTS = $(am__append_80)
 AUTOMAKE_OPTIONS = subdir-objects
 ACLOCAL_AMFLAGS = -I m4 -I m4-repo ${ACLOCAL_FLAGS}
 @COND_GIO_GDBUS_FALSE@gdbus_dir = $(top_srcdir)/src/gdbus
@@ -2318,22 +2341,23 @@ ACLOCAL_AMFLAGS = -I m4 -I m4-repo ${ACLOCAL_FLAGS}
 @COND_GIO_GDBUS_TRUE@gdbus_dir = $(top_srcdir)/src/gdbusxx
 @COND_GIO_GDBUS_FALSE@gdbus_build_dir = src/gdbus
 @COND_GIO_GDBUS_TRUE@gdbus_build_dir = src/gdbusxx
-disted_docs = $(am__append_88)
-distbin_docs = $(am__append_89) $(am__append_91)
-man_MANS = $(am__append_93)
+disted_docs = $(am__append_89)
+distbin_docs = $(am__append_90) $(am__append_92)
+man_MANS = $(am__append_94)
 src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
-	$(am__append_13) $(am__append_31) $(am__append_41) \
+	$(am__append_13) $(am__append_32) $(am__append_42) \
 	-I$(top_srcdir)/src/dbus -I$(top_srcdir)/test -I$(top_srcdir) \
 	$(BACKEND_CPPFLAGS)
 @ENABLE_GNOME_BLUETOOTH_PANEL_TRUE@src_gnome_bluetoothdir = $(GNOMEBLUETOOTH_DIR)/plugins/
 @ENABLE_GNOME_BLUETOOTH_PANEL_TRUE@src_gnome_bluetooth_LTLIBRARIES = src/gnome-bluetooth/libgbtsyncevolution.la
 @ENABLE_GNOME_BLUETOOTH_PANEL_TRUE@src_gnome_bluetooth_libgbtsyncevolution_la_SOURCES = src/gnome-bluetooth/syncevolution.c
 @ENABLE_GNOME_BLUETOOTH_PANEL_TRUE@src_gnome_bluetooth_libgbtsyncevolution_la_LDFLAGS = -module -avoid-version
+@ENABLE_GNOME_BLUETOOTH_PANEL_TRUE@src_gnome_bluetooth_libgbtsyncevolution_la_LIBADD = $(GUI_LIBS) $(DBUS_GLIB_LIBS)
 @ENABLE_GNOME_BLUETOOTH_PANEL_TRUE@src_gnome_bluetooth_libgbtsyncevolution_la_CPPFLAGS = \
 @ENABLE_GNOME_BLUETOOTH_PANEL_TRUE@  $(GNOMEBLUETOOTH_CFLAGS) \
 @ENABLE_GNOME_BLUETOOTH_PANEL_TRUE@  -DLOCALEDIR=\"$(SYNCEVOLUTION_LOCALEDIR)\"
 
-@ENABLE_GNOME_BLUETOOTH_PANEL_TRUE@src_gnome_bluetooth_libgbtsyncevolution_la_CFLAGS = $(SYNCEVO_WFLAGS)
+@ENABLE_GNOME_BLUETOOTH_PANEL_TRUE@src_gnome_bluetooth_libgbtsyncevolution_la_CFLAGS = $(SYNCEVO_WFLAGS) $(GUI_CFLAGS) $(DBUS_GLIB_CFLAGS)
 @COND_GIO_GDBUS_TRUE@@ENABLE_MODULES_TRUE@src_gdbusxx_version_info = -version-info 0:0:0
 @COND_GIO_GDBUS_TRUE@src_gdbusxx_libgdbussyncevo_la_SOURCES = \
 @COND_GIO_GDBUS_TRUE@    src/gdbusxx/gdbus-cxx-bridge.h		\
@@ -2447,6 +2471,7 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@	src/syncevo/LocalTransportAgent.h \
 @COND_CORE_TRUE@	src/syncevo/LocalTransportAgent.cpp \
 @COND_CORE_TRUE@	src/syncevo/util.cpp src/syncevo/util.h \
+@COND_CORE_TRUE@	src/syncevo/BoostHelper.h \
 @COND_CORE_TRUE@	src/syncevo/Timespec.h src/syncevo/lcs.h \
 @COND_CORE_TRUE@	src/syncevo/lcs.cpp src/syncevo/ForkExec.cpp \
 @COND_CORE_TRUE@	src/syncevo/ForkExec.h src/syncevo/Cmdline.cpp \
@@ -2509,6 +2534,7 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@  src/syncevo/SyncConfig.h \
 @COND_CORE_TRUE@  src/syncevo/SyncSource.h \
 @COND_CORE_TRUE@  src/syncevo/util.h \
+@COND_CORE_TRUE@  src/syncevo/BoostHelper.h \
 @COND_CORE_TRUE@  src/syncevo/SuspendFlags.h \
 @COND_CORE_TRUE@  src/syncevo/SyncContext.h \
 @COND_CORE_TRUE@  src/syncevo/Timespec.h \
@@ -2523,18 +2549,11 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 
 @COND_CORE_TRUE@src_syncevo_libsyncevolution_la_SOURCES = $(src_syncevo_sources)
 @COND_CORE_TRUE@nodist_src_syncevo_libsyncevolution_la_SOURCES = src/syncevo/SyncEvolutionXML.c
-@COND_CORE_TRUE@src_syncevo_libsyncevolution_la_LIBADD = \
-@COND_CORE_TRUE@  @EPACKAGE_LIBS@ \
-@COND_CORE_TRUE@  @GIO_LIBS@ \
-@COND_CORE_TRUE@  @GTHREAD_LIBS@ \
-@COND_CORE_TRUE@  @GLIB_LIBS@ \
-@COND_CORE_TRUE@  $(SYNTHESIS_LIBS) \
-@COND_CORE_TRUE@  $(PCRECPP_LIBS) \
-@COND_CORE_TRUE@  $(TRANSPORT_LIBS) \
-@COND_CORE_TRUE@  @LIBS@ \
-@COND_CORE_TRUE@  $(src_syncevo_ldadd) \
-@COND_CORE_TRUE@  $(NSS_LIBS)
-
+@COND_CORE_TRUE@src_syncevo_libsyncevolution_la_LIBADD =  \
+@COND_CORE_TRUE@	@EPACKAGE_LIBS@ @GIO_LIBS@ @GTHREAD_LIBS@ \
+@COND_CORE_TRUE@	@GLIB_LIBS@ $(SYNTHESIS_LIBS) $(PCRECPP_LIBS) \
+@COND_CORE_TRUE@	$(TRANSPORT_LIBS) @LIBS@ $(src_syncevo_ldadd) \
+@COND_CORE_TRUE@	$(DBUS_LIBS) $(NSS_LIBS) $(am__append_27)
 @COND_CORE_TRUE@src_syncevo_libsyncevolution_la_CXXFLAGS = \
 @COND_CORE_TRUE@  $(PCRECPP_CFLAGS) \
 @COND_CORE_TRUE@  $(TRANSPORT_CFLAGS) \
@@ -2548,6 +2567,7 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 
 @COND_CORE_TRUE@src_syncevo_libsyncevolution_la_CPPFLAGS = \
 @COND_CORE_TRUE@  $(src_syncevo_cppflags) \
+@COND_CORE_TRUE@  $(DBUS_CFLAGS) \
 @COND_CORE_TRUE@  -DDATA_DIR=\""$(pkgdatadir)"\" \
 @COND_CORE_TRUE@  -DXML_CONFIG_DIR=\""$(datadir)/syncevolution/xml"\" \
 @COND_CORE_TRUE@  -DTEMPLATE_DIR=\""$(datadir)/syncevolution/templates"\" \
@@ -2571,10 +2591,10 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@  src/backends/activesync/ActiveSyncCalendarSource.cpp
 
 @COND_CORE_TRUE@src_backends_activesync_syncactivesync_la_SOURCES = $(src_backends_activesync_src)
-@COND_CORE_TRUE@src_backends_activesync_syncactivesync_la_LIBADD = $(EASCLIENT_LIBS) $(SYNCEVOLUTION_LIBS) $(LIBICAL_LIBS)
+@COND_CORE_TRUE@src_backends_activesync_syncactivesync_la_LIBADD = $(EASCLIENT_LIBS) $(SYNCEVOLUTION_LIBS) $(LIBICAL_LIBS) $(GLIB_LIBS) $(GOBJECT_LIBS)
 @COND_CORE_TRUE@src_backends_activesync_syncactivesync_la_LDFLAGS = -no-undefined -module -avoid-version
 @COND_CORE_TRUE@src_backends_activesync_syncactivesync_la_CPPFLAGS = $(SYNCEVOLUTION_CFLAGS) -I$(top_srcdir)/test $(BACKEND_CPPFLAGS)
-@COND_CORE_TRUE@src_backends_activesync_syncactivesync_la_CXXFLAGS = $(EASCLIENT_CFLAGS) $(SYNCEVOLUTION_CXXFLAGS) $(SYNCEVO_WFLAGS) $(LIBICAL_CFLAGS)
+@COND_CORE_TRUE@src_backends_activesync_syncactivesync_la_CXXFLAGS = $(EASCLIENT_CFLAGS) $(SYNCEVOLUTION_CXXFLAGS) $(SYNCEVO_WFLAGS) $(LIBICAL_CFLAGS) $(GLIB_CFLAGS) $(GOBJECT_CFLAGS)
 @COND_CORE_TRUE@src_backends_activesync_syncactivesync_la_DEPENDENCIES = $(SYNCEVOLUTION_LIBS) $(EASCLIENT_DEPENDENCIES)
 @COND_CORE_TRUE@src_backends_addressbook_lib = src/backends/addressbook/syncaddressbook.la
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_addressbook_backenddir = $(BACKENDS_DIRECTORY)
@@ -2612,7 +2632,7 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@	src/backends/evolution/EvolutionMemoSource.h \
 @COND_CORE_TRUE@	src/backends/evolution/EvolutionCalendarSource.cpp \
 @COND_CORE_TRUE@	src/backends/evolution/EvolutionMemoSource.cpp \
-@COND_CORE_TRUE@	$(am__append_34)
+@COND_CORE_TRUE@	$(am__append_35)
 @COND_CORE_TRUE@src_backends_evolution_syncebook_src = \
 @COND_CORE_TRUE@  src/backends/evolution/EvolutionSyncSource.h \
 @COND_CORE_TRUE@  src/backends/evolution/EvolutionSyncSource.cpp \
@@ -2626,7 +2646,7 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@  -I$(top_srcdir)/src/backends/evolution
 
 @COND_CORE_TRUE@src_backends_evolution_syncecal_la_SOURCES = $(src_backends_evolution_syncecal_src)
-@COND_CORE_TRUE@src_backends_evolution_syncecal_la_LIBADD = $(ECAL_LIBS) $(SYNCEVOLUTION_LIBS)
+@COND_CORE_TRUE@src_backends_evolution_syncecal_la_LIBADD = $(ECAL_LIBS) $(SYNCEVOLUTION_LIBS) $(GLIB_LIBS) $(GOBJECT_LIBS)
 # _GNU_SOURCE and -ldl for libical.c + dlsym():
 @COND_CORE_TRUE@src_backends_evolution_syncecal_la_CPPFLAGS = -D_GNU_SOURCE \
 @COND_CORE_TRUE@  -De_cal_check_timezones=syncevolution_check_timezones \
@@ -2636,12 +2656,12 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@  $(src_backends_evolution_cppflags)
 
 @COND_CORE_TRUE@src_backends_evolution_syncecal_la_LDFLAGS = -module -avoid-version -ldl
-@COND_CORE_TRUE@src_backends_evolution_syncecal_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(SYNCEVO_WFLAGS)
+@COND_CORE_TRUE@src_backends_evolution_syncecal_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(SYNCEVO_WFLAGS) $(GLIB_CFLAGS) $(GOBJECT_CFLAGS)
 @COND_CORE_TRUE@src_backends_evolution_syncecal_la_DEPENDENCIES = $(SYNCEVOLUTION_LIBS)
 @COND_CORE_TRUE@src_backends_evolution_syncebook_la_SOURCES = $(src_backends_evolution_syncebook_src)
-@COND_CORE_TRUE@src_backends_evolution_syncebook_la_LIBADD = $(EBOOK_LIBS) $(SYNCEVOLUTION_LIBS)
+@COND_CORE_TRUE@src_backends_evolution_syncebook_la_LIBADD = $(EBOOK_LIBS) $(SYNCEVOLUTION_LIBS) $(GLIB_LIBS) $(GOBJECT_LIBS)
 @COND_CORE_TRUE@src_backends_evolution_syncebook_la_LDFLAGS = -module -avoid-version
-@COND_CORE_TRUE@src_backends_evolution_syncebook_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(SYNCEVO_WFLAGS)
+@COND_CORE_TRUE@src_backends_evolution_syncebook_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(SYNCEVO_WFLAGS) $(GLIB_CFLAGS) $(GOBJECT_CFLAGS)
 @COND_CORE_TRUE@src_backends_evolution_syncebook_la_CPPFLAGS = $(src_backends_evolution_cppflags)
 @COND_CORE_TRUE@src_backends_evolution_syncebook_la_DEPENDENCIES = $(SYNCEVOLUTION_LIBS)
 @COND_CORE_TRUE@src_backends_file_lib = src/backends/file/syncfile.la
@@ -2661,7 +2681,7 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@src_backends_gnome_platformgnome_la_SOURCES =  \
 @COND_CORE_TRUE@	src/backends/gnome/GNOMEPlatform.h \
 @COND_CORE_TRUE@	src/backends/gnome/GNOMEPlatform.cpp \
-@COND_CORE_TRUE@	$(am__append_35)
+@COND_CORE_TRUE@	$(am__append_36)
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_gnome_backenddir = $(BACKENDS_DIRECTORY)
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_gnome_backend_LTLIBRARIES = $(src_backends_gnome_lib)
 @COND_CORE_TRUE@src_backends_gnome_platformgnome_la_LIBADD = $(KEYRING_LIBS) $(SYNCEVOLUTION_LIBS) 
@@ -2685,7 +2705,7 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@src_backends_kde_platformkde_la_SOURCES =  \
 @COND_CORE_TRUE@	src/backends/kde/KDEPlatform.h \
 @COND_CORE_TRUE@	src/backends/kde/KDEPlatform.cpp \
-@COND_CORE_TRUE@	$(am__append_36)
+@COND_CORE_TRUE@	$(am__append_37)
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_kde_backenddir = $(BACKENDS_DIRECTORY)
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_kde_backend_LTLIBRARIES = $(src_backends_kde_lib)
 @COND_CORE_TRUE@src_backends_kde_platformkde_la_LIBADD = $(KDE_KWALLET_LIBS) $(SYNCEVOLUTION_LIBS) 
@@ -2752,14 +2772,14 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@  src/backends/webdav/NeonCXX.cpp
 
 @COND_CORE_TRUE@src_backends_webdav_syncdav_la_SOURCES = $(src_backends_webdav_src)
-@COND_CORE_TRUE@src_backends_webdav_syncdav_la_LIBADD = $(NEON_LIBS) $(SYNCEVOLUTION_LIBS)
+@COND_CORE_TRUE@src_backends_webdav_syncdav_la_LIBADD = $(NEON_LIBS) $(SYNCEVOLUTION_LIBS) $(LIBICAL_LIBS)
 @COND_CORE_TRUE@src_backends_webdav_syncdav_la_LDFLAGS = -module -avoid-version
-@COND_CORE_TRUE@src_backends_webdav_syncdav_la_CXXFLAGS = $(NEON_CFLAGS) $(SYNCEVO_WFLAGS)
+@COND_CORE_TRUE@src_backends_webdav_syncdav_la_CXXFLAGS = $(NEON_CFLAGS) $(SYNCEVO_WFLAGS) $(LIBICAL_CFLAGS)
 @COND_CORE_TRUE@src_backends_webdav_syncdav_la_CPPFLAGS = $(SYNCEVOLUTION_CFLAGS) -I$(top_srcdir)/test $(BACKEND_CPPFLAGS)
 @COND_CORE_TRUE@src_backends_webdav_syncdav_la_DEPENDENCIES = $(SYNCEVOLUTION_LIBS)
 @COND_CORE_TRUE@WEBDAV_SO_CHECK_FILES =  \
 @COND_CORE_TRUE@	$(DESTDIR)/$(bindir)/syncevolution \
-@COND_CORE_TRUE@	$(am__append_39)
+@COND_CORE_TRUE@	$(am__append_40)
 @COND_CORE_TRUE@src_backends_xmlrpc_lib = src/backends/xmlrpc/syncxmlrpc.la
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_xmlrpc_backenddir = $(BACKENDS_DIRECTORY)
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_xmlrpc_backend_LTLIBRARIES = $(src_backends_xmlrpc_lib)
@@ -3086,8 +3106,8 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@src_gtk3_ui_sync_ui_moblin_LDADD = $(src_gtk3_ui_sync_ui_LDADD)
 @COND_GTK2_FALSE@@COND_GUI_TRUE@src_gtk3_ui_sync_ui_moblin_CFLAGS = $(src_gtk3_ui_sync_ui_CFLAGS)
 @COND_GTK2_FALSE@@COND_GUI_TRUE@src_gtk3_ui_sync_ui_moblin_CPPFLAGS = $(src_gtk3_ui_sync_ui_CPPFLAGS) -DUSE_MOBLIN_UX
-SYNCEVOLUTION_DEP = $(am__append_73)
-CORE_SOURCES = $(am__append_75)
+SYNCEVOLUTION_DEP = $(am__append_74)
+CORE_SOURCES = $(am__append_76)
 CORE_CXXFLAGS = $(SYNTHESIS_CFLAGS) $(CPPUNIT_CXXFLAGS)
 CORE_LDADD = $(SYNCEVOLUTION_LDADD) src/syncevo/libsyncevolution.la $(GLIB_LIBS) $(GTHREAD_LIBS) $(GOBJECT_LIBS) $(LIBS)
 CORE_DEP = $(SYNCEVOLUTION_DEP) src/syncevo/libsyncevolution.la $(SYNTHESIS_DEP)
@@ -3101,9 +3121,9 @@ src_syncevolution_SOURCES = \
 # SYNCEVOLUTION_LDADD will be replaced with libsyncebook.la/libsyncecal.la/libsyncsqlite.la
 # if linking statically against them, empty otherwise;
 # either way this does not lead to a dependency on those libs - done explicitly
-src_syncevolution_LDADD = $(CORE_LDADD) $(am__append_76)
+src_syncevolution_LDADD = $(CORE_LDADD) $(am__append_77)
 src_syncevolution_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) \
-	$(am__append_77)
+	$(am__append_78)
 src_syncevolution_LDFLAGS = $(PCRECPP_LIBS) $(CORE_LD_FLAGS) $(DBUS_LIBS)
 src_syncevolution_CXXFLAGS = $(PCRECPP_CFLAGS) $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS) $(DBUS_CFLAGS) $(SYNCEVO_WFLAGS)
 src_syncevolution_CPPFLAGS = $(src_cppflags) -I$(gdbus_dir)
@@ -3148,7 +3168,7 @@ src_client_test_SOURCES = \
   test/client-test-main.cpp \
   $(CORE_SOURCES)
 
-nodist_src_client_test_SOURCES = test/test.cpp $(am__append_82)
+nodist_src_client_test_SOURCES = test/test.cpp $(am__append_83)
 
 # list of test file base files
 #
@@ -3185,7 +3205,7 @@ src_client_test_LDADD = $(CORE_LDADD) $(SYNTHESIS_ENGINE) $(QT_LIBS)
 # runs the binary with out-dated auxiliary files.
 src_client_test_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) \
 	$(CLIENT_LIB_TEST_FILES) testcase2patch src/synccompare \
-	src/synclog2html src/templates $(am__append_83)
+	src/synclog2html src/templates $(am__append_84)
 @ENABLE_TESTING_TRUE@src_testcasesdir = $(docdir)/testcases
 @ENABLE_TESTING_TRUE@dist_src_testcases_DATA = \
 @ENABLE_TESTING_TRUE@  src/testcases/local.png \
@@ -3219,14 +3239,21 @@ src_abort_redirect_LDADD = $(CORE_LDADD)
 src_abort_redirect_DEPENDENCIES = all
 @COND_CORE_TRUE@@COND_DBUS_TRUE@test_dbus_client_server_SOURCES =  \
 @COND_CORE_TRUE@@COND_DBUS_TRUE@	test/dbus-client-server.cpp \
-@COND_CORE_TRUE@@COND_DBUS_TRUE@	$(am__append_86)
+@COND_CORE_TRUE@@COND_DBUS_TRUE@	$(am__append_87)
 @COND_CORE_TRUE@@COND_DBUS_TRUE@test_dbus_client_server_CPPFLAGS = -I$(gdbus_dir) -I$(top_srcdir)/src
 @COND_CORE_TRUE@@COND_DBUS_TRUE@test_dbus_client_server_CXXFLAGS = $(CPPUNIT_CXXFLAGS) $(SYNCEVOLUTION_CXXFLAGS) $(BACKEND_CPPFLAGS) $(DBUS_CFLAGS) $(GLIB_CFLAGS) $(GOBJECT_CFLAGS)
 @COND_CORE_TRUE@@COND_DBUS_TRUE@test_dbus_client_server_LDFLAGS = $(CPPUNIT_LDFLAGS)
 @COND_CORE_TRUE@@COND_DBUS_TRUE@test_dbus_client_server_LDADD = $(gdbus_build_dir)/libgdbussyncevo.la src/syncevo/libsyncevolution.la $(DBUS_LIBS) $(GLIB_LIBS) $(GOBJECT_LIBS)
 @COND_CORE_TRUE@@COND_DBUS_TRUE@test_dbus_client_server_DEPENDENCIES = $(gdbus_build_dir)/libgdbussyncevo.la src/syncevo/libsyncevolution.la
 TEST_README_FILES = $(wildcard $(top_srcdir)/test/README.*)
-DEV_FILE_PATTERN = $(1)$(2)/include $(1)$(2)/lib/*.so $(1)$(2)/lib/*.a $(1)$(2)/lib/*.la $(1)$(2)/lib/*/*.la $(1)$(2)/lib/pkgconfig
+
+# files and file patterns which are not meant to be packaged.
+
+# Exclude syncactivesync.so from bundle package because that needs to
+# be packaged separately.
+DEV_FILE_PATTERN = $(1)$(2)/include $(1)$(2)/lib/*.so $(1)$(2)/lib/*.a \
+	$(1)$(2)/lib/*.la $(1)$(2)/lib/*/*.la $(1)$(2)/lib/pkgconfig \
+	$(1)$(2)/lib/syncevolution/backends/syncactivesync.so
 IPHONE_FILENAME = syncevolution-$(VERSION)-iphone.zip
 TYPE_deb = -D
 TYPE_rpm = -R
@@ -3240,11 +3267,12 @@ TYPE_rpm = -R
 #   distros, libkdeui5 is what we need.
 # - same for kdepimlibs5 -> libakonadi-kde4
 REQUIRES_SED_KDE = -e 's/kdelibs5 ([^,]*),/kdelibs5 | libkdeui5,/g' -e 's/kdepimlibs5 ([^,]*),/kdepimlibs5 | libakonadi-kde4,/g'
-REQUIRES_deb = --requires="'$(shell set -x; cd checkinstall/dist; LD_LIBRARY_PATH=$(distdir)/usr/lib:$(distdir)/usr/lib/syncevolution dpkg-shlibdeps -L$(srcdir)/src/shlibs.local --ignore-missing-info -O $$(for i in $$(find $(distdir) -type f -perm /u+x | grep -v -e client-test -e lib/syncevolution/backends/); do if file $$i | grep ELF >/dev/null; then echo $$i; fi; done) | sed $(REQUIRES_SED_KDE) -e 's/[^=]*=//')$(REQUIRES_deb_neon)'"
+REQUIRES_deb = --requires="'$(shell set -x; cd checkinstall/dist; LD_LIBRARY_PATH=$(distdir)/usr/lib:$(distdir)/usr/lib/syncevolution dpkg-shlibdeps -L$(srcdir)/src/shlibs.local --ignore-missing-info -O $$(for i in $$(find $(distdir) -type f -perm /u+x | grep -v -e client-test -e lib/syncevolution/backends/); do if file $$i | grep ELF >/dev/null; then echo $$i; fi; done) | sed $(REQUIRES_SED_KDE) -e 's/[^=]*=//')$(REQUIRES_deb_neon)$(REQUIRES_deb_ical)'"
 @NEON_COMPATIBILITY_FALSE@REQUIRES_deb_neon = 
 # --enable-neon-compatibility in src/backends/webdav:
 # replace dependencies from linking with hard-coded dlopen() dependencies
 @NEON_COMPATIBILITY_TRUE@REQUIRES_deb_neon = , libneon27 (>= 0.29.0) | libneon27-gnutls (>= 0.29.0)
+@ENABLE_ICAL_TRUE@REQUIRES_deb_ical = , libical0
 VERSION_deb = 1:$(STABLE_VERSION)$(VERSION)
 VERSION_rpm = `echo $(VERSION) | sed -e s/-/_/g`
 RELEASE = 2
@@ -3266,6 +3294,32 @@ PLATFORM_DEB_RELEASE = 1
 # define which files are relevant for each platform
 PLATFORM_FILES_evolution = platformgnome syncecal syncebook
 PLATFORM_FILES_kde = platformkde syncakonadi
+
+# Additional parameters for syncevolution-kde/evolution.deb.
+# Fake conflicts/replaces works around a bug in CheckInstall,
+# which creates empty, invalid entries for those unless
+# something is given. For Evolution we hard-code dependencies
+# (because with EDS compatibility turned on, several
+# alternatives will work at runtime) and conflict with
+# EDS 3.6, because that breaks the API and does not work for us
+# at the moment.
+SYNCEVOLUTION_kde_DEB_ARGS = \
+	--conflicts=syncevolution-foobar \
+        --replaces=syncevolution-foobar
+
+SYNCEVOLUTION_evolution_DEB_ARGS = \
+	--conflicts="'evolution-data-server (>= 3.6), libebook-1.2-14 (>= 3.6), libecal-1.2.12 (>= 3.6)'" \
+	--replaces=syncevolution-foobar
+
+SYNCEVOLUTION_evolution_DEB_REQUIRES = \
+	, libebook-1.2-5 | libebook-1.2-6 | libebook-1.2-7 | libebook-1.2-8 | libebook-1.2-9 | libebook-1.2-10 | libebook-1.2-11 | libebook-1.2-12 | libebook-1.2-13 \
+	, libecal-1.2-3 | libecal-1.2-4 | libecal-1.2-5 | libecal-1.2-6 | libecal-1.2-7 | libecal-1.2-8 | libecal-1.2-9 | libecal-1.2-10 | libecal-1.2-11
+
+
+# Some exceptions for the link check above (= symbol may be used without linking).
+# SySync_ConsolePrintf is expected by libsmltk and has to be provided by caller.
+LINK_CHECK_ALLOWED = -e xxxxxxxx -e \
+	'SySync_ConsolePrintf.*libsmltk.so' $(am__append_96)
 @COND_CROSS_COMPILING_FALSE@RUN_SYNCEVOLUTION_CHECK = die if $$?; return $$buffer;
 
 # Be strict about running 'syncevolution' only when not doing
@@ -10118,10 +10172,6 @@ uninstall-man: uninstall-man1
 @COND_CORE_TRUE@src_syncevo_install_check_local: $(top_srcdir)/src/syncevo/installcheck-local.sh
 @COND_CORE_TRUE@	env PKG_CONFIG_PATH=$(DESTDIR)/$(pkgconfigdir):$$PKG_CONFIG_PATH $< "$(DESTDIR)/$(src_syncevo_libsyncevolution_includedir)" "$(DESTDIR)/$(includedir)" "$(DESTDIR)/$(libdir)"
 
-# This is a stupid workaround for an absolute path in SYNCEVOLUTION_LIBS.
-# See AUTOTOOLS-TODO for details.
-@COND_CORE_TRUE@@SYNCEVOLUTION_LIBS@: src/syncevo/libsyncevolution.la ; @true
-
 # activated by EASCLIENT_DEPENDENCIES: usually empty, unless --with-activesyncd-src is used
 @COND_CORE_TRUE@$(src_backends_activesync_src) src/backends/activesync/ActiveSyncSourceRegister.cpp: $(EASCLIENT_DEPENDENCIES)
 @COND_CORE_TRUE@$(EASCLIENT_DEPENDENCIES): $(LIBEASCLIENT_LA_DEPENDENCIES)
@@ -10278,11 +10328,12 @@ src/libstdc++.a :
 	$(AM_V_GEN)path=`$(CXX) $(CORE_LDADD) $(LD_FLAGS) -print-file-name=src/libstdc++.a` && ln -s $$path .
 src_dist_hook:
 	@set -x; [ ! '$(SYNTHESIS_SUBDIR)' ] || \
-	mkdir -p $(distdir)/src/synthesis && \
+	rm -rf $(distdir)-synthesis && \
+	mkdir -p $(distdir)-synthesis && \
 	if test -d '$(SYNTHESIS_SRC)/.git'; \
 	then \
-	  ( ( cd '$(SYNTHESIS_SRC)' && git archive HEAD ) | ( cd '$(distdir)/src/synthesis' && tar xf - && $$SHELL autogen.sh && rm -rf autom4te.cache && find . -name .gitignore -delete ) ) && \
-	  ( printf '%s' 'Creating ChangeLog...' && \
+	  ( ( cd '$(SYNTHESIS_SRC)' && git archive HEAD ) | ( cd '$(distdir)-synthesis' && tar xf - && $$SHELL autogen.sh && rm -rf autom4te.cache && find . -name .gitignore -delete ) ) && \
+	  ( printf 'Creating synthesis ChangeLog... ' && \
 	    ( ( cd '$(SYNTHESIS_SRC)' && \
 	        echo '# Generated by configure.  Do not edit.' && \
 	        githash=`git show-ref --head --hash | head -1` && \
@@ -10290,18 +10341,19 @@ src_dist_hook:
 	        echo "# git tag `git describe --tags $$githash`" && \
 	        echo && \
 	        '$(top_srcdir)/missing' --run perl '$(top_srcdir)/build/gen-changelog.pl' ) >ChangeLog.tmp ) && \
-	    ( mv -f ChangeLog.tmp '$(distdir)/src/synthesis/ChangeLog' && \
-	      printf '%s\n' ' done.' ) || \
+	    ( mv -f ChangeLog.tmp '$(distdir)-synthesis/ChangeLog' && \
+	      printf 'synthesis ChangeLog done\n' ) || \
 	    ( rm -f ChangeLog.tmp ; \
-	      printf '%s\n' ' failed.'; \
-	      echo 'Failed to generate ChangeLog.' >&2 ) \
+	      printf 'synthesis ChangeLog failed\n'; \
+	      echo 'Failed to generate synthesis ChangeLog.' >&2 ) \
 	  ); \
 	elif test '$(SYNTHESIS_SRC)' != 'no-synthesis-source'; \
 	then \
-	  cp -a '$(SYNTHESIS_SRC)/'* '$(distdir)/src/synthesis' && \
+	  cp -a '$(SYNTHESIS_SRC)/'* '$(distdir)-synthesis' && \
 	  for i in _build autom4te.cache; do [ ! -d "$(SYNTHESIS_SRC)/$$i" ] || chmod -R u+rwx "$(SYNTHESIS_SRC)/$$i"; done && \
-	  find '$(distdir)/src/synthesis' -name '.libs' -o -name '*~' -o -name '.*' -o -name '*.o' -o -name '*.lo' -o -name 'CVS' -o -name '.svn' -o -name '.git' -o -name .gitignore -o -name 'autom4te.cache' -print0 | xargs -0 rm -rf; \
-	fi
+	  find '$(distdir)-synthesis' -name '.libs' -o -name '*~' -o -name '.*' -o -name '*.o' -o -name '*.lo' -o -name 'CVS' -o -name '.svn' -o -name '.git' -o -name .gitignore -o -name 'autom4te.cache' -print0 | xargs -0 rm -rf; \
+	fi && \
+	mv '$(distdir)-synthesis' '$(distdir)/src/synthesis'
 
 clean-local: testclean
 	rm -rf src/testcases
@@ -10448,9 +10500,6 @@ deb rpm : checkinstall/dist/$(distdir) checkinstall/dist/debian/control
 @ENABLE_MODULES_TRUE@deb : syncevolution-kde-deb
 @ENABLE_MODULES_TRUE@deb : syncevolution-evolution-deb
 
-# Fake conflicts/replaces works around a bug in CheckInstall,
-# which creates empty, invalid entries for those unless
-# something is given.
 syncevolution-%-deb: checkinstall/dist/$(distdir) checkinstall/dist/debian/control
 	(echo "SyncEvolution - meta package for $*" && cat $(srcdir)/description) >checkinstall/description-pak
 	tmpdir=`mktemp -d $$HOME/syncevolution.XXXXXXXXXX` && \
@@ -10463,11 +10512,10 @@ syncevolution-%-deb: checkinstall/dist/$(distdir) checkinstall/dist/debian/contr
                 --nodoc \
 		--pkgversion=$(PLATFORM_DEB_VERSION) \
 		--pkgrelease=$(PLATFORM_DEB_RELEASE) \
+		$(SYNCEVOLUTION_$*_DEB_ARGS) \
 		--pkgname=syncevolution-$* \
 		--pkgarch=all \
-                --requires="'$(shell set -x; cd checkinstall/dist; LD_LIBRARY_PATH=$(distdir)/usr/lib:$(distdir)/usr/lib/syncevolution dpkg-shlibdeps -L$(srcdir)/src/shlibs.local --ignore-missing-info -O $$(for i in $(patsubst %,$(distdir)/usr/lib/syncevolution/backends/%.so,$(PLATFORM_FILES_$*)); do if file $$i | grep ELF >/dev/null; then echo $$i; fi; done) | sed $(REQUIRES_SED_KDE) -e 's/[^=]*=//'), $(PKGNAME) (= $(VERSION_deb)-$(RELEASE))'" \
-                --conflicts=syncevolution-foobar \
-                --replaces=syncevolution-foobar \
+                --requires="'$(shell set -x; cd checkinstall/dist; LD_LIBRARY_PATH=$(distdir)/usr/lib:$(distdir)/usr/lib/syncevolution dpkg-shlibdeps -L$(srcdir)/src/shlibs.local --ignore-missing-info -O $$(for i in $(patsubst %,$(distdir)/usr/lib/syncevolution/backends/%.so,$(PLATFORM_FILES_$*)); do if file $$i | grep ELF >/dev/null; then echo $$i; fi; done) | sed $(REQUIRES_SED_KDE) -e 's/[^=]*=//'), $(PKGNAME) (= $(VERSION_deb)-$(RELEASE))$(SYNCEVOLUTION_$*_DEB_REQUIRES)'" \
 		--maintainer="'Patrick Ohly <patrick.ohly@gmx.de>'" \
 		--pkgsource='http://syncevolution.org' \
 		--pkggroup='$*' \
@@ -10524,6 +10572,26 @@ dot_dist_hook:
 @ENABLE_EVOLUTION_COMPATIBILITY_TRUE@	    exit 1; \
 @ENABLE_EVOLUTION_COMPATIBILITY_TRUE@	  fi; \
 @ENABLE_EVOLUTION_COMPATIBILITY_TRUE@	done
+toplevel_link_check:
+	set -x; cd $(DESTDIR) && \
+	mkdir debian && \
+	touch debian/control && \
+        trap "rm -rf debian" EXIT && \
+	files=$$(find $(DESTDIR)/$(prefix) $(DESTDIR)/$(libdir) $(DESTDIR)/$(bindir) $(DESTDIR)/$(libexecdir) -type f -perm /u+x | sort -u) && \
+	files=$$(for i in $$files; do if file $$i | grep ELF >/dev/null; then echo $$i; fi; done) && \
+	if ! dpkg-shlibdeps --version; then \
+	    echo "dpkg-shlibdeps not found, skipping link check"; \
+	elif LD_LIBRARY_PATH=usr/lib:usr/lib/syncevolution dpkg-shlibdeps \
+             --ignore-missing-info -O $$files \
+	     2>&1 >/dev/null | \
+             grep -v $(LINK_CHECK_ALLOWED) | \
+             grep -e "symbol .* found in none of the libraries" \
+                  -e "contains an unresolvable reference to symbol" \
+        ; then \
+	    echo "linking must be fixed"; false; \
+        else \
+	    echo "linking is okay"; \
+	fi
 
 # patch README.rst properties on-the-fly
 README.patched.rst: README.rst src/syncevolution

@@ -1540,7 +1540,7 @@ boost::shared_ptr<TransportAgent> SyncContext::createTransportAgent(void *gmainl
 
     if (m_localSync) {
         string peer = url.substr(strlen("local://"));
-        boost::shared_ptr<LocalTransportAgent> agent(new LocalTransportAgent(this, peer, gmainloop));
+        boost::shared_ptr<LocalTransportAgent> agent(LocalTransportAgent::create(this, peer, gmainloop));
         InitializeTransport(agent, timeout);
         agent->start();
         return agent;
@@ -3298,6 +3298,7 @@ SyncMLStatus SyncContext::doSync()
     }
 
     // delay the sync for debugging purposes
+    SE_LOG_DEBUG(NULL, NULL, "ready to sync");
     const char *delay = getenv("SYNCEVOLUTION_SYNC_DELAY");
     if (delay) {
         Sleep(atoi(delay));

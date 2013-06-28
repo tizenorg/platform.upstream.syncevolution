@@ -1124,8 +1124,13 @@ void LocalTests::testInsertTwice() {
                     second.m_state == ITEM_MERGED ? "was merged" :
                     second.m_state == ITEM_OKAY ? "was added, which is broken!" :
                     "unknown result ?!");
-    CT_ASSERT(second.m_state == ITEM_NEEDS_MERGE || second.m_state == ITEM_REPLACED || second.m_state == ITEM_MERGED);
-    CT_ASSERT_EQUAL(first.m_luid, second.m_luid);
+    if (config.m_sourceKnowsItemSemantic) {
+        CT_ASSERT(second.m_state == ITEM_NEEDS_MERGE || second.m_state == ITEM_REPLACED || second.m_state == ITEM_MERGED);
+        CT_ASSERT_EQUAL(first.m_luid, second.m_luid);
+    } else {
+        CT_ASSERT(second.m_state == ITEM_OKAY);
+        CT_ASSERT(first.m_luid != second.m_luid);
+    }
     if (second.m_state == ITEM_REPLACED || second.m_state == ITEM_MERGED) {
         CT_ASSERT(first.m_revision != second.m_revision);
     }
@@ -1982,7 +1987,7 @@ void LocalTests::testLinkedItemsRemoveNormal() {
     // Skip the testing, proceed to full removal.
     if (currentServer() != "exchange") {
         SOURCE_ASSERT_NO_FAILURE(source.get(), source.reset(createSourceA()));
-#ifndef USE_ECAL_CLIENT
+#ifndef USE_EDS_CLIENT
         if (getCurrentTest().find("::eds_event::") != std::string::npos) {
             // hack: ignore EDS side effect of adding EXDATE to parent, see http://bugs.meego.com/show_bug.cgi?id=10906
             size_t pos = parentData.rfind("DTSTART");
@@ -4681,8 +4686,13 @@ void SyncTests::testAddBothSides()
     std::string updateItem = sources[0].second->config.m_updateItem;
 
     if (addBothSidesNoMergeLines) {
+        // VEVENT
         boost::replace_all(updateItem, "LOCATION:big meeting room", "LOCATION:my office");
         boost::replace_all(updateItem, "DESCRIPTION:nice to see you", "DESCRIPTION:let's talk<<REVISION>>");
+        // VJOURNAL
+        boost::replace_all(updateItem, "DESCRIPTION:Summary\\nBody text", "DESCRIPTION:Summary Modified\\nBody text");
+        // VTODO
+        boost::replace_all(updateItem, "DESCRIPTION:to be done", "DESCRIPTION:to be done<<REVISION>>");
     }
 
     CT_ASSERT_NO_THROW(sources[0].second->insert(sources[0].second->createSourceA,
@@ -6818,6 +6828,14 @@ void ClientTest::getTestData(const char *type, Config &config)
         config.m_uniqueProperties = "";
         config.m_sizeProperty = "NOTE";
         config.m_testcases = "testcases/eds_contact.vcf";
+
+        if (server == "exchange" ||
+            server == "googleeas") {
+            // X-MOZILLA-HTML not supported by ActiveSync.
+            boost::replace_first(config.m_updateItem, "X-MOZILLA-HTML:TRUE", "X-MOZILLA-HTML:FALSE");
+            boost::replace_first(config.m_complexUpdateItem, "X-MOZILLA-HTML:TRUE", "X-MOZILLA-HTML:FALSE");
+            boost::replace_first(config.m_mergeItem2, "X-MOZILLA-HTML:TRUE", "X-MOZILLA-HTML:FALSE");
+        }
     } else if (!strcmp(type, "eds_event") && !noutc) {
         config.m_sourceName = "eds_event";
         config.m_sourceNameServerTemplate = "calendar";

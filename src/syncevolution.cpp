@@ -187,6 +187,22 @@ private:
     /** callback of calling 'Server.StartSession' */
     void startSessionCb(const DBusObject_t &session, const string &error);
 
+    /**
+     * receives org.freedesktop.DBus.NameOwnerChanged signals,
+     * watches for changes of org.syncevolution.server
+     */
+    void nameOwnerChangedCB(const std::string &name,
+                            const std::string &oldOwner,
+                            const std::string &newOwner)
+    {
+        if (name == "org.syncevolution") {
+            SE_LOG_ERROR(NULL, NULL, "The SyncEvolution D-Bus service died unexpectedly. A running sync might still be able to complete normally, but the command line cannot report progress anymore and has to quit.");
+            m_result = false;
+            g_main_loop_quit(m_loop);
+        }
+    }
+
+
     /** update active session vector according to 'SessionChanged' signal */
     void updateSessions(const string &session, bool active);
 
@@ -702,6 +718,25 @@ bool RemoteDBusServer::execute(const vector<string> &args, const string &peer, b
     if(m_session) {
         m_session->setRunSync(true);
 
+        // If the syncevo-dbus-server dies while we wait for some
+        // output from it, then we used to hang forever. Worse, if it
+        // happened while signal handling was active, then the command
+        // line tool couldn't even be killed with CTRL-C.
+        // To detect this case, we watch name owner changes for org.syncevolution.server.
+        // If it changes from now on, we know that our m_session became
+        // invalid. If it already changed, then the next calls for that
+        // session will fail.
+#if 0
+        GDBusCXX::DBusRemoteObject daemon(getConnection(),
+                                          "/org/freedesktop/DBus",
+                                          "org.freedesktop.DBus",
+                                          "");
+        GDBusCXX::SignalWatch3<std::string, std::string, std::string> nameOwnerChanged(daemon,
+                                                                                       "NameOwnerChanged");
+        nameOwnerChanged.activate(boost::bind(&RemoteDBusServer::nameOwnerChangedCB, this,
+                                              _1, _2, _3));
+#endif
+
         //if session is not active, just wait
         while(!isActive()) {
             g_main_loop_run(m_loop);
@@ -711,7 +746,8 @@ bool RemoteDBusServer::execute(const vector<string> &args, const string &peer, b
         resetReplies();
         m_session->executeAsync(args);
 
-        while(!done()) {
+
+        while(m_result && !done()) {
             g_main_loop_run(m_loop);
         }
 
@@ -728,7 +764,7 @@ bool RemoteDBusServer::execute(const vector<string> &args, const string &peer, b
         flags.m_stateChanged.connect(SuspendFlags::StateChanged_t::slot_type(SuspendFlagsChanged, m_session.get(), _1).track(m_session));
 
         //wait until status is 'done'
-        while(!m_session->statusDone()) {
+        while(m_result && !m_session->statusDone()) {
             g_main_loop_run(m_loop);
         }
 

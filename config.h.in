@@ -263,11 +263,8 @@
 /* "using Synthesis engine" */
 #undef SYNTHESIS
 
-/* use e_book_client_* calls */
-#undef USE_EBOOK_CLIENT
-
-/* use e_cal_client_* calls */
-#undef USE_ECAL_CLIENT
+/* use e_book/cal_client_* calls */
+#undef USE_EDS_CLIENT
 
 /* define if gnome keyring should be used in dbus service */
 #undef USE_GNOME_KEYRING

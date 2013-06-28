@@ -28,6 +28,7 @@
 
 #include <syncevo/ForkExec.h>
 #include <syncevo/SyncContext.h>
+#include <syncevo/BoostHelper.h>
 
 #include <memory>
 
@@ -408,7 +409,7 @@ void Session::sync2(const std::string &mode, const SessionCommon::SourceModes_t 
     // the error is recorded before ending the session. Premature
     // exits by the helper are handled by D-Bus, which then will abort
     // the pending method call.
-    m_helper->m_sync.start(params, boost::bind(&Session::dbusResultCb, this, "sync()", _1, _2));
+    m_helper->m_sync.start(params, boost::bind(&Session::dbusResultCb, m_me, "sync()", _1, _2));
 }
 
 void Session::abort()
@@ -674,7 +675,8 @@ void Session::doneCb(bool success) throw()
         m_status = SESSION_DONE;
         m_syncStatus = SYNC_DONE;
         if (!success && !m_error) {
-            m_error = STATUS_FATAL;
+            // some kind of local, internal problem
+            m_error = STATUS_FATAL + sysync::LOCAL_STATUS_CODE;
         }
 
         fireStatus(true);
@@ -814,8 +816,9 @@ void Session::messagev(Level level,
     // log with session path and empty process name,
     // just like the syncevo-dbus-helper does
     string strLevel = Logger::levelToStr(level);
-    string log = StringPrintfV(format, args);
-    m_server.logOutput(getPath(), strLevel, log, "");
+    m_server.messagev(level, NULL, NULL, 0, NULL,
+                      format, args,
+                      getPath(), "");
 }
 
 void Session::useHelper2(const SimpleResult &result, const boost::signals2::connection &c)
@@ -906,8 +909,19 @@ void Session::onQuit(int status) throw ()
             // wait for that reply. If the helper died without sending
             // it, then D-Bus will generate a "connection lost" error
             // for our pending method call.
+            //
+            // Except that libdbus does not deliver that error
+            // reliably. As a workaround, schedule closing the
+            // session as an idle callback, after that potential
+            // future method return call was handled. The assumption
+            // is that it is pending - it must be, because with the
+            // helper gone, IO with it must be ready. Just to be sure
+            // a small delay is used.
         }
-        doneCb();
+        m_server.addTimeout(boost::bind(&Session::doneCb,
+                                        m_me,
+                                        false),
+                            0.1 /* seconds */);
     } catch (...) {
         Exception::handle();
     }
@@ -1193,7 +1207,7 @@ void Session::restore2(const string &dir, bool before, const std::vector<std::st
 
     // helper is ready, tell it what to do
     m_helper->m_restore.start(m_configName, dir, before, sources,
-                              boost::bind(&Session::dbusResultCb, this, "restore()", _1, _2));
+                              boost::bind(&Session::dbusResultCb, m_me, "restore()", _1, _2));
 }
 
 void Session::execute(const vector<string> &args, const map<string, string> &vars)
@@ -1224,7 +1238,7 @@ void Session::execute2(const vector<string> &args, const map<string, string> &va
 
     // helper is ready, tell it what to do
     m_helper->m_execute.start(args, vars,
-                              boost::bind(&Session::dbusResultCb, this, "execute()", _1, _2));
+                              boost::bind(&Session::dbusResultCb, m_me, "execute()", _1, _2));
 }
 
 /*Implementation of Session.CheckPresence */
