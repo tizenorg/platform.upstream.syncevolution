@@ -38,8 +38,12 @@ enum TSyErrorEnum {
 
   /** no content / end of file / end of iteration / empty/NULL value */
   DB_NoContent = 204,
-  /** external data has been merged */
+
+  /** while adding item, additional data (from external source or other syncset item) has been merged */
   DB_DataMerged = 207,
+
+  /** adding item has replaced an existing item */
+  DB_DataReplaced = 208,
 
   /** not authorized */
   DB_Unauthorized = 401,
@@ -47,11 +51,14 @@ enum TSyErrorEnum {
   DB_Forbidden = 403,
   /** object not found / unassigned field */
   DB_NotFound = 404,
-  /** command not allowed (possibly: only at this time)*/
+  /** command not allowed (possibly: only at this time) */
   DB_NotAllowed = 405,
 
   /** proxy authentication required */
   DB_ProxyAuth = 407,
+
+  /** conflict, item was not stored because it requires merge (on part of the engine) first */
+  DB_Conflict = 409,
 
   /** item already exists */
   DB_AlreadyExists = 418,

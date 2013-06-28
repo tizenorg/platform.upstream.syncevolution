@@ -1324,23 +1324,28 @@ localstatus TPluginApiDS::apiAddItem(TMultiFieldItem &aItem, string &aLocalID)
   return LOCERR_WRONGUSAGE; // completely wrong usage - should never happen as compatibility is tested at module connect
   #endif
   // now check result
-  if (dberr==LOCERR_OK) {
+  if (dberr==LOCERR_OK ||
+      dberr==DB_Conflict ||
+      dberr==DB_DataReplaced ||
+      dberr==DB_DataMerged) {
     // save new ID
     aLocalID = itemAndParentID.item.c_str();
     aItem.setLocalID(aLocalID.c_str()); // make sure item itself has correct ID as well
-    // now write all the BLOBs
-    writeBlobs(false,aItem,0);
-    #ifdef SCRIPT_SUPPORT
-    // process overall afterwrite script
-    fWriting=true;
-    fInserting=true;
-    fDeleting=false;
-    fPluginAgentP->fScriptContextDatastore=this;
-    if (!TScriptContext::execute(fScriptContextP,fPluginDSConfigP->fFieldMappings.fAfterWriteScript,fPluginDSConfigP->getDSFuncTableP(),fPluginAgentP,&aItem,true)) {
-      PDEBUGPRINTFX(DBG_ERROR,("<afterwritescript> failed"));
-      dberr = LOCERR_WRONGUSAGE;
+    if (dberr!=DB_Conflict) {
+      // now write all the BLOBs
+      writeBlobs(false,aItem,0);
+      #ifdef SCRIPT_SUPPORT
+      // process overall afterwrite script
+      fWriting=true;
+      fInserting=true;
+      fDeleting=false;
+      fPluginAgentP->fScriptContextDatastore=this;
+      if (!TScriptContext::execute(fScriptContextP,fPluginDSConfigP->fFieldMappings.fAfterWriteScript,fPluginDSConfigP->getDSFuncTableP(),fPluginAgentP,&aItem,true)) {
+        PDEBUGPRINTFX(DBG_ERROR,("<afterwritescript> failed"));
+        dberr = LOCERR_WRONGUSAGE;
+      }
+      #endif
     }
-    #endif
   }
   // return status
   return dberr;

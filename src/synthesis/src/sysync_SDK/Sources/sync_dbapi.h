@@ -876,11 +876,23 @@ _ENTRY_ TSyError StartDataWrite( CContext aContext );
  *  @param  <aID>        Database key of the new dataset.
  *
  *  @return  error code
- *             - LOCERR_OK     (   =0 ), if successful
- *             - DB_DataMerged ( =207 ), if successful, but "ReadItem" requested to
- *                                                      inform about updates
- *             - DB_Forbidden  ( =403 ), if \<aItemData> can't be resolved
- *             - DB_Full       ( =420 ), if not enough space in the DB
+ *             - LOCERR_OK       (   =0 ), if successful
+ *             - DB_DataMerged   ( =207 ), if successful, but item actually stored
+ *                                                        was updated with data from
+ *                                                        external source or another
+ *                                                        sync set item. Engine will
+ *                                                        request updated version
+ *                                                        using ReadItem.
+ *                                                        (server add case only)
+ *             - DB_DataReplaced ( =208 ), if successful, but item added replaces
+ *                                                        another item that already
+ *                                                        existed in the sync set.
+ *                                                        (server add case only)
+ *             - DB_Conflict     ( =409 ), if database requests engine to merge
+ *                                                        existing data with the
+ *                                                        to-be stored data first.
+ *             - DB_Forbidden    ( =403 ), if \<aItemData> can't be resolved
+ *             - DB_Full         ( =420 ), if not enough space in the DB
  *             - ... or any other SyncML error code, see Reference Manual
  *
  *  NOTE:   The memory for \<aItemID> must be allocated locally.

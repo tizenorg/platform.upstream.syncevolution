@@ -3697,7 +3697,7 @@ bool TMimeDirProfileHandler::parseValue(
             c=*p;
             if (!c) break; // half escape sequence, ignore
             else if (c=='n' || c=='N') c='\n';
-            else if (aOnlyDeEscLF) val+=c; // if deescaping only for \n, transfer escape char into output
+            else if (aOnlyDeEscLF) val+='\\'; // if deescaping only for \n, transfer this non-LF escape into output
             // other escaped chars are shown as themselves
           }
           // add char

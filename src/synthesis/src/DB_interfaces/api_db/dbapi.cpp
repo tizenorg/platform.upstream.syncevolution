@@ -1889,7 +1889,7 @@ TSyError TDB_Api::InsertItem( cAppCharP aItemData, cAppCharP    parentID,
 
   InsItemSFunc  p= (InsItemSFunc)dm->ds.dsData.str.InsertItem;
   TSyError err= p( fContext, aItemData, &a );
-  if     (!err || err==DB_DataMerged) {
+  if     (!err || err==DB_DataMerged || err==DB_DataReplaced || err==DB_Conflict) {
     Assign_ItemID( newID, a, parentID );
   } // if
 
@@ -1902,8 +1902,10 @@ TSyError TDB_Api::InsertItem( cAppCharP aItemData, TDB_Api_Str &newItemID )
 {
   TDB_Api_ItemID                          nID;
   TSyError err= InsertItem( aItemData, "",nID );
-  if     (!err ||
-           err==DB_DataMerged) GetItemID( nID, newItemID );
+  if     (!err || err==DB_DataMerged || err==DB_DataReplaced || err==DB_Conflict) {
+    GetItemID( nID, newItemID );
+  } // if
+  
   return   err;
 } // InsertItem
 
@@ -1920,8 +1922,7 @@ TSyError TDB_Api::InsertItemAsKey( KeyH aItemKey, cAppCharP parentID,
 
   InsItemKFunc  p= (InsItemKFunc)dm->ds.dsData.key.InsertItemAsKey;
   TSyError err= p( fContext, aItemKey, &a );
-  if     (!err ||
-           err==DB_DataMerged) {
+  if     (!err || err==DB_DataMerged || err==DB_DataReplaced || err==DB_Conflict) {
     Assign_ItemID( newID, a, parentID );
   } // if
 

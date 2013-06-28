@@ -45,7 +45,10 @@ subdir = src
 DIST_COMMON = $(nobase_include_HEADERS) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/configure.in
+am__aclocal_m4_deps = $(top_srcdir)/m4-repo/dk-warn.m4 \
+	$(top_srcdir)/m4/libtool.m4 $(top_srcdir)/m4/ltoptions.m4 \
+	$(top_srcdir)/m4/ltsugar.m4 $(top_srcdir)/m4/ltversion.m4 \
+	$(top_srcdir)/m4/lt~obsolete.m4 $(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(SHELL) $(top_srcdir)/../../mkinstalldirs
@@ -460,6 +463,7 @@ SHELL = @SHELL@
 SQLITE3_CFLAGS = @SQLITE3_CFLAGS@
 SQLITE3_LIBS = @SQLITE3_LIBS@
 STRIP = @STRIP@
+SYNTHESIS_WFLAGS = @SYNTHESIS_WFLAGS@
 VERSION = @VERSION@
 XMLPARSE_CFLAGS = @XMLPARSE_CFLAGS@
 XMLPARSE_LIBS = @XMLPARSE_LIBS@
@@ -552,6 +556,7 @@ libsynthesis_la_SOURCES = DB_interfaces/api_db/DLL_interface.cpp DB_interfaces/a
 
 libsynthesis_la_CPPFLAGS = -I$(srcdir)/sysync_SDK/Sources
 libsynthesis_la_CFLAGS = \
+	$(SYNTHESIS_WFLAGS) \
 	-include $(top_builddir)/config.h \
 	-include $(srcdir)/Targets/ReleasedProducts/combiEngine_opensource_linux/combiengine_opensource_linux_prefix.h \
 	-I$(srcdir)/Targets/ReleasedProducts/clientEngine_autotools/ \
@@ -610,8 +615,8 @@ libsynthesis_la_DEPENDENCIES = $(srcdir)/synthesis-linker.map libsmltk.la
 
 libsynthesissdk_la_LIBADD = libsmltk.la # san.cpp calls sml* functions directly
 libsynthesissdk_la_LDFLAGS = -static
-libsynthesissdk_la_CFLAGS = $(PIC_CXXFLAGS)
-libsynthesissdk_la_CXXFLAGS = $(PIC_CXXFLAGS)
+libsynthesissdk_la_CFLAGS = $(PIC_CXXFLAGS) $(SYNTHESIS_WFLAGS)
+libsynthesissdk_la_CXXFLAGS = $(PIC_CXXFLAGS) $(SYNTHESIS_WFLAGS)
 libsynthesissdk_la_SOURCES = synthesis/SDK_support.h \
 	synthesis/SDK_util.h synthesis/UI_util.h synthesis/admindata.h \
 	synthesis/blobs.h synthesis/dataconversion.h \

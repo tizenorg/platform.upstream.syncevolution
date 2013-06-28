@@ -118,7 +118,7 @@ TSyError TEngineModuleBase::GetStrValue( KeyH aKeyH, cAppCharP aValName, string 
     err= GetValue( aKeyH, aValName, VALTYPE_TEXT, f, txtSize+1,    txtSize ); // no error anymore
   } // if
 
-  aText= f; // assign it
+  aText.assign(f, txtSize); // assign it
 
   if (tooShort)
     free( f ); // and deallocate again, if used dynamically

@@ -46,6 +46,7 @@ libsynthesis_la_SOURCES = DB_interfaces/api_db/DLL_interface.cpp DB_interfaces/a
 	$(XMLPARSE_SOURCES)
 libsynthesis_la_CPPFLAGS = -I$(srcdir)/sysync_SDK/Sources
 libsynthesis_la_CFLAGS = \
+	$(SYNTHESIS_WFLAGS) \
 	-include $(top_builddir)/config.h \
 	-include $(srcdir)/Targets/ReleasedProducts/combiEngine_opensource_linux/combiengine_opensource_linux_prefix.h \
 	-I$(srcdir)/Targets/ReleasedProducts/clientEngine_autotools/ \
@@ -109,8 +110,8 @@ endif
 
 libsynthesissdk_la_LIBADD = libsmltk.la # san.cpp calls sml* functions directly
 libsynthesissdk_la_LDFLAGS = -static
-libsynthesissdk_la_CFLAGS = $(PIC_CXXFLAGS)
-libsynthesissdk_la_CXXFLAGS = $(PIC_CXXFLAGS)
+libsynthesissdk_la_CFLAGS = $(PIC_CXXFLAGS) $(SYNTHESIS_WFLAGS)
+libsynthesissdk_la_CXXFLAGS = $(PIC_CXXFLAGS) $(SYNTHESIS_WFLAGS)
 libsynthesissdk_la_SOURCES = synthesis/SDK_support.h synthesis/SDK_util.h synthesis/UI_util.h synthesis/admindata.h synthesis/blobs.h synthesis/dataconversion.h synthesis/dbitem.h synthesis/engine_defs.h synthesis/enginemodulebase.h synthesis/enginemodulebridge.h synthesis/generic_types.h synthesis/lineartime.h synthesis/prefix_file.h synthesis/san.h synthesis/stringutil.h synthesis/syerror.h synthesis/sync_dbapi.h synthesis/sync_dbapidef.h synthesis/sync_declarations.h synthesis/sync_include.h synthesis/sync_uiapi.h synthesis/syncexception.h synthesis/sysync_b64.h synthesis/sysync_md5.h synthesis/sysync_utils.h synthesis/timeutil.h
 if COND_STATIC
 libsynthesissdk_la_SOURCES += sysync_SDK/Sources/UI_util.cpp sysync_SDK/Sources/enginemodulebridge.cpp sysync_SDK/Sources/san.cpp sysync_SDK/Sources/timeutil.cpp

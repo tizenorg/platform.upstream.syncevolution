@@ -32,6 +32,7 @@ public:
   virtual void logicMarkItemForResend(const char*, const char*) {}
 #ifdef SYSYNC_SERVER
   virtual TSyncItem *getConflictingItemByRemoteID(TSyncItem *syncitemP) { return NULL; }
+  virtual TSyncItem *getConflictingItemByLocalID(TSyncItem *syncitemP) { return NULL; }
   virtual TSyncItem *getMatchingItem(TSyncItem *syncitemP, TEqualityMode aEqMode) { return NULL; }
   virtual void dontSendItemAsServer(TSyncItem *syncitemP) {}
   virtual void SendItemAsServer(TSyncItem *aSyncitemP) {}

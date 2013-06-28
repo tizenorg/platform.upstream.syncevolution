@@ -611,7 +611,7 @@ localstatus TStdLogicDS::startDataAccessForServer(void)
 // called to check if conflicting replace or delete command from server exists
 TSyncItem *TStdLogicDS::getConflictingItemByRemoteID(TSyncItem *syncitemP)
 {
-  // search for conflicting item by LUID
+  // search for conflicting item by remoteID
   TSyncItemPContainer::iterator pos;
   for (pos=fItems.begin(); pos!=fItems.end(); ++pos) {
     if (strcmp((*pos)->getRemoteID(),syncitemP->getRemoteID())==0) {
@@ -628,6 +628,31 @@ TSyncItem *TStdLogicDS::getConflictingItemByRemoteID(TSyncItem *syncitemP)
   PDEBUGPRINTFX(DBG_DATA+DBG_CONFLICT,("TStdLogicDS::getConflictingItemByRemoteID, no conflicting item"));
   return NULL;
 } // TStdLogicDS::getConflictingItemByRemoteID
+
+
+
+// called to check if conflicting item (with same localID) already exists in the list of items
+// to be sent to the server
+TSyncItem *TStdLogicDS::getConflictingItemByLocalID(TSyncItem *syncitemP)
+{
+  // search for conflicting item by localID
+  TSyncItemPContainer::iterator pos;
+  for (pos=fItems.begin(); pos!=fItems.end(); ++pos) {
+    if (strcmp((*pos)->getLocalID(),syncitemP->getLocalID())==0) {
+      // same LUID exists in data from server
+      PDEBUGPRINTFX(DBG_DATA+DBG_CONFLICT,(
+        "TStdLogicDS::getConflictingItemByLocalID, found RemoteID='%s', LocalID='%s', syncop=%s",
+        syncitemP->getRemoteID(),
+        syncitemP->getLocalID(),
+        SyncOpNames[syncitemP->getSyncOp()]
+      ));
+      return (*pos); // return pointer to item in question
+    }
+  }
+  PDEBUGPRINTFX(DBG_DATA+DBG_CONFLICT,("TStdLogicDS::getConflictingItemByLocalID, no conflicting item"));
+  return NULL;
+} // TStdLogicDS::getConflictingItemByLocalID
+
 
 
 // called to check if content-matching item from server exists for slow sync
@@ -684,7 +709,7 @@ void TStdLogicDS::dontSendItemAsServer(TSyncItem *syncitemP)
   for (pos=fItems.begin(); pos!=fItems.end(); ++pos) {
     if (*pos == syncitemP) {
       // it is in our list
-      PDEBUGPRINTFX(DBG_DATA+DBG_HOT,("Item with localID='%s' will NOT be sent to client (usually due to slowsync match)",syncitemP->getLocalID()));
+      PDEBUGPRINTFX(DBG_DATA+DBG_HOT,("Item with localID='%s' will NOT be sent to client (slowsync match / duplicate prevention)",syncitemP->getLocalID()));
       delete *pos; // delete item itself
       fItems.erase(pos); // remove from list
       break;

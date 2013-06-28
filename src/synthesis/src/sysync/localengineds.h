@@ -1009,8 +1009,9 @@ protected:
   /// get conflict resolution strategy.
   virtual TConflictResolution getConflictStrategy(bool aForSlowSync, bool aForFirstTime=false);
   #ifdef SYSYNC_SERVER
-  /// called to check if conflicting replace command from server exists
+  /// check if conflicting item already exist in list of items-to-be-sent-to-client
   virtual TSyncItem *getConflictingItemByRemoteID(TSyncItem *syncitemP) = 0;
+  virtual TSyncItem *getConflictingItemByLocalID(TSyncItem *syncitemP) = 0;
   /// called to check if content-matching item from server exists
   virtual TSyncItem *getMatchingItem(TSyncItem *syncitemP, TEqualityMode aEqMode) = 0;
   /// called to prevent item to be sent to client in subsequent engGenerateSyncCommands()
@@ -1117,8 +1118,9 @@ protected:
   void adjustLocalIDforSize(string &aLocalID, sInt32 maxguidsize, sInt32 prefixsize);
   /// for received GUIDs (Map command), obtain real GUID (might be temp GUID due to maxguidsize restrictions)
   void obtainRealLocalID(string &aLocalID);
-  /// helper to force a conflict (i.e. have a particular item in the sync set)
-  TSyncItem *forceConflict(TSyncItem *aSyncItemP);
+  /// helper to cause database version of an item (as identified by aSyncItemP's ID) to be sent to client
+  /// (aka "force a conflict")
+  TSyncItem *SendDBVersionOfItemAsServer(TSyncItem *aSyncItemP);
   #endif // SYSYNC_SERVER
   /// helper to save resume state either at end of request or explicitly at reception of a "suspend"
   SUPERDS_VIRTUAL localstatus engSaveSuspendState(bool aAnyway);

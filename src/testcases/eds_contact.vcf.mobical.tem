@@ -165,7 +165,7 @@ BEGIN:VCARD
 VERSION:3.0
 URL:http://john.doe.com
 TITLE:Senior Tester
-ORG:Test Inc.;Testing;test#1
+ORG:Test Inc.
 ROLE:professional test case
 X-EVOLUTION-MANAGER:John Doe Senior
 X-EVOLUTION-ASSISTANT:John Doe Junior

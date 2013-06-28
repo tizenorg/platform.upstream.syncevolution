@@ -257,8 +257,9 @@ protected:
   virtual void engRequestEnded(void);
   // Dummies, should never be called in Superdatastore, as all DB processing takes
   // place in subdatastores
-  // - called to check if conflicting replace command from server exists
+  // - check if conflicting item already exist in list of items-to-be-sent-to-client
   virtual TSyncItem *getConflictingItemByRemoteID(TSyncItem *syncitemP) { return NULL; };
+  virtual TSyncItem *getConflictingItemByLocalID(TSyncItem *syncitemP) { return NULL; };
   // - called to check if content-matching item from server exists
   virtual TSyncItem *getMatchingItem(TSyncItem *syncitemP, TEqualityMode aEqMode) { return NULL; };
   // - called to prevent item to be sent to client in subsequent engGenerateSyncCommands()

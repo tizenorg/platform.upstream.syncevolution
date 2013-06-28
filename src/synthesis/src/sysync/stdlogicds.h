@@ -277,8 +277,10 @@ private:
 
 
   #ifdef SYSYNC_SERVER
-  // - called to check if conflicting replace or delete command from server exists
+protected:
+  // - check if conflicting item already exist in list of items-to-be-sent-to-client
   virtual TSyncItem *getConflictingItemByRemoteID(TSyncItem *syncitemP);
+  virtual TSyncItem *getConflictingItemByLocalID(TSyncItem *syncitemP);
   // - called to check if content-matching item from server exists
   virtual TSyncItem *getMatchingItem(TSyncItem *syncitemP, TEqualityMode aEqMode);
   // - called to prevent item to be sent to client in subsequent logicGenerateSyncCommandsAsServer()
@@ -286,6 +288,7 @@ private:
   virtual void dontSendItemAsServer(TSyncItem *syncitemP);
   // - called to have additional item sent to remote (DB takes ownership of item)
   virtual void SendItemAsServer(TSyncItem *aSyncitemP);
+private:
   // - end map operation (rollback if not aDoCommit)
   virtual bool MapFinishAsServer(
     bool aDoCommit,                // if not set, entire map operation must be undone

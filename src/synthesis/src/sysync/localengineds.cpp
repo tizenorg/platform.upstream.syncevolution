@@ -3173,7 +3173,7 @@ bool TLocalEngineDS::engHandleSyncOpStatus(TStatusCommand *aStatusCmdP,TSyncOpCo
         //     a map. But symbian cannot send early maps - it instead does
         //     it's own duplicate checking.
         // ... during resumed sync as client (as servers might issue 418 for
-        //     items send a second time after an implicit suspend)
+        //     items sent a second time after an implicit suspend)
         PDEBUGPRINTFX(DBG_ERROR,("Warning: received 418 status for add in resumed/slowsync session -> treat it as ok (200)"));
         dsConfirmItemOp(sop_replace,localID,remoteID,true); // kind of ok
         statuscode=200; // convert to ok (but no count incremented, as nothing changed)
@@ -5140,8 +5140,9 @@ bool TLocalEngineDS::engProcessSyncOpItem(
 // Server Case
 // ===========
 
-// helper to force a conflict
-TSyncItem *TLocalEngineDS::forceConflict(TSyncItem *aSyncItemP)
+// helper to cause database version of an item (as identified by aSyncItemP's ID) to be sent to client
+// (aka "force a conflict")
+TSyncItem *TLocalEngineDS::SendDBVersionOfItemAsServer(TSyncItem *aSyncItemP)
 {
   TStatusCommand dummy(fSessionP);
   // - create new item
@@ -5167,7 +5168,7 @@ TSyncItem *TLocalEngineDS::forceConflict(TSyncItem *aSyncItemP)
     conflictingItemP=NULL;
   }
   return conflictingItemP;
-} // TLocalEngineDS::forceConflict
+} // TLocalEngineDS::SendDBVersionOfItemAsServer
 
 
 
@@ -5298,7 +5299,7 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
     // Note: a forced conflict can still occur even if item is rejected
     // (this has the effect of unconditionally letting the server item win)
     if (fForceConflict && syncop!=sop_add) {
-      conflictingItemP = forceConflict(aSyncItemP);
+      conflictingItemP = SendDBVersionOfItemAsServer(aSyncItemP);
       // Note: conflictingitem is always a replace
       if (conflictingItemP) {
         if (syncop==sop_delete) {
@@ -5389,7 +5390,7 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
       if (!echoItemP) conflictingItemP = getConflictingItemByRemoteID(aSyncItemP); // do not check conflicts if we have already created an echo
       // - check if we must force the conflict
       if (!conflictingItemP && fForceConflict) {
-        conflictingItemP=forceConflict(aSyncItemP);
+        conflictingItemP=SendDBVersionOfItemAsServer(aSyncItemP);
       }
       if (conflictingItemP) {
         // conflict only if other party has replace
@@ -5502,7 +5503,7 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
         if (!echoItemP) conflictingItemP = getConflictingItemByRemoteID(aSyncItemP);
         // - check if we must force the conflict
         if (!conflictingItemP && fForceConflict) {
-          conflictingItemP=forceConflict(aSyncItemP);
+          conflictingItemP=SendDBVersionOfItemAsServer(aSyncItemP);
         }
         bool deleteconflict=false;
         if (conflictingItemP) {

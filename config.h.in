@@ -224,6 +224,9 @@
 /* dynamically open libneon */
 #undef NEON_COMPATIBILITY
 
+/* dynamically open libnotify */
+#undef NOTIFY_COMPATIBILITY
+
 /* Name of package */
 #undef PACKAGE
 
