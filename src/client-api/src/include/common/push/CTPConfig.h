@@ -44,9 +44,12 @@
 #include "spdm/DMTree.h"
 #include "base/util/utils.h"
 #include "base/util/StringBuffer.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 /// This is the root for the configuration
-#define APPLICATION_URI                 "Funambol/SyncClient"
+#define APPLICATION_URI                 "Funambol"
 
 /// This is the context for the CTP push parameters
 #define CONTEXT_PUSH_CTP                "/push/ctp"    
@@ -137,20 +140,6 @@ private:
     * CTP is started.
     */
     int32_t notifyTimeout;
-    
-    /**
-    * The device id. From DM
-    */
-    StringBuffer devid;
-
-    /**
-    * The username. From DM
-    */
-    StringBuffer username;
-
-    
-    void setUsername(StringBuffer v) { username = v; }
-    void setDeviceId(StringBuffer v) { devid = v; }
 
     StringBuffer checkPrefix(char* url);
 
@@ -258,16 +247,6 @@ public:
     int getNotifyTimeout()       { return notifyTimeout; }
     void setNotifyTimeout(int v) { notifyTimeout = v; }
 
-    /**
-    * get method for username parameter
-    */
-    StringBuffer& getUsername() { return username; }
-    
-    /**
-    * get method for deviceId parameter
-    */
-    StringBuffer& getDeviceId() { return devid; }
-    
 
     /**
     * get the host name form the url
@@ -278,12 +257,16 @@ public:
     * get the host port form the url. If the port doesn't exist
     * it return 0
     */
-    int getHostPort(StringBuffer syncUrl);  
+    int getHostPort(StringBuffer syncUrl);
+    
 private:
     char* decodePassword(const char* password);
     StringBuffer encodePassword(const char* password);
 };
 
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

@@ -124,7 +124,6 @@ am__objects_3 = libfunambol_la-lFormatter.lo \
 	libfunambol_la-lVerProto.lo libfunambol_la-lWhereClause.lo
 am__objects_4 = libfunambol_la-lCurlTransportAgent.lo \
 	libfunambol_la-lMacTransportAgent.lo \
-	libfunambol_la-lMozillaTransportAgent.lo \
 	libfunambol_la-lTransportAgentFactory.lo \
 	libfunambol_la-lHTTPHeader.lo libfunambol_la-lProxy.lo \
 	libfunambol_la-lTransportAgent.lo libfunambol_la-lURL.lo
@@ -432,7 +431,6 @@ SOURCES_FRAMEWORK = \
 SOURCES_HTTP = \
     lCurlTransportAgent.cpp \
     lMacTransportAgent.cpp \
-    lMozillaTransportAgent.cpp \
     lTransportAgentFactory.cpp \
     lHTTPHeader.cpp \
     lProxy.cpp \
@@ -681,7 +679,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libfunambol_la-lMetInf.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libfunambol_la-lMeta.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libfunambol_la-lModificationCommand.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libfunambol_la-lMozillaTransportAgent.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libfunambol_la-lName.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libfunambol_la-lNextNonce.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libfunambol_la-lNote.Plo@am__quote@
@@ -1575,13 +1572,6 @@ libfunambol_la-lMacTransportAgent.lo: lMacTransportAgent.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='lMacTransportAgent.cpp' object='libfunambol_la-lMacTransportAgent.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libfunambol_la_CXXFLAGS) $(CXXFLAGS) -c -o libfunambol_la-lMacTransportAgent.lo `test -f 'lMacTransportAgent.cpp' || echo '$(srcdir)/'`lMacTransportAgent.cpp
-
-libfunambol_la-lMozillaTransportAgent.lo: lMozillaTransportAgent.cpp
-@am__fastdepCXX_TRUE@	if $(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libfunambol_la_CXXFLAGS) $(CXXFLAGS) -MT libfunambol_la-lMozillaTransportAgent.lo -MD -MP -MF "$(DEPDIR)/libfunambol_la-lMozillaTransportAgent.Tpo" -c -o libfunambol_la-lMozillaTransportAgent.lo `test -f 'lMozillaTransportAgent.cpp' || echo '$(srcdir)/'`lMozillaTransportAgent.cpp; \
-@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libfunambol_la-lMozillaTransportAgent.Tpo" "$(DEPDIR)/libfunambol_la-lMozillaTransportAgent.Plo"; else rm -f "$(DEPDIR)/libfunambol_la-lMozillaTransportAgent.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='lMozillaTransportAgent.cpp' object='libfunambol_la-lMozillaTransportAgent.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libfunambol_la_CXXFLAGS) $(CXXFLAGS) -c -o libfunambol_la-lMozillaTransportAgent.lo `test -f 'lMozillaTransportAgent.cpp' || echo '$(srcdir)/'`lMozillaTransportAgent.cpp
 
 libfunambol_la-lTransportAgentFactory.lo: lTransportAgentFactory.cpp
 @am__fastdepCXX_TRUE@	if $(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libfunambol_la_CXXFLAGS) $(CXXFLAGS) -MT libfunambol_la-lTransportAgentFactory.lo -MD -MP -MF "$(DEPDIR)/libfunambol_la-lTransportAgentFactory.Tpo" -c -o libfunambol_la-lTransportAgentFactory.lo `test -f 'lTransportAgentFactory.cpp' || echo '$(srcdir)/'`lTransportAgentFactory.cpp; \

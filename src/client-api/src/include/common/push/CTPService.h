@@ -38,13 +38,15 @@
 
 /** @cond DEV */
 
+#include "base/globalsdef.h"
 #include "base/fscapi.h"
 
 #include "push/FThread.h"
 #include "push/FSocket.h"
-
+#include "push/PushListener.h"
 #include "push/CTPMessage.h"
 #include "push/CTPConfig.h"
+#include "push/CTPThreadPool.h"
 
 /**< CTP Protocol version = 1.0 */
 #define CTP_PROTOCOL_VERSION            0x10
@@ -52,11 +54,15 @@
 #define CTP_RETRY_INCREASE_FACTOR       2
 
 
+BEGIN_NAMESPACE
+
+
 // Private Threads
 class CTPThread : public FThread {
 
 public:
     CTPThread();
+    ~CTPThread();
     void run();
     int32_t getErrorCode() { return errorCode; }
 
@@ -68,6 +74,7 @@ private:
 class ReceiverThread : public FThread {
 public:
     ReceiverThread();
+    ~ReceiverThread();
     void run();
     int32_t getErrorCode() { return errorCode; }
 
@@ -78,8 +85,10 @@ private:
 class HeartbeatThread : public FThread {
 public:
     HeartbeatThread();
+    ~HeartbeatThread();
     void run();
     int32_t getErrorCode() { return errorCode; }
+    void softTerminate();
 
 private:
     int32_t errorCode;
@@ -90,8 +99,11 @@ class CmdTimeoutThread : public FThread {
 
 public:
     CmdTimeoutThread();
+    ~CmdTimeoutThread();
     void run();
+    void softTerminate();
 };
+
 
 /**
  * The class to manage the CTP connection, singleton.
@@ -103,16 +115,35 @@ public:
      * The state of CTP connection.
      * State CTP_STATE_WAITING_RESPONSE is used to check the timeout (ctpCmdTimeout)
      * for which the client shall wait for the server response, after sending a command.
+     * CTP Service is not active only when state is DISCONNECTED. 
      */
     typedef enum {
         CTP_STATE_DISCONNECTED          = 0, 
-        CTP_STATE_CONNECTING            = 1, 
-        CTP_STATE_CONNECTED             = 2,
-        CTP_STATE_AUTHENTICATING        = 3, 
-        CTP_STATE_READY                 = 4, 
-        CTP_STATE_WAITING_RESPONSE      = 5, 
-        CTP_STATE_CLOSING               = 6
+        CTP_STATE_SLEEPING              = 1,
+        CTP_STATE_CONNECTING            = 2, 
+        CTP_STATE_CONNECTED             = 3,
+        CTP_STATE_AUTHENTICATING        = 4, 
+        CTP_STATE_READY                 = 5, 
+        CTP_STATE_WAITING_RESPONSE      = 6, 
+        CTP_STATE_CLOSING               = 7
     } CtpState;
+    
+    /**
+     * Possible errors of CTP service.
+     */
+    typedef enum {
+        CTP_ERROR_NOT_AUTHENTICATED         = 1,
+        CTP_ERROR_UNAUTHORIZED              = 2, 
+        CTP_ERROR_AUTH_FORBIDDEN            = 3, 
+        CTP_ERROR_RECEIVED_UNKNOWN_COMMAND  = 4,
+        CTP_ERROR_RECEIVED_STATUS_ERROR     = 5, 
+        CTP_ERROR_RECEIVED_WRONG_COMMAND    = 6, 
+        CTP_ERROR_ANOTHER_INSTANCE          = 7,
+        CTP_ERROR_SENDING_READY             = 8,
+        CTP_ERROR_RECEIVING_STATUS          = 9,
+        CTP_ERROR_RECEIVE_TIMOUT            = 10,
+        CTP_ERROR_CONNECTION_FAILED         = 11
+    } CtpError;
 
 private:
 
@@ -131,6 +162,15 @@ private:
 
     /// The socket used
     FSocket* ctpSocket;
+    
+    /**
+     * The listener for push notifications.
+     * Once the Client has registered itself calling registerPushListener()
+     * every push notification will be delivered to this object.
+     * TODO: will be moved in PushManager
+     */
+    PushListener* pushListener;
+    
 
     /**< Handle of main CTP thread, which implements the CTP process */
     CTPThread* ctpThread;                   
@@ -148,12 +188,29 @@ private:
     int32_t totalBytesSent;
     int32_t totalBytesReceived;
 
+    /// CTP Thread Pool Manager
+    CTPThreadPool threadPool;
+
+private:
+
     // Private methods:
     int32_t sendMsg(CTPMessage* message);
     StringBuffer createMD5Credentials();
     StringBuffer createErrorMsg(uint32_t errorCode = 0);
+    
 
+    /**
+     * Extracts the list of ServerURI names inside the SyncNotification.
+     * Each ServerURI corresponds to a source that we've been notified for,
+     * but it's the Client that knows the right correspondence with the source name.
+     * TODO: will be moved in PushManager
+     * 
+     * @param sn  pointer to the SyncNotification object to read
+     * @return    an ArrayList of ServerURI names (StringBuffers)
+     */
+    ArrayList getUriListFromSAN(SyncNotification* sn);
 
+    
 protected:
 
     // Constructor
@@ -172,7 +229,6 @@ public:
     int32_t openConnection();
     int32_t closeConnection();
     int32_t receive();
-    bool stopThread(FThread* thread);
 
     // Create and send messages through the socket.
     int32_t sendReadyMsg();
@@ -198,14 +254,70 @@ public:
     /// Forces CTP to go in the "leaving" state. 
     /// It hallows to exit threads and close correctly CTP.
     void setLeaving(bool value) { leaving = value; }
+    
+    
+    /**
+     * Register the passed object as the listener for push notifications.
+     * Clients should derivate a class from PushListener and register 
+     * it with this method, then implement PushListener::onNotificationReceived() 
+     * to execute actions when a push message arrives.
+     * TODO: will be moved in PushManager
+     * 
+     * @note  Only one listener can be registered at the time.
+     *        This would discard a listener previously registered.
+     * @param listener  the notification listener object
+     */
+    void registerPushListener(PushListener& listener) { pushListener = &listener; }
+    
+    /**
+     * Method called when a sync notification has been received.
+     * It's called by the receive thread, after a CTP push.
+     * TODO: will be moved in PushManager, also used for STP
+     * Will notify the pushListener (if registered) with a list of serverURI.
+     * 
+     * @param sn  the SyncNotification object received
+     */
+    void syncNotificationReceived(SyncNotification* sn);
+    
+    /**
+     * Method called when a CTP error occurs.
+     * Will notify the pushListener (if registered) with the passed
+     * error code and (optional) addinitional info.
+     * @param errorCode       the CTP error code (one of CtpError)
+     * @param additionalInfo  [optional] further information about the error
+     */
+    void notifyError(const int errorCode, const int additionalInfo = 0);
+    
+    
+    /// Stops the heartbeatThread and sets the pointer to NULL.
+    void stopHeartbeatThread();
+    
+    /// Stops the cmdTimeoutThread and sets the pointer to NULL.
+    void stopCmdTimeoutThread();
+    
+    /// Stops the receiverThread and sets the pointer to NULL.
+    void stopReceiverThread();
+    
+    /// Stops the ctpThread and sets the pointer to NULL.
+    void stopCtpThread();
 
+    
 private:
     void hexDump(char *buf, int len);
     int extractMsgLength(const char* package, int packageLen);
     bool saveNonceParam(CTPMessage* authStatusMsg);
-
+    
+    /**
+     * Utility to terminate a desired thread, setting its HANDLE to NULL.
+     * @param thread   the HANDLE of the thread to be stopped
+     * @return         true if the thread has been effectively terminated
+     */
+    bool stopThread(FThread* thread);
 };
 
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

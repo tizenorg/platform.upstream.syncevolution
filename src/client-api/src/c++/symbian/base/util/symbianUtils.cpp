@@ -42,15 +42,18 @@
 #include "base/fscapi.h"
 #include "base/util/symbianUtils.h"
 #include "base/util/stringUtils.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 
 
 void msgBox(const TDesC& aMsg, const TWarningLevel aLevel)
 {
-    // go to foreground and prompt
-    TApaTask task(CEikonEnv::Static()->WsSession());
-    task.SetWgId( CEikonEnv::Static()->RootWin().Identifier());
-    task.BringToForeground();
+    // don't go to foreground!
+    //TApaTask task(CEikonEnv::Static()->WsSession());
+    //task.SetWgId( CEikonEnv::Static()->RootWin().Identifier());
+    //task.BringToForeground();
 
     CAknResourceNoteDialog* note;
     switch (aLevel)
@@ -78,20 +81,23 @@ void msgBox(const TDesC8& aMsg, const TWarningLevel aLevel)
     CnvUtfConverter::ConvertToUnicodeFromUtf8(msg16, aMsg);
 
     msgBox(msg16, aLevel);
+    msg16.Close();
 }
 
 void msgBox(const char* aMsg, const TWarningLevel aLevel)
 {
     RBuf16 buf16;
     buf16.Assign(charToNewBuf(aMsg));
-    msgBox(buf16);
-
+    msgBox(buf16, aLevel);
+    buf16.Close();
 }
+
 void msgBox(const wchar_t* aMsg, const TWarningLevel aLevel)
 {
     RBuf16 buf16;
     buf16.Assign(wcharToNewBuf(aMsg));
-    msgBox(buf16);
+    msgBox(buf16, aLevel);
+    buf16.Close();
 }
 
 
@@ -108,8 +114,8 @@ void showAlert(const TDesC8& aMsg)
     RBuf msg16;
     msg16.CreateL(aMsg.Length());
     CnvUtfConverter::ConvertToUnicodeFromUtf8(msg16, aMsg);
-
     showAlert(msg16);
+    msg16.Close();
 }
 
 void showAlert(const char* aMsg)
@@ -117,10 +123,75 @@ void showAlert(const char* aMsg)
     RBuf16 buf16;
     buf16.Assign(charToNewBuf(aMsg));
     showAlert(buf16);
+    buf16.Close();
 }
+
 void showAlert(const wchar_t* aMsg)
 {
     RBuf16 buf16;
     buf16.Assign(wcharToNewBuf(aMsg));
     showAlert(buf16);
+    buf16.Close();
 }
+
+void logMemInfo() {
+
+    TInt size, available, biggest;
+    RHeap& heap = User::Heap();
+
+    heap.Compress();
+
+    available = heap.Available(biggest);
+    size      = heap.Size();
+#if 1
+    LOG.debug("Heap size = %d -- available = %d -- biggest = %d", size, available, biggest);
+#else
+    LOG.debug("Heap size = -- available = -- biggest =");
+    RBuf msg;
+    msg.Create(255);
+    msg.Format(_L("Heap size = %d -- available = %d -- biggest = %d"), size, available, biggest);
+    msgBox(msg);
+    msg.Close();
+#endif
+}
+
+
+TInt mkdirAll(const StringBuffer& aPath)
+{
+    TInt err = KErrNone;
+    
+    // Transform: "/" -> "\"
+    StringBuffer path(aPath);
+    path = contextToPath(path.c_str());
+
+    // Trailing char MUST be "\"
+    const char* chars = path.c_str();
+    if (chars[strlen(chars)-1] != '\\') {
+        path += "\\";
+    }
+    
+    //LOG.debug("creating dir: '%s'", path.c_str());
+    
+    // Connect to the file server
+    RFs fileSession;
+    err = fileSession.Connect();
+    if (err) {
+        LOG.error("Cannot connect to the file server (code %d)", err);
+        return err;
+    }
+    CleanupClosePushL(fileSession);
+    
+    // Make the dirs
+    RBuf pathDes;
+    pathDes.Assign(stringBufferToNewBuf(path));
+    err = fileSession.MkDirAll(pathDes);
+    pathDes.Close();
+    
+    CleanupStack::PopAndDestroy(&fileSession);
+    return err;
+}
+
+
+
+END_NAMESPACE
+

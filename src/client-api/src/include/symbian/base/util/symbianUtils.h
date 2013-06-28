@@ -37,6 +37,11 @@
 #ifndef INCL_SYMBIAN_UTILS
 #define INCL_SYMBIAN_UTILS
 
+#include "base/globalsdef.h"
+#include "base/fscapi.h"
+#include "base/Log.h"
+
+BEGIN_NAMESPACE
 
 /**
  * Levels of warning message. For msgBox() utility function.
@@ -59,7 +64,7 @@ enum TWarningLevel
 void msgBox(const TDesC&   aMsg, const TWarningLevel aLevel = EInfoLevel);
 void msgBox(const TDesC8&  aMsg, const TWarningLevel aLevel = EInfoLevel);
 void msgBox(const char*    aMsg, const TWarningLevel aLevel = EInfoLevel);
-void msgBox(const wchar_t* aMsg, const TWarningLevel aLevel = EInfoLevel);
+void msgBox(const WCHAR* aMsg, const TWarningLevel aLevel = EInfoLevel);
 
 
 /**
@@ -71,7 +76,16 @@ void msgBox(const wchar_t* aMsg, const TWarningLevel aLevel = EInfoLevel);
 void showAlert(const TDesC&   aMsg);
 void showAlert(const TDesC8&  aMsg);
 void showAlert(const char*    aMsg);
-void showAlert(const wchar_t* aMsg);
+void showAlert(const WCHAR* aMsg);
+
+/**
+ * Log current heap usage information. Useful for debugging.
+ */
+void logMemInfo();
+
+TInt mkdirAll(const StringBuffer& aPath);
+
+END_NAMESPACE
 
 
 #endif /*INCL_SYMBIAN_UTILS*/

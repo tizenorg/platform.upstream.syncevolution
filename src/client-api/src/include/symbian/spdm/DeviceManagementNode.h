@@ -33,17 +33,21 @@
  * the words "Powered by Funambol".
  */
 
-#ifndef INCL_POSIX_DEVICE_MANAGEMENT_NODE
-#define INCL_POSIX_DEVICE_MANAGEMENT_NODE
+#ifndef INCL_SYMBIAN_DEVICE_MANAGEMENT_NODE
+#define INCL_SYMBIAN_DEVICE_MANAGEMENT_NODE
 /** @cond DEV */
 
+#include <syncmldef.h>
 #include <string.h>
 
+#include "base/globalsdef.h"
 #include "base/fscapi.h"
 #include "base/util/ArrayElement.h"
 #include "spdm/ManagementNode.h"
 #include "base/util/StringBuffer.h"
 
+
+BEGIN_NAMESPACE
 
 /*
  * File-based implementation of ManagementNode.
@@ -63,18 +67,6 @@ protected:
     char *prefix;
     static StringBuffer configFile;
 
-    class line : public ArrayElement {
-        char *str;
-
-        public:
-            line(const char *newStr = NULL) { str = NULL; setLine(newStr); }
-            ~line() { free(str); }
-            ArrayElement *clone() { return new line(str); }
-
-            const char *getLine() { return str; }
-            void setLine(const char *newStr) { if (str) { free(str); } str = strdup(newStr ? newStr : ""); }
-    };
-
     // the application's working directory
     StringBuffer currentDir;
 
@@ -93,24 +85,23 @@ protected:
     // String compare case insensitive
     int strnicmp( const char *a, const char *b, int len );
 
-    // Concatenate two directory names (of file names)
-    // If src1 is terminated by dir separator then src2 is simply appended
-    // otherwise a dir separator is inserted first
-    void concatDirs(StringBuffer& src1, const char* src2);
-
     // Initialize current dir. Current dir is initialized as configPath +
     // context + name
     void initCurrentDir();
 
-    // Convert a generic context to path file name
-    StringBuffer contextToPath(const char* cont);
-
     // Rename a file in the current working directory (currentDir)
     int renameFileInCwd(const char* src, const char* dst);
 
+#if defined(UPDATE_NATIVE_CONFIG)
+    // Push configuration parameters into the native configuration (only for
+    // paramters that apply)
+    void pushSymbianSyncMLConfigParameter(const char* property,
+                                          const char* value);
+#endif
+
     private:
 
-    static StringBuffer configPath;
+    static StringBuffer  configPath;
 
     public:
 
@@ -169,8 +160,36 @@ protected:
          */
         virtual ArrayElement* clone();
 
+        static void  setServerURI(const StringBuffer& server);
+        static const StringBuffer& getServerURI();
 
+        static void  setProfileName(const StringBuffer& name);
+        static const StringBuffer& getProfileName();
+
+        static void  setUID(TSmlCreatorId uid);
+        static TSmlCreatorId getUID();
+
+        static void setCardURI(const StringBuffer& cardURI);
+        static const StringBuffer& getCardURI();
+
+        static void setCalURI(const StringBuffer& calURI);
+        static const StringBuffer& getCalURI();
+
+        static void setImapServer(const StringBuffer& imapServer);
+        static const StringBuffer& getImapServer();
+
+        static void setImapPort(unsigned int imapPort);
+        static unsigned int getImapPort();
+
+        static void setSmtpServer(const StringBuffer& smtpServer);
+        static const StringBuffer& getSmtpServer();
+
+        static void setSmtpPort(unsigned int smtpPort);
+        static unsigned int getSmtpPort();
 };
+
+
+END_NAMESPACE
 
 /** @endcond */
 #endif

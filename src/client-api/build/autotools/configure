@@ -1494,13 +1494,6 @@ Optional Packages:
   --with-pic              try to use only PIC/non-PIC objects [default=use
                           both]
   --with-tags[=TAGS]      include additional configurations [automatic]
-  --with-transport-agent=curl/mac/mozilla
-                          force to use the specified transport agent. NOTE:
-                          the Mozilla transport agent requires
-                          --with-mozilla-sdk-path=DIR for setting the Mozilla
-                          SDK path
-  --with-mozilla-sdk-path=DIR
-                          use the Mozilla SDK from directory DIR
 
 Some influential environment variables:
   CXX         C++ compiler command
@@ -4810,7 +4803,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 4813 "configure"' > conftest.$ac_ext
+  echo '#line 4806 "configure"' > conftest.$ac_ext
   if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -7064,11 +7057,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7067: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7060: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:7071: \$? = $ac_status" >&5
+   echo "$as_me:7064: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -7332,11 +7325,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7335: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7328: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:7339: \$? = $ac_status" >&5
+   echo "$as_me:7332: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -7436,11 +7429,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7439: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7432: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:7443: \$? = $ac_status" >&5
+   echo "$as_me:7436: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -9733,7 +9726,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 9736 "configure"
+#line 9729 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -9833,7 +9826,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 9836 "configure"
+#line 9829 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -12169,11 +12162,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:12172: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:12165: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:12176: \$? = $ac_status" >&5
+   echo "$as_me:12169: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -12273,11 +12266,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:12276: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:12269: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:12280: \$? = $ac_status" >&5
+   echo "$as_me:12273: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -13834,11 +13827,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:13837: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:13830: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:13841: \$? = $ac_status" >&5
+   echo "$as_me:13834: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -13938,11 +13931,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:13941: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:13934: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:13945: \$? = $ac_status" >&5
+   echo "$as_me:13938: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -16125,11 +16118,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:16128: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:16121: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:16132: \$? = $ac_status" >&5
+   echo "$as_me:16125: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -16393,11 +16386,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:16396: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:16389: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:16400: \$? = $ac_status" >&5
+   echo "$as_me:16393: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -16497,11 +16490,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:16500: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:16493: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:16504: \$? = $ac_status" >&5
+   echo "$as_me:16497: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -19149,33 +19142,12 @@ LIBTOOL='$(SHELL) $(top_builddir)/libtool'
 
 
 
+case $target in
+*apple-darwin*)  use_mac_ta="yes" ;;
+*) use_libcurl="yes" ;;
+esac
 
-# Check whether --with-transport-agent was given.
-if test "${with_transport_agent+set}" = set; then
-  withval=$with_transport_agent; transport_agent="$withval"
-else
-  transport_agent="no"
-fi
-
-
-
-if test "x$transport_agent" = "xno"; then
-    case $target in
-        *apple-darwin*)  use_mac_ta="yes" ;;
-        *) use_curl_ta="yes" ;;
-    esac
-else
-    case $transport_agent in
-        curl)  use_curl_ta="yes" ;;
-        mac)  use_mac_ta="yes" ;;
-        mozilla)  use_mozilla_ta="yes" ;;
-        *) { { echo "$as_me:$LINENO: error: you must choose one of the following transport agents: curl/mac/mozilla" >&5
-echo "$as_me: error: you must choose one of the following transport agents: curl/mac/mozilla" >&2;}
-   { (exit 1); exit 1; }; } ;;
-    esac
-fi
-
-if test "x$use_curl_ta" = "xyes"; then
+if test "x$use_libcurl" = "xyes"; then
     { echo "$as_me:$LINENO: checking for libcurl" >&5
 echo $ECHO_N "checking for libcurl... $ECHO_C" >&6; }
     if CURL_LDFLAGS=`sh -c 'curl-config --libs' 2>&5` && \
@@ -19184,7 +19156,6 @@ echo $ECHO_N "checking for libcurl... $ECHO_C" >&6; }
 echo "${ECHO_T}found" >&6; }
 
 
-            CPPFLAGS="-DFUN_TRANSPORT_AGENT=FUN_CURL_TRANSPORT_AGENT $CPPFLAGS"
     else
             { echo "$as_me:$LINENO: result: missing" >&5
 echo "${ECHO_T}missing" >&6; }
@@ -19197,174 +19168,8 @@ fi
 if test "x$use_mac_ta" = "xyes"; then
     CURL_LDFLAGS="-framework CoreServices"
 
-    CPPFLAGS="-DFUN_TRANSPORT_AGENT=FUN_MAC_TRANSPORT_AGENT $CPPFLAGS"
 fi
 
-if test "x$use_mozilla_ta" = "xyes"; then
-
-
-# Check whether --with-mozilla-sdk-path was given.
-if test "${with_mozilla_sdk_path+set}" = set; then
-  withval=$with_mozilla_sdk_path; mozilla_sdk_path="$withval"
-else
-  { { echo "$as_me:$LINENO: error: Mozilla SDK is required, you must specify its path using --with-mozilla-sdk-path=DIR" >&5
-echo "$as_me: error: Mozilla SDK is required, you must specify its path using --with-mozilla-sdk-path=DIR" >&2;}
-   { (exit 1); exit 1; }; }
-fi
-
-
-        CPPFLAGS="-I$mozilla_sdk_path/include -I$mozilla_sdk_path/include/xpcom -I$mozilla_sdk_path/include/nspr -I$mozilla_sdk_path/include/string -I$mozilla_sdk_path/include/content $CPPFLAGS"
-        LDFLAGS="-L$mozilla_sdk_path/lib -lxpcomglue_s -lxpcom -lnspr4 -lplds4 -lplc4 $LDFLAGS"
-
-        { echo "$as_me:$LINENO: checking for mozilla headers" >&5
-echo $ECHO_N "checking for mozilla headers... $ECHO_C" >&6; }
-
-for ac_header in mozilla-config.h
-do
-as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
-if { as_var=$as_ac_Header; eval "test \"\${$as_var+set}\" = set"; }; then
-  { echo "$as_me:$LINENO: checking for $ac_header" >&5
-echo $ECHO_N "checking for $ac_header... $ECHO_C" >&6; }
-if { as_var=$as_ac_Header; eval "test \"\${$as_var+set}\" = set"; }; then
-  echo $ECHO_N "(cached) $ECHO_C" >&6
-fi
-ac_res=`eval echo '${'$as_ac_Header'}'`
-	       { echo "$as_me:$LINENO: result: $ac_res" >&5
-echo "${ECHO_T}$ac_res" >&6; }
-else
-  # Is the header compilable?
-{ echo "$as_me:$LINENO: checking $ac_header usability" >&5
-echo $ECHO_N "checking $ac_header usability... $ECHO_C" >&6; }
-cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-$ac_includes_default
-#include <$ac_header>
-_ACEOF
-rm -f conftest.$ac_objext
-if { (ac_try="$ac_compile"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
-  (eval "$ac_compile") 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } && {
-	 test -z "$ac_c_werror_flag" ||
-	 test ! -s conftest.err
-       } && test -s conftest.$ac_objext; then
-  ac_header_compiler=yes
-else
-  echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-	ac_header_compiler=no
-fi
-
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-{ echo "$as_me:$LINENO: result: $ac_header_compiler" >&5
-echo "${ECHO_T}$ac_header_compiler" >&6; }
-
-# Is the header present?
-{ echo "$as_me:$LINENO: checking $ac_header presence" >&5
-echo $ECHO_N "checking $ac_header presence... $ECHO_C" >&6; }
-cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-#include <$ac_header>
-_ACEOF
-if { (ac_try="$ac_cpp conftest.$ac_ext"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
-  (eval "$ac_cpp conftest.$ac_ext") 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } >/dev/null && {
-	 test -z "$ac_c_preproc_warn_flag$ac_c_werror_flag" ||
-	 test ! -s conftest.err
-       }; then
-  ac_header_preproc=yes
-else
-  echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-  ac_header_preproc=no
-fi
-
-rm -f conftest.err conftest.$ac_ext
-{ echo "$as_me:$LINENO: result: $ac_header_preproc" >&5
-echo "${ECHO_T}$ac_header_preproc" >&6; }
-
-# So?  What about this header?
-case $ac_header_compiler:$ac_header_preproc:$ac_c_preproc_warn_flag in
-  yes:no: )
-    { echo "$as_me:$LINENO: WARNING: $ac_header: accepted by the compiler, rejected by the preprocessor!" >&5
-echo "$as_me: WARNING: $ac_header: accepted by the compiler, rejected by the preprocessor!" >&2;}
-    { echo "$as_me:$LINENO: WARNING: $ac_header: proceeding with the compiler's result" >&5
-echo "$as_me: WARNING: $ac_header: proceeding with the compiler's result" >&2;}
-    ac_header_preproc=yes
-    ;;
-  no:yes:* )
-    { echo "$as_me:$LINENO: WARNING: $ac_header: present but cannot be compiled" >&5
-echo "$as_me: WARNING: $ac_header: present but cannot be compiled" >&2;}
-    { echo "$as_me:$LINENO: WARNING: $ac_header:     check for missing prerequisite headers?" >&5
-echo "$as_me: WARNING: $ac_header:     check for missing prerequisite headers?" >&2;}
-    { echo "$as_me:$LINENO: WARNING: $ac_header: see the Autoconf documentation" >&5
-echo "$as_me: WARNING: $ac_header: see the Autoconf documentation" >&2;}
-    { echo "$as_me:$LINENO: WARNING: $ac_header:     section \"Present But Cannot Be Compiled\"" >&5
-echo "$as_me: WARNING: $ac_header:     section \"Present But Cannot Be Compiled\"" >&2;}
-    { echo "$as_me:$LINENO: WARNING: $ac_header: proceeding with the preprocessor's result" >&5
-echo "$as_me: WARNING: $ac_header: proceeding with the preprocessor's result" >&2;}
-    { echo "$as_me:$LINENO: WARNING: $ac_header: in the future, the compiler will take precedence" >&5
-echo "$as_me: WARNING: $ac_header: in the future, the compiler will take precedence" >&2;}
-
-    ;;
-esac
-{ echo "$as_me:$LINENO: checking for $ac_header" >&5
-echo $ECHO_N "checking for $ac_header... $ECHO_C" >&6; }
-if { as_var=$as_ac_Header; eval "test \"\${$as_var+set}\" = set"; }; then
-  echo $ECHO_N "(cached) $ECHO_C" >&6
-else
-  eval "$as_ac_Header=\$ac_header_preproc"
-fi
-ac_res=`eval echo '${'$as_ac_Header'}'`
-	       { echo "$as_me:$LINENO: result: $ac_res" >&5
-echo "${ECHO_T}$ac_res" >&6; }
-
-fi
-if test `eval echo '${'$as_ac_Header'}'` = yes; then
-  cat >>confdefs.h <<_ACEOF
-#define `echo "HAVE_$ac_header" | $as_tr_cpp` 1
-_ACEOF
-
-else
-  { { echo "$as_me:$LINENO: error: Mozilla headers not found, you must specify the Mozilla SDK path using --with-mozilla-sdk-path=DIR" >&5
-echo "$as_me: error: Mozilla headers not found, you must specify the Mozilla SDK path using --with-mozilla-sdk-path=DIR" >&2;}
-   { (exit 1); exit 1; }; }
-fi
-
-done
-
-
-        CPPFLAGS="-DFUN_TRANSPORT_AGENT=FUN_MOZ_TRANSPORT_AGENT $CPPFLAGS"
-fi
 
 
 for ac_header in time.h

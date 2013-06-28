@@ -43,6 +43,9 @@
 #include "base/fscapi.h"
 #include "base/util/utils.h"
 #include "base/util/stringUtils.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 
 
@@ -59,6 +62,7 @@ HBufC* charToNewBuf(const char* aInput)
     buf8.Copy(chars);
     
     HBufC* ret = CnvUtfConverter::ConvertToUnicodeFromUtf8L(buf8);
+    buf8.Close();
     return ret;
 }
 
@@ -68,6 +72,7 @@ const char* bufToNewChar(const TDesC& aInput)
 
     // This allocates a NEW char* buffer
     char* ret = stringdup((const char*)buf8->Ptr(), buf8->Length());
+    delete buf8;
     return (const char*)ret;
 }
 
@@ -118,8 +123,9 @@ HBufC8* charToNewBuf8(const char* aInput)
     RBuf8 buf8;
     buf8.CreateL(len);
     buf8.Copy(chars);
-    
-    return buf8.Alloc();
+    HBufC8* res = buf8.Alloc();
+    buf8.Close();
+    return res;
 }
 
 const char* buf8ToNewChar(const TDesC8& aInput) 
@@ -142,4 +148,27 @@ HBufC8* stringBufferToNewBuf8(const StringBuffer& aInput)
 }
 
 
+
+StringBuffer contextToPath(const char* cont) 
+{
+    StringBuffer sb(cont);
+    sb.replaceAll("/", "\\", 0);
+    return sb;
+}
+
+void concatDirs(StringBuffer& src1, const char* src2) {
+ 
+    // If the src path terminates with \\ then there is no
+    // need to add it again (this would be an illegal symbian path)
+    // Unfortunately we cannot use StringBuffer directly for this check
+    // there is something weird with \\ in StringBuffer (at least on symbian)
+    const char* chars = src1.c_str();
+    if (chars[strlen(chars)-1] != '\\') {
+        src1.append("\\");
+    }
+    src1.append(src2);
+}
+
+
+END_NAMESPACE
 

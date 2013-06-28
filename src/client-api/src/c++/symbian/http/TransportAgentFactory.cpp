@@ -32,39 +32,31 @@
  * feasible for technical reasons, the Appropriate Legal Notices must display
  * the words "Powered by Funambol".
  */
-#ifndef INCL_DM_TREE_MANAGER
-#define INCL_DM_TREE_MANAGER
-/** @cond DEV */
 
-#include "base/constants.h"
-#include "spdm/ManagementNode.h"
+#include "base/globalsdef.h"
+#include "http/SymbianTransportAgent.h"
+#include "http/TransportAgentFactory.h"
 
-/**
- * DMTreeManager is an abstract class for which implementors have to provide a
- * concrete implementation. It provides the ability to retrieve and store
- * objects into the DM platform specific repository. Note that the object
- * returned by readManagementNode() is created with the standard C++ new operator
- * and must be deleted by the caller with the standard C++ delete operator.
- */
-class DMTreeManager {
-    public:
-        /*
-         * Returns the management node identified by the given node pathname
-         * (relative to the root management node). If the node is not found
-         * NULL is returned.
-         *
-         * The ManagementNode is created with the new operator and must be
-         * discarded by the caller with the operator delete. Depending on
-         * which node is given, the result is either an instance
-         * of SourceManagementNode or AccessManagementNode.
-         */
-        virtual ManagementNode* const readManagementNode(const char*  node)=0;
+BEGIN_NAMESPACE
 
-        /*
-         * Stores the content of the node permanently in the DMTree
-         */
-        virtual void setManagementNode(ManagementNode& n)=0;
-};
+TransportAgent* TransportAgentFactory::getTransportAgent(
+        URL& url, Proxy& proxy, unsigned int timeout, unsigned int maxmsgsize)
+{
 
-/** @endcond */
-#endif
+
+    CSymbianTransportAgent* ta;
+    
+    
+    TRAPD(err,
+        {
+            ta = CSymbianTransportAgent::NewL(url, proxy, timeout, maxmsgsize);
+        }
+    );
+    if (err == KErrNone) {
+        return ta;
+    } else {
+        return NULL;
+    }
+}
+
+END_NAMESPACE

@@ -30,6 +30,9 @@
 /* enable unit tests inside the library's source code */
 #undef ENABLE_UNIT_TESTS
 
+/* avoid hard dependency on Evolution shared objects */
+#undef EVOLUTION_COMPATIBILITY
+
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
 

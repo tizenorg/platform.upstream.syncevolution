@@ -853,6 +853,7 @@ CLEAN_CLIENT_SRC
 TRANSPORT_LDFLAGS
 TRANSPORT_CFLAGS
 CURL_LDFLAGS
+CLIENT_API_SRC
 FUNAMBOL_CFLAGS
 FUNAMBOL_LIBS
 FUNAMBOL
@@ -1522,6 +1523,11 @@ Optional Features:
                           together with normal builds of the library)
   --enable-static-cxx     build executables which contain libstdc++ instead of
                           requiring suitable libstdc++.so to run
+  --enable-evolution-compatibility
+                          build executables which only call Evolution via
+                          dlopen/dlsym: this avoids all hard dependencies on
+                          EDS shared objects, but might lead to crashes when
+                          their ABI changes
   --enable-maemo          enables some hacks which work around problems with
                           the Maemo 2.0 until at least 3.0 EDS-Dbus
   --disable-dependency-tracking  speeds up one-time build
@@ -1548,11 +1554,33 @@ Optional Packages:
                           specifies location of Funambol client library
   --with-funambol=<base directory>
                           alias for --with-funambol
-  --with-funambol-src=<base directory>
-                          specifies location of the Funambol
-                          '3x/client-api/native' source code
+  --with-funambol-src=<base directory|svn URL|git URL>
+                          Specifies location of the Funambol
+                          'client-api/native' source code. Use this instead of
+                          --with-funambol when the client library is to be
+                          compiled as part of the SyncEvolution compilation.
+                          In release versions of SyncEvolution, a copy of the
+                          client library is bundled under 'src/client-api' and
+                          compiled unless something else is specified.
+                          --with-funambol-src can be given a path to sources
+                          checked out already, a Subversion repository URL or
+                          a git repository URL. When given a repository URL,
+                          then the configure script will checkout the sources
+                          into 'src/client-api-copy' or update that working
+                          copy if the directory already exists. Default:
+                          bundled source in src/client-api (in released
+                          SyncEvolution sources), git://github.com/pohly/funambol-cpp-client-api.git otherwise.
   --with-sync4j-src=<base directory>
                           alias for --with-funambol-src
+  --with-funambol-username=<svn username>
+                          username to use when checking out
+                          --with-funambol-src sources from Subversion, default
+                          'guest'
+  --with-funambol-revision=<git tag/branch/hash or Subversion revision>
+                          Identifies which source revision to use from
+                          --with-funambol-src repository, empty string stands
+                          for latest. Default for default --funambol-src:
+                          syncevolution-0.8.1
   --with-gnu-ld           assume the C compiler uses GNU ld [default=no]
   --with-pic              try to use only PIC/non-PIC objects [default=use
                           both]
@@ -2327,7 +2355,7 @@ fi
 
 # Define the identity of the package.
  PACKAGE=syncevolution
- VERSION=0.8
+ VERSION=0.8.1
 
 
 cat >>confdefs.h <<_ACEOF
@@ -2473,6 +2501,8 @@ am__tar='${AMTAR} chof - "$$tardir"'; am__untar='${AMTAR} xf -'
 
 
 
+
+
 ac_config_headers="$ac_config_headers config.h"
 
 
@@ -2480,8 +2510,8 @@ ac_config_headers="$ac_config_headers config.h"
 
 DEVICE_TYPE=desktop
 
-# command used to configure client library, including options
-CLIENT_CONFIGURE=$PWD/src/client-api/build/autotools/configure
+# options to be used when configuring client library
+CLIENT_CONFIGURE_OPTIONS=
 
 
 # Check whether --with-funambol was given.
@@ -2497,10 +2527,18 @@ if test "${with_sync4j+set}" = set; then
 fi
 
 
+if test -e "$srcdir/src/client-api"; then
+   FUNAMBOLSRC_DEF="$srcdir/src/client-api"
+else
+   FUNAMBOLSRC_DEF="git://github.com/pohly/funambol-cpp-client-api.git"
+fi
+
 
 # Check whether --with-funambol-src was given.
 if test "${with_funambol_src+set}" = set; then
   withval=$with_funambol_src; FUNAMBOLSRC="$withval"
+else
+  FUNAMBOLSRC="$FUNAMBOLSRC_DEF"; REVISION="syncevolution-0.8.1"
 fi
 
 
@@ -2508,6 +2546,22 @@ fi
 # Check whether --with-sync4j-src was given.
 if test "${with_sync4j_src+set}" = set; then
   withval=$with_sync4j_src; FUNAMBOLSRC="$withval"
+fi
+
+
+
+# Check whether --with-funambol-username was given.
+if test "${with_funambol_username+set}" = set; then
+  withval=$with_funambol_username; USERNAME="$withval"
+else
+  USERNAME="guest"
+fi
+
+
+
+# Check whether --with-funambol-revision was given.
+if test "${with_funambol_revision+set}" = set; then
+  withval=$with_funambol_revision; REVISION="$withval"
 fi
 
 
@@ -2547,6 +2601,14 @@ if test "${enable_static_cxx+set}" = set; then
   enableval=$enable_static_cxx; enable_static_cxx="$enableval"
 else
   enable_static_cxx="no"
+fi
+
+
+# Check whether --enable-evolution-compatibility was given.
+if test "${enable_evolution_compatibility+set}" = set; then
+  enableval=$enable_evolution_compatibility; enable_evolution_compatibility="$enableval"
+else
+  enable_evolution_compatibility="no"
 fi
 
 
@@ -4454,7 +4516,7 @@ fi
 
 
 if test $enable_unit_tests == "yes"; then
-        CLIENT_CONFIGURE="$CLIENT_CONFIGURE --enable-unit-tests"
+        CLIENT_CONFIGURE_OPTIONS="$CLIENT_CONFIGURE_OPTIONS --enable-unit-tests"
 
 cat >>confdefs.h <<\_ACEOF
 #define ENABLE_UNIT_TESTS 1
@@ -4462,7 +4524,7 @@ _ACEOF
 
 fi
 if test $enable_integration_tests == "yes"; then
-        CLIENT_CONFIGURE="$CLIENT_CONFIGURE --enable-integration-tests"
+        CLIENT_CONFIGURE_OPTIONS="$CLIENT_CONFIGURE_OPTIONS --enable-integration-tests"
 
 cat >>confdefs.h <<\_ACEOF
 #define ENABLE_INTEGRATION_TESTS 1
@@ -4476,9 +4538,10 @@ if test $enable_static_cxx == "yes"; then
 fi
 
 
-# preserve src/client-api by default
+# preserve src/client-api by default,
+# always
 CLEAN_CLIENT_SRC=
-FUNAMBOL_LIB=$PWD/src/client-api.build/src/libfunambol.la
+FUNAMBOL_LIB=$PWD/src/build-client-api/src/libfunambol.la
 
 
 
@@ -4520,51 +4583,89 @@ if test "x$use_mac_ta" = "xyes"; then
 
 fi
 
+# absolute patch to source of Funambol client library
+CLIENT_API_SRC=no-client-api-source
 
 if test ! "$FUNAMBOL"; then
     if test "$FUNAMBOLSRC"; then
-        # make a copy of the sources, remove it during maintainer-clean and distclean
-        CLEAN_CLIENT_SRC=client-api
+        # default: checkout a copy of the sources, remove it during maintainer-clean and distclean
+        CLEAN_CLIENT_SRC=client-api-copy
+        CLIENT_API_SRC=$PWD/src/client-api-copy
 
-        { echo "$as_me:$LINENO: updating the content of src/client-api from $FUNAMBOLSRC " >&5
-echo "$as_me: updating the content of src/client-api from $FUNAMBOLSRC " >&6;}
-        mkdir -p src/client-api
-        if cp --help 2>/dev/null | grep >/dev/null -e "--update"; then
-            # GNU cp
-            cp_opts="--update --archive"
-        else
-            cp_opts="-r"
-        fi
+        { echo "$as_me:$LINENO: updating the content of $CLIENT_API_SRC from $FUNAMBOLSRC " >&5
+echo "$as_me: updating the content of $CLIENT_API_SRC from $FUNAMBOLSRC " >&6;}
+        case "$FUNAMBOLSRC" in
+            *://*) protocol="`echo $FUNAMBOLSRC | sed -e 's;://.*;;'`";;
+            *) protocol="file";;
+        esac
 
-        if cp $cp_opts $FUNAMBOLSRC/* src/client-api; then
-            ( cd src/client-api/build/autotools && ( test -f configure || sh autogen.sh ) )
-        else
-            { { echo "$as_me:$LINENO: error: copying $FUNAMBOLSRC into src/client-api failed " >&5
-echo "$as_me: error: copying $FUNAMBOLSRC into src/client-api failed " >&2;}
-   { (exit 1); exit 1; }; }
-        fi
-        find src/client-api/build/autotools/win* -name output | xargs rm -rf
-        find src/client-api/build/autotools/include/* src/client-api/build/autotools/src/* -type d | xargs rm -rf
-        find src/client-api -name "*~*" -o -name ".#*" -o -name "*.orig" -o -name "stamp-*" -o -name "*.o" -o -name "*.lo" -o -name .libs -o -name autom4te.cache -o -name config.status | xargs rm -rf
-    else
-        if test ! -d src/client-api; then
-            if test -d $srcdir/src/client-api; then
-                mkdir -p src
-                case $srcdir in
-                        /*) ln -s $srcdir/src/client-api src/client-api;;
-                        *) ln -s $PWD/$srcdir/src/client-api src/client-api;;
+        mkdir -p src
+        case $protocol in
+            file)
+                # use existing copy of the sources
+                CLEAN_CLIENT_SRC=
+                case "$FUNAMBOLSRC" in
+                     /*) CLIENT_API_SRC="$FUNAMBOLSRC";;
+                     *) CLIENT_API_SRC="$PWD/$FUNAMBOLSRC";;
                 esac
-            fi
-        fi
+                ;;
+            *svn*|*http*)
+                FUNAMBOLSRCREV="$FUNAMBOLSRC"
+                if test "$REVISION"; then
+                    revarg="-r $REVISION "
+                    if `echo $FUNAMBOLSRC | grep '@0123456789*'` >/dev/null; then
+                        :
+                    else
+                        FUNAMBOLSRCREV="$FUNAMBOLSRC@$REVISION"
+                    fi
+                fi
+                if test -d $CLIENT_API_SRC ; then
+                    ( set -x; cd $CLIENT_API_SRC && svn --username=$USERNAME switch $revarg "$FUNAMBOLSRC" ) || { { echo "$as_me:$LINENO: error: updating from $FUNAMBOLSRC failed" >&5
+echo "$as_me: error: updating from $FUNAMBOLSRC failed" >&2;}
+   { (exit 1); exit 1; }; }
+                else
+                    (set -x; svn --username=$USERNAME checkout $revarg "$FUNAMBOLSRCREV" $CLIENT_API_SRC ) || { { echo "$as_me:$LINENO: error: checking out $FUNAMBOLSRC failed" >&5
+echo "$as_me: error: checking out $FUNAMBOLSRC failed" >&2;}
+   { (exit 1); exit 1; }; }
+                fi
+                ;;
+            *git*)
+                if test -d $CLIENT_API_SRC ; then
+                    ( set -x; cd $CLIENT_API_SRC && git fetch "$FUNAMBOLSRC" ) || { { echo "$as_me:$LINENO: error: updating from $FUNAMBOLSRC failed" >&5
+echo "$as_me: error: updating from $FUNAMBOLSRC failed" >&2;}
+   { (exit 1); exit 1; }; }
+                else
+                    ( set -x; git clone "$FUNAMBOLSRC" $CLIENT_API_SRC ) || { { echo "$as_me:$LINENO: error: cloning $FUNAMBOLSRC failed" >&5
+echo "$as_me: error: cloning $FUNAMBOLSRC failed" >&2;}
+   { (exit 1); exit 1; }; }
+                fi
+                if test "$REVISION"; then
+                    # git 1.6 adds "origin", 1.4.4.4 doesn't
+                    ( set -x; cd $CLIENT_API_SRC && (git checkout "$REVISION" || git checkout "origin/$REVISION") ) || { { echo "$as_me:$LINENO: error: checking out $FUNAMBOLSRC failed" >&5
+echo "$as_me: error: checking out $FUNAMBOLSRC failed" >&2;}
+   { (exit 1); exit 1; }; }
+                fi
+                ;;
+        esac
+    else
+        # use existing copy of the sources; beware of
+        # out-of-tree compilation
+        case $srcdir in
+             /*) CLIENT_API_SRC="$srcdir/src/client-api";;
+             *) CLIENT_API_SRC="$PWD/$srcdir/src/client-api";;
+        esac
     fi
 
-    if test -f src/client-api/build/autotools/configure; then
-        chmod u+x src/client-api/build/autotools/configure src/client-api/build/autotools/config.sub src/client-api/build/autotools/config.guess
+    ( cd $CLIENT_API_SRC/build/autotools && ( test -f configure || sh autogen.sh ) )
+
+    if test -f $CLIENT_API_SRC/build/autotools/configure; then
+        CLIENT_CONFIGURE="$CLIENT_API_SRC/build/autotools/configure"
+        chmod u+x $CLIENT_API_SRC/build/autotools/configure $CLIENT_API_SRC/build/autotools/config.sub $CLIENT_API_SRC/build/autotools/config.guess
 
         # use local copy of the sources, with dependencies
         # to trigger building the client library
-        FUNAMBOL_SUBDIR=$PWD/src/client-api.build
-        FUNAMBOL_DEP=$PWD/src/client-api.build/src/libfunambol.la
+        FUNAMBOL_SUBDIR=$PWD/src/build-client-api
+        FUNAMBOL_DEP=$PWD/src/build-client-api/src/libfunambol.la
 
         FUNAMBOL_CFLAGS="-I$FUNAMBOL_SUBDIR/include/posix -I$FUNAMBOL_SUBDIR/include/common -I$FUNAMBOL_SUBDIR/include -I$FUNAMBOL_SUBDIR/test"
         FUNAMBOL_LIBS="-L$FUNAMBOL_SUBDIR/src -lfunambol"
@@ -4585,7 +4686,7 @@ echo "$as_me: configuring the client library " >&6;}
             # to check with autoconf for the right flags...
             FUNAMBOL_LIB_SHARED_FLAGS="-DPIC -fPIC"
         fi
-        if (set -x; mkdir -p $FUNAMBOL_SUBDIR && cd $FUNAMBOL_SUBDIR && $CLIENT_CONFIGURE --build=$build_alias --host=$host_alias --target=$target_alias --disable-shared --with-transport-agent=curl CFLAGS="$CFLAGS $FUNAMBOL_LIB_SHARED_FLAGS" CXXFLAGS="$CXXFLAGS $FUNAMBOL_LIB_SHARED_FLAGS" $cxx_lib_args); then true; else
+        if (set -x; mkdir -p $FUNAMBOL_SUBDIR && cd $FUNAMBOL_SUBDIR && $CLIENT_CONFIGURE $CLIENT_CONFIGURE_OPTIONS --build=$build_alias --host=$host_alias --target=$target_alias --disable-shared --with-transport-agent=curl CFLAGS="$CFLAGS $FUNAMBOL_LIB_SHARED_FLAGS" CXXFLAGS="$CXXFLAGS $FUNAMBOL_LIB_SHARED_FLAGS" $cxx_lib_args); then true; else
             { { echo "$as_me:$LINENO: error: configuring client library failed " >&5
 echo "$as_me: error: configuring client library failed " >&2;}
    { (exit 1); exit 1; }; }
@@ -6982,7 +7083,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 6985 "configure"' > conftest.$ac_ext
+  echo '#line 7086 "configure"' > conftest.$ac_ext
   if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -8762,11 +8863,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8765: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8866: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:8769: \$? = $ac_status" >&5
+   echo "$as_me:8870: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -9030,11 +9131,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:9033: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:9134: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:9037: \$? = $ac_status" >&5
+   echo "$as_me:9138: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -9134,11 +9235,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:9137: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:9238: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:9141: \$? = $ac_status" >&5
+   echo "$as_me:9242: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -11431,7 +11532,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 11434 "configure"
+#line 11535 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11531,7 +11632,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 11534 "configure"
+#line 11635 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -13867,11 +13968,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:13870: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:13971: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:13874: \$? = $ac_status" >&5
+   echo "$as_me:13975: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -13971,11 +14072,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:13974: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14075: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:13978: \$? = $ac_status" >&5
+   echo "$as_me:14079: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -15532,11 +15633,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:15535: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:15636: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:15539: \$? = $ac_status" >&5
+   echo "$as_me:15640: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -15636,11 +15737,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:15639: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:15740: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:15643: \$? = $ac_status" >&5
+   echo "$as_me:15744: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -17823,11 +17924,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:17826: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:17927: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:17830: \$? = $ac_status" >&5
+   echo "$as_me:17931: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -18091,11 +18192,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:18094: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:18195: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:18098: \$? = $ac_status" >&5
+   echo "$as_me:18199: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -18195,11 +18296,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:18198: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:18299: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:18202: \$? = $ac_status" >&5
+   echo "$as_me:18303: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -20920,6 +21021,14 @@ _ACEOF
    DEVICE_TYPE=iPhone
 fi
 
+if test "$enable_evolution_compatibility" == "yes"; then
+
+cat >>confdefs.h <<\_ACEOF
+#define EVOLUTION_COMPATIBILITY 1
+_ACEOF
+
+fi
+
 
 cat >>confdefs.h <<_ACEOF
 #define DEVICE_TYPE "$DEVICE_TYPE"
@@ -21833,6 +21942,7 @@ CLEAN_CLIENT_SRC!$CLEAN_CLIENT_SRC$ac_delim
 TRANSPORT_LDFLAGS!$TRANSPORT_LDFLAGS$ac_delim
 TRANSPORT_CFLAGS!$TRANSPORT_CFLAGS$ac_delim
 CURL_LDFLAGS!$CURL_LDFLAGS$ac_delim
+CLIENT_API_SRC!$CLIENT_API_SRC$ac_delim
 FUNAMBOL_CFLAGS!$FUNAMBOL_CFLAGS$ac_delim
 FUNAMBOL_LIBS!$FUNAMBOL_LIBS$ac_delim
 FUNAMBOL!$FUNAMBOL$ac_delim
@@ -21843,7 +21953,6 @@ FUNAMBOLSRC!$FUNAMBOLSRC$ac_delim
 SYNCSOURCES!$SYNCSOURCES$ac_delim
 BACKEND_DEFINES!$BACKEND_DEFINES$ac_delim
 ADDRESSBOOK_CFLAGS!$ADDRESSBOOK_CFLAGS$ac_delim
-ADDRESSBOOK_LIBS!$ADDRESSBOOK_LIBS$ac_delim
 _ACEOF
 
   if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 97; then
@@ -21885,6 +21994,7 @@ _ACEOF
 ac_delim='%!_!# '
 for ac_last_try in false false false false false :; do
   cat >conf$$subs.sed <<_ACEOF
+ADDRESSBOOK_LIBS!$ADDRESSBOOK_LIBS$ac_delim
 PKG_CONFIG!$PKG_CONFIG$ac_delim
 EPACKAGE_CFLAGS!$EPACKAGE_CFLAGS$ac_delim
 EPACKAGE_LIBS!$EPACKAGE_LIBS$ac_delim
@@ -21932,7 +22042,7 @@ LIBOBJS!$LIBOBJS$ac_delim
 LTLIBOBJS!$LTLIBOBJS$ac_delim
 _ACEOF
 
-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 45; then
+  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 46; then
     break
   elif $ac_last_try; then
     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5

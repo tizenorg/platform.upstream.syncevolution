@@ -58,7 +58,8 @@ libsyncevolution_la_DEPENDENCIES =
 am__objects_1 = libsyncevolution_la-VObject.lo \
 	libsyncevolution_la-VProperty.lo \
 	libsyncevolution_la-VConverter.lo
-am__objects_2 = libsyncevolution_la-SyncEvolutionUtil.lo \
+am__objects_2 = libsyncevolution_la-eds_abi_wrapper.lo \
+	libsyncevolution_la-SyncEvolutionUtil.lo \
 	libsyncevolution_la-SyncEvolutionCmdline.lo \
 	libsyncevolution_la-EvolutionSyncSource.lo \
 	libsyncevolution_la-EvolutionSyncClient.lo \
@@ -115,6 +116,7 @@ CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CLEAN_CLIENT_SRC = @CLEAN_CLIENT_SRC@
+CLIENT_API_SRC = @CLIENT_API_SRC@
 CORE_LDADD_DEP = @CORE_LDADD_DEP@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
@@ -262,6 +264,8 @@ CORE_SOURCES = \
 	VolatileConfigNode.h \
 	VolatileConfigTree.h \
         EvolutionSmartPtr.h \
+	eds_abi_wrapper.h \
+	eds_abi_wrapper.cpp \
 	\
 	SyncEvolutionUtil.cpp \
 	SyncEvolutionUtil.h \
@@ -393,6 +397,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-VConverter.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-VObject.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-VProperty.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsyncevolution_la-eds_abi_wrapper.Plo@am__quote@
 
 .cpp.o:
 @am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
@@ -414,6 +419,13 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LTCXXCOMPILE) -c -o $@ $<
+
+libsyncevolution_la-eds_abi_wrapper.lo: eds_abi_wrapper.cpp
+@am__fastdepCXX_TRUE@	if $(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -MT libsyncevolution_la-eds_abi_wrapper.lo -MD -MP -MF "$(DEPDIR)/libsyncevolution_la-eds_abi_wrapper.Tpo" -c -o libsyncevolution_la-eds_abi_wrapper.lo `test -f 'eds_abi_wrapper.cpp' || echo '$(srcdir)/'`eds_abi_wrapper.cpp; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsyncevolution_la-eds_abi_wrapper.Tpo" "$(DEPDIR)/libsyncevolution_la-eds_abi_wrapper.Plo"; else rm -f "$(DEPDIR)/libsyncevolution_la-eds_abi_wrapper.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='eds_abi_wrapper.cpp' object='libsyncevolution_la-eds_abi_wrapper.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -c -o libsyncevolution_la-eds_abi_wrapper.lo `test -f 'eds_abi_wrapper.cpp' || echo '$(srcdir)/'`eds_abi_wrapper.cpp
 
 libsyncevolution_la-SyncEvolutionUtil.lo: SyncEvolutionUtil.cpp
 @am__fastdepCXX_TRUE@	if $(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -MT libsyncevolution_la-SyncEvolutionUtil.lo -MD -MP -MF "$(DEPDIR)/libsyncevolution_la-SyncEvolutionUtil.Tpo" -c -o libsyncevolution_la-SyncEvolutionUtil.lo `test -f 'SyncEvolutionUtil.cpp' || echo '$(srcdir)/'`SyncEvolutionUtil.cpp; \

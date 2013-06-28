@@ -37,6 +37,12 @@
 #define INCL_FTHREAD
 
 #include <e32std.h>
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
+
+TInt symbianRunWrapper(TAny* thread);
+TInt symbianTimeoutWrapper(TAny* thread);
 
 class FThread {
 
@@ -45,9 +51,10 @@ protected:
 
 protected:
     FThread();
-    virtual ~FThread();
 
 public:
+    virtual ~FThread();
+
     enum Priority { IdlePriority         = EPriorityNull,
                     LowestPriority       = EPriorityMuchLess,
                     LowPriority          = EPriorityLess,
@@ -106,16 +113,18 @@ public:
 private:
     bool isRunning;
     unsigned long timeout;
-    uint32_t id;
     RThread  sthread;
     RTimer   timer;
 
-private:
+    static uint32_t id;
+
     TInt startTimeout();
 
     friend TInt symbianRunWrapper(TAny* thread);
     friend TInt symbianTimeoutWrapper(TAny* thread);
- 
 };
+
+
+END_NAMESPACE
 
 #endif

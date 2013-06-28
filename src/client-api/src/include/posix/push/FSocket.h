@@ -36,12 +36,13 @@
 #ifndef INCL_FSOCKET
 #define INCL_FSOCKET
 
+#include "base/fscapi.h"
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <unistd.h>
-#include <string>
 #include <arpa/inet.h>
 
 const int MAXHOSTNAME = 200;
@@ -50,6 +51,9 @@ const int MAXRECV = 500;
 
 #include "stdint.h"
 #include "base/util/StringBuffer.h"
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
 
 class FSocket {
 
@@ -135,4 +139,7 @@ private:
     sockaddr_in unixAddr;
 
 };
+
+END_NAMESPACE
+
 #endif

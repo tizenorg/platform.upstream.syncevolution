@@ -35,16 +35,20 @@
 
 #include <e32std.h>
 
-static TInt symbianRunWrapper(TAny* thread);
-static TInt symbianTimeoutWrapper(TAny* thread);
 
 #include "base/fscapi.h"
 #include "push/FThread.h"
 #include "base/SymbianLog.h"
+#include "base/globalsdef.h"
+
+
+USE_NAMESPACE
+
+// Initialize statically the thread ID.
+uint32_t FThread::id = 0;
 
 FThread::FThread() : terminate(false),
-                     isRunning(false),
-                     id(0)
+                     isRunning(false)
 {
 }
 
@@ -56,12 +60,14 @@ typedef void (FThread::*ThreadFunction)(void);
 void FThread::start( FThread::Priority priority ) {
 
     RBuf threadId;
-    threadId.CreateL(128);
+    threadId.Create(30);
     threadId.Format(_L("FThread-%d"), id++);
-
+    
     TRAPD(err, sthread.Create(threadId, (TThreadFunction)symbianRunWrapper,
                               KDefaultStackSize, (RAllocator*)&User::Heap(), this));
     if (err == KErrNone) {
+        //LOG.debug("Created thread (id = %d)", id-1);
+        isRunning = true;
         if (priority == InheritPriority) {
             // TODO: how do we get the current thread priority?
             priority = NormalPriority;
@@ -69,20 +75,28 @@ void FThread::start( FThread::Priority priority ) {
         sthread.SetPriority((TThreadPriority)priority);
         sthread.Resume();
     }
+    threadId.Close();
 }
 
 void FThread::wait() {
     TRequestStatus stat;
+    if (sthread.Handle() == NULL) {
+        return;
+    }
     sthread.Logon(stat);
-    User::WaitForRequest(stat);
+    if (sthread.ExitType() == EExitPending || stat != KRequestPending) {
+        User::WaitForRequest(stat);
+    }
 }
+
+TRequestStatus timerStat;
 
 bool FThread::wait(unsigned long timeout) {
     TRequestStatus stat;
     sthread.Logon(stat);
 
     RThread tthread;
-    TBuf<128> tthreadId;
+    TBuf<30> tthreadId;
     tthreadId.Format(_L("FThread-timer-%d"), id);
     // Start the timer thread
     if (timeout) {
@@ -92,7 +106,7 @@ bool FThread::wait(unsigned long timeout) {
         if (err == KErrNone) {
             tthread.Resume();
         }
-        User::WaitForRequest(stat);
+        User::WaitForRequest(stat, timerStat);
     }
      
     if (this->timeout || timeout == 0) {
@@ -117,10 +131,13 @@ void FThread::softTerminate() {
     terminate = true;
     // Kill the thread
     sthread.Kill(0);
+    // At this point the thread is no longer running
+    isRunning = false;
 }
 
 void FThread::sleep(long msec) {
-    User::After((TTimeIntervalMicroSeconds32) (msec * 1000));
+    TTimeIntervalMicroSeconds32 interval(msec * 1000);
+    User::After(interval);
 }
 
 TInt FThread::startTimeout() {
@@ -130,34 +147,86 @@ TInt FThread::startTimeout() {
     User::WaitForRequest(status);
     // If the thread is still running we must kill it
     if (isRunning) {
-        sthread.Kill(0);
+        // This will unlock the calling thread
+#if 0
+        User::RequestComplete(timerStat);
+#endif
     }
     timeout = 0;
     return 0;
 }
 
-static TInt symbianRunWrapper(TAny* thread) {
+BEGIN_NAMESPACE
+
+TInt symbianRunWrapper(TAny* thread) {
     
     // Install a new trap handler for the thread.
     CTrapCleanup* cleanupstack = CTrapCleanup::New();
-    TInt err = KErrNone;
+
+    // Install a new active scheduler
+    TInt err;
+#if 0
+    CActiveScheduler* activeScheduler = NULL;
+    TRAP(err,
+        // Add support for active objects (in case the thread uses any)
+        activeScheduler = new (ELeave) CActiveScheduler;
+        //CleanupStack::PushL(activeScheduler);
+        CActiveScheduler::Install(activeScheduler);
+    );
+
+    if (err != KErrNone) {
+        LOG.error("Cannot create FThread active object");
+        return err;
+    }
+#endif
 
     // Mandatory!
     // To trap any internal call to "CleanupStack::PushL()"
+
+    FThread* t = (FThread*)thread;
     TRAP(err, 
-         { FThread* t = (FThread*)thread;
+         {
            t->run();
          }
     )
-    
+    t->isRunning = false;
+
+    // Can this be moved into the destructor?
+    if (t->sthread.Handle() != NULL) {
+        t->sthread.Close();
+    }
+   
+    //delete activeScheduler;
     delete cleanupstack;
+
+    // Terminate the current thread
+    User::Exit(err);
     return err;
 }
 
-static TInt symbianTimeoutWrapper(TAny* thread) {
+TInt symbianTimeoutWrapper(TAny* thread) 
+{
+    // Install a new trap handler for the thread.
+    CTrapCleanup* cleanupstack = CTrapCleanup::New();
 
     FThread* t = (FThread*)thread;
-    t->startTimeout();
+    TRAPD(err, 
+        {
+            t->startTimeout();
+            if (t->sthread.Handle() != NULL) {
+                t->sthread.Close();
+            }
+        }
+    )
+    t->isRunning = false;
+
+    delete cleanupstack;
+
+    // Terminate the current thread
+    User::Exit(0);
+
     return 0;
 }
+
+END_NAMESPACE
 

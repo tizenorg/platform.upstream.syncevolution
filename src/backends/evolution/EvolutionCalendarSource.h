@@ -25,8 +25,6 @@
 
 #ifdef ENABLE_ECAL
 
-#include <libecal/e-cal.h>
-
 /**
  * Implements access to Evolution calendars, either
  * using the to-do item or events. Change tracking
@@ -153,12 +151,14 @@ class EvolutionCalendarSource : public TrackingSyncSource
 
     /**
      * Extract modification string from calendar item.
+     * @return empty string if no time was available
      */
     string getItemModTime(ECalComponent *ecomp);
 
     /**
      * Extract modification string of an item stored in
      * the calendar.
+     * @return empty string if no time was available
      */
     string getItemModTime(const ItemID &id);
 

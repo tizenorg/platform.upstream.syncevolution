@@ -41,19 +41,37 @@
 
 #include "base/util/utils.h"
 #include "base/util/stringUtils.h"
+#include "base/util/symbianUtils.h"
+#include "base/util/StringBuffer.h"
 #include "base/fscapi.h"
+#include "base/SymbianLog.h"
 #include "spdm/spdmutils.h"
 #include "spdm/constants.h"
 #include "spdm/ManagementNode.h"
 #include "spdm/DeviceManagementNode.h"
+#include "base/globalsdef.h"
+#include "base/cppdef.h"
+
+USE_NAMESPACE
 
 #define CONFIG_DIR      ".config"
 #define SYNC4J_DIR      ".sync4j"
 
-//static StringBuffer DeviceManagementNode::defaultPath;
-
 StringBuffer DeviceManagementNode::configPath; 
 StringBuffer DeviceManagementNode::configFile = "config.ini";
+
+class line : public ArrayElement {
+    char *str;
+
+    public:
+        line(const char *newStr = NULL) { str = NULL; setLine(newStr); }
+        ~line() { delete str; }
+        ArrayElement *clone() { return new line(str); }
+
+        const char *getLine() { return str; }
+        void setLine(const char *newStr) { delete str; str = stringdup(newStr ? newStr : ""); }
+};
+
 
 DeviceManagementNode::DeviceManagementNode(const char* parent,
                                            const char *leafName)
@@ -89,19 +107,9 @@ DeviceManagementNode::~DeviceManagementNode() {
     delete lines;
 }
 
-#if 0
-bool checkConfigurationPath(StringBuffer path) {
 
-    int val = chdir(path);
-    if (val == 0){
-        return true;
-    }else{
-        return false;
-    }
-}
-#endif
-
-void DeviceManagementNode::update(bool read) {
+void DeviceManagementNode::update(bool read) 
+{
     if (!read && !modified) {
         // no work to be done
         return;
@@ -111,6 +119,16 @@ void DeviceManagementNode::update(bool read) {
     concatDirs(fileName, configFile.c_str());
     const char* fname = fileName.c_str();
     FILE* file = fopen(fname, "r");
+    
+    if (!file) {
+        // Maybe the file or directory does not exist: create it and try again.
+        LOG.debug("Could not open file, create it empty: '%s'", fileName.c_str());
+        mkdirAll(currentDir);
+        file = fopen(fname, "w+");  // "w+" to create the file and be able to read/write
+        
+        // Anyway, set the last error so Clients can know the file was not found.
+        setErrorF(ERR_DM_TREE_NOT_AVAILABLE, "File not found: '%s'", fileName.c_str());
+    }
 
     if (file) {
         // Open a temp file in writing mode if we must update the config
@@ -118,10 +136,16 @@ void DeviceManagementNode::update(bool read) {
             fclose(file);
             fileName.append(".tmp");
             file = fopen(fileName, "w");
+            if (!file) {
+                setErrorF(ERR_INVALID_CONTEXT, "Error opening file: '%s'", fileName.c_str());
+                LOG.error("%s", getLastErrorMsg());
+                return;
+            }
         }
 
         if (read) {
-            char buffer[512];
+            // Note: don't create local buffers too big, the Symbian stack size is limited!
+            char buffer[128];
 
             lines->clear();
             while (fgets(buffer, sizeof(buffer), file)) {
@@ -135,9 +159,10 @@ void DeviceManagementNode::update(bool read) {
                 line newline(buffer);
                 lines->add(newline);
             }
-        } else {
+            fclose(file);
+        } 
+        else {
             int i = 0;
-
             while (true) {
                 line *curr = (line *)lines->get(i);
                 if (!curr) {
@@ -152,10 +177,24 @@ void DeviceManagementNode::update(bool read) {
                 StringBuffer tmpConfig = configFile;
                 tmpConfig += ".tmp";
 
+                // Both files must be closed for the rename.
+                int ret = fclose(file);
+                if (ret) {
+                    setErrorF(ret, "Error (%d) closing file: '%s'", ret, fileName.c_str());
+                    return;
+                }
+
                 renameFileInCwd( tmpConfig.c_str(), configFile.c_str());
             }
+            else {
+                fclose(file);
+            }
         }
-        fclose(file);
+    }
+    else {
+        setErrorF(ERR_DM_TREE_NOT_AVAILABLE, "Error opening file: '%s'", fileName.c_str());
+        LOG.error("%s", getLastErrorMsg());
+        return;
     }
 }
 
@@ -219,6 +258,7 @@ char* DeviceManagementNode::readPropertyValue(const char* property) {
     return stringdup("");
 }
 
+#include "base/util/symbianUtils.h"
 
 int DeviceManagementNode::getChildrenMaxCount() {
     int count = 0;
@@ -233,15 +273,17 @@ int DeviceManagementNode::getChildrenMaxCount() {
     // TODO use utility function for string conversion
     TBuf8<DIM_MANAGEMENT_PATH> buf8((const unsigned char*)fileSpecSb.c_str());
     HBufC* fileSpec = CnvUtfConverter::ConvertToUnicodeFromUtf8L(buf8);
-    ++cleanupStackSize;
     CleanupStack::PushL(fileSpec);
+    ++cleanupStackSize;
 
     //
     // Connect to the file server
     //
     fileSession.Connect();
-    ++cleanupStackSize;
     CleanupClosePushL(fileSession);
+    ++cleanupStackSize;
+
+    StringBuffer buf;
 
     //
     // Get the directories list, sorted by name
@@ -253,10 +295,11 @@ int DeviceManagementNode::getChildrenMaxCount() {
     if (err != KErrNone || dirList == NULL) {
         goto finally;
     }
-    ++cleanupStackSize;
     CleanupStack::PushL(dirList);
+    ++cleanupStackSize;
 
-    count = dirList->Count(); 
+    count = dirList->Count();
+
 finally:
     //
     // Close the connection with the file server
@@ -281,15 +324,15 @@ char **DeviceManagementNode::getChildrenNames() {
     // TODO use utility function for string conversion
     TBuf8<DIM_MANAGEMENT_PATH> buf8((const unsigned char*)fileSpecSb.c_str());
     HBufC* fileSpec = CnvUtfConverter::ConvertToUnicodeFromUtf8L(buf8);
-    ++cleanupStackSize;
     CleanupStack::PushL(fileSpec);
+    ++cleanupStackSize;
 
     //
     // Connect to the file server
     //
     fileSession.Connect();
-    ++cleanupStackSize;
     CleanupClosePushL(fileSession);
+    ++cleanupStackSize;
 
     //
     // Get the directories list, sorted by name
@@ -301,8 +344,8 @@ char **DeviceManagementNode::getChildrenNames() {
     if (err != KErrNone || dirList == NULL) {
         goto finally;
     }
-    ++cleanupStackSize;
     CleanupStack::PushL(dirList);
+    ++cleanupStackSize;
 
     //
     // Process each entry
@@ -322,7 +365,6 @@ char **DeviceManagementNode::getChildrenNames() {
         *(childrenName[i] + buf8->Length()) = (char)0;
         delete buf8;
 #endif
-
     }
     fileSession.Close();
 
@@ -342,6 +384,12 @@ finally:
  * @param value - the property value (zero terminated string)
  */
 void DeviceManagementNode::setPropertyValue(const char* property, const char* newvalue) {
+    
+    if (!property || !newvalue) {
+        LOG.debug("DeviceManagementNode::setPropertyValue - Warning, NULL char*!");
+        return;
+    }
+    
     int i = 0;
 
     while (true) {
@@ -372,19 +420,24 @@ void DeviceManagementNode::setPropertyValue(const char* property, const char* ne
                     delete [] newstr;
                     modified = true;
                 }
-                return;
+                goto finally;
             }
         }
-
         i++;
     }
 
-    char *newstr = new char[strlen(property) + 3 + strlen(newvalue) + 1];
-    sprintf(newstr, "%s = %s", property, newvalue);
-    line newline(newstr);
-    lines->add(newline);
-    modified = true;
-    delete [] newstr;
+    {
+        // This is a new property
+        char *newstr = new char[strlen(property) + 3 + strlen(newvalue) + 1];
+        sprintf(newstr, "%s = %s", property, newvalue);
+        line newline(newstr);
+        lines->add(newline);
+        delete [] newstr;
+        modified = true;
+    }
+
+finally:
+    i = 0;
 }
 
 ArrayElement* DeviceManagementNode::clone()
@@ -400,18 +453,7 @@ ArrayElement* DeviceManagementNode::clone()
     return ret;
 }
 
-void DeviceManagementNode::concatDirs(StringBuffer& src1, const char* src2) {
- 
-    // If the src path terminates with \\ then there is no
-    // need to add it again (this would be an illegal symbian path)
-    // Unfortunately we cannot use StringBuffer directly for this check
-    // there is something weird with \\ in StringBuffer (at least on symbian)
-    const char* chars = src1.c_str();
-    if (chars[strlen(chars)-1] != '\\') {
-        src1.append("\\");
-    }
-    src1.append(src2);
-}
+
 
 void DeviceManagementNode::initCurrentDir() {
 
@@ -430,52 +472,45 @@ void DeviceManagementNode::initCurrentDir() {
     }
 }
 
-StringBuffer DeviceManagementNode::contextToPath(const char* cont) {
-    // Contextes are defined as: (string/)* and on Symbian
-    // we map them to file. But Symbian uses backslashes as
-    // directory separator.
-    StringBuffer sb(cont);
-    sb.replaceAll("/", "\\", 0);
-    return sb;
-}
 
-int DeviceManagementNode::renameFileInCwd(const char* src, const char* dst) {
-
+int DeviceManagementNode::renameFileInCwd(const char* src, const char* dst)
+{
     RFs fileSession;
     RFile file;
-    int cleanupStackSize = 0;
 
     StringBuffer srcSb(currentDir);
     concatDirs(srcSb, src);
     StringBuffer dstSb(currentDir);
     concatDirs(dstSb, dst);
 
-    // TODO use utility function for string conversion
-    TBuf8<DIM_MANAGEMENT_PATH> srcBuf8((const unsigned char*)srcSb.c_str());
-    HBufC* srcDes = CnvUtfConverter::ConvertToUnicodeFromUtf8L(srcBuf8);
-    ++cleanupStackSize;
-    CleanupStack::PushL(srcDes);
+    RBuf srcDes, dstDes;
+    srcDes.Assign(stringBufferToNewBuf(srcSb));
+    dstDes.Assign(stringBufferToNewBuf(dstSb));
 
-    TBuf8<DIM_MANAGEMENT_PATH> dstBuf8((const unsigned char*)dstSb.c_str());
-    HBufC* dstDes = CnvUtfConverter::ConvertToUnicodeFromUtf8L(dstBuf8);
-    ++cleanupStackSize;
-    CleanupStack::PushL(dstDes);
-
-    //
     // Connect to the file server
-    //
     fileSession.Connect();
-    ++cleanupStackSize;
     CleanupClosePushL(fileSession);
 
-    TRAPD(err, fileSession.Rename(*srcDes, *dstDes));
+    // Replace 'config.ini' file with 'config.ini.tmp'
+    TInt err = fileSession.Replace(srcDes, dstDes);
 
-    CleanupStack::PopAndDestroy(cleanupStackSize);
+    CleanupStack::PopAndDestroy(&fileSession);
+    srcDes.Close();
+    dstDes.Close();
 
-    if (err != KErrNone) {
-        return -1;
-    } else {
+    if (err == KErrNone) {
         return 0;
     }
+    else {
+        LOG.error("Error (code %d) replacing file '%s'", err, dstSb.c_str());
+        if (err == KErrAccessDenied) {
+            LOG.error("Access denied");
+        }
+        else if (err == KErrPathNotFound) {
+            LOG.error("Unable to find the specified folder");
+        }
+        return -1;
+    }
 }
+
 

@@ -1,6 +1,6 @@
 /*
  * Funambol is a mobile platform developed by Funambol, Inc. 
- * Copyright (C) 2003 - 2007 Funambol, Inc.
+ * Copyright (C) 2008 Funambol, Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by
@@ -33,33 +33,20 @@
  * the words "Powered by Funambol".
  */
 
-#ifndef INCL_MOZILLA_TRANSPORT_AGENT
-#define INCL_MOZILLA_TRANSPORT_AGENT
+#ifndef __SYMBIAN_PAN__
+#define __SYMBIAN_PAN__
 
-#include "http/URL.h"
-#include "http/Proxy.h"
-#include "http/TransportAgent.h"
-#include "base/Log.h"
+/** symbian application panic codes */
+enum TsymbianPanics
+    {
+    EsymbianUi = 1
+    // add further panics here
+    };
 
-#define ERR_HTTP_TIME_OUT               ERR_TRANSPORT_BASE+ 7
-#define ERR_HTTP_NOT_FOUND              ERR_TRANSPORT_BASE+60
-#define ERR_HTTP_REQUEST_TIMEOUT        ERR_TRANSPORT_BASE+61
-#define ERR_HTTP_INFLATE                ERR_TRANSPORT_BASE+70
-#define ERR_HTTP_DEFLATE                ERR_TRANSPORT_BASE+71
+inline void Panic(TsymbianPanics aReason)
+    {
+    _LIT(applicationName, "symbian");
+    User::Panic(applicationName, aReason);
+    }
 
-/*
- * This is the Mozilla implementation of the TransportAgent object
- * It makes use of the Mozilla xpcom components for making http requests
- */
-
-class MozillaTransportAgent : public TransportAgent {
-    
-public:
-    MozillaTransportAgent();
-    MozillaTransportAgent(URL& url, Proxy& proxy, unsigned int responseTimeout = DEFAULT_MAX_TIMEOUT);
-    ~MozillaTransportAgent();
-    
-    char* sendMessage(const char* msg);
-};
-
-#endif
+#endif // __SYMBIAN_PAN__

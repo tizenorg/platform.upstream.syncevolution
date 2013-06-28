@@ -66,7 +66,10 @@ using namespace std;
 #define ST_RETRY                0x53
 
 
-#define MAX_MESSAGE_SIZE        4096
+#define MAX_MESSAGE_SIZE        256
+#include "base/globalsdef.h"
+
+BEGIN_NAMESPACE
     
 
 class CTPMessage {
@@ -267,5 +270,8 @@ public:
 };
 
     
+
+END_NAMESPACE
+
 /** @endcond */
 #endif

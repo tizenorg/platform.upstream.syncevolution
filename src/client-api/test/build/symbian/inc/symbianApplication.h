@@ -1,6 +1,6 @@
 /*
  * Funambol is a mobile platform developed by Funambol, Inc. 
- * Copyright (C) 2003 - 2007 Funambol, Inc.
+ * Copyright (C) 2008 Funambol, Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by
@@ -33,54 +33,50 @@
  * the words "Powered by Funambol".
  */
 
+#ifndef __SYMBIANAPPLICATION_H__
+#define __SYMBIANAPPLICATION_H__
 
-#include "base/util/KeyValuePair.h"
-#include "spdm/ManagementObject.h"
+// INCLUDES
+#include <aknapp.h>
+#include "symbian.hrh"
 
+// UID for the application;
+// this should correspond to the uid defined in the mmp file
+const TUid KUidsymbianApp =
+    {
+    _UID3
+    };
 
-ManagementObject::ManagementObject( const WCHAR* context,
-                                    const WCHAR* name   )
-: LeafManagementNode (context, name) {
-}
+// CLASS DECLARATION
 
-ManagementObject::~ManagementObject() {
-}
+/**
+ * CsymbianApplication application class.
+ * Provides factory to create concrete document object.
+ * An instance of CsymbianApplication is the application part of the
+ * AVKON application framework for the symbian example application.
+ */
+class CsymbianApplication : public CAknApplication
+    {
+public:
+    // Functions from base classes
 
-void ManagementObject::getPropertyValue(const WCHAR* p, WCHAR*v, int size) {
-    KeyValuePair* property = NULL;
+    /**
+     * From CApaApplication, AppDllUid.
+     * @return Application's UID (KUidsymbianApp).
+     */
+    TUid AppDllUid() const;
 
-    int l = properties.size();
-    for (int i=0; i<l; ++i) {
-        property = (KeyValuePair*)properties.get(i);
-        if (wcscmp(property->getKey(), p) == 0) {
-            wcsncpy(v, property->getValue(), size);
-            return;
-        }
-    }
+protected:
+    // Functions from base classes
 
-}
+    /**
+     * From CApaApplication, CreateDocumentL.
+     * Creates CsymbianDocument document object. The returned
+     * pointer in not owned by the CsymbianApplication object.
+     * @return A pointer to the created document object.
+     */
+    CApaDocument* CreateDocumentL();
+    };
 
-void ManagementObject::setPropertyValue(const WCHAR* p, const WCHAR*v) {
-    KeyValuePair property((WCHAR*)p, v);
-
-    properties.add(property);
-}
-
-ArrayElement* ManagementObject::clone() {
-    ManagementObject* ret = new ManagementObject(context, name);
-
-    KeyValuePair* property = NULL;
-
-    int l = properties.size();
-    for (int i=0; i<l; ++i) {
-        property = (KeyValuePair*)properties.get(i);
-        ret->setPropertyValue(property->getKey(), property->getValue());
-    }
-
-    return ret;
-}
-
-
-ArrayList& ManagementObject::getProperties() {
-    return properties;
-}
+#endif // __SYMBIANAPPLICATION_H__
+// End of File
