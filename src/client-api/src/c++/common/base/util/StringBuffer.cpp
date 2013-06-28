@@ -43,7 +43,6 @@
 USE_NAMESPACE
 
 const size_t StringBuffer::npos = 0xFFFFFFFF;
-static size_t growup = 5;
 
 
 StringBuffer::StringBuffer(const char* str, size_t len) {
@@ -179,6 +178,7 @@ StringBuffer& StringBuffer::sprintf(const char* format, ...) {
     return *this;
 }
 
+
 StringBuffer& StringBuffer::vsprintf(const char* format, PLATFORM_VA_LIST ap) {
     PLATFORM_VA_LIST aq;
 
@@ -286,7 +286,7 @@ size_t StringBuffer::rfind(const char *str, size_t pos) const
 
 size_t StringBuffer::replace(const char *from, const char *to, size_t pos)
 {
-	size_t ret = npos;
+    size_t ret = npos;
 
     if (!s)
         return npos;
@@ -316,7 +316,7 @@ size_t StringBuffer::replace(const char *from, const char *to, size_t pos)
             strcpy(p+tlen, tail);
             delete [] tail;
         }
-		ret = p - s;
+        ret = p - s;
     }
     return ret;
 }
@@ -357,7 +357,7 @@ StringBuffer& StringBuffer::join(ArrayList &tokens, const char *separator) {
     size_t totlen = 0, seplen = strlen(separator);
     // Calc total size
     for (line=(StringBuffer *)tokens.front();
-		 line;
+         line;
          line=(StringBuffer *)tokens.next() ) {
         totlen += line->length() + seplen;
     }
@@ -365,7 +365,7 @@ StringBuffer& StringBuffer::join(ArrayList &tokens, const char *separator) {
     reserve(totlen);
     // Join strings
     for (line=(StringBuffer *)tokens.front();
-		 line;
+         line;
          line=(StringBuffer *)tokens.next() ) {
         this->append(line->c_str());
         this->append(separator);
@@ -377,7 +377,7 @@ StringBuffer StringBuffer::substr(size_t pos, size_t len) const {
     if(pos > strlen(s))
         return StringBuffer("");
 
-	return (StringBuffer(s+pos, len));
+    return (StringBuffer(s+pos, len));
 }
 
 void StringBuffer::reserve(size_t len) {
@@ -424,7 +424,34 @@ bool StringBuffer::empty() const {
     return false;
 }
 
-bool StringBuffer::null() const { return (s==0); }
+bool StringBuffer::null() const {
+    return (s==0);
+}
+
+bool StringBuffer::endsWith(char ch) const {
+    if (empty()) {
+        return false;
+    }
+
+    if (s[length()-1] == ch) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool StringBuffer::endsWith(const char* str) const {
+    if (empty() || str == NULL || *str == (char)0) {
+        return false;
+    }
+    size_t strLength = strlen(str);
+    if (strLength > length()) {
+        return false;
+    }
+
+    char* start = (s + length()) - strLength;
+    return !strcmp(start, str);
+}
 
 
 // Member Operators

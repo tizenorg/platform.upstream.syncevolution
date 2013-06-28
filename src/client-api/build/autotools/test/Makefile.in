@@ -51,7 +51,8 @@ CONFIG_CLEAN_FILES =
 am__objects_1 = client-test-main.$(OBJEXT) client-test.$(OBJEXT) \
 	ClientTest.$(OBJEXT)
 am__objects_2 = ArrayListTest.$(OBJEXT) BasicTimeTest.$(OBJEXT) \
-	StringBufferTest.$(OBJEXT) ParserTest.$(OBJEXT)
+	StringBufferTest.$(OBJEXT) ParserTest.$(OBJEXT) \
+	base64Test.$(OBJEXT)
 am__objects_3 = $(am__objects_2)
 am_client_test_OBJECTS = $(am__objects_1) $(am__objects_3)
 client_test_OBJECTS = $(am_client_test_OBJECTS)
@@ -204,7 +205,8 @@ TESTS_BASE = \
     ArrayListTest.cpp \
     BasicTimeTest.cpp \
     StringBufferTest.cpp \
-    ParserTest.cpp
+    ParserTest.cpp \
+    base64Test.cpp
 
 TESTCASES = $(TESTS_BASE)
 
@@ -307,6 +309,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ClientTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ParserTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/StringBufferTest.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/base64Test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client-test-main.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client-test.Po@am__quote@
 
@@ -610,8 +613,9 @@ uninstall-am: uninstall-info-am uninstall-nobase_pkgincludeHEADERS
 
 vpath %.cpp	$(TESTDIR) \
 		$(TESTDIR)/common/base/util \
+		$(TESTDIR)/common/base \
 		$(TESTDIR)/posix/spdm/ \
-	        $(TESTDIR)/common/syncml
+		$(TESTDIR)/common/syncml
 #client_test_LDFLAGS = libsync4j.la
 
 # ensure that files are in the current directory before the check runs

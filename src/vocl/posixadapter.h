@@ -17,8 +17,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef INCL_AUTOTOOLS_ADAPTER
-#define INCL_AUTOTOOLS_ADAPTER
+#ifndef INCL_POSIX_ADAPTER
+#define INCL_POSIX_ADAPTER
 
 
 /*
@@ -27,11 +27,16 @@
 
 #include <config.h>
 #include <string.h>
+#include <wchar.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <time.h>
 #include <stdarg.h>
+
+#include <string>
+#include <cwchar>
+#include <iostream>
 
 // For ntoh functions
 #include <netinet/in.h>
@@ -125,8 +130,8 @@ inline char towupper(char x) { return toupper(x); }
 #undef NULL
 #define NULL 0
 
-#define min(x,y) ( (x) < (y) ? (x) : (y) )
-#define max(x,y) ( (x) > (y) ? (x) : (y) )
+template <class T> T min(T x, T y) { return x < y ? x : y; }
+template <class T> T max(T x, T y) { return x > y ? x : y; }
 
 #endif
 

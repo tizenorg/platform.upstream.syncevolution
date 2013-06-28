@@ -37,6 +37,7 @@ using namespace std;
 using namespace vocl;
 
 #include <boost/algorithm/string.hpp>
+#include <boost/foreach.hpp>
 
 class unrefEBookChanges {
  public:
@@ -72,7 +73,7 @@ EvolutionContactSource::EvolutionContactSource( const EvolutionContactSource &ot
 {
 }
 
-EvolutionSyncSource::sources EvolutionContactSource::getSyncBackends()
+EvolutionSyncSource::Databases EvolutionContactSource::getDatabases()
 {
     ESourceList *sources = NULL;
 
@@ -80,15 +81,16 @@ EvolutionSyncSource::sources EvolutionContactSource::getSyncBackends()
         EvolutionSyncClient::throwError("unable to access address books");
     }
 
-    EvolutionSyncSource::sources result;
+    Databases result;
     bool first = true;
     for (GSList *g = e_source_list_peek_groups (sources); g; g = g->next) {
         ESourceGroup *group = E_SOURCE_GROUP (g->data);
         for (GSList *s = e_source_group_peek_sources (group); s; s = s->next) {
             ESource *source = E_SOURCE (s->data);
-            result.push_back( EvolutionSyncSource::source( e_source_peek_name(source),
-                                                           e_source_get_uri(source),
-                                                           first ) );
+            eptr<char> uri(e_source_get_uri(source));
+            result.push_back(Database(e_source_peek_name(source),
+                                                         uri ? uri.get() : "",
+                                                         first));
             first = false;
         }
     }
@@ -110,7 +112,7 @@ EvolutionSyncSource::sources EvolutionContactSource::getSyncBackends()
 
         if (book) {
             const char *uri = e_book_get_uri (book);
-            result.push_back (EvolutionSyncSource::source (name, uri, true));
+            result.push_back(Database(name, uri, true));
         }
     }
     
@@ -224,8 +226,17 @@ void EvolutionContactSource::beginSyncThrow(bool needAll,
                                                           E_CONTACT_OSSO_CONTACT_STATE);
                 bool deleted = false;
                 while (nextState) {
-                    if (nextState->data && !strcmp((char *)nextState->data, "DELETED")) {
-                        deleted = true;
+                    LOG.debug("checking X-OSSO-CONTACT-STATE %p of uid %s",
+                              nextState->data, uid);
+                    if ((char *)nextState->data < (char *)1024) {
+                        LOG.info("broken X-OSSO-CONTACT-STATE %p, please report this to the SyncEvolution developer",
+                                 nextState->data);
+                    } else {
+                        LOG.debug("X-OSSO-CONTACT-STATE %p = %s",
+                                  nextState->data, (char *)nextState->data);
+                        if (nextState->data && !strcmp((char *)nextState->data, "DELETED")) {
+                            deleted = true;
+                        }
                     }
                     nextState = nextState->next;
                 }
@@ -355,7 +366,7 @@ SyncItem *EvolutionContactSource::createItem(const string &uid)
     if (!vcardstr) {
         throwError( string( "contact from Evolution " ) + uid, NULL );
     }
-    LOG.debug( vcardstr );
+    LOG.debug("%s", vcardstr.get());
 
     std::auto_ptr<VObject> vobj(VConverter::parse(vcardstr));
     if (vobj.get() == 0) {
@@ -449,10 +460,8 @@ SyncItem *EvolutionContactSource::createItem(const string &uid)
                 }
                 vprop->removeParameter("TYPE");
             }
-            for(list<string>::const_iterator it = types.begin();
-                it != types.end();
-                ++it) {
-                vprop->addParameter("TYPE", it->c_str());
+            BOOST_FOREACH(const string &type, types) {
+                vprop->addParameter("TYPE", type.c_str());
             }
 
             // Also make all strings uppercase because 3.0 is
@@ -499,7 +508,7 @@ string EvolutionContactSource::preparseVCard(SyncItem& item)
     // convert to 3.0 to get rid of quoted-printable encoded
     // non-ASCII chars, because Evolution does not support
     // decoding them
-    LOG.debug(data.c_str());
+    LOG.debug("%s", data.c_str());
     std::auto_ptr<VObject> vobj(VConverter::parse((char *)data.c_str()));
     if (vobj.get() == 0) {
         throwError( string( "parsing contact " ) + item.getKey(), NULL );
@@ -890,7 +899,9 @@ void EvolutionContactSource::logItem(const SyncItem &item, const string &info, b
 
         size_t offset = vcard.find( "FN:");
         if (offset != vcard.npos) {
-            int len = vcard.find( "\r", offset ) - offset - 3;
+            // accept both "\r\n" and "\n" as line termination:
+            // "\r\n" is the standard, but MemoToo does not follow that
+            int len = vcard.find_first_of("\r\n", offset) - offset - 3;
             line += vcard.substr( offset + 3, len );
         } else {
             line += "<unnamed contact>";

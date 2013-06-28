@@ -252,8 +252,9 @@ char* XMLProcessor::copyContent(const char* xml,
         // <Add><Data><![CDATA[ literal entity &amp; ]]></Data></Add>
         //
         StringBuffer tmp(xml+startPos, endPos - startPos);
-        tmp.replaceAll("&amp;", "&");
         tmp.replaceAll("&lt;", "<");
+        tmp.replaceAll("&gt;", ">");
+        tmp.replaceAll("&amp;", "&");
         ret = stringdup(tmp.c_str());
     } else {
         size_t len = endPos - startPos;
@@ -623,7 +624,6 @@ char* XMLProcessor::copyElementContentLevel(const char*xml   ,
     char* ret = NULL;
     bool openBracket  = false;  // <
     bool closeBracket = false;  // >
-    bool aloneBracket = false;  // </
     bool preCloseBracket = false;  //<.../
     bool openTag      = false;
     bool closeTag     = false;
@@ -766,7 +766,6 @@ const char* XMLProcessor::getElementAttributes(const char* xml,
 
     const char* p1 = NULL;
     const char* p2 = NULL;
-    bool charFound  = false;
     unsigned int l = strlen(tag);
 
     // example ot tag with attribute list

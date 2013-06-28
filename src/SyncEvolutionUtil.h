@@ -21,47 +21,29 @@
 
 #include <base/test.h>
 
+#include <boost/algorithm/string/case_conv.hpp>
+#include <boost/algorithm/string/predicate.hpp>
+
 #include <vector>
 #include <sstream>
 #include <string>
+#include <utility>
 using namespace std;
 
-/** concatenate all members of an iterator range, using sep between each pair of entries */
-template<class T> string join(const string &sep, T begin, T end)
-{
-    stringstream res;
+/** case-insensitive less than for assoziative containers */
+template <class T> class Nocase : public std::binary_function<T, T, bool> {
+public:
+    bool operator()(const T &x, const T &y) const { return boost::ilexicographical_compare(x, y); }
+};
 
-    if (begin != end) {
-        res << *begin;
-        ++begin;
-        while (begin != end) {
-            res << sep;
-            res << *begin;
-            ++begin;
-        }
-    }
+/** case-insensitive equals */
+template <class T> class Iequals : public std::binary_function<T, T, bool> {
+public:
+    bool operator()(const T &x, const T &y) const { return boost::iequals(x, y); }
+};
 
-    return res.str();
-}
-
-/** append all entries in iterator range at the end of another container */
-template<class LHS, class RHS> void append(LHS &lhs, const RHS &rhs)
-{
-    for (typename RHS::const_iterator it = rhs.begin();
-         it != rhs.end();
-         ++it) {
-        lhs.push_back(*it);
-    }
-}
-template<class LHS, class IT> void append(LHS &lhs, const IT &begin, const IT &end)
-{
-    for (IT it = begin;
-         it != end;
-         ++it) {
-        lhs.push_back(*it);
-    }
-}
-
+/** shorthand, primarily useful for BOOST_FOREACH macro */
+typedef pair<string, string> StringPair;
 
 /**
  * remove multiple slashes in a row and dots directly after a slash if not followed by filename,

@@ -33,6 +33,7 @@
  * the words "Powered by Funambol".
  */
 
+#include "base/util/utils.h"
 #include "base/util/StringBuffer.h"
 
 #include <cppunit/extensions/TestFactoryRegistry.h>
@@ -54,6 +55,7 @@ class StringBufferTest : public CppUnit::TestFixture {
     CPPUNIT_TEST(testSprintf);
     CPPUNIT_TEST(testReset);
     CPPUNIT_TEST(testLength);
+    CPPUNIT_TEST(testEndsWith);
     CPPUNIT_TEST_SUITE_END();
 
 private:
@@ -109,12 +111,17 @@ private:
 
         StringBuffer str(TEST_STRING);
 
+        char* toUtf8   = toMultibyte(TEXT(TEST_STRING));
+        char* toLatin1 = toMultibyte(TEXT(TEST_STRING), "iso_8859-1");
+
         StringBuffer cnv;
         cnv.convert(TEXT(TEST_STRING));
+        fprintf(stderr, "\nConverted string: %s\n", cnv.c_str());
+        CPPUNIT_ASSERT((strcmp(cnv.c_str(), toUtf8) == 0));
 
-        fprintf(stderr, "Converted string: %s\n", cnv.c_str());
-
-        CPPUNIT_ASSERT(str == cnv);
+        cnv.convert(TEXT(TEST_STRING), "iso_8859-1");
+        fprintf(stderr, "\nConverted string: %s\n", cnv.c_str());
+        CPPUNIT_ASSERT((strcmp(cnv.c_str(), toLatin1) == 0));
     }
 
     //////////////////////////////////////////////////////// Test /////
@@ -188,6 +195,26 @@ private:
         CPPUNIT_ASSERT_EQUAL( s, *cloned);
 
         delete cloned;
+    }
+
+    //////////////////////////////////////////////////////// Test /////
+    // Test null() and empty() behavior
+    void testEndsWith() {
+        StringBuffer s("Test Ends With");
+
+        CPPUNIT_ASSERT(s.endsWith('h'));
+        CPPUNIT_ASSERT(s.endsWith(" With"));
+        CPPUNIT_ASSERT(!s.endsWith('t'));
+        CPPUNIT_ASSERT(!s.endsWith("with"));
+
+        StringBuffer s2("th");
+
+        CPPUNIT_ASSERT(!s2.endsWith("with"));
+        CPPUNIT_ASSERT(!s2.endsWith(""));
+
+        StringBuffer s3;
+        CPPUNIT_ASSERT(!s3.endsWith('t'));
+        CPPUNIT_ASSERT(!s3.endsWith("t"));
     }
 
 

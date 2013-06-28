@@ -67,7 +67,7 @@ static char prevSourceUri[64];
 static SyncMode prevSyncMode;
 
 static bool isFiredSyncEventBEGIN;
-static bool isFiredSyncEventEND;
+//static bool isFiredSyncEventEND;
 
 // Static functions ------------------------------------------------------------
 
@@ -125,11 +125,19 @@ void SyncManager::decodeItemKey(SyncItem *syncItem)
 
 void SyncManager::encodeItemKey(SyncItem *syncItem)
 {
-    char *key= toMultibyte(syncItem->getKey());
+    if (!syncItem) { 
+        LOG.error("The syncItem is NULL: invalid encoding?");
+        return; 
+    }
 
-    if (syncItem &&
-        (key ) != NULL &&
-        (strchr(key, '<') || strchr(key, '&'))) {
+    if (wcschr(syncItem->getKey(), '<') || wcschr(syncItem->getKey(), '&')) {
+        char *key= toMultibyte(syncItem->getKey());
+
+        if (!key) {
+            LOG.error("encodeItemKey: cannot convert key %" WCHAR_PRINTF, syncItem->getKey());
+            return;
+        }
+        
         StringBuffer encoded;
         b64_encode(encoded, key, strlen(key));
         StringBuffer newkey(encodedKeyPrefix);
@@ -137,9 +145,11 @@ void SyncManager::encodeItemKey(SyncItem *syncItem)
         LOG.debug("replacing unsafe key '%s' with encoded key '%s'", key, newkey.c_str());
         WCHAR* t = toWideChar(newkey.c_str());
         syncItem->setKey(t);
+        
         delete [] t;
+        delete [] key;
     }
-    delete [] key;
+
 }
 
 /*
@@ -260,7 +270,6 @@ SyncManager::~SyncManager() {
         delete [] sortedSourcesFromServer;
     }
     if (allItemsList){
-        int i = 0;
 #if 0
         while (allItemsList[i]) {
             delete [] allItemsList[i];
@@ -283,7 +292,6 @@ int SyncManager::prepareSync(SyncSource** s) {
     char* responseMsg           = NULL;
     SyncML*  syncml             = NULL;
     int ret                     = 0;
-    int serverRet               = 0;
     int count                   = 0;
     const char* requestedAuthType  = NULL;
     ArrayList* list             = NULL; //new ArrayList();
@@ -302,7 +310,6 @@ int SyncManager::prepareSync(SyncSource** s) {
     Status* status              = NULL; // The status from the client to the server
     Cred*   cred                = NULL;
     Alert*  alert               = NULL;
-    SyncSource** buf            = NULL;
     StringBuffer* devInfStr     = NULL;
     bool putDevInf              = false;
     char devInfHash[16 * 4 +1]; // worst case factor base64 is four
@@ -1079,7 +1086,6 @@ int SyncManager::sync() {
             // assumes a constant overhead for each message and change item 
             // and then adds the actual item data sent.
             deleteSyncML(&syncml);
-            static long msgOverhead = 2000;
             static long changeOverhead = 150;
             long msgSize = 0;
             Sync* sync = syncMLBuilder.prepareSyncCommand(*sources[count]);
@@ -1145,22 +1151,31 @@ int SyncManager::sync() {
                     break;
 
                 case SYNC_REFRESH_FROM_SERVER:
-                    last = true;
-                    // TODO: remove me...
-                    allItemsList[count] = new ArrayList();
-                    syncItem = getItem(*sources[count], &SyncSource::getFirstItemKey);
-                    if(syncItem) {
-                        allItemsList[count]->add((ArrayElement&)*syncItem);
-                        delete syncItem; syncItem = NULL;
-                    }
-                    syncItem = getItem(*sources[count], &SyncSource::getNextItemKey);
-                    while(syncItem) {
-                        allItemsList[count]->add((ArrayElement&)*syncItem);
-                        delete syncItem; syncItem = NULL;
+                    {
+                        last = true;
+                        char *name = toMultibyte(sources[count]->getName());
+                        if (sources[count]->removeAllItems() == 0) {                        
+                            LOG.debug("Removed all items for source %s", name);
+                        } else {
+                            LOG.error("Error removing all items for source %s", name);
+                        }
+                        delete [] name;
+                        // TODO: remove me...
+                        allItemsList[count] = new ArrayList();
+                        syncItem = getItem(*sources[count], &SyncSource::getFirstItemKey);
+                        if(syncItem) {
+                            allItemsList[count]->add((ArrayElement&)*syncItem);
+                            delete syncItem; syncItem = NULL;
+                        }
                         syncItem = getItem(*sources[count], &SyncSource::getNextItemKey);
+                        while(syncItem) {
+                            allItemsList[count]->add((ArrayElement&)*syncItem);
+                            delete syncItem; syncItem = NULL;
+                            syncItem = getItem(*sources[count], &SyncSource::getNextItemKey);
+                        }
                     }
                     break;
-
+                    
                 case SYNC_ONE_WAY_FROM_SERVER:
                     last = true;
                     break;
@@ -2038,7 +2053,7 @@ Status *SyncManager::processSyncItem(Item* item, const CommandInfo &cmdInfo, Syn
         incomingItem = new IncomingSyncItem(iname, cmdInfo, count);
 
         // incomplete item?
-        if (item->isMoreData()) {
+        if (item->getMoreData()) {
             // reserve buffer in advance, append below
             long size = cmdInfo.size;
             if (size < 0 || maxObjSize && size > maxObjSize) {
@@ -2118,7 +2133,7 @@ Status *SyncManager::processSyncItem(Item* item, const CommandInfo &cmdInfo, Syn
 
         incomingItem->setModificationTime(sources[count]->getNextSync());
 
-        if (!item->isMoreData()) {
+        if (!item->getMoreData()) {
 
 
             if (append) {

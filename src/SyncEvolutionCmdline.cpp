@@ -60,7 +60,7 @@ bool SyncEvolutionCmdline::parse()
             string cmdopt(m_argv[opt - 1]);
             if (!parseProp(m_validSourceProps, m_sourceProps,
                            m_argv[opt - 1], opt == m_argc ? NULL : m_argv[opt],
-                           "sync")) {
+                           EvolutionSyncSourceConfig::m_sourcePropSync.getName().c_str())) {
                 return false;
             }
         } else if(boost::iequals(m_argv[opt], "--sync-property") ||
@@ -153,17 +153,13 @@ bool SyncEvolutionCmdline::run() {
         SyncSourceNodes nodes(configNode, hiddenNode, trackingNode);
         EvolutionSyncSourceParams params("list", nodes, "");
         
-        for (SourceRegistry::const_iterator source = registry.begin();
-             source != registry.end();
-             ++source) {
-            for (Values::const_iterator alias = (*source)->m_typeValues.begin();
-                 alias != (*source)->m_typeValues.end();
-                 ++alias) {
-                if (!alias->empty() && (*source)->m_enabled) {
-                    configNode->setProperty("type", *alias->begin());
+        BOOST_FOREACH(const RegisterSyncSource *source, registry) {
+            BOOST_FOREACH(const Values::value_type &alias, source->m_typeValues) {
+                if (!alias.empty() && source->m_enabled) {
+                    configNode->setProperty("type", *alias.begin());
                     auto_ptr<EvolutionSyncSource> source(EvolutionSyncSource::createSource(params, false));
                     if (source.get() != NULL) {
-                        listSources(*source, join(" = ", alias->begin(), alias->end()));
+                        listSources(*source, boost::join(alias, " = "));
                         m_out << "\n";
                     }
                 }
@@ -198,17 +194,13 @@ bool SyncEvolutionCmdline::run() {
             dumpProperties(*syncProps, config->getRegistry());
         }
 
-        list<string> sourceList = config->getSyncSources();
-        vector<string> sources;
-        append(sources, sourceList);
-        sort(sources.begin(), sources.end());
-        for (vector<string>::const_iterator it = sources.begin();
-             it != sources.end();
-             ++it) {
+        list<string> sources = config->getSyncSources();
+        sources.sort();
+        BOOST_FOREACH(const string &name, sources) {
             if (m_sources.empty() ||
-                m_sources.find(*it) != m_sources.end()) {
-                m_out << endl << "[" << *it << "]" << endl;
-                ConstSyncSourceNodes nodes = config->getSyncSourceNodes(*it);
+                m_sources.find(name) != m_sources.end()) {
+                m_out << endl << "[" << name << "]" << endl;
+                ConstSyncSourceNodes nodes = config->getSyncSourceNodes(name);
                 boost::shared_ptr<FilterConfigNode> sourceProps(new FilterConfigNode(boost::shared_ptr<const ConfigNode>(nodes.m_configNode)));
                 sourceProps->setFilter(m_sourceProps);
                 dumpProperties(*sourceProps, EvolutionSyncSourceConfig::getRegistry());
@@ -280,12 +272,63 @@ bool SyncEvolutionCmdline::run() {
         boost::shared_ptr<EvolutionSyncConfig> to(new EvolutionSyncConfig(m_server));
         to->copy(*from, !fromScratch && !m_sources.empty() ? &m_sources : NULL);
 
-        // activate only the selected sources
-        if (fromScratch && !m_sources.empty()) {
+        // Sources are active now according to the server default.
+        // Disable all sources not selected by user (if any selected)
+        // and those which have no database.
+        if (fromScratch) {
             list<string> configuredSources = to->getSyncSources();
+            set<string> sources = m_sources;
+            
             BOOST_FOREACH(const string &source, configuredSources) {
                 boost::shared_ptr<PersistentEvolutionSyncSourceConfig> sourceConfig(to->getSyncSourceConfig(source));
-                sourceConfig->setSync(m_sources.find(source) != m_sources.end() ? "two-way" : "disabled");
+                string disable = "";
+                set<string>::iterator entry = sources.find(source);
+                bool selected = entry != sources.end();
+
+                if (!m_sources.empty() &&
+                    !selected) {
+                    disable = "not selected";
+                } else {
+                    if (entry != sources.end()) {
+                        // The command line parameter matched a valid source.
+                        // All entries left afterwards must have been typos.
+                        sources.erase(entry);
+                    }
+
+                    // check whether the sync source works
+                    EvolutionSyncSourceParams params("list", to->getSyncSourceNodes(source), "");
+                    auto_ptr<EvolutionSyncSource> syncSource(EvolutionSyncSource::createSource(params, false));
+                    if (syncSource.get() == NULL) {
+                        disable = "no backend available";
+                    } else {
+                        try {
+                            EvolutionSyncSource::Databases databases = syncSource->getDatabases();
+                            if (databases.empty()) {
+                                disable = "no database to synchronize";
+                            }
+                        } catch (...) {
+                            disable = "backend failed";
+                        }
+                    }
+                }
+
+                if (!disable.empty()) {
+                    // abort if the user explicitly asked for the sync source
+                    // and it cannot be enabled, otherwise disable it silently
+                    if (selected) {
+                        EvolutionSyncClient::throwError(source + ": " + disable);
+                    }
+                    sourceConfig->setSync("disabled");
+                } else if (selected) {
+                    // user absolutely wants it: enable even if off by default
+                    FilterConfigNode::ConfigFilter::const_iterator sync =
+                        m_sourceProps.find(EvolutionSyncSourceConfig::m_sourcePropSync.getName());
+                    sourceConfig->setSync(sync == m_sourceProps.end() ? "two-way" : sync->second);
+                }
+            }
+
+            if (!sources.empty()) {
+                EvolutionSyncClient::throwError(string("no such source(s): ") + boost::join(sources, " "));
             }
         }
 
@@ -367,7 +410,7 @@ bool SyncEvolutionCmdline::parseProp(const ConfigPropertyRegistry &validProps,
                     m_err << "ERROR: " << cmdOpt(opt, param) << ": " << error << endl;
                     return false;
                 } else {
-                    props.set(propstr, paramstr);
+                    props[propstr] = paramstr;
                     return true;                        
                 }
             }
@@ -390,10 +433,8 @@ bool SyncEvolutionCmdline::listPropValues(const ConfigPropertyRegistry &validPro
         if (comment != "") {
             list<string> commentLines;
             ConfigProperty::splitComment(comment, commentLines);
-            for (list<string>::const_iterator line = commentLines.begin();
-                 line != commentLines.end();
-                 ++line) {
-                m_out << "   " << *line << endl;
+            BOOST_FOREACH(const string &line, commentLines) {
+                m_out << "   " << line << endl;
             }
         } else {
             m_out << "   no documentation available" << endl;
@@ -409,11 +450,9 @@ bool SyncEvolutionCmdline::listProperties(const ConfigPropertyRegistry &validPro
     // Remember that comment and print it as late as possible,
     // that way related properties preceed their comment.
     string comment;
-    for (ConfigPropertyRegistry::const_iterator prop = validProps.begin();
-         prop != validProps.end();
-         ++prop) {
-        if (!(*prop)->isHidden()) {
-            string newComment = (*prop)->getComment();
+    BOOST_FOREACH(const ConfigProperty *prop, validProps) {
+        if (!prop->isHidden()) {
+            string newComment = prop->getComment();
 
             if (newComment != "") {
                 if (!comment.empty()) {
@@ -422,7 +461,7 @@ bool SyncEvolutionCmdline::listProperties(const ConfigPropertyRegistry &validPro
                 }
                 comment = newComment;
             }
-            m_out << (*prop)->getName() << ":" << endl;
+            m_out << prop->getName() << ":" << endl;
         }
     }
     dumpComment(m_out, "   ", comment);
@@ -432,13 +471,11 @@ bool SyncEvolutionCmdline::listProperties(const ConfigPropertyRegistry &validPro
 void SyncEvolutionCmdline::listSources(EvolutionSyncSource &syncSource, const string &header)
 {
     m_out << header << ":\n";
-    EvolutionSyncSource::sources sources = syncSource.getSyncBackends();
+    EvolutionSyncSource::Databases databases = syncSource.getDatabases();
 
-    for (EvolutionSyncSource::sources::const_iterator it = sources.begin();
-         it != sources.end();
-         it++) {
-        m_out << "   " << it->m_name << " (" << it->m_uri << ")";
-        if (it->m_isDefault) {
+    BOOST_FOREACH(const EvolutionSyncSource::Database &database, databases) {
+        m_out << "   " << database.m_name << " (" << database.m_uri << ")";
+        if (database.m_isDefault) {
             m_out << " <default>";
         }
         m_out << endl;
@@ -449,10 +486,8 @@ void SyncEvolutionCmdline::dumpServers(const string &preamble,
                                        const EvolutionSyncConfig::ServerList &servers)
 {
     m_out << preamble << endl;
-    for (EvolutionSyncConfig::ServerList::const_iterator it = servers.begin();
-         it != servers.end();
-         ++it) {
-        m_out << "   "  << it->first << " = " << it->second << endl;
+    BOOST_FOREACH(const EvolutionSyncConfig::ServerList::value_type &server,servers) {
+        m_out << "   "  << server.first << " = " << server.second << endl;
     }
     if (!servers.size()) {
         m_out << "   none" << endl;
@@ -462,25 +497,23 @@ void SyncEvolutionCmdline::dumpServers(const string &preamble,
 void SyncEvolutionCmdline::dumpProperties(const ConfigNode &configuredProps,
                                           const ConfigPropertyRegistry &allProps)
 {
-    for (ConfigPropertyRegistry::const_iterator it = allProps.begin();
-         it != allProps.end();
-         ++it) {
-        if ((*it)->isHidden()) {
+    BOOST_FOREACH(const ConfigProperty *prop, allProps) {
+        if (prop->isHidden()) {
             continue;
         }
         if (!m_quiet) {
-            string comment = (*it)->getComment();
+            string comment = prop->getComment();
             if (!comment.empty()) {
                 m_out << endl;
                 dumpComment(m_out, "# ", comment);
             }
         }
         bool isDefault;
-        (*it)->getProperty(configuredProps, &isDefault);
+        prop->getProperty(configuredProps, &isDefault);
         if (isDefault) {
             m_out << "# ";
         }
-        m_out << (*it)->getName() << " = " << (*it)->getProperty(configuredProps) << endl;
+        m_out << prop->getName() << " = " << prop->getProperty(configuredProps) << endl;
     }
 }
 
@@ -490,10 +523,8 @@ void SyncEvolutionCmdline::dumpComment(ostream &stream,
 {
     list<string> commentLines;
     ConfigProperty::splitComment(comment, commentLines);
-    for (list<string>::const_iterator line = commentLines.begin();
-         line != commentLines.end();
-         ++line) {
-        stream << prefix << *line << endl;
+    BOOST_FOREACH(const string &line, commentLines) {
+        stream << prefix << line << endl;
     }
 }
 
@@ -568,11 +599,6 @@ void SyncEvolutionCmdline::usage(bool full, const string &error, const string &p
             "--source-property|-z <property>=?" << endl <<
             "  Same as --sync-option, but applies to the configuration of all active" << endl <<
             "  sources. \"--sync <mode>\" is a shortcut for \"--source-option sync=<mode>\"." << endl <<
-            "" << endl <<
-            "--properties|-r <file name>|- [NOT IMPLEMENTED]" << endl <<
-            "  Same as --sync-property and --source-property, but with properties" << endl <<
-            "  specified in a file with the same format that --print-config uses." << endl <<
-            "  \"-\" reads from stdin." << endl <<
             "" << endl <<
             "--template|-l <server name>|default|?" << endl <<
             "  Can be used to select from one of the built-in default configurations" << endl <<
@@ -821,7 +847,7 @@ public:
         m_scheduleWorldConfig(".internal.ini:# serverNonce = \n"
                               ".internal.ini:# clientNonce = \n"
                               ".internal.ini:# devInfoHash = \n"
-                              "config.ini:syncURL = http://sync.scheduleworld.com\n"
+                              "config.ini:syncURL = http://sync.scheduleworld.com/funambol/ds\n"
                               "config.ini:username = your SyncML server account name\n"
                               "config.ini:password = your SyncML server password\n"
                               "config.ini:# logdir = \n"
@@ -852,7 +878,7 @@ public:
                               "sources/calendar/config.ini:sync = two-way\n"
                               "sources/calendar/config.ini:type = calendar\n"
                               "sources/calendar/config.ini:# evolutionsource = \n"
-                              "sources/calendar/config.ini:uri = event2\n"
+                              "sources/calendar/config.ini:uri = cal2\n"
                               "sources/calendar/config.ini:# evolutionuser = \n"
                               "sources/calendar/config.ini:# evolutionpassword = \n"
                               "sources/calendar/config.ini:# encoding = \n"
@@ -1033,7 +1059,8 @@ protected:
         CPPUNIT_ASSERT_EQUAL_DIFF("Available configuration templates:\n"
                                   "   funambol = http://my.funambol.com\n"
                                   "   scheduleworld = http://sync.scheduleworld.com\n"
-                                  "   synthesis = http://www.synthesis.ch\n",
+                                  "   synthesis = http://www.synthesis.ch\n"
+                                  "   memotoo = http://www.memotoo.com\n",
                                   help.m_out.str());
         CPPUNIT_ASSERT_EQUAL_DIFF("", help.m_err.str());
     }
@@ -1131,7 +1158,7 @@ protected:
             CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_err.str());
             string expected = filterConfig(internalToIni(m_scheduleWorldConfig));
             boost::replace_first(expected,
-                                 "syncURL = http://sync.scheduleworld.com",
+                                 "syncURL = http://sync.scheduleworld.com/funambol/ds",
                                  "syncURL = foo");
             boost::replace_all(expected,
                                "sync = two-way",
@@ -1552,8 +1579,8 @@ private:
         string config = m_scheduleWorldConfig;
 
         boost::replace_first(config,
-                             "syncURL = http://sync.scheduleworld.com",
-                             "syncURL = http://my.funambol.com");
+                             "syncURL = http://sync.scheduleworld.com/funambol/ds",
+                             "syncURL = http://my.funambol.com/sync");
 
         boost::replace_first(config,
                              "addressbook/config.ini:uri = card3",
@@ -1563,7 +1590,7 @@ private:
                              "addressbook/config.ini:type = addressbook:text/x-vcard");
 
         boost::replace_first(config,
-                             "calendar/config.ini:uri = event2",
+                             "calendar/config.ini:uri = cal2",
                              "calendar/config.ini:uri = event");
         boost::replace_first(config,
                              "calendar/config.ini:sync = two-way",
@@ -1586,7 +1613,7 @@ private:
     string SynthesisConfig() {
         string config = m_scheduleWorldConfig;
         boost::replace_first(config,
-                             "syncURL = http://sync.scheduleworld.com",
+                             "syncURL = http://sync.scheduleworld.com/funambol/ds",
                              "syncURL = http://www.synthesis.ch/sync");
 
         boost::replace_first(config,
@@ -1594,7 +1621,7 @@ private:
                              "addressbook/config.ini:uri = contacts");
 
         boost::replace_first(config,
-                             "calendar/config.ini:uri = event2",
+                             "calendar/config.ini:uri = cal2",
                              "calendar/config.ini:uri = events");
         boost::replace_first(config,
                              "calendar/config.ini:sync = two-way",
@@ -1695,15 +1722,13 @@ private:
         ReadDir readDir(newroot);
         sort(readDir.begin(), readDir.end());
 
-        for (ReadDir::const_iterator it = readDir.begin();
-             it != readDir.end();
-             ++it) {
-            if (isDir(newroot + "/" + *it)) {
-                scanFiles(root, dir + (dir.empty() ? "" : "/") + *it, out, onlyProps);
+        BOOST_FOREACH(const string &entry, readDir) {
+            if (isDir(newroot + "/" + entry)) {
+                scanFiles(root, dir + (dir.empty() ? "" : "/") + entry, out, onlyProps);
             } else {
                 ifstream in;
                 in.exceptions(ios_base::badbit /* failbit must not trigger exception because is set when reaching eof ?! */);
-                in.open((newroot + "/" + *it).c_str());
+                in.open((newroot + "/" + entry).c_str());
                 string line;
                 while (!in.eof()) {
                     getline(in, line);
@@ -1715,7 +1740,7 @@ private:
                         if (dir.size()) {
                             out << dir << "/";
                         }
-                        out << *it << ":";
+                        out << entry << ":";
                         out << line << '\n';
                     }
                 }

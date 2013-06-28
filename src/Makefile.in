@@ -47,8 +47,10 @@ check_PROGRAMS = @CPPUNIT_TESTS@
 @ENABLE_MODULES_FALSE@	SQLiteContactSourceRegister.cpp \
 @ENABLE_MODULES_FALSE@	AddressBookSourceRegister.cpp
 @ENABLE_ECAL_TRUE@am__append_2 = \
-@ENABLE_ECAL_TRUE@	e_cal_check_timezones.c \
-@ENABLE_ECAL_TRUE@	e_cal_check_timezones.h
+@ENABLE_ECAL_TRUE@	libical/icalstrdup.c \
+@ENABLE_ECAL_TRUE@	libical/icalstrdup.h \
+@ENABLE_ECAL_TRUE@	e-cal-check-timezones.c \
+@ENABLE_ECAL_TRUE@	e-cal-check-timezones.h
 
 subdir = src
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
@@ -85,9 +87,11 @@ syncebook_la_OBJECTS = $(am_syncebook_la_OBJECTS)
 syncecal_la_DEPENDENCIES =
 am__syncecal_la_SOURCES_DIST = EvolutionCalendarSource.h \
 	EvolutionMemoSource.h EvolutionCalendarSource.cpp \
-	EvolutionMemoSource.cpp e_cal_check_timezones.c \
-	e_cal_check_timezones.h
-@ENABLE_ECAL_TRUE@am__objects_3 = e_cal_check_timezones.lo
+	EvolutionMemoSource.cpp libical/icalstrdup.c \
+	libical/icalstrdup.h e-cal-check-timezones.c \
+	e-cal-check-timezones.h
+@ENABLE_ECAL_TRUE@am__objects_3 = syncecal_la-icalstrdup.lo \
+@ENABLE_ECAL_TRUE@	syncecal_la-e-cal-check-timezones.lo
 am__objects_4 = syncecal_la-EvolutionCalendarSource.lo \
 	syncecal_la-EvolutionMemoSource.lo $(am__objects_3)
 am_syncecal_la_OBJECTS = $(am__objects_4)
@@ -95,8 +99,7 @@ syncecal_la_OBJECTS = $(am_syncecal_la_OBJECTS)
 @ENABLE_MODULES_FALSE@am_syncecal_la_rpath =
 @ENABLE_MODULES_TRUE@am_syncecal_la_rpath = -rpath $(pkglibdir)
 syncsqlite_la_DEPENDENCIES =
-am__objects_5 = syncsqlite_la-TrackingSyncSource.lo \
-	syncsqlite_la-SQLiteUtil.lo \
+am__objects_5 = syncsqlite_la-SQLiteUtil.lo \
 	syncsqlite_la-SQLiteContactSource.lo
 am_syncsqlite_la_OBJECTS = $(am__objects_5)
 syncsqlite_la_OBJECTS = $(am_syncsqlite_la_OBJECTS)
@@ -114,10 +117,10 @@ am__client_test_SOURCES_DIST = client-test-app.cpp ConfigTree.h \
 	FilterConfigNode.h FilterConfigNode.cpp SafeConfigNode.h \
 	SafeConfigNode.cpp PrefixConfigNode.h PrefixConfigNode.cpp \
 	FileConfigNode.h FileConfigNode.cpp FileConfigTree.h \
-	FileConfigTree.cpp vocl/VObject.h vocl/VProperty.h \
-	vocl/VConverter.h vocl/posixadapter.h vocl/VObject.cpp \
-	vocl/VProperty.cpp vocl/VConverter.cpp \
-	EvolutionCalendarSourceRegister.cpp \
+	FileConfigTree.cpp TrackingSyncSource.h TrackingSyncSource.cpp \
+	vocl/VObject.h vocl/VProperty.h vocl/VConverter.h \
+	vocl/posixadapter.h vocl/VObject.cpp vocl/VProperty.cpp \
+	vocl/VConverter.cpp EvolutionCalendarSourceRegister.cpp \
 	EvolutionContactSourceRegister.cpp \
 	SQLiteContactSourceRegister.cpp AddressBookSourceRegister.cpp
 am__objects_6 = client_test-VObject.$(OBJEXT) \
@@ -136,7 +139,8 @@ am__objects_8 = client_test-SyncEvolutionUtil.$(OBJEXT) \
 	client_test-SafeConfigNode.$(OBJEXT) \
 	client_test-PrefixConfigNode.$(OBJEXT) \
 	client_test-FileConfigNode.$(OBJEXT) \
-	client_test-FileConfigTree.$(OBJEXT) $(am__objects_6) \
+	client_test-FileConfigTree.$(OBJEXT) \
+	client_test-TrackingSyncSource.$(OBJEXT) $(am__objects_6) \
 	$(am__objects_7)
 am_client_test_OBJECTS = client_test-client-test-app.$(OBJEXT) \
 	$(am__objects_8)
@@ -156,10 +160,10 @@ am__syncevolution_SOURCES_DIST = syncevolution.cpp ConfigTree.h \
 	FilterConfigNode.h FilterConfigNode.cpp SafeConfigNode.h \
 	SafeConfigNode.cpp PrefixConfigNode.h PrefixConfigNode.cpp \
 	FileConfigNode.h FileConfigNode.cpp FileConfigTree.h \
-	FileConfigTree.cpp vocl/VObject.h vocl/VProperty.h \
-	vocl/VConverter.h vocl/posixadapter.h vocl/VObject.cpp \
-	vocl/VProperty.cpp vocl/VConverter.cpp \
-	EvolutionCalendarSourceRegister.cpp \
+	FileConfigTree.cpp TrackingSyncSource.h TrackingSyncSource.cpp \
+	vocl/VObject.h vocl/VProperty.h vocl/VConverter.h \
+	vocl/posixadapter.h vocl/VObject.cpp vocl/VProperty.cpp \
+	vocl/VConverter.cpp EvolutionCalendarSourceRegister.cpp \
 	EvolutionContactSourceRegister.cpp \
 	SQLiteContactSourceRegister.cpp AddressBookSourceRegister.cpp
 am__objects_10 = syncevolution-VObject.$(OBJEXT) \
@@ -178,7 +182,8 @@ am__objects_12 = syncevolution-SyncEvolutionUtil.$(OBJEXT) \
 	syncevolution-SafeConfigNode.$(OBJEXT) \
 	syncevolution-PrefixConfigNode.$(OBJEXT) \
 	syncevolution-FileConfigNode.$(OBJEXT) \
-	syncevolution-FileConfigTree.$(OBJEXT) $(am__objects_10) \
+	syncevolution-FileConfigTree.$(OBJEXT) \
+	syncevolution-TrackingSyncSource.$(OBJEXT) $(am__objects_10) \
 	$(am__objects_11)
 am_syncevolution_OBJECTS = syncevolution-syncevolution.$(OBJEXT) \
 	$(am__objects_12)
@@ -393,7 +398,8 @@ CORE_SOURCES = ConfigTree.h ConfigNode.h VolatileConfigNode.h \
 	FilterConfigNode.cpp SafeConfigNode.h SafeConfigNode.cpp \
 	PrefixConfigNode.h PrefixConfigNode.cpp FileConfigNode.h \
 	FileConfigNode.cpp FileConfigTree.h FileConfigTree.cpp \
-	$(VOCL_SOURCES) $(am__append_1)
+	TrackingSyncSource.h TrackingSyncSource.cpp $(VOCL_SOURCES) \
+	$(am__append_1)
 SYNCECAL_SOURCES = EvolutionCalendarSource.h EvolutionMemoSource.h \
 	EvolutionCalendarSource.cpp EvolutionMemoSource.cpp \
 	$(am__append_2)
@@ -402,8 +408,6 @@ SYNCEBOOK_SOURCES = \
 	EvolutionContactSource.cpp
 
 SYNCSQLITE_SOURCES = \
-	TrackingSyncSource.h \
-	TrackingSyncSource.cpp \
 	SQLiteUtil.h \
 	SQLiteUtil.cpp \
 	SQLiteContactSource.h \
@@ -432,7 +436,14 @@ syncevolution_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS)
 syncevolution_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP)
 syncecal_la_SOURCES = $(SYNCECAL_SOURCES)
 syncecal_la_LIBADD = @ECAL_LIBS@
-syncecal_la_LDFLAGS = -module -rpath '$(pkglibdir)'
+# _GNU_SOURCE and -ldl for libical.c + dlsym():
+syncecal_la_CPPFLAGS = -D_GNU_SOURCE \
+	-De_cal_check_timezones=syncevolution_check_timezones \
+	-De_cal_tzlookup_ecal=syncevolution_tzlookup_ecal \
+	-De_cal_tzlookup_icomp=syncevolution_tzlookup_icomp \
+	-De_cal_match_tzid=syncevolution_match_tzid
+
+syncecal_la_LDFLAGS = -module -rpath '$(pkglibdir)' -ldl
 syncecal_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS)
 syncebook_la_SOURCES = $(SYNCEBOOK_SOURCES)
 syncebook_la_LIBADD = @EBOOK_LIBS@
@@ -629,17 +640,19 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-SyncEvolutionCmdline.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-SyncEvolutionConfig.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-SyncEvolutionUtil.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-TrackingSyncSource.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-VConverter.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-VObject.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-VProperty.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-client-test-app.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-client-test-main.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/e_cal_check_timezones.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncaddressbook_la-AddressBookConstants.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncaddressbook_la-AddressBookSource.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncebook_la-EvolutionContactSource.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncecal_la-EvolutionCalendarSource.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncecal_la-EvolutionMemoSource.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncecal_la-e-cal-check-timezones.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncecal_la-icalstrdup.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-AddressBookSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-EvolutionCalendarSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-EvolutionContactSourceRegister.Po@am__quote@
@@ -654,13 +667,13 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-SyncEvolutionCmdline.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-SyncEvolutionConfig.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-SyncEvolutionUtil.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-TrackingSyncSource.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-VConverter.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-VObject.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-VProperty.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-syncevolution.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncsqlite_la-SQLiteContactSource.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncsqlite_la-SQLiteUtil.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncsqlite_la-TrackingSyncSource.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vcardconverter.Po@am__quote@
 
 .c.o:
@@ -683,6 +696,20 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LTCOMPILE) -c -o $@ $<
+
+syncecal_la-icalstrdup.lo: libical/icalstrdup.c
+@am__fastdepCC_TRUE@	if $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncecal_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT syncecal_la-icalstrdup.lo -MD -MP -MF "$(DEPDIR)/syncecal_la-icalstrdup.Tpo" -c -o syncecal_la-icalstrdup.lo `test -f 'libical/icalstrdup.c' || echo '$(srcdir)/'`libical/icalstrdup.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/syncecal_la-icalstrdup.Tpo" "$(DEPDIR)/syncecal_la-icalstrdup.Plo"; else rm -f "$(DEPDIR)/syncecal_la-icalstrdup.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='libical/icalstrdup.c' object='syncecal_la-icalstrdup.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncecal_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o syncecal_la-icalstrdup.lo `test -f 'libical/icalstrdup.c' || echo '$(srcdir)/'`libical/icalstrdup.c
+
+syncecal_la-e-cal-check-timezones.lo: e-cal-check-timezones.c
+@am__fastdepCC_TRUE@	if $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncecal_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT syncecal_la-e-cal-check-timezones.lo -MD -MP -MF "$(DEPDIR)/syncecal_la-e-cal-check-timezones.Tpo" -c -o syncecal_la-e-cal-check-timezones.lo `test -f 'e-cal-check-timezones.c' || echo '$(srcdir)/'`e-cal-check-timezones.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/syncecal_la-e-cal-check-timezones.Tpo" "$(DEPDIR)/syncecal_la-e-cal-check-timezones.Plo"; else rm -f "$(DEPDIR)/syncecal_la-e-cal-check-timezones.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='e-cal-check-timezones.c' object='syncecal_la-e-cal-check-timezones.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncecal_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o syncecal_la-e-cal-check-timezones.lo `test -f 'e-cal-check-timezones.c' || echo '$(srcdir)/'`e-cal-check-timezones.c
 
 .cpp.o:
 @am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
@@ -727,25 +754,18 @@ syncebook_la-EvolutionContactSource.lo: EvolutionContactSource.cpp
 @am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncebook_la_CXXFLAGS) $(CXXFLAGS) -c -o syncebook_la-EvolutionContactSource.lo `test -f 'EvolutionContactSource.cpp' || echo '$(srcdir)/'`EvolutionContactSource.cpp
 
 syncecal_la-EvolutionCalendarSource.lo: EvolutionCalendarSource.cpp
-@am__fastdepCXX_TRUE@	if $(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncecal_la_CXXFLAGS) $(CXXFLAGS) -MT syncecal_la-EvolutionCalendarSource.lo -MD -MP -MF "$(DEPDIR)/syncecal_la-EvolutionCalendarSource.Tpo" -c -o syncecal_la-EvolutionCalendarSource.lo `test -f 'EvolutionCalendarSource.cpp' || echo '$(srcdir)/'`EvolutionCalendarSource.cpp; \
+@am__fastdepCXX_TRUE@	if $(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncecal_la_CPPFLAGS) $(CPPFLAGS) $(syncecal_la_CXXFLAGS) $(CXXFLAGS) -MT syncecal_la-EvolutionCalendarSource.lo -MD -MP -MF "$(DEPDIR)/syncecal_la-EvolutionCalendarSource.Tpo" -c -o syncecal_la-EvolutionCalendarSource.lo `test -f 'EvolutionCalendarSource.cpp' || echo '$(srcdir)/'`EvolutionCalendarSource.cpp; \
 @am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/syncecal_la-EvolutionCalendarSource.Tpo" "$(DEPDIR)/syncecal_la-EvolutionCalendarSource.Plo"; else rm -f "$(DEPDIR)/syncecal_la-EvolutionCalendarSource.Tpo"; exit 1; fi
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='EvolutionCalendarSource.cpp' object='syncecal_la-EvolutionCalendarSource.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncecal_la_CXXFLAGS) $(CXXFLAGS) -c -o syncecal_la-EvolutionCalendarSource.lo `test -f 'EvolutionCalendarSource.cpp' || echo '$(srcdir)/'`EvolutionCalendarSource.cpp
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncecal_la_CPPFLAGS) $(CPPFLAGS) $(syncecal_la_CXXFLAGS) $(CXXFLAGS) -c -o syncecal_la-EvolutionCalendarSource.lo `test -f 'EvolutionCalendarSource.cpp' || echo '$(srcdir)/'`EvolutionCalendarSource.cpp
 
 syncecal_la-EvolutionMemoSource.lo: EvolutionMemoSource.cpp
-@am__fastdepCXX_TRUE@	if $(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncecal_la_CXXFLAGS) $(CXXFLAGS) -MT syncecal_la-EvolutionMemoSource.lo -MD -MP -MF "$(DEPDIR)/syncecal_la-EvolutionMemoSource.Tpo" -c -o syncecal_la-EvolutionMemoSource.lo `test -f 'EvolutionMemoSource.cpp' || echo '$(srcdir)/'`EvolutionMemoSource.cpp; \
+@am__fastdepCXX_TRUE@	if $(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncecal_la_CPPFLAGS) $(CPPFLAGS) $(syncecal_la_CXXFLAGS) $(CXXFLAGS) -MT syncecal_la-EvolutionMemoSource.lo -MD -MP -MF "$(DEPDIR)/syncecal_la-EvolutionMemoSource.Tpo" -c -o syncecal_la-EvolutionMemoSource.lo `test -f 'EvolutionMemoSource.cpp' || echo '$(srcdir)/'`EvolutionMemoSource.cpp; \
 @am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/syncecal_la-EvolutionMemoSource.Tpo" "$(DEPDIR)/syncecal_la-EvolutionMemoSource.Plo"; else rm -f "$(DEPDIR)/syncecal_la-EvolutionMemoSource.Tpo"; exit 1; fi
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='EvolutionMemoSource.cpp' object='syncecal_la-EvolutionMemoSource.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncecal_la_CXXFLAGS) $(CXXFLAGS) -c -o syncecal_la-EvolutionMemoSource.lo `test -f 'EvolutionMemoSource.cpp' || echo '$(srcdir)/'`EvolutionMemoSource.cpp
-
-syncsqlite_la-TrackingSyncSource.lo: TrackingSyncSource.cpp
-@am__fastdepCXX_TRUE@	if $(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncsqlite_la_CXXFLAGS) $(CXXFLAGS) -MT syncsqlite_la-TrackingSyncSource.lo -MD -MP -MF "$(DEPDIR)/syncsqlite_la-TrackingSyncSource.Tpo" -c -o syncsqlite_la-TrackingSyncSource.lo `test -f 'TrackingSyncSource.cpp' || echo '$(srcdir)/'`TrackingSyncSource.cpp; \
-@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/syncsqlite_la-TrackingSyncSource.Tpo" "$(DEPDIR)/syncsqlite_la-TrackingSyncSource.Plo"; else rm -f "$(DEPDIR)/syncsqlite_la-TrackingSyncSource.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='TrackingSyncSource.cpp' object='syncsqlite_la-TrackingSyncSource.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncsqlite_la_CXXFLAGS) $(CXXFLAGS) -c -o syncsqlite_la-TrackingSyncSource.lo `test -f 'TrackingSyncSource.cpp' || echo '$(srcdir)/'`TrackingSyncSource.cpp
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncecal_la_CPPFLAGS) $(CPPFLAGS) $(syncecal_la_CXXFLAGS) $(CXXFLAGS) -c -o syncecal_la-EvolutionMemoSource.lo `test -f 'EvolutionMemoSource.cpp' || echo '$(srcdir)/'`EvolutionMemoSource.cpp
 
 syncsqlite_la-SQLiteUtil.lo: SQLiteUtil.cpp
 @am__fastdepCXX_TRUE@	if $(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncsqlite_la_CXXFLAGS) $(CXXFLAGS) -MT syncsqlite_la-SQLiteUtil.lo -MD -MP -MF "$(DEPDIR)/syncsqlite_la-SQLiteUtil.Tpo" -c -o syncsqlite_la-SQLiteUtil.lo `test -f 'SQLiteUtil.cpp' || echo '$(srcdir)/'`SQLiteUtil.cpp; \
@@ -914,6 +934,20 @@ client_test-FileConfigTree.obj: FileConfigTree.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='FileConfigTree.cpp' object='client_test-FileConfigTree.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-FileConfigTree.obj `if test -f 'FileConfigTree.cpp'; then $(CYGPATH_W) 'FileConfigTree.cpp'; else $(CYGPATH_W) '$(srcdir)/FileConfigTree.cpp'; fi`
+
+client_test-TrackingSyncSource.o: TrackingSyncSource.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-TrackingSyncSource.o -MD -MP -MF "$(DEPDIR)/client_test-TrackingSyncSource.Tpo" -c -o client_test-TrackingSyncSource.o `test -f 'TrackingSyncSource.cpp' || echo '$(srcdir)/'`TrackingSyncSource.cpp; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/client_test-TrackingSyncSource.Tpo" "$(DEPDIR)/client_test-TrackingSyncSource.Po"; else rm -f "$(DEPDIR)/client_test-TrackingSyncSource.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='TrackingSyncSource.cpp' object='client_test-TrackingSyncSource.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-TrackingSyncSource.o `test -f 'TrackingSyncSource.cpp' || echo '$(srcdir)/'`TrackingSyncSource.cpp
+
+client_test-TrackingSyncSource.obj: TrackingSyncSource.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-TrackingSyncSource.obj -MD -MP -MF "$(DEPDIR)/client_test-TrackingSyncSource.Tpo" -c -o client_test-TrackingSyncSource.obj `if test -f 'TrackingSyncSource.cpp'; then $(CYGPATH_W) 'TrackingSyncSource.cpp'; else $(CYGPATH_W) '$(srcdir)/TrackingSyncSource.cpp'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/client_test-TrackingSyncSource.Tpo" "$(DEPDIR)/client_test-TrackingSyncSource.Po"; else rm -f "$(DEPDIR)/client_test-TrackingSyncSource.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='TrackingSyncSource.cpp' object='client_test-TrackingSyncSource.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-TrackingSyncSource.obj `if test -f 'TrackingSyncSource.cpp'; then $(CYGPATH_W) 'TrackingSyncSource.cpp'; else $(CYGPATH_W) '$(srcdir)/TrackingSyncSource.cpp'; fi`
 
 client_test-VObject.o: vocl/VObject.cpp
 @am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-VObject.o -MD -MP -MF "$(DEPDIR)/client_test-VObject.Tpo" -c -o client_test-VObject.o `test -f 'vocl/VObject.cpp' || echo '$(srcdir)/'`vocl/VObject.cpp; \
@@ -1194,6 +1228,20 @@ syncevolution-FileConfigTree.obj: FileConfigTree.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='FileConfigTree.cpp' object='syncevolution-FileConfigTree.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -c -o syncevolution-FileConfigTree.obj `if test -f 'FileConfigTree.cpp'; then $(CYGPATH_W) 'FileConfigTree.cpp'; else $(CYGPATH_W) '$(srcdir)/FileConfigTree.cpp'; fi`
+
+syncevolution-TrackingSyncSource.o: TrackingSyncSource.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -MT syncevolution-TrackingSyncSource.o -MD -MP -MF "$(DEPDIR)/syncevolution-TrackingSyncSource.Tpo" -c -o syncevolution-TrackingSyncSource.o `test -f 'TrackingSyncSource.cpp' || echo '$(srcdir)/'`TrackingSyncSource.cpp; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/syncevolution-TrackingSyncSource.Tpo" "$(DEPDIR)/syncevolution-TrackingSyncSource.Po"; else rm -f "$(DEPDIR)/syncevolution-TrackingSyncSource.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='TrackingSyncSource.cpp' object='syncevolution-TrackingSyncSource.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -c -o syncevolution-TrackingSyncSource.o `test -f 'TrackingSyncSource.cpp' || echo '$(srcdir)/'`TrackingSyncSource.cpp
+
+syncevolution-TrackingSyncSource.obj: TrackingSyncSource.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -MT syncevolution-TrackingSyncSource.obj -MD -MP -MF "$(DEPDIR)/syncevolution-TrackingSyncSource.Tpo" -c -o syncevolution-TrackingSyncSource.obj `if test -f 'TrackingSyncSource.cpp'; then $(CYGPATH_W) 'TrackingSyncSource.cpp'; else $(CYGPATH_W) '$(srcdir)/TrackingSyncSource.cpp'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/syncevolution-TrackingSyncSource.Tpo" "$(DEPDIR)/syncevolution-TrackingSyncSource.Po"; else rm -f "$(DEPDIR)/syncevolution-TrackingSyncSource.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='TrackingSyncSource.cpp' object='syncevolution-TrackingSyncSource.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -c -o syncevolution-TrackingSyncSource.obj `if test -f 'TrackingSyncSource.cpp'; then $(CYGPATH_W) 'TrackingSyncSource.cpp'; else $(CYGPATH_W) '$(srcdir)/TrackingSyncSource.cpp'; fi`
 
 syncevolution-VObject.o: vocl/VObject.cpp
 @am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -MT syncevolution-VObject.o -MD -MP -MF "$(DEPDIR)/syncevolution-VObject.Tpo" -c -o syncevolution-VObject.o `test -f 'vocl/VObject.cpp' || echo '$(srcdir)/'`vocl/VObject.cpp; \

@@ -23,6 +23,7 @@
 #include <ConfigNode.h>
 #include <boost/shared_ptr.hpp>
 #include <boost/algorithm/string/case_conv.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include "SyncEvolutionUtil.h"
 
@@ -43,35 +44,11 @@ using namespace std;
  */
 class FilterConfigNode : public ConfigNode {
  public:
-    class ConfigFilter : public map<string, string> {
+    /** a case-insensitive string to string mapping */
+    class ConfigFilter : public map<string, string, Nocase<string> > {
     public:
-        /** add the mapping, regardless whether it exists already or not */
-        void set(const string &property, const string &value) {
-            pair<iterator, bool> inserted = insert(make_pair(boost::to_lower_copy(property), value));
-            if (!inserted.second) {
-                inserted.first->second = value;
-            }
-        }
-
-        operator string () const {
-            vector<string> res;
-
-            for (const_iterator it = begin();
-                 it != end();
-                 ++it) {
-                res.push_back(it->first + " = " + it->second);
-            }
-            sort(res.begin(), res.end());
-            return join("\n", res.begin(), res.end());
-        }
-
-        iterator find(const string &property) {
-            return map<string, string>::find(boost::to_lower_copy(property));
-        }
-
-        const_iterator find(const string &property) const {
-            return map<string, string>::find(boost::to_lower_copy(property));
-        }
+        /** format as <key> = <value> lines */
+        operator string () const;
     };
 
     /** read-write access to underlying node */

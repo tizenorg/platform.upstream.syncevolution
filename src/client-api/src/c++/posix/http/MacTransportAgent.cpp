@@ -36,9 +36,14 @@
 #include "http/MacTransportAgent.h"
 #include "http/constants.h"
 
+#include "base/util/utils.h"
+#include "base/util/StringBuffer.h"
+#import <SystemConfiguration/SystemConfiguration.h>
+
+
 USE_NAMESPACE
 
-MacTransportAgent::MacTransportAgent(){}
+MacTransportAgent::MacTransportAgent() : TransportAgent() {}
 
 MacTransportAgent::~MacTransportAgent() {}
 
@@ -50,10 +55,11 @@ MacTransportAgent::~MacTransportAgent() {}
  * @param url the url where messages will be sent with sendMessage()
  * @param proxy proxy information or NULL if no proxy should be used
  */
-MacTransportAgent::MacTransportAgent(URL& newURL, Proxy& newProxy, unsigned int maxResponseTimeout) : 
-            TransportAgent(newURL, newProxy, maxResponseTimeout){
-                
-            }
+MacTransportAgent::MacTransportAgent(URL& newURL, Proxy& newProxy, unsigned int maxResponseTimeout)
+: TransportAgent(newURL, newProxy, maxResponseTimeout)
+{
+    
+}
     
 
 /*
@@ -65,72 +71,163 @@ MacTransportAgent::MacTransportAgent(URL& newURL, Proxy& newProxy, unsigned int 
  */
 char* MacTransportAgent::sendMessage(const char* msg){
 
-    if(!msg){
+    if(!msg) {
         LOG.error("MacTransportAgent::sendMessage error: NULL message.");
         setError(ERR_NETWORK_INIT, "MacTransportAgent::sendMessage error: NULL message.");
         return NULL;
     }
     
-   // size_t size = strlen(msg);
-    LOG.debug("Requesting resource %s at %s:%d", url.resource, url.host, url.port);
     
+    SCNetworkReachabilityFlags        flags;
+    SCNetworkReachabilityRef scnReachRef = SCNetworkReachabilityCreateWithName(kCFAllocatorDefault, url.host);
     
-    //CFStringRef bodyStr = CFSTR(msg); // Usually used for POST data
-    CFStringRef bodyStr = CFStringCreateWithCString(NULL, msg, kCFStringEncodingUTF8);
-    
-    
-    CFStringRef headerFieldName = CFSTR("Content-Type");
-    
-    CFStringRef headerFieldValue = CFSTR("application/vnd.syncml+xml");
-    
-    
-    
-   // CFStringRef CFurl = CFSTR(url.host);
-    CFStringRef CFurl =  CFStringCreateWithCString(NULL, url.fullURL, kCFStringEncodingUTF8);
-    
-    CFURLRef myURL = CFURLCreateWithString(kCFAllocatorDefault, CFurl, NULL);
-    
-    
-    
-    CFStringRef requestMethod = CFSTR("POST");
-    
-    CFHTTPMessageRef myRequest =
-                    CFHTTPMessageCreateRequest(kCFAllocatorDefault, 
-                                               requestMethod, myURL, kCFHTTPVersion1_1);
-    
-    if(!myRequest){
-        LOG.error("MacTransportAgent::sendMessage error: CFHTTPMessageCreateRequest Error.");
-        setError(ERR_NETWORK_INIT, "MacTransportAgent::sendMessage error: CFHTTPMessageCreateRequest Error.");
-        return NULL;
+    bool gotflags = SCNetworkReachabilityGetFlags(scnReachRef, &flags);
+    bool isReachable = flags & kSCNetworkReachabilityFlagsReachable;
+    bool noConnectionRequired = !(flags & kSCNetworkReachabilityFlagsConnectionRequired);
+    if ((flags & kSCNetworkReachabilityFlagsIsWWAN)) {
+        noConnectionRequired = true;
     }
     
-    CFDataRef bodyData = CFStringCreateExternalRepresentation(kCFAllocatorDefault, bodyStr, kCFStringEncodingUTF8, 0);	
-    if (!bodyData){
-        LOG.error("MacTransportAgent::sendMessage error: CFHTTPMessageCreateRequest Error.");
-        setError(ERR_NETWORK_INIT, "MacTransportAgent::sendMessage error: CFHTTPMessageCreateRequest Error.");
-        return NULL;
-    }        
-    CFHTTPMessageSetBody(myRequest,bodyData);
-    
-    CFHTTPMessageSetHeaderFieldValue(myRequest, headerFieldName, headerFieldValue);
-    
-    CFDataRef mySerializedRequest = CFHTTPMessageCopySerializedMessage(myRequest);
-    
-        
-    char* ret = (char*)CFDataGetBytePtr(mySerializedRequest);
-    
-    
-    CFRelease(bodyStr);
-    CFRelease(headerFieldName);
-    CFRelease(headerFieldValue);
-    CFRelease(CFurl);
-    CFRelease(myURL);
-    CFRelease(myRequest);
-    CFRelease(bodyData);
-    CFRelease(mySerializedRequest);
 
-    
-    
-    return ret;
+    if ( gotflags && isReachable && noConnectionRequired ){
+        
+        // size_t size = strlen(msg);
+        LOG.debug("Requesting resource %s at %s:%d", url.resource, url.host, url.port);
+        
+        LOG.debug("Sending HTTP Request: %s", msg);
+        
+        // Construct some headers
+        CFStringRef headerFieldName = CFSTR("Content-Type");
+        CFStringRef headerFieldValue = CFSTR("application/vnd.syncml+xml");
+        
+        // Construct URL
+        CFStringRef CFurl =  CFStringCreateWithCString(NULL, url.fullURL, kCFStringEncodingUTF8);
+        CFURLRef myURL = CFURLCreateWithString(kCFAllocatorDefault, CFurl, NULL);
+        
+        CFStringRef requestMethod = CFSTR("POST");
+        
+        CFHTTPMessageRef httpRequest =
+        CFHTTPMessageCreateRequest(kCFAllocatorDefault, requestMethod, myURL, kCFHTTPVersion1_1);
+        CFStringRef useragent = CFStringCreateWithCString(NULL, getUserAgent(), kCFStringEncodingUTF8);
+        CFHTTPMessageSetHeaderFieldValue(httpRequest, CFSTR("user-agent"),  useragent);
+        if(!httpRequest){
+            LOG.error("MacTransportAgent::sendMessage error: CFHTTPMessageCreateRequest Error.");
+            setError(ERR_NETWORK_INIT, "MacTransportAgent::sendMessage error: CFHTTPMessageCreateRequest Error.");
+            return NULL;
+        }
+        
+        CFDataRef bodyData = CFDataCreate(kCFAllocatorDefault, (const UInt8*)msg, strlen(msg));	
+        if (!bodyData){
+            LOG.error("MacTransportAgent::sendMessage error: CFHTTPMessageCreateRequest Error.");
+            setError(ERR_NETWORK_INIT, "MacTransportAgent::sendMessage error: CFHTTPMessageCreateRequest Error.");
+            return NULL;
+        }        
+        CFHTTPMessageSetBody(httpRequest, bodyData);
+        CFHTTPMessageSetHeaderFieldValue(httpRequest, headerFieldName, headerFieldValue);
+        
+        CFReadStreamRef responseStream = CFReadStreamCreateForHTTPRequest(kCFAllocatorDefault, httpRequest);
+        if (!CFReadStreamOpen(responseStream)) {//Sends request
+            LOG.error("Failed to send HTTP request...");
+        }
+        
+        StringBuffer result;
+        
+#define READ_SIZE 1000
+        CFIndex bytesRead = 1;
+        UInt8   buffer[READ_SIZE];
+        while ( (bytesRead = CFReadStreamRead(responseStream, buffer, READ_SIZE-1)) > 0)
+        {
+            //   Convert what was read to a C-string
+            buffer[bytesRead] = 0;
+            //   Append it to the reply string
+            result.append((const char*)buffer);
+        }
+        
+        int statusCode = -1;
+        CFHTTPMessageRef reply = (CFHTTPMessageRef) CFReadStreamCopyProperty( responseStream, kCFStreamPropertyHTTPResponseHeader);
+        
+        
+        // Pull the status code from the headers
+        if (reply) {
+            statusCode = CFHTTPMessageGetResponseStatusCode(reply);
+            CFRelease(reply);
+        }
+        
+        
+        LOG.debug("Status Code: %d", statusCode);
+        LOG.debug("Result: %s", result.c_str());
+        
+        char* ret=0;
+        
+        switch (statusCode) {
+            case 0: {
+                LOG.debug("Http request successful.");
+                
+                // No errors, copy the response
+                // TODO: avoid byte copy
+                ret = stringdup(result.c_str());
+                
+                break;
+            }
+            case 200: {
+                LOG.debug("Http request successful.");
+                
+                // No errors, copy the response
+                // TODO: avoid byte copy
+                ret = stringdup(result.c_str());
+                
+                break;
+            }
+            case -1: {                    // no connection (TODO: implement retry)
+                setErrorF(ERR_SERVER_ERROR, "Network error in server receiving data. ");
+                LOG.error(getLastErrorMsg());
+                
+                break;
+            }
+            case 400: {                    // 400 bad request error. TODO: retry to send the message
+                setErrorF(ERR_SERVER_ERROR, "HTTP server error: %d. Server failure.", statusCode);
+                LOG.debug(getLastErrorMsg());
+                
+                break;
+            }
+            case 500: {     // 500 -> out code 2052
+                setErrorF(ERR_SERVER_ERROR, "HTTP server error: %d. Server failure.", statusCode);
+                LOG.debug(getLastErrorMsg());
+                break;
+            }
+            case 404: {         // 404 -> out code 2060
+                setErrorF(ERR_HTTP_NOT_FOUND, "HTTP request error: resource not found (status %d)", statusCode);
+                LOG.debug(getLastErrorMsg());
+                break;
+            }
+            case 408: {   // 408 -> out code 2061
+                setErrorF(ERR_HTTP_REQUEST_TIMEOUT, "HTTP request error: server timed out waiting for request (status %d)", statusCode);
+                LOG.debug(getLastErrorMsg());
+                break;
+            }
+                
+            default: {
+                setErrorF(statusCode, "HTTP request error: status received = %d", statusCode);
+                LOG.error(getLastErrorMsg());
+            }
+        }
+        
+        CFRelease(headerFieldName);
+        CFRelease(headerFieldValue);
+        CFRelease(CFurl);
+        CFRelease(myURL);
+        CFRelease(httpRequest);
+        CFRelease(bodyData);
+        CFRelease(responseStream);
+        CFRelease(requestMethod);
+
+        
+        return ret;
+    }else{
+        setErrorF(ERR_CONNECT, "Network error: the attempt to connect to the server failed -> exit");
+        LOG.debug(getLastErrorMsg());
+        
+        return NULL;
+    }
 }
 

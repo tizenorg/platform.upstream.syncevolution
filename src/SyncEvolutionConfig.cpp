@@ -23,6 +23,11 @@
 #include "VolatileConfigTree.h"
 #include "VolatileConfigNode.h"
 
+#include <boost/foreach.hpp>
+#include <iterator>
+#include <algorithm>
+#include <functional>
+
 #include <unistd.h>
 #include "config.h"
 
@@ -92,10 +97,8 @@ string EvolutionSyncConfig::getRootPath() const
 static void addServers(const string &root, EvolutionSyncConfig::ServerList &res) {
     FileConfigTree tree(root, false);
     list<string> servers = tree.getChildren("");
-    for (list<string>::const_iterator it = servers.begin();
-         it != servers.end();
-         ++it) {
-        res.push_back(pair<string, string>(*it, root + "/" + *it));
+    BOOST_FOREACH(const string &server, servers) {
+        res.push_back(pair<string, string>(server, root + "/" + server));
     }
 }
 
@@ -112,7 +115,8 @@ EvolutionSyncConfig::ServerList EvolutionSyncConfig::getServers()
 static const InitList< pair<string, string> > serverTemplates =
     InitList< pair<string, string> >(pair<string, string>("funambol", "http://my.funambol.com")) +
     pair<string, string>("scheduleworld", "http://sync.scheduleworld.com") +
-    pair<string, string>("synthesis", "http://www.synthesis.ch");
+    pair<string, string>("synthesis", "http://www.synthesis.ch") +
+    pair<string, string>("memotoo", "http://www.memotoo.com");
 
 EvolutionSyncConfig::ServerList EvolutionSyncConfig::getServerTemplates()
 {
@@ -126,7 +130,11 @@ boost::shared_ptr<EvolutionSyncConfig> EvolutionSyncConfig::createServerTemplate
     boost::shared_ptr<PersistentEvolutionSyncSourceConfig> source;
 
     config->setDefaults();
-    config->setDevID(string("uuid-") + UUID());
+    // The prefix is important: without it, myFUNAMBOL 6.x and 7.0 map
+    // all SyncEvolution instances to the single phone that they support,
+    // which leads to unwanted slow syncs when switching between multiple
+    // instances.
+    config->setDevID(string("sc-pim-") + UUID());
     config->setSourceDefaults("addressbook");
     config->setSourceDefaults("calendar");
     config->setSourceDefaults("todo");
@@ -148,17 +156,17 @@ boost::shared_ptr<EvolutionSyncConfig> EvolutionSyncConfig::createServerTemplate
 
     if (boost::iequals(server, "scheduleworld") ||
         boost::iequals(server, "default")) {
-        config->setSyncURL("http://sync.scheduleworld.com");
+        config->setSyncURL("http://sync.scheduleworld.com/funambol/ds");
         source = config->getSyncSourceConfig("addressbook");
         source->setURI("card3");
         source = config->getSyncSourceConfig("calendar");
-        source->setURI("event2");
+        source->setURI("cal2");
         source = config->getSyncSourceConfig("todo");
         source->setURI("task2");
         source = config->getSyncSourceConfig("memo");
         source->setURI("note");
     } else if (boost::iequals(server, "funambol")) {
-        config->setSyncURL("http://my.funambol.com");
+        config->setSyncURL("http://my.funambol.com/sync");
         source = config->getSyncSourceConfig("addressbook");
         source->setSourceType("addressbook:text/x-vcard");
         source = config->getSyncSourceConfig("calendar");
@@ -179,6 +187,17 @@ boost::shared_ptr<EvolutionSyncConfig> EvolutionSyncConfig::createServerTemplate
         source->setSync("disabled");
         source = config->getSyncSourceConfig("memo");
         source->setURI("notes");
+    } else if (boost::iequals(server, "memotoo")) {
+        config->setSyncURL("http://sync.memotoo.com/syncML");
+        source = config->getSyncSourceConfig("addressbook");
+        source->setURI("con");
+        source->setSourceType("addressbook:text/x-vcard");
+        source = config->getSyncSourceConfig("calendar");
+        source->setURI("cal");
+        source = config->getSyncSourceConfig("todo");
+        source->setURI("task");
+        source = config->getSyncSourceConfig("memo");
+        source->setURI("note");
     } else {
         config.reset();
     }
@@ -473,11 +492,9 @@ void EvolutionSyncConfig::setSSLVerifyHost(bool value, bool temporarily) { syncP
 static void setDefaultProps(const ConfigPropertyRegistry &registry,
                             boost::shared_ptr<FilterConfigNode> node)
 {
-    for (ConfigPropertyRegistry::const_iterator it = registry.begin();
-         it != registry.end();
-         ++it) {
-        if (!(*it)->isHidden()) {
-            (*it)->setDefaultProperty(*node, (*it)->isObligatory());
+    BOOST_FOREACH(const ConfigProperty *prop, registry) {
+        if (!prop->isHidden()) {
+            prop->setDefaultProperty(*node, prop->isObligatory());
         }
     }    
 }
@@ -499,14 +516,12 @@ static void copyProperties(const ConfigNode &fromProps,
                            bool hidden,
                            const ConfigPropertyRegistry &allProps)
 {
-    for (ConfigPropertyRegistry::const_iterator it = allProps.begin();
-         it != allProps.end();
-         ++it) {
-        if ((*it)->isHidden() == hidden) {
-            string name = (*it)->getName();
+    BOOST_FOREACH(const ConfigProperty *prop, allProps) {
+        if (prop->isHidden() == hidden) {
+            string name = prop->getName();
             bool isDefault;
-            string value = (*it)->getProperty(fromProps, &isDefault);
-            toProps.setProperty(name, value, (*it)->getComment(),
+            string value = prop->getProperty(fromProps, &isDefault);
+            toProps.setProperty(name, value, prop->getComment(),
                                 isDefault ? &value : NULL);
         }
     }
@@ -518,12 +533,8 @@ static void copyProperties(const ConfigNode &fromProps,
     map<string, string> props;
     fromProps.readProperties(props);
 
-    for (map<string, string>::const_iterator it = props.begin();
-         it != props.end();
-         ++it) {
-        string name = it->first;
-        string value = it->second;
-        toProps.setProperty(name, value);
+    BOOST_FOREACH(const StringPair &prop, props) {
+        toProps.setProperty(prop.first, prop.second);
     }
 }
 
@@ -538,13 +549,11 @@ void EvolutionSyncConfig::copy(const EvolutionSyncConfig &other,
     }
 
     list<string> sources = other.getSyncSources();
-    for (list<string>::const_iterator it = sources.begin();
-         it != sources.end();
-         ++it) {
+    BOOST_FOREACH(const string &sourceName, sources) {
         if (!sourceFilter ||
-            sourceFilter->find(*it) != sourceFilter->end()) {
-            ConstSyncSourceNodes fromNodes = other.getSyncSourceNodes(*it);
-            SyncSourceNodes toNodes = this->getSyncSourceNodes(*it);
+            sourceFilter->find(sourceName) != sourceFilter->end()) {
+            ConstSyncSourceNodes fromNodes = other.getSyncSourceNodes(sourceName);
+            SyncSourceNodes toNodes = this->getSyncSourceNodes(sourceName);
             copyProperties(*fromNodes.m_configNode, *toNodes.m_configNode, false, EvolutionSyncSourceConfig::getRegistry());
             copyProperties(*fromNodes.m_hiddenNode, *toNodes.m_hiddenNode, true, EvolutionSyncSourceConfig::getRegistry());
             copyProperties(*fromNodes.m_trackingNode, *toNodes.m_trackingNode);
@@ -562,7 +571,7 @@ EvolutionSyncSourceConfig::EvolutionSyncSourceConfig(const string &name, const S
 {
 }
 
-static StringConfigProperty sourcePropSync("sync",
+StringConfigProperty EvolutionSyncSourceConfig::m_sourcePropSync("sync",
                                            "requests a certain synchronization mode:\n"
                                            "  two-way             = only send/receive changes since last sync\n"
                                            "  slow                = exchange all items\n"
@@ -631,11 +640,9 @@ public:
         stringstream res;
 
         SourceRegistry &registry(EvolutionSyncSource::getSourceRegistry());
-        for (SourceRegistry::const_iterator it = registry.begin();
-             it != registry.end();
-             ++it) {
-            const string &comment = (*it)->m_typeDescr;
-            stringstream *curr = (*it)->m_enabled ? &enabled : &disabled;
+        BOOST_FOREACH(const RegisterSyncSource *sourceInfos, registry) {
+            const string &comment = sourceInfos->m_typeDescr;
+            stringstream *curr = sourceInfos->m_enabled ? &enabled : &disabled;
             *curr << comment;
             if (comment.size() && comment[comment.size() - 1] != '\n') {
                 *curr << '\n';
@@ -657,14 +664,10 @@ public:
         Values res(StringConfigProperty::getValues());
 
         const SourceRegistry &registry(EvolutionSyncSource::getSourceRegistry());
-        for (SourceRegistry::const_iterator it = registry.begin();
-             it != registry.end();
-             ++it) {
-            for (Values::const_iterator v = (*it)->m_typeValues.begin();
-                 v != (*it)->m_typeValues.end();
-                 ++v) {
-                res.push_back(*v);
-            }
+        BOOST_FOREACH(const RegisterSyncSource *sourceInfos, registry) {
+            copy(sourceInfos->m_typeValues.begin(),
+                 sourceInfos->m_typeValues.end(),
+                 back_inserter(res));
         }
 
         return res;
@@ -722,8 +725,8 @@ ConfigPropertyRegistry &EvolutionSyncSourceConfig::getRegistry()
     static bool initialized;
 
     if (!initialized) {
-        registry.push_back(&sourcePropSync);
-        sourcePropSync.setObligatory(true);
+        registry.push_back(&EvolutionSyncSourceConfig::m_sourcePropSync);
+        EvolutionSyncSourceConfig::m_sourcePropSync.setObligatory(true);
         registry.push_back(&sourcePropSourceType);
         sourcePropSourceType.setObligatory(true);
         registry.push_back(&sourcePropDatabaseID);
@@ -753,8 +756,8 @@ void EvolutionSyncSourceConfig::checkPassword(ConfigUserInterface &ui) {
 void EvolutionSyncSourceConfig::setPassword(const string &value, bool temporarily) { m_cachedPassword = ""; sourcePropPassword.setProperty(*m_nodes.m_configNode, value, temporarily); }
 const char *EvolutionSyncSourceConfig::getURI() const { return m_stringCache.getProperty(*m_nodes.m_configNode, sourcePropURI); }
 void EvolutionSyncSourceConfig::setURI(const string &value, bool temporarily) { sourcePropURI.setProperty(*m_nodes.m_configNode, value, temporarily); }
-const char *EvolutionSyncSourceConfig::getSync() const { return m_stringCache.getProperty(*m_nodes.m_configNode, sourcePropSync); }
-void EvolutionSyncSourceConfig::setSync(const string &value, bool temporarily) { sourcePropSync.setProperty(*m_nodes.m_configNode, value, temporarily); }
+const char *EvolutionSyncSourceConfig::getSync() const { return m_stringCache.getProperty(*m_nodes.m_configNode, m_sourcePropSync); }
+void EvolutionSyncSourceConfig::setSync(const string &value, bool temporarily) { m_sourcePropSync.setProperty(*m_nodes.m_configNode, value, temporarily); }
 const char *EvolutionSyncSourceConfig::getEncoding() const { return m_stringCache.getProperty(*m_nodes.m_configNode, sourcePropEncoding); }
 void EvolutionSyncSourceConfig::setEncoding(const string &value, bool temporarily) { sourcePropEncoding.setProperty(*m_nodes.m_configNode, value, temporarily); }
 unsigned long EvolutionSyncSourceConfig::getLast() const { return sourcePropLast.getProperty(*m_nodes.m_hiddenNode); }

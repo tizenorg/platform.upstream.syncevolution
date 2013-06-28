@@ -1,6 +1,6 @@
 /*
  * Funambol is a mobile platform developed by Funambol, Inc. 
- * Copyright (C) 2003 - 2007 Funambol, Inc.
+ * Copyright (C) 2008 Funambol, Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Affero General Public License version 3 as published by
@@ -41,42 +41,55 @@
 
 #include "base/util/KeyValueStore.h"
 #include "base/util/ArrayListEnumeration.h"
+#include "base/util/Enumeration.h"
 
 BEGIN_NAMESPACE
 
+/**
+ * This abstract class represent an implementation of KeyValueStore based on a
+ * generic SQL database.
+ *
+ * It allows the developer to specify the column to use for the key and value,
+ * the table name to use for the storage, and requires to implement the methods
+ * to connect/disconnect to the database, which are specific to the db driver
+ * in use (odbc, etc.)
+ */
 class SQLKeyValueStore : public KeyValueStore {
 private:
     
-    char * uri,
-         * database,
-         * table,
-         * username,
-         * password;
+    StringBuffer    table,
+                    colKey,
+                    colValue;
          
     ArrayListEnumeration toSet;
     ArrayListEnumeration toDel;
     
 protected:
+
     
     /*
-     * Execute a query to get a value, given the key.   If a connection to
-     * the database is not open, open it. 
+     * Execute a query to get a value, given the key.
      *
-     * @param sql   - The sql command to execute.
+     * The sql query passed to this function 
+     *
+     * @param sql   - The sql command to execute.  This MUST select the key, and
+     * the value in that order, as the first 2 columns selected.  Additional
+     * columns will be ignored.
      *
      * @return      - The result of the query - an Enumeration of KeyValuePair s
      */
-    virtual ArrayListEnumeration * query(const StringBuffer & sql) const = 0;
+    virtual Enumeration& query(const StringBuffer & sql) const = 0;
     
     /*
-     * Execute a non-select query.  If a connection to the database is not open,
-     * open it.
+     * Execute a non-select query.
+     *
+     * The sql query passed to this function MUST NOT return any data (e.g. not a select)
      *
      * @param sql   - The sql command to execute.
      *
      * @return      - Success or Failure
      */
-    virtual bool execute(const StringBuffer & sql) = 0;
+    virtual int execute(const StringBuffer & sql) = 0;
     
     /*
      * Get the name of the key column
@@ -126,20 +139,25 @@ protected:
      * @return      - A StringBuffer containing the query
      */
     virtual StringBuffer sqlGetAllString() const;
+        
+    /*
+     * Get the query to count properties
+     *
+     * @return      - A StringBuffer containing the query
+     */
+    virtual StringBuffer sqlCountAllString() const;
     
 public:
     
     /*
      * Constructor
      *
-     * @param uri       - The location of the server
-     * @param database  - The database name
      * @param table     - The table to be used
-     * @param username  - The username for authentication
-     * @param password  - The password for authentication
+     * @param colKey    - The column of the key
+     * @param colValue  - The column of the value
      *
      */
-    SQLKeyValueStore(const char * uri, const char * database, const char * table, const char * username, const char * password);
+    SQLKeyValueStore(const StringBuffer & table, const StringBuffer & colKey, const StringBuffer & colValue);
     
     /*
      * Destructor
@@ -156,7 +174,7 @@ public:
      *
      * @return      - Success or Failure
      */
-    virtual bool connect() = 0;
+    virtual int connect() = 0;
     
     /*
      * Disconnect from the database server.  If the connection is not open,
@@ -164,7 +182,7 @@ public:
      *
      * @return      - Success or Failure
      */
-    virtual bool disconnect() = 0;
+    virtual int disconnect() = 0;
     
     /*
      * Returns the value of the given property
@@ -212,7 +230,7 @@ public:
      *
      * @return 0 - success, failure otherwise
      */
-    virtual int save();
+    virtual int save() = 0;
 };
 
 

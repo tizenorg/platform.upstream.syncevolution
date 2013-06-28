@@ -44,7 +44,17 @@
 #include "http/TransportAgent.h"
 #include "Log.h"
 #import <CoreFoundation/CoreFoundation.h>
-#import <CoreServices/CoreServices.h>
+#if TARGET_IPHONE_SIMULATOR
+    #import <CoreServices/CoreServices.h>
+#else
+    #import <CFNetwork/CFNetwork.h>
+#endif
+#define ERR_HTTP_TIME_OUT               ERR_TRANSPORT_BASE+ 7
+#define ERR_HTTP_NOT_FOUND              ERR_TRANSPORT_BASE+60
+#define ERR_HTTP_REQUEST_TIMEOUT        ERR_TRANSPORT_BASE+61
+#define ERR_HTTP_INFLATE                ERR_TRANSPORT_BASE+70
+#define ERR_HTTP_DEFLATE                ERR_TRANSPORT_BASE+71
+
 
 
 BEGIN_NAMESPACE
@@ -57,7 +67,6 @@ public:
     ~MacTransportAgent();
     
     char* sendMessage(const char* msg);
-    //void setUserAgent(const char* ua);
 };
 
 END_NAMESPACE

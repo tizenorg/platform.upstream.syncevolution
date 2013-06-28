@@ -150,7 +150,7 @@ void SyncReport::initialize() {
     ssReport       = NULL;
 }
 
-void SyncReport::toString(StringBuffer &str, bool verbose) {
+void SyncReport::toString(StringBuffer &str, bool /* verbose */) {
     StringBuffer tmp;
 
     str += "===========================================================\n";
@@ -171,13 +171,19 @@ void SyncReport::toString(StringBuffer &str, bool verbose) {
         }
 
         str += tmp.sprintf("%10s|", ssr->getSourceName());
-        str += tmp.sprintf("%3d/%3d|", ssr->getItemReportSuccessfulCount(CLIENT, COMMAND_ADD), ssr->getItemReportCount(CLIENT, COMMAND_ADD));
-        str += tmp.sprintf("%3d/%3d|", ssr->getItemReportSuccessfulCount(CLIENT, COMMAND_REPLACE), ssr->getItemReportCount(CLIENT, COMMAND_REPLACE));
-        str += tmp.sprintf("%3d/%3d|", ssr->getItemReportSuccessfulCount(CLIENT, COMMAND_DELETE), ssr->getItemReportCount(CLIENT, COMMAND_DELETE));
+        str += tmp.sprintf("%3d/%3d|", ssr->getItemReportSuccessfulCount(CLIENT, COMMAND_ADD),
+                                       ssr->getItemReportCount(CLIENT, COMMAND_ADD));
+        str += tmp.sprintf("%3d/%3d|", ssr->getItemReportSuccessfulCount(CLIENT, COMMAND_REPLACE),
+                                       ssr->getItemReportCount(CLIENT, COMMAND_REPLACE));
+        str += tmp.sprintf("%3d/%3d|", ssr->getItemReportSuccessfulCount(CLIENT, COMMAND_DELETE),
+                                       ssr->getItemReportCount(CLIENT, COMMAND_DELETE));
 
-        str += tmp.sprintf("%3d/%3d|", ssr->getItemReportSuccessfulCount(SERVER, COMMAND_ADD), ssr->getItemReportCount(SERVER, COMMAND_ADD));
-        str += tmp.sprintf("%3d/%3d|", ssr->getItemReportSuccessfulCount(SERVER, COMMAND_REPLACE), ssr->getItemReportCount(SERVER, COMMAND_REPLACE));
-        str += tmp.sprintf("%3d/%3d|\n", ssr->getItemReportSuccessfulCount(SERVER, COMMAND_DELETE), ssr->getItemReportCount(SERVER, COMMAND_DELETE));
+        str += tmp.sprintf("%3d/%3d|", ssr->getItemReportSuccessfulCount(SERVER, COMMAND_ADD),
+                                       ssr->getItemReportCount(SERVER, COMMAND_ADD));
+        str += tmp.sprintf("%3d/%3d|", ssr->getItemReportSuccessfulCount(SERVER, COMMAND_REPLACE),
+                                       ssr->getItemReportCount(SERVER, COMMAND_REPLACE));
+        str += tmp.sprintf("%3d/%3d|\n", ssr->getItemReportSuccessfulCount(SERVER, COMMAND_DELETE),
+                                         ssr->getItemReportCount(SERVER, COMMAND_DELETE));
         str += "----------|-----------------------------------------------|\n";
     }
     str += "\n";
@@ -193,6 +199,7 @@ void SyncReport::toString(StringBuffer &str, bool verbose) {
         str += tmp.sprintf("   Source State    = %d\n", ssr->getState());
         str += tmp.sprintf("   Last error code = %d\n", ssr->getLastErrorCode());
         str += tmp.sprintf("   Last error msg  = %s\n", ssr->getLastErrorMsg());
+#ifndef SYMBIAN
         for (const char* const* target = SyncSourceReport::targets;
              *target;
              target++) {
@@ -211,6 +218,7 @@ void SyncReport::toString(StringBuffer &str, bool verbose) {
                 }
             }
         }
+#endif
     }
     str += "\n";
 }

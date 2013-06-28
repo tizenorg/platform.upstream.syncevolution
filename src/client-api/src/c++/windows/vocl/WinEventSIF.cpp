@@ -226,7 +226,7 @@ wstring WinEventSIF::adaptToSIFSpecs(const wstring& propName, const wstring& pro
         if ( propName == L"Start"       || 
              propName == L"ExcludeDate" ||
              propName == L"IncludeDate" ) {
-            propertyValue = formatDateWithMinus(propValue);    
+             propertyValue = formatDateWithMinus(propValue);    
         }
         else if (propName == L"End") {
             // the End value must be decremented of a day in allDayEvent appointment
@@ -234,7 +234,7 @@ wstring WinEventSIF::adaptToSIFSpecs(const wstring& propName, const wstring& pro
             stringTimeToDouble(propValue, &d);
             d -= 1;
             doubleToStringTime(propertyValue, d, true);
-            propertyValue = formatDateWithMinus(propertyValue);
+            propertyValue = formatDateWithMinus(propertyValue); 
         }
     }
 
@@ -325,7 +325,7 @@ void WinEventSIF::addTimezone(wstring& sif) {
     // DSTOffset = - (Bias + StandardBias + DaylightBias)
     // [StandardBias is usually = 0]
     bool hasDST = false;
-    int diffBias = tzInfo.Bias +  + tzInfo.StandardBias + tzInfo.DaylightBias;
+    int diffBias = tzInfo.Bias + tzInfo.StandardBias + tzInfo.DaylightBias;
     wstring daylightBias;
     if (diffBias != 0) { 
         hasDST = true;
@@ -337,9 +337,9 @@ void WinEventSIF::addTimezone(wstring& sif) {
         yearEnd = yearBegin + MAX_DAYLIGHT_PROPS;
     }
 
-    if (hasDST) {
+    if (hasDST && hasDayLightSaving(&tzInfo)) {
         // Add a DayLight tag for every year that this appointment occurr. (max = 6)
-        for (int year = yearBegin; year < yearEnd; year++) {
+        for (int year = yearBegin; year <= yearEnd; year++) {
 
             wstring daylightDate = getDateFromTzRule(year, tzInfo.DaylightDate);
             wstring standardDate = getDateFromTzRule(year, tzInfo.StandardDate);
@@ -365,7 +365,8 @@ void WinEventSIF::addTimezone(wstring& sif) {
     }
     else {
         // No daylight for this timezone
-        sif += L"<DayLight/>\n";
+        // It doesn't add anything.
+        // sif += L"<DayLight/>\n";
     }
 
     sif += L"</Timezone>\n";
@@ -393,7 +394,8 @@ bool WinEventSIF::parseTimezone(const wstring& data) {
         list<wstring> standardDates;
 
         //
-        // Search all <DayLight> inside <Timezone> (one for every year)
+        // Search all <DayLight> inside <Timezone> (one for every year). It cannot exist
+        // it there is not DayLight
         //
         wstring::size_type start = 0, end = 0;
         bool dstFlag = false;
@@ -426,9 +428,9 @@ bool WinEventSIF::parseTimezone(const wstring& data) {
             found = true;
             tzInfo.Bias         = bias;
             tzInfo.StandardBias = 0;        // Cannot retrieve it, assume = 0 (usually is 0)
-            tzInfo.DaylightBias = 0;
-            //tzInfo.DaylightDate = 0;
-            //tzInfo.StandardDate = 0;
+            tzInfo.DaylightBias = -60;      // most of the tiemzone is -60. only 1 is not (baghdad)
+            memset((void*)(&tzInfo.DaylightDate), 0, sizeof(SYSTEMTIME));
+            memset((void*)(&tzInfo.StandardDate) , 0, sizeof(SYSTEMTIME));           
             wcsncpy(tzInfo.StandardName, standardName.c_str(), 32);
             wcsncpy(tzInfo.DaylightName, daylightName.c_str(), 32);
         }
@@ -437,12 +439,13 @@ bool WinEventSIF::parseTimezone(const wstring& data) {
             // >> Bias = -TZ
             // >> StandardBias = 0  (Cannot retrieve it, assume = 0 as usually is 0)
             // >> DaylightBias = - (DSTOffset + Bias)
+            bool rightValue = true;
             found = true;
             tzInfo.Bias         = bias;
             tzInfo.StandardBias = 0;
             tzInfo.DaylightBias = parseBias(dstOffset.c_str()) - bias;
-            tzInfo.DaylightDate = getTzRuleFromDates(daylightDates);
-            tzInfo.StandardDate = getTzRuleFromDates(standardDates);
+            tzInfo.DaylightDate = getTzRuleFromDates(daylightDates, &rightValue);
+            tzInfo.StandardDate = getTzRuleFromDates(standardDates, &rightValue);
             wcsncpy(tzInfo.StandardName, standardName.c_str(), 32);
             wcsncpy(tzInfo.DaylightName, daylightName.c_str(), 32);
         }

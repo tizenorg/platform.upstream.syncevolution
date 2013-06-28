@@ -1,25 +1,39 @@
 /*
- * Copyright (C) 2008 Patrick Ohly
+ * Copyright (C) 2008 Novell, Inc.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * Authors: Patrick Ohly <patrick.ohly@gmx.de>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of version 2 of the GNU Lesser General Public
+ * License as published by the Free Software Foundation.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY, TITLE, NONINFRINGEMENT or FITNESS FOR A PARTICULAR
- * PURPOSE.  See the GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
+ * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
- * 02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "e_cal_check_timezones.h"
+#ifndef HANDLE_LIBICAL_MEMORY
+# define HANDLE_LIBICAL_MEMORY 1
+#endif
+#include <libical/ical.h>
+
+#ifdef LIBICAL_MEMFIXES
+/* avoid dependency on icalstrdup.h, works when compiling as part of EDS >= 2.22 */
+# define ical_strdup(_x) (_x)
+#else
+/* use icalstrdup.h to get runtime detection of memory fix patch */
+# include "libical/icalstrdup.h"
+#endif
+
+#include "e-cal-check-timezones.h"
 #include <libecal/e-cal.h>
 #include <string.h>
+#include <ctype.h>
 
 /**
  * Matches a location to a system timezone definition via a fuzzy
@@ -59,13 +73,43 @@ static const char *e_cal_match_location(const char *location)
 }
 
 /**
+ * e_cal_match_tzid:
  * matches a TZID against the system timezone definitions
  * and returns the matching TZID, or NULL if none found
  */
-static const char *e_cal_match_tzid(const char *tzid)
+const char *e_cal_match_tzid(const char *tzid)
 {
     const char *location;
     const char *systzid;
+    size_t len = strlen(tzid);
+    ssize_t eostr;
+
+    /*
+     * Try without any trailing spaces/digits: they might have been added
+     * by e_cal_check_timezones() in order to distinguish between
+     * different incompatible definitions. At that time mapping
+     * to system time zones must have failed, but perhaps now
+     * we have better code and it succeeds...
+     */
+    eostr = len - 1;
+    while (eostr >= 0 &&
+           isdigit(tzid[eostr])) {
+        eostr--;
+    }
+    while (eostr >= 0 &&
+           isspace(tzid[eostr])) {
+        eostr--;
+    }
+    if (eostr + 1 < len) {
+        char *strippedtzid = g_strndup(tzid, eostr + 1);
+        if (strippedtzid) {
+            systzid = e_cal_match_tzid(strippedtzid);
+            g_free(strippedtzid);
+            if (systzid) {
+                return systzid;
+            }
+        }
+    }
 
     /*
      * old-style Evolution: /softwarestudio.org/Olson_20011030_5/America/Denver
@@ -89,9 +133,114 @@ static const char *e_cal_match_tzid(const char *tzid)
     return NULL;
 }
 
+static void patch_tzids(icalcomponent *subcomp,
+                        GHashTable *mapping)
+{
+    char *tzid = NULL;
 
+    if (icalcomponent_isa(subcomp) != ICAL_VTIMEZONE_COMPONENT) {
+        icalproperty *prop = icalcomponent_get_first_property(subcomp,
+                                                              ICAL_ANY_PROPERTY);
+        while (prop) {
+            icalparameter *param = icalproperty_get_first_parameter(prop,
+                                                                    ICAL_TZID_PARAMETER);
+            while (param) {
+                const char *oldtzid;
+                const char *newtzid;
 
+                g_free(tzid);
+                tzid = g_strdup(icalparameter_get_tzid(param));
+
+                if (!g_hash_table_lookup_extended(mapping,
+                                                  tzid,
+                                                  (gpointer *)&oldtzid,
+                                                  (gpointer *)&newtzid)) {
+                    /* Corresponding VTIMEZONE not seen before! */
+                    newtzid = e_cal_match_tzid(tzid);
+                }
+                if (newtzid) {
+                    icalparameter_set_tzid(param, newtzid);
+                }
+                param = icalproperty_get_next_parameter(prop,
+                                                        ICAL_TZID_PARAMETER);
+            }
+            prop = icalcomponent_get_next_property(subcomp,
+                                                   ICAL_ANY_PROPERTY);
+        }
+    }
+
+    g_free(tzid);
+}
+
+static void addsystemtz(gpointer key,
+                        gpointer value,
+                        gpointer user_data)
+{
+    const char *tzid = key;
+    icalcomponent *comp = user_data;
+    icaltimezone *zone;
+
+    zone = icaltimezone_get_builtin_timezone_from_tzid(tzid);
+    if (zone) {
+        icalcomponent_add_component(comp,
+                                    icalcomponent_new_clone(icaltimezone_get_component(zone)));
+    }
+}
+
+/**
+ * e_cal_check_timezones:
+ * @comp:     a VCALENDAR containing a list of
+ *            VTIMEZONE and arbitrary other components, in
+ *            arbitrary order: these other components are
+ *            modified by this call
+ * @comps:    a list of icalcomponent instances which
+ *            also have to be patched; may be NULL
+ * @tzlookup: a callback function which is called to retrieve
+ *            a calendar's VTIMEZONE definition; the returned
+ *            definition is *not* freed by e_cal_check_timezones()
+ *            (to be compatible with e_cal_get_timezone());
+ *            NULL indicates that no such timezone exists
+ *            or an error occurred
+ * @custom:   an arbitrary pointer which is passed through to
+ *            the tzlookup function
+ * @error:    an error description in case of a failure
+ *
+ * This function cleans up VEVENT, VJOURNAL, VTODO and VTIMEZONE
+ * items which are to be imported into Evolution.
+ *
+ * Using VTIMEZONE definitions is problematic because they cannot be
+ * updated properly when timezone definitions change. They are also
+ * incomplete (for compatibility reason only one set of rules for
+ * summer saving changes can be included, even if different rules
+ * apply in different years). This function looks for matches of the
+ * used TZIDs against system timezones and replaces such TZIDs with
+ * the corresponding system timezone. This works for TZIDs containing
+ * a location (found via a fuzzy string search) and for Outlook TZIDs
+ * (via a hard-coded lookup table).
+ *
+ * Some programs generate broken meeting invitations with TZID, but
+ * without including the corresponding VTIMEZONE. Importing such
+ * invitations unchanged causes problems later on (meeting displayed
+ * incorrectly, #e_cal_get_component_as_string fails). The situation
+ * where this occurred in the past (found by a SyncEvolution user) is
+ * now handled via the location based mapping.
+ *
+ * If this mapping fails, this function also deals with VTIMEZONE
+ * conflicts: such conflicts occur when the calendar already contains
+ * an old VTIMEZONE definition with the same TZID, but different
+ * summer saving rules. Replacing the VTIMEZONE potentially breaks
+ * displaying of old events, whereas not replacing it breaks the new
+ * events (the behavior in Evolution <= 2.22.1).
+ *
+ * The way this problem is resolved is by renaming the new VTIMEZONE
+ * definition until the TZID is unique. A running count is appended to
+ * the TZID. All items referencing the renamed TZID are adapted
+ * accordingly.
+ *
+ * Return value: TRUE if successful, FALSE otherwise.
+ */
 gboolean e_cal_check_timezones(icalcomponent *comp,
+                               GList *comps,
                                icaltimezone *(*tzlookup)(const char *tzid,
                                                          const void *custom,
                                                          GError **error),
@@ -105,9 +254,13 @@ gboolean e_cal_check_timezones(icalcomponent *comp,
     char *buffer = NULL;
     char *zonestr = NULL;
     char *tzid = NULL;
+    GList *l;
 
     /** a hash from old to new tzid; strings dynamically allocated */
     GHashTable *mapping = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+
+    /** a hash of all system time zone IDs which have to be added; strings are shared with mapping hash */
+    GHashTable *systemtzids = g_hash_table_new(g_str_hash, g_str_equal);
 
     *error = NULL;
 
@@ -139,10 +292,11 @@ gboolean e_cal_check_timezones(icalcomponent *comp,
                     }
 
                     g_hash_table_insert(mapping, key, value);
+                    g_hash_table_insert(systemtzids, value, NULL);
                     key =
                         value = NULL;
                 } else {
-                    zonestr = g_strdup(icalcomponent_as_ical_string(subcomp));
+                    zonestr = ical_strdup(icalcomponent_as_ical_string(subcomp));
 
                     /* check for collisions with existing timezones */
                     int counter;
@@ -166,7 +320,7 @@ gboolean e_cal_check_timezones(icalcomponent *comp,
                             }
                         }
                         g_free(buffer);
-                        buffer = g_strdup(icalcomponent_as_ical_string(icaltimezone_get_component(existing_zone)));
+                        buffer = ical_strdup(icalcomponent_as_ical_string(icaltimezone_get_component(existing_zone)));
 
                         if (counter) {
                             char *fulltzid = g_strdup_printf("TZID:%s", value);
@@ -177,9 +331,7 @@ gboolean e_cal_check_timezones(icalcomponent *comp,
                              * Map TZID with counter suffix back to basename.
                              */
                             tzidprop = strstr(buffer, fulltzid);
-                            g_assert(tzidprop);
                             if (tzidprop) {
-                                g_assert(baselen < fulllen);
                                 memmove(tzidprop + baselen,
                                         tzidprop + fulllen,
                                         strlen(tzidprop + fulllen) + 1);
@@ -240,54 +392,40 @@ gboolean e_cal_check_timezones(icalcomponent *comp,
          *
          * Note that no attempt is made to remove unused VTIMEZONE
          * definitions. That would just make the code more complex for
-         * little additional gain.
+         * little additional gain. However, newly used time zones are
+         * added below.
          */
-        if (icalcomponent_isa(subcomp) != ICAL_VTIMEZONE_COMPONENT) {
-            icalproperty *prop = icalcomponent_get_first_property(subcomp,
-                                                                  ICAL_ANY_PROPERTY);
-            while (prop) {
-                icalparameter *param = icalproperty_get_first_parameter(prop,
-                                                                        ICAL_ANY_PARAMETER);
-                while (param) {
-                    if (icalparameter_isa(param) == ICAL_TZID_PARAMETER) {
-                        const char *oldtzid;
-                        const char *newtzid;
-
-                        g_free(tzid);
-                        tzid = g_strdup(icalparameter_get_tzid(param));
-                        
-                        if (!g_hash_table_lookup_extended(mapping,
-                                                          tzid,
-                                                          (gpointer *)&oldtzid,
-                                                          (gpointer *)&newtzid)) {
-                            /* Corresponding VTIMEZONE not seen before! */
-                            newtzid = e_cal_match_tzid(tzid);
-                        }
-                        if (newtzid) {
-                            icalparameter_set_tzid(param, newtzid);
-                        }
-                    }
-                    param = icalproperty_get_next_parameter(prop,
-                                                            ICAL_ANY_PARAMETER);
-                }
-                prop = icalcomponent_get_next_property(subcomp,
-                                                       ICAL_ANY_PROPERTY);
-            }
-        }
+        patch_tzids (subcomp, mapping);
         subcomp = icalcomponent_get_next_component(comp,
                                                    ICAL_ANY_COMPONENT);
     }
+
+    for (l = comps; l; l = l->next) {
+        patch_tzids (l->data, mapping);
+    }
+
+    /*
+     * add system time zones that we mapped to: adding them ensures
+     * that the VCALENDAR remains consistent
+     */
+    g_hash_table_foreach(systemtzids, addsystemtz, comp);
     
     goto done;
  nomem:
-    /* TODO: set gerror for "out of memory" */
+    /* set gerror for "out of memory" if possible, otherwise abort via g_error() */
+    *error = g_error_new(E_CALENDAR_ERROR, E_CALENDAR_STATUS_OTHER_ERROR, "out of memory");
+    if (!*error) {
+        g_error("e_cal_check_timezones(): out of memory, cannot proceed - sorry!");
+    }
  failed:
     /* gerror should have been set already */
-    g_assert(*error);
     success = FALSE;
  done:
     if (mapping) {
         g_hash_table_destroy(mapping);
+    }
+    if (systemtzids) {
+        g_hash_table_destroy(systemtzids);
     }
     if (zone) {
         icaltimezone_free(zone, 1);
@@ -301,6 +439,13 @@ gboolean e_cal_check_timezones(icalcomponent *comp,
     return success;
 }
 
+/**
+ * e_cal_tzlookup_ecal:
+ * @custom: must be a valid ECal pointer
+ *
+ * An implementation of the tzlookup callback which clients
+ * can use. Calls #e_cal_get_timezone.
+ */
 icaltimezone *e_cal_tzlookup_ecal(const char *tzid,
                                   const void *custom,
                                   GError **error)
@@ -325,12 +470,21 @@ icaltimezone *e_cal_tzlookup_ecal(const char *tzid,
     }
 }
 
+/**
+ * e_cal_tzlookup_icomp:
+ * @custom: must be a icalcomponent pointer which contains
+ *          either a VCALENDAR with VTIMEZONEs or VTIMEZONES
+ *          directly
+ *
+ * An implementation of the tzlookup callback which backends
+ * like the file backend can use. Searches for the timezone
+ * in the component list.
+ */
 icaltimezone *e_cal_tzlookup_icomp(const char *tzid,
                                    const void *custom,
                                    GError **error)
 {
-    const icalcomponent *icomp = custom;
-    /* TODO */
+    icalcomponent *icomp = (icalcomponent *)custom;
 
-    return NULL;
+    return icalcomponent_get_timezone(icomp, (char *)tzid);
 }

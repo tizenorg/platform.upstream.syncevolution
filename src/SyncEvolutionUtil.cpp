@@ -22,6 +22,8 @@
 #include <base/test.h>
 
 #include <boost/scoped_array.hpp>
+#include <boost/foreach.hpp>
+#include <fstream>
 
 #include <errno.h>
 #include <unistd.h>
@@ -98,10 +100,8 @@ void rm_r(const string &path)
     }
 
     ReadDir dir(path);
-    for (ReadDir::const_iterator it = dir.begin();
-         it != dir.end();
-         ++it) {
-        rm_r(path + "/" + *it);
+    BOOST_FOREACH(const string &entry, dir) {
+        rm_r(path + "/" + entry);
     }
     if (rmdir(path.c_str())) {
         EvolutionSyncClient::throwError(path + ": " + strerror(errno));
@@ -126,7 +126,12 @@ UUID::UUID()
     static class InitSRand {
     public:
         InitSRand() {
-            srand(time(NULL));
+            ifstream seedsource("/dev/urandom");
+            unsigned int seed;
+            if (!seedsource.get((char *)&seed, sizeof(seed))) {
+                seed = time(NULL);
+            }
+            srand(seed);
         }
     } initSRand;
 

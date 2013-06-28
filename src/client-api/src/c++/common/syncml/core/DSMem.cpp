@@ -40,15 +40,16 @@
 USE_NAMESPACE
 
 
-DSMem::DSMem() {
-    sharedMem      = false;
-    long    maxMem = 0;
-    long    maxID  = 0;
+DSMem::DSMem() : sharedMem(false),
+                 maxMem(0),
+                 maxID(0)
+{
 }
+
 DSMem::~DSMem() {
-    sharedMem      = false;
-    long    maxMem = 0;
-    long    maxID  = 0;
+    sharedMem = false;
+    maxMem = 0;
+    maxID  = 0;
 }
 
 /**
@@ -66,14 +67,6 @@ DSMem::DSMem(bool sharedMem, long maxMem, long maxID) {
     this->sharedMem = sharedMem;
 }
 
-/**
- * Returns the memoryShared status
- *
- * @return <i>true</i> if the datastore memory is shared, <i>false</i> otherwise
- */
-bool DSMem::isSharedMem() {
-    return (sharedMem != NULL);
-}
 /**
  * Sets the memoryShared status
  *
