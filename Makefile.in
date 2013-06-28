@@ -1181,13 +1181,21 @@ dist-hook:
 		echo A git checkout is required to generate a ChangeLog >&2; \
 	fi
 
+# check .so (relevant for modular builds) and main syncevolution binary
+# (relevant in that case and for static builds) for dependencies on
+# problematic libraries and symbols
+#
+# ical_strdup is an exception because it is in SyncEvolution.
 @ENABLE_EVOLUTION_COMPATIBILITY_TRUE@installcheck-local:
-@ENABLE_EVOLUTION_COMPATIBILITY_TRUE@	for i in `find . -name *.so`; do \
-@ENABLE_EVOLUTION_COMPATIBILITY_TRUE@		if ldd $$i | grep -e libecal -e libebook -e libedata -e libical -e libbluetooth; then \
+@ENABLE_EVOLUTION_COMPATIBILITY_TRUE@	for i in `find $(DESTDIR)/$(libdir)/syncevolution $(DESTDIR)/$(libdir)/libsyncevo* $(DESTDIR)/$(libdir)/libsynthesis* -name *.so` $(DESTDIR)/$(bindir)/syncevolution; do \
+@ENABLE_EVOLUTION_COMPATIBILITY_TRUE@		if objdump -T -C $$i | grep -v :: | grep '\*UND\*' | sort | grep -v -w ical_strdup | grep -e ical -e " e_"; then \
 @ENABLE_EVOLUTION_COMPATIBILITY_TRUE@			echo "$$i should not depend on EDS, libical or libbluetooth"; \
-@ENABLE_EVOLUTION_COMPATIBILITY_TRUE@			objdump -T -C $$i | grep -v :: | grep -e ical -e " e_"; \
 @ENABLE_EVOLUTION_COMPATIBILITY_TRUE@			exit 1; \
-@ENABLE_EVOLUTION_COMPATIBILITY_TRUE@		fi \
+@ENABLE_EVOLUTION_COMPATIBILITY_TRUE@		fi; \
+@ENABLE_EVOLUTION_COMPATIBILITY_TRUE@		if ldd $$i | grep -e libecal -e libebook -e libedata -e libical -e libbluetooth; then \
+@ENABLE_EVOLUTION_COMPATIBILITY_TRUE@			echo "$$i should not be linked against EDS, libical or libbluetooth"; \
+@ENABLE_EVOLUTION_COMPATIBILITY_TRUE@			exit 1; \
+@ENABLE_EVOLUTION_COMPATIBILITY_TRUE@		fi; \
 @ENABLE_EVOLUTION_COMPATIBILITY_TRUE@	done
 
 # produce man pages

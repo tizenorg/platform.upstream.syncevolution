@@ -7,8 +7,8 @@ synchronize personal information management data
 ------------------------------------------------
 
 :Manual section: 1
-:Version: 1.1.99.5a
-:Date: 2011-07-14
+:Version: 1.1.99.5b
+:Date: 2011-07-17
 
 SYNOPSIS
 ========
@@ -138,7 +138,7 @@ source will synchronize it in `two-way` mode once.
 
 In SyncEvolution's predefined configuration templates, the following
 names for sources are used. Different names can be chosen for sources
-that are defined manually. ::
+that are defined manually.
 
  * addressbook: a list of contacts
  * calendar: calendar *events*
