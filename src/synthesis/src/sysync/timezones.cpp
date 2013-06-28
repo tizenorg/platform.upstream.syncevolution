@@ -148,12 +148,15 @@ bool GZones::matchTZ(const tz_entry &aTZ, timecontext_t &aContext)
 
     bool visit(const tz_entry &aTZ, timecontext_t aContext)
     {
+      if (aTZ.ident=="x") return false; // comparison with this type is not possible
+
       bool rule_match = tzcmp(fTZ, aTZ) && YearFit(fTZ, aTZ, fG);
 
       if (aTZ.dynYear.empty())
         fLeadContext = aContext;
 
       if (rule_match &&
+         !fTZ.name.empty() && // empty match is NOT better !!
           fTZ.name == aTZ.name) {
         // name AND rule match => best possible match, return early
         fContext = fLeadContext;
@@ -183,7 +186,7 @@ bool GZones::matchTZ(const tz_entry &aTZ, timecontext_t &aContext)
       }
 
       return false;
-    }
+    } // visit
 
     bool result(timecontext_t &aContext)
     {
@@ -193,13 +196,15 @@ bool GZones::matchTZ(const tz_entry &aTZ, timecontext_t &aContext)
       } else {
         return false;
       }
-    }
-  } c(aTZ, this);
+    } // result
+  }
+
+  c(aTZ, this);
 
   foreachTZ(c);
 
   return c.result(aContext);
-}
+} // matchTZ
 
 bool GZones::foreachTZ(visitor &v)
 {
@@ -211,22 +216,23 @@ bool GZones::foreachTZ(visitor &v)
   }
 
   bool result = false;
-#ifdef MUTEX_SUPPORT
-  lockMutex(muP);
-#endif
+  #ifdef MUTEX_SUPPORT
+    lockMutex(muP);
+  #endif
 
   for (TZList::iterator pos= tzP.begin();
        pos!=tzP.end();
        pos++, i++) {
     if (v.visit(*pos, TCTX_ENUMCONTEXT(i)))
       break;
-  }
+  } // for
 
-#ifdef MUTEX_SUPPORT
-  unlockMutex(muP);
-#endif
+  #ifdef MUTEX_SUPPORT
+    unlockMutex(muP);
+  #endif
+
   return result;
-}
+} // foreachTZ
 
 // ---------------------------------------------------------------------------------
 
@@ -787,6 +793,12 @@ bool TimeZoneContextToName( timecontext_t aContext, string &aName, GZones* g,
                                 cAppCharP aPrefIdent )
 {
   // check some special cases
+  if (!TCTX_IS_TZ( aContext )) {
+    short lBias=   TCTX_MINOFFSET( aContext );
+          aName= "OFFS" + HourMinStr( lBias );
+    return true;
+  } // if
+
   if (TCTX_IS_UNKNOWN(aContext)) {
     aName = TCTX_IS_DURATION(aContext) ? "DURATION" : (TCTX_IS_DATEONLY(aContext) ? "DATE" : "FLOATING");
     return true;
@@ -810,8 +822,7 @@ bool TimeZoneContextToName( timecontext_t aContext, string &aName, GZones* g,
   }
 
   // %%% <aPrefIdent> has not yet any influence
-  if (TCTX_IS_TZ( aContext ) &&
-           GetTZ( aContext, t, g )) {
+  if (GetTZ( aContext, t, g )) {
     if (t.ident == "$") return false; // unchanged elements are not yet supported
     aName= t.name;
   } // if

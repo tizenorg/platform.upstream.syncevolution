@@ -592,6 +592,7 @@ bool TMIMEProfileConfig::localStartElement(const char *aElementName, const char 
       const char *nvs = getAttr(aAttributes,"values");
       if (nvs) {
         if (strucmp(nvs,"list")==0) numval=NUMVAL_LIST;
+        else if (strucmp(nvs,"expandedlist")==0) numval=NUMVAL_REP_LIST;
         else if (!StrToShort(nvs,numval))
           return fail("invalid value in 'values' attribute");
       }
@@ -920,37 +921,39 @@ TPropNameExtension::~TPropNameExtension()
 
 TPropertyDefinition::TPropertyDefinition(const char* aName, sInt16 aNumVals, bool aMandatory, bool aShowInCTCap, bool aSuppressEmpty, uInt16 aDelayedProcessing, char aValuesep, char aAltValuesep, uInt16 aPropertyGroupID, bool aCanFilter, TMimeDirMode aModeDep)
 {
-  next=NULL;
+  next = NULL;
   TCFG_ASSIGN(propname,aName);
-  nameExts=NULL; // none yet
-  nextNameExt=0; // no enums with name extensions defined yet for this property
-  valuelist=false; // no value list by default
-  valuesep=aValuesep; // separator for structured-value and value-list properties
-  altvaluesep=aAltValuesep; // alternate separator for structured-value and value-list properties (for parsing only)
-  propGroup=aPropertyGroupID; // property group ID
-  if (aNumVals==NUMVAL_LIST) {
+  nameExts = NULL; // none yet
+  nextNameExt = 0; // no enums with name extensions defined yet for this property
+  valuelist = false; // no value list by default
+  expandlist = false; // not expanding value list into repeating property by default
+  valuesep = aValuesep; // separator for structured-value and value-list properties
+  altvaluesep = aAltValuesep; // alternate separator for structured-value and value-list properties (for parsing only)
+  propGroup = aPropertyGroupID; // property group ID
+  if (aNumVals==NUMVAL_LIST || aNumVals==NUMVAL_REP_LIST) {
     // value list
-    valuelist=true;
-    numValues=1; // we accept a single convdef only
+    valuelist = true;
+    expandlist = aNumVals==NUMVAL_REP_LIST;
+    numValues = 1; // we accept a single convdef only
   }
   else {
     // individual values
-    numValues=aNumVals;
+    numValues = aNumVals;
   }
   // create convdefs array
   convdefs = new TConversionDef[numValues];
-  parameterDefs=NULL; // none yet
-  mandatory=aMandatory;
-  showInCTCap=aShowInCTCap;
-  canFilter=aCanFilter;
-  suppressEmpty=aSuppressEmpty;
-  delayedProcessing=aDelayedProcessing;
-  modeDependency=aModeDep;
+  parameterDefs = NULL; // none yet
+  mandatory = aMandatory;
+  showInCTCap = aShowInCTCap;
+  canFilter = aCanFilter;
+  suppressEmpty = aSuppressEmpty;
+  delayedProcessing = aDelayedProcessing;
+  modeDependency = aModeDep;
   #ifndef NO_REMOTE_RULES
   // not dependent on rule yet (as rules do not exists at TPropertyDefinition creation,
   // dependency will be added later, if any)
-  dependsOnRemoterule=false;
-  ruleDependency=NULL;
+  dependsOnRemoterule = false;
+  ruleDependency = NULL;
   #endif
 } // TPropertyDefinition::TPropertyDefinition
 
@@ -2504,7 +2507,7 @@ void TMimeDirProfileHandler::expandProperty(
         // generate value part
         sInt16 n=propnameextP->maxRepeat;
         // check for value list
-        if (aPropP->valuelist) {
+        if (aPropP->valuelist && !aPropP->expandlist) {
           // property contains a value list -> all repetitions are shown within ONE property instance
           // NOTE: generateProperty will exhaust possible repeats
           generateProperty(
@@ -2642,7 +2645,7 @@ sInt16 TMimeDirProfileHandler::generateProperty(
     repinc=aPropNameExt->repeatInc;
   }
   // generate property contents
-  if (aPropP->valuelist) {
+  if (aPropP->valuelist && !aPropP->expandlist) {
     // property with value list
     // NOTE: convdef[0] is used for all values, aRepeatOffset changes
     convP = &(aPropP->convdefs[0]);

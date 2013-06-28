@@ -52,6 +52,7 @@ namespace sysync {
 
 // special numvals
 #define NUMVAL_LIST -1     // property contains a value list (like EXDATE) rather than individual values (like N)
+#define NUMVAL_REP_LIST -2 // same as NUMVAL_LIST, but property is output as repetition of the entire property rather than as list in single property
 
 
 
@@ -253,6 +254,8 @@ public:
   // than a single value. If valuelist=true, convdefs should only contain a single entry,
   // other entries are not used
   bool valuelist;
+  // if set, valuelist properties should be rendered by repeating the property instead of creating a list of values in one property
+  bool expandlist;
   // char to separate value list items (defaults to semicolon)
   char valuesep;
   char altvaluesep; // second value separator to respect when parsing (generating always uses valuesep)
@@ -321,7 +324,7 @@ public:
   );
   TPropertyDefinition *addProperty(
     const char *aName, // name
-    sInt16 aNumValues, // number of values, NUMVAL_LIST if it is a value list
+    sInt16 aNumValues, // number of values, NUMVAL_LIST/NUMVAL_REP_LIST if it is a value list
     bool aMandatory, // mandatory
     bool aShowInCTCap, // show in CTCap
     bool aSuppressEmpty, // suppress empty ones on send
@@ -580,7 +583,7 @@ private:
     const TPropertyDefinition *aPropP, // the property to generate (all instances)
     TMimeDirMode aMimeMode // MIME mode (older or newer vXXX format compatibility)
   );
-  // - generate single property (except for valuelist-type properties like EXDATE
+  // - generate single property (except for valuelist-type properties)
   sInt16 generateProperty(
     TMultiFieldItem &aItem,     // the item where data comes from
     string &aString,            // the string to add properties to

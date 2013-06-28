@@ -25,6 +25,7 @@
 
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/function.hpp>
 
 #include <stdarg.h>
 
@@ -59,8 +60,17 @@ string normalizePath(const string &path);
 /** ensure that m_path is writable, otherwise throw error */
 void mkdir_p(const string &path);
 
-/** remove a complete directory hierarchy; invoking on non-existant directory is okay */
-void rm_r(const string &path);
+inline bool rm_r_all(const string &path, bool isDir) { return true; }
+
+/**
+ * remove a complete directory hierarchy; invoking on non-existant directory is okay
+ * @param path     relative or absolute path to be removed
+ * @param filter   an optional callback which determines whether an entry really is
+ *                 to be deleted (return true in that case); called with full path
+ *                 to entry and true if known to be a directory
+ */
+void rm_r(const string &path, boost::function<bool (const string &,
+                                                    bool)> filter = rm_r_all);
 
 /** true if the path refers to a directory */
 bool isDir(const string &path);
@@ -110,6 +120,12 @@ class ReadDir {
     iterator end() { return m_entries.end(); }
     const_iterator begin() const { return m_entries.begin(); }
     const_iterator end() const { return m_entries.end(); }
+
+    /**
+     * check whether directory contains entry, returns full path
+     * @param caseInsensitive    ignore case, pick first entry which matches randomly
+     */
+    string find(const string &entry, bool caseSensitive);
 
  private:
     string m_path;
@@ -180,6 +196,18 @@ class SyncEvolutionException : public std::runtime_error
      */
     static SyncMLStatus handle(SyncMLStatus *status = NULL);
 };
+
+/**
+ * replace ${} with environment variables, with
+ * XDG_DATA_HOME, XDG_CACHE_HOME and XDG_CONFIG_HOME having their normal
+ * defaults
+ */
+std::string SubstEnvironment(const std::string &str);
+
+inline string getHome() {
+    const char *homestr = getenv("HOME");
+    return homestr ? homestr : ".";
+}
 
 /** throw a SyncEvolutionException */
 #define SE_THROW(_what) \

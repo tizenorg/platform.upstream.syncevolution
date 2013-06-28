@@ -105,6 +105,15 @@ const lineartime_t UnixToLineartimeOffset =
     - linearDateOriginOffset // offset between lineardate_t base and algorithm base
   ) * linearDateToTimeFactor;
 
+/// @brief offset from lineartime_t to NSDate reference time, which is based 2001-01-01 00:00:00
+/// @Note units of this constants are still lineartime_t units and need
+///       division by secondToLinearTimeFactor to get actual NSDate in seconds
+const lineartime_t NSDateToLineartimeOffset =
+  (
+    2451911 // offset between algorithm base and 2001-01-01
+    - linearDateOriginOffset // offset between lineardate_t base and algorithm base
+  ) * linearDateToTimeFactor;
+
 
 /// @brief convert date to linear date
 /// @return specified date converted to lineardate_t (unit=days)

@@ -2271,7 +2271,7 @@ localstatus TCustomImplDS::implGetItem(
                 // - set operation
                 myitemP->setSyncOp(sop);
                 // Now fetch item (read phase)
-                localstatus sta=apiFetchItem(*myitemP,true,syncsetitemP);
+                sta=apiFetchItem(*myitemP,true,syncsetitemP);
                 if (sta==LOCERR_OK) {
                   // successfully fetched
                   fetched=true;
@@ -2772,15 +2772,7 @@ bool TCustomImplDS::implProcessItem(
   }
   SYSYNC_CATCH (exception &e)
     PDEBUGPRINTFX(DBG_ERROR,("******** TCustomImplDS::implProcessItem exception: %s",e.what()));
-    if (sop==sop_delete) {
-      // %%% use 500 instead of 510 here to make SCTS happy
-      #if defined WINCE || !defined _MSC_VER
-      #warning "is this SCTS hack still required??"
-      #endif
-      aStatusCommand.setStatusCode(500);
-    }
-    else
-      aStatusCommand.setStatusCode(510);
+    aStatusCommand.setStatusCode(510);
     goto error;
   SYSYNC_ENDCATCH
   SYSYNC_CATCH (...)

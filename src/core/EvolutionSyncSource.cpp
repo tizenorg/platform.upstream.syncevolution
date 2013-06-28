@@ -24,6 +24,7 @@
 #include "Logging.h"
 
 #include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/join.hpp>
 #include <boost/foreach.hpp>
 
 #include <list>
@@ -170,6 +171,11 @@ public:
             // itself. We keep that pointer, so never close the
             // module!
             dlhandle = dlopen(modules[i], RTLD_NOW|RTLD_GLOBAL);
+            if (!dlhandle) {
+                string fullpath = LIBDIR "/syncevolution/";
+                fullpath += modules[i];
+                dlhandle = dlopen(fullpath.c_str(), RTLD_NOW|RTLD_GLOBAL);
+            }
             // remember which modules were found and which were not
             state = dlhandle ? &m_available : &m_missing;
             state->push_back(modules[i]);

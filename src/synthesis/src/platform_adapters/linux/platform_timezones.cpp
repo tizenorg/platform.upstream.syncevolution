@@ -69,7 +69,7 @@ bool loadSystemZoneDefinitions(GZones* aGZones)
         aGZones->getDbgLogger
       #endif
     )) {
-      t.ident = "x";
+      t.ident = "";
       t.dynYear = "";
       // expect Olson /<domain>/<version>/<location> TZIDs and
       // extract the trailing location (which might contain

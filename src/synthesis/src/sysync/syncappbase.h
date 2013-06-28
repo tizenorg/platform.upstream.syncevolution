@@ -423,8 +423,8 @@ public:
   // - combine URI and session ID to make a RespURI according to transport
   virtual void generateRespURI(
     string & /* aRespURI */,
-    const char * /* aLocalURI */,
-    const char * /* aSessionID */
+    cAppCharP /* aLocalURI */,
+    cAppCharP /* aSessionID */
   ) { /* nop, no RespURI */ };
   #ifdef HARDCODED_CONFIG
   // create hardcoded config (root config element knows how)

@@ -2099,7 +2099,7 @@ localstatus TPluginApiDS::apiLoadAdminData(
     DB_Callback cb= &fDBApi_Admin.fCB.Callback;
     cb->callbackRef       = fSessionP; // the session
     #ifdef ENGINEINTERFACE_SUPPORT
-    cb->thisBase          = getSyncAppBase()->fEngineInterfaceP;
+    cb->thisBase          = fSessionP->getSyncAppBase()->fEngineInterfaceP;
     #endif
     #ifdef SYDEBUG
     // Datastore Admin debug goes to session log
@@ -2262,7 +2262,6 @@ localstatus TPluginApiDS::apiLoadAdminData(
             TDB_Api_Blk b;
             memSize totSize;
             bool last;
-            TSyError err;
 
             if (fPIStoredSize>0) {
               fPIStoredDataP= smlLibMalloc( fPIStoredSize ); // now prepare for the full blob

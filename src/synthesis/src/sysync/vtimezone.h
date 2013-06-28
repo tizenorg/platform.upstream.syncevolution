@@ -84,6 +84,10 @@ string VStr( string aStr, string value, sInt32 aNth= 1 );
 string VValue( string aStr, string key );
 
 
+/*! Get the hour/minute string of <bias> */
+string HourMinStr( int bias );
+
+
 
 } // namespace sysync
 

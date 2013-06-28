@@ -168,6 +168,17 @@ protected:
     return DB_NotAllowed;
   };
 
+
+  // helper for detecting generic field attribute access
+	bool checkFieldAttrs(cAppCharP aName, size_t &aBaseNameSize, sInt32 &aFldID);
+  // helper for returning generic field attribute type
+  bool checkAttrValueType(sInt32 aID, uInt16 &aValType);
+  // helper for returning generic field attribute values
+  bool checkAttrValue(
+    sInt32 aID, sInt32 aArrayIndex,
+    appPointer aBuffer, memSize aBufSize, memSize &aValSize
+  );
+
   // the engine interface
   TEngineInterface *fEngineInterfaceP;
   // Value format modes
@@ -235,10 +246,7 @@ public:
     inherited(aEngineInterfaceP) {};
 
   // get value's ID (config vars do NOT have an ID!)
-  virtual sInt32 GetValueID(cAppCharP aName) {
-    fVarName = aName; // cache name
-    return KEYVAL_NO_ID;
-  };
+  virtual sInt32 GetValueID(cAppCharP aName);
 
 protected:
 

@@ -22,6 +22,9 @@
 #include "EvolutionSyncSource.h"
 #include "SyncEvolutionUtil.h"
 
+#include "SafeConfigNode.h"
+#include "FileConfigNode.h"
+
 #include "Logging.h"
 #include "LogStdout.h"
 #include "TransportAgent.h"
@@ -37,10 +40,11 @@ using namespace SyncEvolution;
 #include <iomanip>
 #include <iostream>
 #include <stdexcept>
+#include <algorithm>
 using namespace std;
 
 #include <boost/algorithm/string/predicate.hpp>
-#include <boost/algorithm/string/replace.hpp>
+#include <boost/algorithm/string/join.hpp>
 #include <boost/foreach.hpp>
 
 #include <sys/stat.h>
@@ -62,6 +66,7 @@ EvolutionSyncClient::EvolutionSyncClient(const string &server,
     m_sources(sources),
     m_doLogging(doLogging),
     m_quiet(false),
+    m_dryrun(false),
     m_engine(new sysync::TEngineModuleBridge())
 {
     // Use libsynthesis that we were linked against.  The name of a
@@ -87,92 +92,153 @@ EvolutionSyncClient::~EvolutionSyncClient()
 // for redirecting output at the start and end of sync (even
 // in case of exceptions thrown!)
 class LogDir : public LoggerStdout {
-    string m_logdir;         /**< configured backup root dir, empty if none */
+    string m_logdir;         /**< configured backup root dir */
     int m_maxlogdirs;        /**< number of backup dirs to preserve, 0 if unlimited */
     string m_prefix;         /**< common prefix of backup dirs */
     string m_path;           /**< path to current logging and backup dir */
     const string &m_server;  /**< name of the server for this synchronization */
     string m_logfile;        /**< path to log file there, empty if not writing one */
     FILE *m_file;            /**< file handle for log file, NULL if not writing one */
+    SafeConfigNode *m_info;  /**< key/value representation of sync information */
+    bool m_readonly;         /**< m_info is not to be written to */
+    SyncReport *m_report;    /**< record start/end times here */
+
+    /** set m_logdir and adapt m_prefix accordingly */
+    void setLogdir(const string &logdir) {
+        // strip trailing slashes, but not the initial one
+        size_t off = logdir.size();
+        while (off > 0 && logdir[off - 1] == '/') {
+            off--;
+        }
+        m_logdir = logdir.substr(0, off);
+
+        string lower = m_server;
+        boost::to_lower(lower);
+
+        if (boost::iends_with(m_logdir, "syncevolution")) {
+            // use just the server name as prefix
+            m_prefix = lower;
+        } else {
+            // SyncEvolution-<server>-<yyyy>-<mm>-<dd>-<hh>-<mm>
+            m_prefix = "SyncEvolution-";
+            m_prefix += lower;
+        }
+    }
 
 public:
-    LogDir(const string &server) : m_server(server), m_file(NULL)
+    LogDir(const string &server) : m_server(server), m_file(NULL), m_info(NULL), m_readonly(false), m_report(NULL)
     {
-        // SyncEvolution-<server>-<yyyy>-<mm>-<dd>-<hh>-<mm>
-        m_prefix = "SyncEvolution-";
-        m_prefix += m_server;
+        // Set default log directory. This will be overwritten with a user-specified
+        // location later on, if one was selected by the user. SyncEvolution >= 0.9 alpha
+        // and < 0.9 beta 2 used XDG_DATA_HOME because the logs and data base dumps
+        // were not considered "non-essential data files". Because XDG_DATA_HOME is
+        // searched for .desktop files and creating large amounts of other files there
+        // slows down that search, the default was changed to XDG_CACHE_DIR.
+        //
+        // To migrate old installations seamlessly, this code here renames the old
+        // default directory to the new one. Errors (like not found) are silently ignored.
+        mkdir_p(SubstEnvironment("${XDG_CACHE_HOME}").c_str());
+        rename(SubstEnvironment("${XDG_DATA_HOME}/applications/syncevolution").c_str(),
+               SubstEnvironment("${XDG_CACHE_HOME}/syncevolution").c_str());
 
-        // default: $TMPDIR/SyncEvolution-<username>-<server>
-        stringstream path;
-        char *tmp = getenv("TMPDIR");
-        if (tmp) {
-            path << tmp;
-        } else {
-            path << "/tmp";
-        }
-        path << "/SyncEvolution-";
-        struct passwd *user = getpwuid(getuid());
-        if (user && user->pw_name) {
-            path << user->pw_name;
-        } else {
-            path << getuid();
-        }
-        path << "-" << m_server;
-
-        m_path = path.str();
+        setLogdir(SubstEnvironment("${XDG_CACHE_HOME}/syncevolution"));
     }
 
     /**
-     * Finds previous log directory. Must be called before setLogdir().
+     * Finds previous log directories. Reports errors via exceptions.
+     *
+     * @param path        path to configured backup directy, NULL if defaulting to /tmp, "none" if not creating log file
+     * @retval dirs       vector of full path names, oldest first
+     */
+    void previousLogdirs(const char *path, vector<string> &dirs) {
+        string logdir;
+
+        dirs.clear();
+        if (path && !strcasecmp(path, "none")) {
+            return;
+        } else {
+            if (path && path[0]) {
+                setLogdir(SubstEnvironment(path));
+            }
+            getLogdirs(dirs);
+        }
+    }
+
+    /**
+     * Finds previous log directory. Returns empty string if anything went wrong.
      *
      * @param path        path to configured backup directy, NULL if defaulting to /tmp, "none" if not creating log file
      * @return full path of previous log directory, empty string if not found
      */
-    string previousLogdir(const char *path) {
-        string logdir;
-
-        if (path && !strcasecmp(path, "none")) {
-            return "";
-        } else if (path && path[0]) {
-            vector<string> entries;
-            try {
-                getLogdirs(path, entries);
-            } catch(...) {
-                SyncEvolutionException::handle();
-                return "";
-            }
-
-            logdir = entries.size() ? string(path) + "/" + entries[entries.size()-1] : "";
-        } else {
-            logdir = m_path;
-        }
-
-        if (access(logdir.c_str(), R_OK|X_OK) == 0) {
-            return logdir;
-        } else {
+    string previousLogdir(const char *path) throw() {
+        try {
+            vector<string> dirs;
+            previousLogdirs(path, dirs);
+            return dirs.empty() ? "" : dirs.back();
+        } catch (...) {
+            SyncEvolutionException::handle();
             return "";
         }
     }
 
+    /**
+     * access existing log directory to extract status information
+     */
+    void openLogdir(const string &dir) {
+        boost::shared_ptr<ConfigNode> filenode(new FileConfigNode(dir, "status.ini", true));
+        m_info = new SafeConfigNode(filenode);
+        m_info->setMode(false);
+        m_readonly = true;
+    }
+
+    /**
+     * read sync report for session selected with openLogdir()
+     */
+    void readReport(SyncReport &report) {
+        report.clear();
+        if (!m_info) {
+            return;
+        }
+        *m_info >> report;
+    }
+
+    /**
+     * write sync report for current session
+     */
+    void writeReport(SyncReport &report) {
+        if (m_info) {
+            *m_info << report;
+
+            /* write in slightly different format and flush at the end */
+            writeTimestamp("start", report.getStart(), false);
+            writeTimestamp("end", report.getEnd(), true);
+        }
+    }
+
     // setup log directory and redirect logging into it
-    // @param path        path to configured backup directy, NULL if defaulting to /tmp, "none" if not creating log file
+    // @param path        path to configured backup directy, empty for using default, "none" if not creating log file
     // @param maxlogdirs  number of backup dirs to preserve in path, 0 if unlimited
     // @param logLevel    0 = default, 1 = ERROR, 2 = INFO, 3 = DEBUG
     // @param usePath     write directly into path, don't create and manage subdirectories
-    void setLogdir(const char *path, int maxlogdirs, int logLevel = 0, bool usePath = false) {
+    // @param report      record information about session here (may be NULL)
+    // @param logname     the basename to be used for logs, traditionally "client" for syncs
+    void startSession(const char *path, int maxlogdirs, int logLevel, bool usePath, SyncReport *report, const string &logname) {
         m_maxlogdirs = maxlogdirs;
+        m_report = report;
         if (path && !strcasecmp(path, "none")) {
             m_path = "";
             m_logfile = "";
-        } else if (path && path[0]) {
-            m_logdir = path;
+        } else {
+            if (path && path[0]) {
+                setLogdir(SubstEnvironment(path));
+            }
 
             if (!usePath) {
                 // create unique directory name in the given directory
                 time_t ts = time(NULL);
                 struct tm *tm = localtime(&ts);
                 stringstream base;
-                base << path << "/"
+                base << m_logdir << "/"
                      << m_prefix
                      << "-"
                      << setfill('0')
@@ -189,32 +255,22 @@ public:
                         path << "-" << seq;
                     }
                     m_path = path.str();
-                    if (!mkdir(m_path.c_str(), S_IRWXU)) {
+                    if (!isDir(m_path)) {
+                        mkdir_p(m_path);
                         break;
+                    } else {
+                        seq++;
                     }
-                    if (errno != EEXIST) {
-                        SE_LOG_DEBUG(NULL, NULL, "%s: %s", m_path.c_str(), strerror(errno));
-                        EvolutionSyncClient::throwError(m_path, errno);
-                    }
-                    seq++;
                 }
             } else {
-                m_path = path;
+                m_path = m_logdir;
                 if (mkdir(m_path.c_str(), S_IRWXU) &&
                     errno != EEXIST) {
                     SE_LOG_DEBUG(NULL, NULL, "%s: %s", m_path.c_str(), strerror(errno));
                     EvolutionSyncClient::throwError(m_path, errno);
                 }
             }
-            m_logfile = m_path + "/client.log";
-        } else {
-            // use the default temp directory
-            if (mkdir(m_path.c_str(), S_IRWXU)) {
-                if (errno != EEXIST) {
-                    EvolutionSyncClient::throwError(m_path, errno);
-                }
-            }
-            m_logfile = m_path + "/client.log";
+            m_logfile = m_path + "/" + logname + ".log";
         }
 
         if (m_logfile.size()) {
@@ -240,7 +296,14 @@ public:
             level = INFO;
             break;
         default:
-            level = DEBUG;
+            if (m_logfile.empty()) {
+                // no log file: print all information to the console
+                level = DEBUG;
+            } else {
+                // have log file: avoid excessive output to the console,
+                // full information is in the log file
+                level = INFO;
+            }
             break;
         }
         if (!usePath) {
@@ -248,6 +311,17 @@ public:
         }
         setLevel(level);
         pushLogger(this);
+
+        time_t start = time(NULL);
+        if (m_report) {
+            m_report->setStart(start);
+        }
+        if (!m_path.empty()) {
+            boost::shared_ptr<ConfigNode> filenode(new FileConfigNode(m_path, "status.ini", false));
+            m_info = new SafeConfigNode(filenode);
+            m_info->setMode(false);
+            writeTimestamp("start", start);
+        }
     }
 
     /** sets a fixed directory for database files without redirecting logging */
@@ -263,29 +337,17 @@ public:
         return m_logfile;
     }
 
-    /** find all entries in a given directory, return as sorted array */
-    void getLogdirs(const string &logdir, vector<string> &entries) {
-        ReadDir dir(logdir);
-        BOOST_FOREACH(const string &entry, dir) {
-            if (boost::starts_with(entry, m_prefix)) {
-                entries.push_back(entry);
-            }
-        }
-        sort(entries.begin(), entries.end());
-    }
-
-
     // remove oldest backup dirs if exceeding limit
     void expire() {
         if (m_logdir.size() && m_maxlogdirs > 0 ) {
-            vector<string> entries;
-            getLogdirs(m_logdir, entries);
+            vector<string> dirs;
+            getLogdirs(dirs);
 
             int deleted = 0;
-            for (vector<string>::iterator it = entries.begin();
-                 it != entries.end() && (int)entries.size() - deleted > m_maxlogdirs;
+            for (vector<string>::iterator it = dirs.begin();
+                 it != dirs.end() && (int)dirs.size() - deleted > m_maxlogdirs;
                  ++it, ++deleted) {
-                string path = m_logdir + "/" + *it;
+                string &path = *it;
                 string msg = "removing " + path;
                 SE_LOG_INFO(NULL, NULL, "%s", msg.c_str());
                 rm_r(path);
@@ -297,6 +359,21 @@ public:
     void restore() {
         if (&instance() == this) {
             popLogger();
+        }
+        time_t end = time(NULL);
+        if (m_report) {
+            m_report->setEnd(end);
+        }
+        if (m_info) {
+            if (!m_readonly) {
+                writeTimestamp("end", end);
+                if (m_report) {
+                    writeReport(*m_report);
+                }
+                m_info->flush();
+            }
+            delete m_info;
+            m_info = NULL;
         }
         if (m_file) {
             fclose(m_file);
@@ -330,18 +407,55 @@ public:
         // to stdout
         LoggerStdout::messagev(level, prefix, file, line, function, format, args);
     }
+
+private:
+    /** find all entries in a given directory, return as sorted array of full paths */
+    void getLogdirs(vector<string> &dirs) {
+        if (!isDir(m_logdir)) {
+            return;
+        }
+        ReadDir dir(m_logdir);
+        BOOST_FOREACH(const string &entry, dir) {
+            if (boost::starts_with(entry, m_prefix)) {
+                dirs.push_back(m_logdir + "/" + entry);
+            }
+        }
+        sort(dirs.begin(), dirs.end());
+    }
+
+    // store time stamp in session info
+    void writeTimestamp(const string &key, time_t val, bool flush = true) {
+        if (m_info) {
+            char buffer[160];
+            struct tm tm;
+            // be nice and store a human-readable date in addition the seconds since the epoch
+            strftime(buffer, sizeof(buffer), "%s, %Y-%m-%d %H:%m:%S %z", localtime_r(&val, &tm));
+            m_info->setProperty(key, buffer);
+            if (flush) {
+                m_info->flush();
+            }
+        }
+    }
 };
 
 // this class owns the sync sources and (together with
 // a logdir) handles writing of per-sync files as well
 // as the final report (
 class SourceList : public vector<EvolutionSyncSource *> {
+public:
+    enum LogLevel {
+        LOGGING_QUIET,    /**< avoid all extra output */
+        LOGGING_SUMMARY,  /**< sync report, but no database comparison */
+        LOGGING_FULL      /**< everything */
+    };
+
+private:
     LogDir m_logdir;     /**< our logging directory */
     bool m_prepared;     /**< remember whether syncPrepare() dumped databases successfully */
     bool m_doLogging;    /**< true iff the normal logdir handling is enabled
                             (creating and expiring directoties, before/after comparison) */
     bool m_reportTodo;   /**< true if syncDone() shall print a final report */
-    const bool m_quiet;  /**< avoid redundant printing to screen */
+    LogLevel m_logLevel; /**< chooses how much information is printed */
     string m_previousLogdir; /**< remember previous log dir before creating the new one */
 
     /** create name in current (if set) or previous logdir */
@@ -350,63 +464,63 @@ class SourceList : public vector<EvolutionSyncSource *> {
             logdir = m_logdir.getLogdir();
         }
         return logdir + "/" +
-            source.getName() + "." + suffix + "." +
-            source.fileSuffix();
+            source.getName() + "." + suffix;
     }
 
 public:
+    LogLevel getLogLevel() const { return m_logLevel; }
+    void setLogLevel(LogLevel logLevel) { m_logLevel = logLevel; }
+
     /**
-     * dump into files with a certain suffix
+     * dump into files with a certain suffix,
+     * optionally store report in member of SyncSourceReport
      */
-    void dumpDatabases(const string &suffix) {
-        ofstream out;
-#ifndef IPHONE
-        // output stream on iPhone raises exception even though it is in a good state;
-        // perhaps the missing C++ exception support is the reason:
-        // http://code.google.com/p/iphone-dev/issues/detail?id=48
-        out.exceptions(ios_base::badbit|ios_base::failbit|ios_base::eofbit);
-#endif
-
+    void dumpDatabases(const string &suffix,
+                       BackupReport SyncSourceReport::*report) {
         BOOST_FOREACH(EvolutionSyncSource *source, *this) {
-            string file = databaseName(*source, suffix);
-            SE_LOG_DEBUG(NULL, NULL, "creating %s", file.c_str());
-            out.open(file.c_str());
-            source->exportData(out);
-            out.close();
-            SE_LOG_DEBUG(NULL, NULL, "%s created", file.c_str());
+            string dir = databaseName(*source, suffix);
+            boost::shared_ptr<ConfigNode> node = ConfigNode::createFileNode(dir + ".ini");
+            SE_LOG_DEBUG(NULL, NULL, "creating %s", dir.c_str());
+            rm_r(dir);
+            mkdir_p(dir);
+            BackupReport dummy;
+            source->backupData(dir, *node,
+                               report ? source->*report : dummy);
+            SE_LOG_DEBUG(NULL, NULL, "%s created", dir.c_str());
         }
     }
 
-    /** remove database dumps with a specific suffix */
-    void removeDatabases(const string &removeSuffix) {
-        BOOST_FOREACH(EvolutionSyncSource *source, *this) {
-            string file;
-
-            file = databaseName(*source, removeSuffix);
-            unlink(file.c_str());
+    void restoreDatabase(EvolutionSyncSource &source, const string &suffix, bool dryrun, SyncSourceReport &report)
+    {
+        string dir = databaseName(source, suffix);
+        boost::shared_ptr<ConfigNode> node = ConfigNode::createFileNode(dir + ".ini");
+        if (!node->exists()) {
+            EvolutionSyncClient::throwError(dir + ": no such database backup found");
         }
+        source.restoreData(dir, *node, dryrun, report);
     }
-        
-    SourceList(const string &server, bool doLogging, bool quiet) :
+
+    SourceList(const string &server, bool doLogging) :
         m_logdir(server),
         m_prepared(false),
         m_doLogging(doLogging),
         m_reportTodo(true),
-        m_quiet(quiet)
+        m_logLevel(LOGGING_FULL)
     {
     }
     
     // call as soon as logdir settings are known
-    void setLogdir(const char *logDirPath, int maxlogdirs, int logLevel) {
+    void startSession(const char *logDirPath, int maxlogdirs, int logLevel, SyncReport *report,
+                      const string &logname) {
         m_previousLogdir = m_logdir.previousLogdir(logDirPath);
         if (m_doLogging) {
-            m_logdir.setLogdir(logDirPath, maxlogdirs, logLevel);
+            m_logdir.startSession(logDirPath, maxlogdirs, logLevel, false, report, logname);
         } else {
             // Run debug session without paying attention to
             // the normal logdir handling. The log level here
             // refers to stdout. The log file will be as complete
             // as possible.
-            m_logdir.setLogdir(logDirPath, 0, 1, true);
+            m_logdir.startSession(logDirPath, 0, 1, true, report, logname);
         }
     }
 
@@ -415,31 +529,34 @@ public:
         return m_logdir.getLogdir();
     }
 
-    /** return previous log dir found in setLogdir() */
+    /** return previous log dir found in startSession() */
     const string &getPrevLogdir() const { return m_previousLogdir; }
 
     /** set directory for database files without actually redirecting the logging */
     void setPath(const string &path) { m_logdir.setPath(path); }
 
     /**
-     * If possible (m_previousLogdir found) and enabled (!m_quiet),
+     * If possible (directory to compare against available) and enabled,
      * then dump changes applied locally.
      *
      * @param oldSuffix      suffix of old database dump: usually "after"
      * @param currentSuffix  the current database dump suffix: "current"
      *                       when not doing a sync, otherwise "before"
      */
-    bool dumpLocalChanges(const string &oldSuffix, const string &newSuffix) {
-        if (m_quiet || !m_previousLogdir.size()) {
+    bool dumpLocalChanges(const string &oldDir,
+                          const string &oldSuffix, const string &newSuffix,
+                          const string &intro = "Local data changes to be applied to server during synchronization:\n",
+                          const string &config = "CLIENT_TEST_LEFT_NAME='after last sync' CLIENT_TEST_RIGHT_NAME='current data' CLIENT_TEST_REMOVED='removed since last sync' CLIENT_TEST_ADDED='added since last sync'") {
+        if (m_logLevel <= LOGGING_SUMMARY || oldDir.empty()) {
             return false;
         }
 
-        cout << "Local changes to be applied to server during synchronization:\n";
+        cout << intro;
         BOOST_FOREACH(EvolutionSyncSource *source, *this) {
-            string oldFile = databaseName(*source, oldSuffix, m_previousLogdir);
+            string oldFile = databaseName(*source, oldSuffix, oldDir);
             string newFile = databaseName(*source, newSuffix);
             cout << "*** " << source->getName() << " ***\n" << flush;
-            string cmd = string("env CLIENT_TEST_COMPARISON_FAILED=10 CLIENT_TEST_LEFT_NAME='after last sync' CLIENT_TEST_RIGHT_NAME='current data' CLIENT_TEST_REMOVED='removed since last sync' CLIENT_TEST_ADDED='added since last sync' synccompare 2>/dev/null '" ) +
+            string cmd = string("env CLIENT_TEST_COMPARISON_FAILED=10 " + config + " synccompare 2>/dev/null '" ) +
                 oldFile + "' '" + newFile + "'";
             int ret = system(cmd.c_str());
             switch (ret == -1 ? ret : WEXITSTATUS(ret)) {
@@ -463,20 +580,39 @@ public:
         if (m_logdir.getLogfile().size() &&
             m_doLogging) {
             // dump initial databases
-            dumpDatabases("before");
+            dumpDatabases("before", &SyncSourceReport::m_backupBefore);
             // compare against the old "after" database dump
-            dumpLocalChanges("after", "before");
-            // now remove the old database dump
-            removeDatabases("after");
+            dumpLocalChanges(getPrevLogdir(), "after", "before");
+
             m_prepared = true;
         }
     }
 
     // call at the end of a sync with success == true
     // if all went well to print report
-    void syncDone(bool success, const SyncReport *report) {
+    void syncDone(SyncMLStatus status, SyncReport *report) {
+        // record status - failures from now only affect post-processing
+        // and thus do no longer change that result
+        if (report) {
+            report->setStatus(status == 0 ? STATUS_HTTP_OK : status);
+        }
+
         if (m_doLogging) {
-            // ensure that stderr is seen again
+            // dump database after sync, but not if already dumping it at the beginning didn't complete
+            if (m_reportTodo && m_prepared) {
+                try {
+                    dumpDatabases("after", &SyncSourceReport::m_backupAfter);
+                } catch (...) {
+                    SyncEvolutionException::handle();
+                    m_prepared = false;
+                }
+                if (report) {
+                    // update report with more recent information about m_backupAfter
+                    updateSyncReport(*report);
+                }
+            }
+
+            // ensure that stderr is seen again, also writes out session status
             m_logdir.restore();
 
             if (m_reportTodo) {
@@ -484,21 +620,11 @@ public:
                 // don't do it again
                 m_reportTodo = false;
 
-                // dump datatbase after sync, but not if already dumping it at the beginning didn't complete
-                if (m_prepared) {
-                    try {
-                        dumpDatabases("after");
-                    } catch (...) {
-                        SyncEvolutionException::handle();
-                        m_prepared = false;
-                    }
-                }
-
                 string logfile = m_logdir.getLogfile();
                 cout << flush;
                 cerr << flush;
                 cout << "\n";
-                if (success) {
+                if (status == STATUS_OK) {
                     cout << "Synchronization successful.\n";
                 } else if (logfile.size()) {
                     cout << "Synchronization failed, see "
@@ -509,15 +635,15 @@ public:
                 }
 
                 // pretty-print report
-                if (!m_quiet) {
+                if (m_logLevel > LOGGING_QUIET) {
                     cout << "\nChanges applied during synchronization:\n";
                 }
-                if (!m_quiet && report) {
+                if (m_logLevel > LOGGING_QUIET && report) {
                     cout << *report;
                 }
 
                 // compare databases?
-                if (!m_quiet && m_prepared) {
+                if (m_logLevel > LOGGING_SUMMARY && m_prepared) {
                     cout << "\nChanges applied to client during synchronization:\n";
                     BOOST_FOREACH(EvolutionSyncSource *source, *this) {
                         cout << "*** " << source->getName() << " ***\n" << flush;
@@ -534,10 +660,17 @@ public:
                     cout << "\n";
                 }
 
-                if (success) {
+                if (status == STATUS_OK) {
                     m_logdir.expire();
                 }
             }
+        }
+    }
+
+    /** copies information about sources into sync report */
+    void updateSyncReport(SyncReport &report) {
+        BOOST_FOREACH(EvolutionSyncSource *source, *this) {
+            report.addSyncSourceReport(source->getName(), *source);
         }
     }
 
@@ -874,7 +1007,7 @@ void EvolutionSyncClient::fatalError(void *object, const char *error)
 {
     SE_LOG_ERROR(NULL, NULL, "%s", error);
     if (m_sourceListPtr) {
-        m_sourceListPtr->syncDone(false, NULL);
+        m_sourceListPtr->syncDone(STATUS_FATAL, NULL);
     }
     exit(1);
 }
@@ -931,15 +1064,6 @@ EvolutionSyncSource *EvolutionSyncClient::findSource(const char *name)
 {
     return m_sourceListPtr ? (*m_sourceListPtr)[name] : NULL;
 }
-
-void EvolutionSyncClient::createSyncReport(SyncReport &report, SourceList &sourceList) const
-{
-    report.clear();
-    BOOST_FOREACH(EvolutionSyncSource *source, sourceList) {
-        report.addSyncSourceReport(source->getName(), *source);
-    }
-}
-
 
 void EvolutionSyncClient::setConfigFilter(bool sync, const FilterConfigNode::ConfigFilter &filter)
 {
@@ -1071,6 +1195,18 @@ static void substTag(string &xml, const string &tagname, const string &replaceme
     }
 }
 
+static void substTag(string &xml, const string &tagname, const char *replacement)
+{
+    substTag(xml, tagname, std::string(replacement));
+}
+
+template <class T> void substTag(string &xml, const string &tagname, const T replacement)
+{
+    stringstream str;
+    str << replacement;
+    substTag(xml, tagname, str.str());
+}
+
 void EvolutionSyncClient::getConfigXML(string &xml, string &configname)
 {
     getConfigTemplateXML(xml, configname);
@@ -1083,10 +1219,7 @@ void EvolutionSyncClient::getConfigXML(string &xml, string &configname)
     if (index != xml.npos) {
         stringstream debug;
         bool logging = !m_sourceListPtr->getLogdir().empty();
-
-        // @TODO be more selective about which Synthesis logging
-        // options we enable. Currently it logs everything when logging
-        // at all.
+        int loglevel = getLogLevel();
 
         debug <<
             "  <debug>\n"
@@ -1103,13 +1236,16 @@ void EvolutionSyncClient::getConfigXML(string &xml, string &configname)
         if (logging) {
             debug <<
                 "    <sessionlogs>yes</sessionlogs>\n"
-                "    <globallogs>yes</globallogs>\n"
-                "    <msgdump>yes</msgdump>\n"
-                "    <xmltranslate>yes</xmltranslate>\n"
-                "    <enable option=\"all\"/>\n"
-                "    <enable option=\"userdata\"/>\n"
-                "    <enable option=\"scripts\"/>\n"
-                "    <enable option=\"exotic\"/>\n";
+                "    <globallogs>yes</globallogs>\n";
+            debug << "<msgdump>" << (loglevel >= 5 ? "yes" : "no") << "</msgdump>\n";
+            debug << "<xmltranslate>" << (loglevel >= 4 ? "yes" : "no") << "</xmltranslate>\n";
+            if (loglevel >= 3) {
+                debug <<
+                    "    <enable option=\"all\"/>\n"
+                    "    <enable option=\"userdata\"/>\n"
+                    "    <enable option=\"scripts\"/>\n"
+                    "    <enable option=\"exotic\"/>\n";
+            }
         } else {
             debug <<
                 "    <sessionlogs>no</sessionlogs>\n"
@@ -1158,33 +1294,42 @@ void EvolutionSyncClient::getConfigXML(string &xml, string &configname)
     // abuse (?) the firmware version to store the SyncEvolution version number
     substTag(xml, "firmwareversion", getSwv());
     substTag(xml, "devicetype", getDevType());
+    substTag(xml, "maxmsgsize", std::max(getMaxMsgSize(), 10000ul));
+    substTag(xml, "maxobjsize", std::max(getMaxObjSize(), 1024u));
+    substTag(xml, "defaultauth", getClientAuthType());
 }
 
 SyncMLStatus EvolutionSyncClient::sync(SyncReport *report)
 {
     SyncMLStatus status = STATUS_OK;
-    
+
     if (!exists()) {
         SE_LOG_ERROR(NULL, NULL, "No configuration for server \"%s\" found.", m_server.c_str());
         throwError("cannot proceed without configuration");
     }
 
     // redirect logging as soon as possible
-    SourceList sourceList(m_server, m_doLogging, m_quiet);
+    SourceList sourceList(m_server, m_doLogging);
+    sourceList.setLogLevel(m_quiet ? SourceList::LOGGING_QUIET :
+                           getPrintChanges() ? SourceList::LOGGING_FULL :
+                           SourceList::LOGGING_SUMMARY);
     m_sourceListPtr = &sourceList;
 
-    SyncReport buffer;
-    if (!report) {
-        report = &buffer;
-    }
-
     try {
+        SyncReport buffer;
+        if (!report) {
+            report = &buffer;
+        }
+        report->clear();
+
         // let derived classes override settings, like the log dir
         prepare();
 
-        sourceList.setLogdir(getLogDir(),
-                             getMaxLogDirs(),
-                             getLogLevel());
+        sourceList.startSession(getLogDir(),
+                                getMaxLogDirs(),
+                                getLogLevel(),
+                                report,
+                                "client");
 
         // dump some summary information at the beginning of the log
         SE_LOG_DEV(NULL, NULL, "SyncML server account: %s", getUsername());
@@ -1235,7 +1380,7 @@ SyncMLStatus EvolutionSyncClient::sync(SyncReport *report)
     try {
         // Print final report before cleaning up.
         // Status was okay only if all sources succeeded.
-        createSyncReport(*report, sourceList);
+        sourceList.updateSyncReport(*report);
         BOOST_FOREACH(EvolutionSyncSource *source, sourceList) {
             if (source->getStatus() != STATUS_OK &&
                 status == STATUS_OK) {
@@ -1243,7 +1388,7 @@ SyncMLStatus EvolutionSyncClient::sync(SyncReport *report)
                 break;
             }
         }
-        sourceList.syncDone(status == STATUS_OK, report);
+        sourceList.syncDone(status, report);
     } catch(...) {
         SyncEvolutionException::handle(&status);
     }
@@ -1577,13 +1722,12 @@ SyncMLStatus EvolutionSyncClient::doSync()
 
 void EvolutionSyncClient::status()
 {
-    EvolutionSyncConfig config(m_server);
     if (!exists()) {
         SE_LOG_ERROR(NULL, NULL, "No configuration for server \"%s\" found.", m_server.c_str());
         throwError("cannot proceed without configuration");
     }
 
-    SourceList sourceList(m_server, false, false);
+    SourceList sourceList(m_server, false);
     initSources(sourceList);
     BOOST_FOREACH(EvolutionSyncSource *source, sourceList) {
         source->checkPassword(*this);
@@ -1592,7 +1736,19 @@ void EvolutionSyncClient::status()
         source->open();
     }
 
-    sourceList.setLogdir(getLogDir(), 0, 0);
+    SyncReport changes;
+    checkSourceChanges(sourceList, changes);
+
+    stringstream out;
+    changes.prettyPrint(out,
+                        SyncReport::WITHOUT_SERVER|
+                        SyncReport::WITHOUT_CONFLICTS|
+                        SyncReport::WITHOUT_REJECTS|
+                        SyncReport::WITH_TOTAL);
+    SE_LOG_INFO(NULL, NULL, "Local item changes:\n%s",
+                out.str().c_str());
+
+    sourceList.startSession(getLogDir(), 0, 0, NULL, "status");
     LoggerBase::instance().setLevel(Logger::INFO);
     string prevLogdir = sourceList.getPrevLogdir();
     bool found = access(prevLogdir.c_str(), R_OK|X_OK) == 0;
@@ -1600,8 +1756,8 @@ void EvolutionSyncClient::status()
     if (found) {
         try {
             sourceList.setPath(prevLogdir);
-            sourceList.dumpDatabases("current");
-            sourceList.dumpLocalChanges("after", "current");
+            sourceList.dumpDatabases("current", NULL);
+            sourceList.dumpLocalChanges(sourceList.getPrevLogdir(), "after", "current");
         } catch(...) {
             SyncEvolutionException::handle();
         }
@@ -1611,4 +1767,133 @@ void EvolutionSyncClient::status()
             cerr << "Enable the 'logdir' option and synchronize to use this feature.\n";
         }
     }
+}
+
+void EvolutionSyncClient::checkStatus(SyncReport &report)
+{
+    if (!exists()) {
+        SE_LOG_ERROR(NULL, NULL, "No configuration for server \"%s\" found.", m_server.c_str());
+        throwError("cannot proceed without configuration");
+    }
+
+    SourceList sourceList(m_server, false);
+    initSources(sourceList);
+    BOOST_FOREACH(EvolutionSyncSource *source, sourceList) {
+        source->checkPassword(*this);
+    }
+    BOOST_FOREACH(EvolutionSyncSource *source, sourceList) {
+        source->open();
+    }
+
+    checkSourceChanges(sourceList, report);
+}
+
+static void logRestoreReport(const SyncReport &report, bool dryrun)
+{
+    if (!report.empty()) {
+        stringstream out;
+        report.prettyPrint(out, SyncReport::WITHOUT_SERVER|SyncReport::WITHOUT_CONFLICTS|SyncReport::WITH_TOTAL);
+        SE_LOG_INFO(NULL, NULL, "Item changes %s applied to client during restore:\n%s",
+                    dryrun ? "to be" : "that were",
+                    out.str().c_str());
+        SE_LOG_INFO(NULL, NULL, "The same incremental changes will be applied to the server during the next sync.");
+        SE_LOG_INFO(NULL, NULL, "Use -sync refresh-from-client to replace the complete data on the server.");
+    }
+}
+
+void EvolutionSyncClient::checkSourceChanges(SourceList &sourceList, SyncReport &changes)
+{
+    changes.setStart(time(NULL));
+    BOOST_FOREACH(EvolutionSyncSource *source, sourceList) {
+        if (source->checkStatus()) {
+            SyncSourceReport local;
+            local.setItemStat(SyncSourceReport::ITEM_LOCAL,
+                              SyncSourceReport::ITEM_ADDED,
+                              SyncSourceReport::ITEM_TOTAL,
+                              source->getNumNewItems());
+            local.setItemStat(SyncSourceReport::ITEM_LOCAL,
+                              SyncSourceReport::ITEM_UPDATED,
+                              SyncSourceReport::ITEM_TOTAL,
+                              source->getNumUpdatedItems());
+            local.setItemStat(SyncSourceReport::ITEM_LOCAL,
+                              SyncSourceReport::ITEM_REMOVED,
+                              SyncSourceReport::ITEM_TOTAL,
+                              source->getNumDeletedItems());
+            local.setItemStat(SyncSourceReport::ITEM_LOCAL,
+                              SyncSourceReport::ITEM_ANY,
+                              SyncSourceReport::ITEM_TOTAL,
+                              source->getNumItems());
+            changes.addSyncSourceReport(source->getName(), local);
+        }
+    }
+    changes.setEnd(time(NULL));
+}
+
+void EvolutionSyncClient::restore(const string &dirname, RestoreDatabase database)
+{
+    if (!exists()) {
+        SE_LOG_ERROR(NULL, NULL, "No configuration for server \"%s\" found.", m_server.c_str());
+        throwError("cannot proceed without configuration");
+    }
+
+    SourceList sourceList(m_server, false);
+    sourceList.startSession(dirname.c_str(), 0, 0, NULL, "restore");
+    LoggerBase::instance().setLevel(Logger::INFO);
+    initSources(sourceList);
+    BOOST_FOREACH(EvolutionSyncSource *source, sourceList) {
+        source->checkPassword(*this);
+    }
+
+    string datadump = database == DATABASE_BEFORE_SYNC ? "before" : "after";
+
+    BOOST_FOREACH(EvolutionSyncSource *source, sourceList) {
+        source->open();
+    }
+
+    if (!m_quiet) {
+        sourceList.dumpDatabases("current", NULL);
+        sourceList.dumpLocalChanges(dirname, "current", datadump,
+                                    "Data changes to be applied to local data during restore:\n",
+                                    "CLIENT_TEST_LEFT_NAME='current data' "
+                                    "CLIENT_TEST_REMOVED='after restore' " 
+                                    "CLIENT_TEST_REMOVED='to be removed' "
+                                    "CLIENT_TEST_ADDED='to be added'");
+    }
+
+    SyncReport report;
+    try {
+        BOOST_FOREACH(EvolutionSyncSource *source, sourceList) {
+            SyncSourceReport sourcereport;
+            try {
+                SE_LOG_DEBUG(NULL, NULL, "Restoring %s...", source->getName());
+                sourceList.restoreDatabase(*source,
+                                           datadump,
+                                           m_dryrun,
+                                           sourcereport);
+                SE_LOG_DEBUG(NULL, NULL, "... %s restored.", source->getName());
+                report.addSyncSourceReport(source->getName(), sourcereport);
+            } catch (...) {
+                sourcereport.recordStatus(STATUS_FATAL);
+                report.addSyncSourceReport(source->getName(), sourcereport);
+                throw;
+            }
+        }
+    } catch (...) {
+        logRestoreReport(report, m_dryrun);
+        throw;
+    }
+    logRestoreReport(report, m_dryrun);
+}
+
+void EvolutionSyncClient::getSessions(vector<string> &dirs)
+{
+    LogDir logging(m_server);
+    logging.previousLogdirs(getLogDir(), dirs);
+}
+
+void EvolutionSyncClient::readSessionInfo(const string &dir, SyncReport &report)
+{
+    LogDir logging(m_server);
+    logging.openLogdir(dir);
+    logging.readReport(report);
 }

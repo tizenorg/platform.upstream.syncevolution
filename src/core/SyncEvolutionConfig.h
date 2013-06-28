@@ -111,7 +111,7 @@ class ConfigProperty {
     virtual string getProperty(const ConfigNode &node, bool *isDefault = NULL) const {
         string name = getName();
         string value = node.readProperty(name);
-        if (value.size()) {
+        if (!value.empty()) {
             string error;
             if (!checkValue(value, error)) {
                 throwValueError(node, name, value, error);
@@ -126,6 +126,13 @@ class ConfigProperty {
             }
             return getDefValue();
         }
+    }
+
+    // true if property is set to non-empty value
+    virtual bool isSet(const ConfigNode &node) const {
+        string name = getName();
+        string value = node.readProperty(name);
+        return !value.empty();
     }
 
  protected:
@@ -485,7 +492,7 @@ class EvolutionSyncConfig {
    /** absolute directory name of the configuration root */
     string getRootPath() const;
 
-    typedef list< pair<string, string> > ServerList;
+    typedef list< std::pair<std::string, std::string> > ServerList;
 
     /**
      * returns list of servers in either the old (.sync4j) or
@@ -495,8 +502,7 @@ class EvolutionSyncConfig {
     static ServerList getServers();
 
     /**
-     * returns list of available config templates, given as
-     * server name and comment
+     * returns list of available config templates
      */
     static ServerList getServerTemplates();
 
@@ -514,6 +520,18 @@ class EvolutionSyncConfig {
 
     /** write changes */
     void flush();
+
+    /**
+     * Remove the configuration. The config object itself is still
+     * valid afterwards, but empty and cannot be flushed.
+     *
+     * Does *not* remove logs associated with the configuration.
+     * For that use the logdir handling in EvolutionSyncClient
+     * before removing the configuration.
+     *
+     * The config directory is removed if it is empty.
+     */
+    void remove();
 
     /**
      * A list of all properties. Can be extended by derived clients.
@@ -588,12 +606,12 @@ class EvolutionSyncConfig {
     /**
      * initialize all properties with their default value
      */
-    void setDefaults();
+    void setDefaults(bool force = true);
 
     /**
      * create a new sync source configuration with default values
      */
-    void setSourceDefaults(const string &name);
+    void setSourceDefaults(const string &name, bool force = true);
 
     /**
      * Copy all registered properties (hidden and visible) and the
@@ -629,6 +647,15 @@ class EvolutionSyncConfig {
 
     virtual int getLogLevel() const;
     virtual void setLogLevel(int value, bool temporarily = false);
+
+    virtual bool getPrintChanges() const;
+    virtual void setPrintChanges(bool value, bool temporarily = false);
+
+    virtual std::string getWebURL() const;
+    virtual void setWebURL(const std::string &url, bool temporarily = false);
+
+    virtual std::string getIconURI() const;
+    virtual void setIconURI(const std::string &uri, bool temporarily = false);
 
     /**@}*/
 
@@ -668,8 +695,6 @@ class EvolutionSyncConfig {
     virtual void setSyncURL(const string &value, bool temporarily = false);
     virtual const char*  getClientAuthType() const;
     virtual void setClientAuthType(const string &value, bool temporarily = false);
-    virtual bool getLoSupport() const;
-    virtual void setLoSupport(bool value, bool temporarily = false);
     virtual unsigned long getMaxMsgSize() const;
     virtual void setMaxMsgSize(unsigned long value, bool temporarily = false);
     virtual unsigned int getMaxObjSize() const;
@@ -722,11 +747,6 @@ private:
 
     mutable ConfigStringCache m_stringCache;
 
-    static string getHome() {
-        const char *homestr = getenv("HOME");
-        return homestr ? homestr : ".";
-    }
-    
     static string getOldRoot() {
         return getHome() + "/.sync4j/evolution";
     }
@@ -799,6 +819,13 @@ class EvolutionSyncSourceConfig {
     static StringConfigProperty m_sourcePropSync;
 
     bool exists() const { return m_nodes.m_configNode->exists(); }
+
+    /** checks if a certain property is set to a non-empty value */
+    bool isSet(ConfigProperty &prop) {
+        return prop.isHidden() ?
+            prop.isSet(*m_nodes.m_hiddenNode) :
+            prop.isSet(*m_nodes.m_configNode);
+    }
 
     /**
      * @name Settings specific to SyncEvolution SyncSources

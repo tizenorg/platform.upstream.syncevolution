@@ -1326,6 +1326,7 @@ bool TODBCApiAgent::appendFieldValueLiteral(
         goto settimestamp;
       case dbft_lineartime:
       case dbft_unixtime_s:
+      case dbft_nsdate_s:
       case dbft_unixtime_ms:
       case dbft_unixtime_us:
         intts=true; // integer timestamp
@@ -1739,7 +1740,7 @@ void TODBCApiAgent::DoSQLSubstitutions(string &aSQL)
     if (!fldP) { i=j; continue; } // field not found, no action
     // get field contents
     fldP->getAsString(s);
-    // subsititute (starting with "%d(", ending with ")" )
+    // subsititute (starting with "%v(", ending with ")" )
     aSQL.replace(i,k+1-i,s); i+=s.size();
   }
   // substitute %p(mode,var_or_field[,dbfieldtype]) = map field to parameter
@@ -2522,9 +2523,13 @@ bool TODBCApiAgent::getColumnValueAsField(
   timecontext_t tctx = TCTX_UNKNOWN;
   sInt16 moffs=0;
   sInt32 i=0;
-  TTimestampField *tsfP; // timestamp field helper
   double hrs=0;
   bool notnull=false; // default to empty
+  // get pointer if assigning into timestamp field
+  TTimestampField *tsfP = NULL;
+  if (aFieldP->isBasedOn(fty_timestamp)) {
+  	tsfP = static_cast<TTimestampField *>(aFieldP);
+  }
   // field available in multifielditem
   switch (aDbfty) {
     case dbft_uctoffsfortime_hours:
@@ -2554,8 +2559,15 @@ bool TODBCApiAgent::getColumnValueAsField(
     assignzone:
       // zone works only for timestamps
       // - move to new zone or assign zone if timestamp is still empty or floating
-      if (aFieldP->isBasedOn(fty_timestamp)) {
-        static_cast<TTimestampField *>(aFieldP)->moveToContext(tctx,true);
+      if (tsfP) {
+      	// first move to original context (to compensate for eventual move to
+        // fUserTimeContext done when reading timestamp with aMoveToUserContext)
+        // Note: this is important for cases where the new zone is floating or dateonly
+        // Note: if timestamp field had the "f" flag, it is still floating here, and will not be
+        //       moved to non-floating aTimecontext(=DB context) here.
+        tsfP->moveToContext(aTimecontext,false);
+        // now move to specified zone, or assign zone if timestamp is still floating here
+        tsfP->moveToContext(tctx,true);
       }
       break;
 
@@ -2575,8 +2587,7 @@ bool TODBCApiAgent::getColumnValueAsField(
       goto assignval;
     case dbft_timefordate:
       // get base date used to build up datetime
-      if (aFieldP->isBasedOn(fty_timestamp)) {
-        tsfP = static_cast<TTimestampField *>(aFieldP);
+      if (tsfP) {
         basedate = tsfP->getTimestampAs(TCTX_UNKNOWN); // unconverted, as-is
       }
       // otherwise handle like time
@@ -2590,6 +2601,7 @@ bool TODBCApiAgent::getColumnValueAsField(
       goto assigntimeval;
     case dbft_lineartime:
     case dbft_unixtime_s:
+    case dbft_nsdate_s:
     case dbft_unixtime_ms:
     case dbft_unixtime_us:
       notnull=getColumnValueAsLong(aStatement,aColIndex,dbts);
@@ -2603,13 +2615,14 @@ bool TODBCApiAgent::getColumnValueAsField(
       // something convertible to lineartime_t
       if (notnull) {
         // first, if output in user zone is selected, move timestamp to user zone
+        // Note: before moving to a field-specific zone, this will be reverted such that
+        //       field-specific TZ=DATE conversion will be done in the original (DB) TZ context
         if (aMoveToUserContext) {
           if (TzConvertTimestamp(ts,tctx,fUserTimeContext,getSessionZones()))
             tctx = fUserTimeContext; // moved to user zone
         }
         // now store in item field
-        if (aFieldP->isBasedOn(fty_timestamp)) {
-          tsfP = static_cast<TTimestampField *>(aFieldP);
+        if (tsfP) {
           // assign timestamp and context passed (TCTX_UNKNOWN for floating)
           tsfP->setTimestampAndContext(ts,tctx);
         }
@@ -3089,9 +3102,13 @@ bool TODBCApiAgent::getSQLiteColValueAsField(
   lineartime_t ts;
   timecontext_t tctx = TCTX_UNKNOWN;
   sInt16 moffs=0;
-  TTimestampField *tsfP; // timestamp field helper
   size_t siz;
   double hrs=0;
+  // get pointer if assigning into timestamp field
+  TTimestampField *tsfP = NULL;
+  if (aFieldP->isBasedOn(fty_timestamp)) {
+  	tsfP = static_cast<TTimestampField *>(aFieldP);
+  }
   // determine if NULL
   bool notnull=sqlite3_column_type(aStatement,aColIndex)!=SQLITE_NULL; // if column is not null
   // field available in multifielditem
@@ -3122,8 +3139,15 @@ bool TODBCApiAgent::getSQLiteColValueAsField(
     assignzone:
       // zone works only for timestamps
       // - move to new zone or assign zone if timestamp is still empty or floating
-      if (aFieldP->isBasedOn(fty_timestamp)) {
-        static_cast<TTimestampField *>(aFieldP)->moveToContext(tctx,true);
+      if (tsfP) {
+      	// first move to original context (to compensate for eventual move to
+        // fUserTimeContext done when reading timestamp with aMoveToUserContext)
+        // Note: this is important for cases where the new zone is floating or dateonly
+        // Note: if timestamp field had the "f" flag, it is still floating here, and will not be
+        //       moved to non-floating aTimecontext(=DB context) here.
+        tsfP->moveToContext(aTimecontext,false);
+        // now move to specified zone, or assign zone if timestamp is still floating here
+        tsfP->moveToContext(tctx,true);
       }
       break;
 
@@ -3137,6 +3161,7 @@ bool TODBCApiAgent::getSQLiteColValueAsField(
       goto assignval;
     case dbft_lineartime:
     case dbft_unixtime_s:
+    case dbft_nsdate_s:
     case dbft_unixtime_ms:
     case dbft_unixtime_us:
       if (notnull)
@@ -3148,14 +3173,15 @@ bool TODBCApiAgent::getSQLiteColValueAsField(
       // something convertible to lineartime_t
       if (notnull) {
         // first, if output in user zone is selected, move timestamp to user zone
+        // Note: before moving to a field-specific zone, this will be reverted such that
+        //       field-specific TZ=DATE conversion will be done in the original (DB) TZ context
         if (aMoveToUserContext) {
           if (TzConvertTimestamp(ts,tctx,fUserTimeContext,getSessionZones()))
             tctx = fUserTimeContext; // moved to user zone
         }
         // now store in item field
-        if (aFieldP->isBasedOn(fty_timestamp)) {
-          tsfP = static_cast<TTimestampField *>(aFieldP);
-          // first assign timestamp and context (TCTX_UNKNOWN for floating)
+        if (tsfP) {
+          // assign timestamp and context (TCTX_UNKNOWN for floating)
           tsfP->setTimestampAndContext(ts,tctx);
         }
         else {

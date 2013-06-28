@@ -39,6 +39,7 @@
 #include "EvolutionSyncClient.h"
 #include "EvolutionSyncSource.h"
 #include "SyncEvolutionUtil.h"
+#include "VolatileConfigNode.h"
 
 /*
  * always provide this test class, even if not used:
@@ -95,11 +96,12 @@ public:
     virtual void open() { m_source->open(); }
     virtual SyncItem *createItem(const string &uid) { return m_source->createItem(uid); }
     virtual void close() { m_source->close(); }
-    virtual void exportData(ostream &out) { m_source->exportData(out); }
-    virtual string fileSuffix() const { return m_source->fileSuffix(); }
+    virtual void backupData(const string &dir, ConfigNode &node, BackupReport &report) { m_source->backupData(dir, node, report); }
+    virtual void restoreData(const string &dir, const ConfigNode &node, bool dryrun, SyncSourceReport &report) { m_source->restoreData(dir, node, dryrun, report); }
     virtual const char *getMimeType() const { return m_source->getMimeType(); }
     virtual const char *getMimeVersion() const { return m_source->getMimeVersion(); }
     virtual const char* getSupportedTypes() const { return m_source->getSupportedTypes(); }
+    virtual bool checkStatus() { return m_source->checkStatus(); }
     virtual void beginSyncThrow(bool needAll,
                                 bool needPartial,
                                 bool deleteLocal) { m_source->beginSyncThrow(needAll, needPartial, deleteLocal); }
@@ -344,7 +346,6 @@ public:
             virtual void prepare() {
                 setLogDir(m_logbase, true);
                 setMaxLogDirs(0, true);
-                setLoSupport(m_options.m_loSupport, true);
                 setMaxObjSize(m_options.m_maxObjSize, true);
                 setMaxMsgSize(m_options.m_maxMsgSize, true);
                 setWBXML(m_options.m_isWBXML, true);
@@ -479,13 +480,3 @@ private:
     TestEvolution testClient;
     
 } testEvolution;
-
-int RegisterSyncSourceTest::dump(ClientTest &client, SyncSource &source, const char *file)
-{
-    std::ofstream out(file);
-    
-    ((EvolutionSyncSource &)source).exportData(out);
-
-    out.close();
-    return out.bad();
-}

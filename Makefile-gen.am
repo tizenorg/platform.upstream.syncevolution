@@ -1,7 +1,8 @@
 ## Process this file with automake to produce Makefile.in
 
 ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = src test
+
+SUBDIRS = src po test
 
 EXTRA_DIST = \
 	HACKING \
@@ -14,7 +15,7 @@ EXTRA_DIST = \
 	Makefile-gen.am \
 	Doxyfile
 
-MAINTAINERCLEANFILES = Makefile.in config.h.in config.guess config.sub configure depcomp install-sh ltmain.sh missing mkinstalldirs
+MAINTAINERCLEANFILES = Makefile.in config.h.in config.guess config.sub configure depcomp install-sh ltmain.sh missing mkinstalldirs 
 
 # binary distribution
 distbin : README all

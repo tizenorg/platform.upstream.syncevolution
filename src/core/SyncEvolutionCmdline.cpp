@@ -29,6 +29,7 @@
 #include <errno.h>
 
 #include <iostream>
+#include <iomanip>
 #include <sstream>
 #include <memory>
 #include <set>
@@ -36,6 +37,7 @@
 using namespace std;
 
 #include <boost/shared_ptr.hpp>
+#include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/foreach.hpp>
 
@@ -83,12 +85,6 @@ bool SyncEvolutionCmdline::parse()
                            m_argv[opt - 1], opt == m_argc ? NULL : m_argv[opt])) {
                 return false;
             }
-        } else if(boost::iequals(m_argv[opt], "--properties") ||
-                  boost::iequals(m_argv[opt], "-r")) {
-            opt++;
-            /* TODO */
-            m_err << "ERROR: not implemented yet: " << m_argv[opt - 1] << endl;
-            return false;
         } else if(boost::iequals(m_argv[opt], "--template") ||
                   boost::iequals(m_argv[opt], "-l")) {
             opt++;
@@ -108,12 +104,37 @@ bool SyncEvolutionCmdline::parse()
         } else if(boost::iequals(m_argv[opt], "--print-config") ||
                   boost::iequals(m_argv[opt], "-p")) {
             m_printConfig = true;
+        } else if(boost::iequals(m_argv[opt], "--print-sessions")) {
+            m_printSessions = true;
         } else if(boost::iequals(m_argv[opt], "--configure") ||
                   boost::iequals(m_argv[opt], "-c")) {
             m_configure = true;
+        } else if(boost::iequals(m_argv[opt], "--remove")) {
+            m_remove = true;
         } else if(boost::iequals(m_argv[opt], "--run") ||
                   boost::iequals(m_argv[opt], "-r")) {
             m_run = true;
+        } else if(boost::iequals(m_argv[opt], "--restore")) {
+            opt++;
+            if (opt >= m_argc) {
+                usage(true, string("missing parameter for ") + cmdOpt(m_argv[opt - 1]));
+                return false;
+            }
+            m_restore = m_argv[opt];
+            if (m_restore.empty()) {
+                usage(true, string("missing parameter for ") + cmdOpt(m_argv[opt - 1]));
+                return false;
+            }
+            if (!isDir(m_restore)) {
+                usage(true, string("parameter '") + m_restore + "' for " + cmdOpt(m_argv[opt - 1]) + " must be log directory");
+                return false;
+            }
+        } else if(boost::iequals(m_argv[opt], "--before")) {
+            m_before = true;
+        } else if(boost::iequals(m_argv[opt], "--after")) {
+            m_after = true;
+        } else if(boost::iequals(m_argv[opt], "--dry-run")) {
+            m_dryrun = true;
         } else if(boost::iequals(m_argv[opt], "--migrate")) {
             m_migrate = true;
         } else if(boost::iequals(m_argv[opt], "--status") ||
@@ -145,6 +166,11 @@ bool SyncEvolutionCmdline::parse()
 }
 
 bool SyncEvolutionCmdline::run() {
+    // --dry-run is only supported by some operations.
+    // Be very strict about it and make sure it is off in all
+    // potentially harmful operations, otherwise users might
+    // expect it to have an effect when it doesn't.
+
     if (m_usage) {
         usage(true);
     } else if (m_version) {
@@ -156,6 +182,7 @@ bool SyncEvolutionCmdline::run() {
     } else if (m_dontrun) {
         // user asked for information
     } else if (m_argc == 1) {
+        // no parameters: list databases and short usage
         const SourceRegistry &registry(EvolutionSyncSource::getSourceRegistry());
         boost::shared_ptr<FilterConfigNode> configNode(new VolatileConfigNode());
         boost::shared_ptr<FilterConfigNode> hiddenNode(new VolatileConfigNode());
@@ -222,6 +249,10 @@ bool SyncEvolutionCmdline::run() {
         usage(true, "server name missing");
         return false;
     } else if (m_configure || m_migrate) {
+        if (m_dryrun) {
+            EvolutionSyncClient::throwError("--dry-run not supported for configuration changes");
+        }
+
         bool fromScratch = false;
 
         // Both config changes and migration are implemented as copying from
@@ -345,14 +376,68 @@ bool SyncEvolutionCmdline::run() {
 
         // done, now write it
         to->flush();
+    } else if (m_remove) {
+        if (m_dryrun) {
+            EvolutionSyncClient::throwError("--dry-run not supported for removing configurations");
+        }
+
+        // extra sanity check
+        if (!m_sources.empty() ||
+            !m_syncProps.empty() ||
+            !m_sourceProps.empty()) {
+            usage(true, "too many parameters for --remove");
+            return false;
+        } else {
+            boost::shared_ptr<EvolutionSyncConfig> config;
+            config.reset(new EvolutionSyncConfig(m_server));
+            config->remove();
+            return true;
+        }
     } else {
         EvolutionSyncClient client(m_server, true, m_sources);
         client.setQuiet(m_quiet);
+        client.setDryRun(m_dryrun);
         client.setConfigFilter(true, m_syncProps);
         client.setConfigFilter(false, m_sourceProps);
         if (m_status) {
             client.status();
+        } else if (m_printSessions) {
+            vector<string> dirs;
+            client.getSessions(dirs);
+            bool first = true;
+            BOOST_FOREACH(const string &dir, dirs) {
+                if (first) {
+                    first = false;
+                } else if(!m_quiet) {
+                    cout << endl;
+                }
+                cout << dir << endl;
+                if (!m_quiet) {
+                    SyncReport report;
+                    client.readSessionInfo(dir, report);
+                    cout << report;
+                }
+            }
+        } else if (!m_restore.empty()) {
+            // sanity checks: either --after or --before must be given, sources must be selected
+            if ((!m_after && !m_before) ||
+                (m_after && m_before)) {
+                usage(false, "--restore <log dir> must be used with either --after (restore database as it was after that sync) or --before (restore data from before sync)");
+                return false;
+            }
+            if (m_sources.empty()) {
+                usage(false, "Sources must be selected explicitly for --restore to prevent accidental restore.");
+                return false;
+            }
+            client.restore(m_restore,
+                           m_after ?
+                           EvolutionSyncClient::DATABASE_AFTER_SYNC :
+                           EvolutionSyncClient::DATABASE_BEFORE_SYNC);
         } else {
+            if (m_dryrun) {
+                EvolutionSyncClient::throwError("--dry-run not supported for running a synchronization");
+            }
+
             // safety catch: if props are given, then --run
             // is required
             if (!m_run &&
@@ -553,15 +638,20 @@ void SyncEvolutionCmdline::usage(bool full, const string &error, const string &p
 
     out << "Show available sources:" << endl;
     out << "  " << m_argv[0] << endl;
-    out << "Show information about configuration(s):" << endl;
+    out << "Show information about configuration(s) and sync sessions:" << endl;
     out << "  " << m_argv[0] << " --print-servers" << endl;
     out << "  " << m_argv[0] << " --print-config [--quiet] <server> [sync|<source ...]" << endl;
+    out << "  " << m_argv[0] << " --print-sessions [--quiet] <server>" << endl;
     out << "Show information about SyncEvolution:" << endl;
     out << "  " << m_argv[0] << " --help|-h" << endl;
     out << "  " << m_argv[0] << " --version" << endl;
     out << "Run a synchronization:" << endl;
     out << "  " << m_argv[0] << " <server> [<source> ...]" << endl;
     out << "  " << m_argv[0] << " --run <options for run> <server> [<source> ...]" << endl;
+    out << "Restore data from the automatic backups:" << endl;
+    out << "  " << m_argv[0] << " --restore <session directory> --before|--after [--dry-run] <server> <source> ..." << endl;
+    out << "Remove a configuration:" << endl;
+    out << "  " << m_argv[0] << " --remove <server>" << endl;
     out << "Modify configuration:" << endl;
     out << "  " << m_argv[0] << " --configure <options for configuration> <server> [<source> ...]" << endl;
     out << "  " << m_argv[0] << " --migrate <server>" << endl;
@@ -589,6 +679,10 @@ void SyncEvolutionCmdline::usage(bool full, const string &error, const string &p
             "  When setting a --template, then the reference configuration for" << endl <<
             "  that server is printed instead of an existing configuration." << endl <<
             "" << endl <<
+            "--print-sessions" << endl <<
+            "  Prints a list of all previous log directories. Unless --quiet is used, each" << endl <<
+            "  file name is followed by the original sync report." << endl <<
+            "" << endl <<
             "-–configure|-c" << endl <<
             "  Modify the configuration files for the selected server. If no such" << endl <<
             "  configuration exists, then a new one is created using one of the" << endl <<
@@ -614,6 +708,24 @@ void SyncEvolutionCmdline::usage(bool full, const string &error, const string &p
             "  configuration are not preserved." << endl <<
             "  --migrate implies --configure and can be combined with modifying" << endl <<
             "  properties." << endl <<
+            "" << endl <<
+            "--restore" << endl <<
+            "  Restores the data of the selected sources to the state from before or after the" << endl <<
+            "  selected synchronization. The synchronization is selected via its log directory" << endl <<
+            "  (see --print-sessions). Other directories can also be given as long as" << endl <<
+            "  they contain database dumps in the format created by SyncEvolution." << endl <<
+            "  The output includes information about the changes made during the" << endl <<
+            "  restore, both in terms of item changes and content changes (which is" << endl <<
+            "  not always the same, see manual for details). This output can be suppressed" << endl <<
+            "  with --quiet." << endl <<
+            "  In combination with --dry-run, the changes to local data are only simulated." << endl <<
+            "  This can be used to check that --restore will not remove valuable information." << endl <<
+            "" << endl <<
+            "--remove" << endl <<
+            "  This removes only the configuration files and related meta information." << endl <<
+            "  If other files were added to the config directory of the server, then" << endl <<
+            "  those and the directory will not be removed. Log directories will also" << endl <<
+            "  not be removed." << endl <<
             "" << endl <<
             "--sync-property|-y <property>=<value>" << endl <<
             "--sync-property|-y ?" << endl <<
@@ -833,7 +945,8 @@ static string internalToIni(const string &config)
         // substitude aliases with generic values
         boost::replace_first(assignment, "= F", "= 0");
         boost::replace_first(assignment, "= T", "= 1");
-        boost::replace_first(assignment, "= md5", "= syncml:auth-md5");
+        boost::replace_first(assignment, "= syncml:auth-md5", "= md5");
+        boost::replace_first(assignment, "= syncml:auth-basix", "= basic");
         res << assignment << endl;
     }
 
@@ -879,21 +992,23 @@ public:
                               "config.ini:password = your SyncML server password\n"
                               "config.ini:# logdir = \n"
                               "config.ini:# loglevel = 0\n"
-                              "config.ini:# maxlogdirs = 0\n"
+                              "config.ini:# printChanges = 1\n"
+                              "config.ini:# maxlogdirs = 10\n"
                               "config.ini:# useProxy = 0\n"
                               "config.ini:# proxyHost = \n"
                               "config.ini:# proxyUsername = \n"
                               "config.ini:# proxyPassword = \n"
-                              "config.ini:# clientAuthType = syncml:auth-md5\n"
+                              "config.ini:# clientAuthType = md5\n"
                               "config.ini:deviceId = fixed-devid\n" /* this is not the default! */
                               "config.ini:# enableWBXML = 0\n"
-                              "config.ini:# maxMsgSize = 8192\n"
-                              "config.ini:# maxObjSize = 500000\n"
-                              "config.ini:# loSupport = 1\n"
+                              "config.ini:# maxMsgSize = 20000\n"
+                              "config.ini:# maxObjSize = 4000000\n"
                               "config.ini:# enableCompression = 0\n"
                               "config.ini:# SSLServerCertificates = \n"
                               "config.ini:# SSLVerifyServer = 1\n"
                               "config.ini:# SSLVerifyHost = 1\n"
+                              "config.ini:WebURL = http://sync.scheduleworld.com\n"
+                              "config.ini:# IconURI = \n"
                               "sources/addressbook/.internal.ini:# last = 0\n"
                               "sources/addressbook/config.ini:sync = two-way\n"
                               "sources/addressbook/config.ini:type = addressbook:text/vcard\n"
@@ -979,7 +1094,7 @@ protected:
             cmdline.doit();
             string res = scanFiles(root);
             removeRandomUUID(res);
-            string expected = m_scheduleWorldConfig;
+            string expected = ScheduleWorldConfig();
             boost::replace_first(expected,
                                  "# proxyHost = ",
                                  "proxyHost = proxy");
@@ -1000,7 +1115,7 @@ protected:
                                 NULL);
             cmdline.doit();
             string res = scanFiles(root);
-            CPPUNIT_ASSERT_EQUAL_DIFF(string(m_scheduleWorldConfig), res);
+            CPPUNIT_ASSERT_EQUAL_DIFF(ScheduleWorldConfig(), res);
         }
     }
 
@@ -1019,7 +1134,7 @@ protected:
                             NULL);
         cmdline.doit();
         string res = scanFiles(root);
-        CPPUNIT_ASSERT_EQUAL_DIFF(string(m_scheduleWorldConfig), res);
+        CPPUNIT_ASSERT_EQUAL_DIFF(ScheduleWorldConfig(), res);
     }
     void testSetupRenamed() {
         string root;
@@ -1036,7 +1151,7 @@ protected:
                             NULL);
         cmdline.doit();
         string res = scanFiles(root);
-        CPPUNIT_ASSERT_EQUAL_DIFF(string(m_scheduleWorldConfig), res);
+        CPPUNIT_ASSERT_EQUAL_DIFF(ScheduleWorldConfig(), res);
     }
     void testSetupFunambol() {
         string root;
@@ -1048,7 +1163,8 @@ protected:
         rm_r(root);
         TestCmdline cmdline("--configure",
                             "--sync-property", "deviceID = fixed-devid",
-                            "funambol",
+                            // templates are case-insensitive
+                            "FunamBOL",
                             NULL);
         cmdline.doit();
         string res = scanFiles(root);
@@ -1081,10 +1197,10 @@ protected:
         TestCmdline help("--template", "? ", NULL);
         help.doit();
         CPPUNIT_ASSERT_EQUAL_DIFF("Available configuration templates:\n"
-                                  "   funambol = http://my.funambol.com\n"
-                                  "   scheduleworld = http://sync.scheduleworld.com\n"
-                                  "   synthesis = http://www.synthesis.ch\n"
-                                  "   memotoo = http://www.memotoo.com\n",
+                                  "   Funambol = http://my.funambol.com\n"
+                                  "   Memotoo = http://www.memotoo.com\n"
+                                  "   ScheduleWorld = http://sync.scheduleworld.com\n"
+                                  "   Synthesis = http://www.synthesis.ch\n",
                                   help.m_out.str());
         CPPUNIT_ASSERT_EQUAL_DIFF("", help.m_err.str());
     }
@@ -1149,19 +1265,19 @@ protected:
             string actual = cmdline.m_out.str();
             removeRandomUUID(actual);
             string filtered = filterConfig(actual);
-            CPPUNIT_ASSERT_EQUAL_DIFF(filterConfig(internalToIni(m_scheduleWorldConfig)),
+            CPPUNIT_ASSERT_EQUAL_DIFF(filterConfig(internalToIni(ScheduleWorldConfig())),
                                       filtered);
             // there should have been comments
             CPPUNIT_ASSERT(actual.size() > filtered.size());
         }
 
         {
-            TestCmdline cmdline("--print-config", "--template", "default", NULL);
+            TestCmdline cmdline("--print-config", "--template", "Default", NULL);
             cmdline.doit();
             CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_err.str());
             string actual = filterConfig(cmdline.m_out.str());
             removeRandomUUID(actual);
-            CPPUNIT_ASSERT_EQUAL_DIFF(filterConfig(internalToIni(m_scheduleWorldConfig)),
+            CPPUNIT_ASSERT_EQUAL_DIFF(filterConfig(internalToIni(ScheduleWorldConfig())),
                                       actual);
         }
 
@@ -1180,7 +1296,7 @@ protected:
                                 NULL);
             cmdline.doit();
             CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_err.str());
-            string expected = filterConfig(internalToIni(m_scheduleWorldConfig));
+            string expected = filterConfig(internalToIni(ScheduleWorldConfig()));
             boost::replace_first(expected,
                                  "syncURL = http://sync.scheduleworld.com/funambol/ds",
                                  "syncURL = foo");
@@ -1202,7 +1318,7 @@ protected:
             CPPUNIT_ASSERT_EQUAL_DIFF("", cmdline.m_err.str());
             string actual = cmdline.m_out.str();
             removeRandomUUID(actual);
-            CPPUNIT_ASSERT_EQUAL_DIFF(internalToIni(m_scheduleWorldConfig),
+            CPPUNIT_ASSERT_EQUAL_DIFF(internalToIni(ScheduleWorldConfig()),
                                       actual);
         }
         
@@ -1272,6 +1388,8 @@ protected:
                               "\n"
                               "loglevel:\n"
                               "\n"
+                              "printChanges:\n"
+                              "\n"
                               "maxlogdirs:\n"
                               "\n"
                               "useProxy:\n"
@@ -1290,7 +1408,6 @@ protected:
                               "\n"
                               "maxMsgSize:\n"
                               "maxObjSize:\n"
-                              "loSupport:\n"
                               "\n"
                               "enableCompression:\n"
                               "\n"
@@ -1298,7 +1415,11 @@ protected:
                               "\n"
                               "SSLVerifyServer:\n"
                               "\n"
-                              "SSLVerifyHost:\n");
+                              "SSLVerifyHost:\n"
+                              "\n"
+                              "WebURL:\n"
+                              "\n"
+                              "IconURI:\n");
         string sourceProperties("sync:\n"
                                 "\n"
                                 "type:\n"
@@ -1413,7 +1534,7 @@ protected:
             TestCmdline cmdline("--configure",
                                 "--sync", "two-way",
                                 "-z", "evolutionsource=source",
-                                "--sync-property", "maxlogdirs=10",
+                                "--sync-property", "maxlogdirs=20",
                                 "-y", "LOGDIR=logdir",
                                 "scheduleworld",
                                 NULL);
@@ -1430,8 +1551,8 @@ protected:
                                "# evolutionsource = ",
                                "evolutionsource = source");
             boost::replace_all(expected,
-                               "# maxlogdirs = 0",
-                               "maxlogdirs = 10");
+                               "# maxlogdirs = 10",
+                               "maxlogdirs = 20");
             boost::replace_all(expected,
                                "# logdir = ",
                                "logdir = logdir");
@@ -1576,7 +1697,14 @@ private:
     };
 
     string ScheduleWorldConfig() {
-        return m_scheduleWorldConfig;
+        string config = m_scheduleWorldConfig;
+
+        if (isDir(string(TEMPLATE_DIR) + "/ScheduleWorld")) {
+            boost::replace_all(config,
+                               "# IconURI = ",
+                               "IconURI = file://" TEMPLATE_DIR "/ScheduleWorld/icon.png");
+        }
+        return config;
     }
 
     string OldScheduleWorldConfig() {
@@ -1607,6 +1735,10 @@ private:
                              "syncURL = http://my.funambol.com/sync");
 
         boost::replace_first(config,
+                             "WebURL = http://sync.scheduleworld.com",
+                             "WebURL = http://my.funambol.com");
+
+        boost::replace_first(config,
                              "addressbook/config.ini:uri = card3",
                              "addressbook/config.ini:uri = card");
         boost::replace_first(config,
@@ -1635,6 +1767,10 @@ private:
         boost::replace_first(config,
                              "syncURL = http://sync.scheduleworld.com/funambol/ds",
                              "syncURL = http://www.synthesis.ch/sync");
+
+        boost::replace_first(config,
+                             "WebURL = http://sync.scheduleworld.com",
+                             "WebURL = http://www.synthesis.ch");        
 
         boost::replace_first(config,
                              "addressbook/config.ini:uri = card3",

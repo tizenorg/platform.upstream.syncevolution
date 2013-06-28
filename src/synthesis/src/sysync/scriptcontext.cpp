@@ -1715,6 +1715,50 @@ public:
   }; // func_AbortSession
 
 
+  // SETDEBUGLOG(integer enabled)
+  // set debug log output for this sync session
+  static void func_SetDebugLog(TItemField *&aTermP, TScriptContext *aFuncContextP)
+  {
+    #ifdef SYDEBUG
+    TSyncSession *sessionP = aFuncContextP->getSession();
+    if (sessionP) {
+      sessionP->getDbgLogger()->setEnabled(
+        aFuncContextP->getLocalVar(0)->getAsBoolean()
+      );
+      /// @todo: remove this
+      // %%% for now, we also need to set this separate flag
+      sessionP->fSessionDebugLogs=
+        aFuncContextP->getLocalVar(0)->getAsBoolean();
+    }
+    #endif
+  }; // func_SetDebugLog
+
+
+  // SETLOG(integer enabled)
+  // set debug log output for this sync session
+  static void func_SetLog(TItemField *&aTermP, TScriptContext *aFuncContextP)
+  {
+    #ifndef MINIMAL_CODE
+    TSyncSession *sessionP = aFuncContextP->getSession();
+    if (sessionP) {
+      sessionP->fLogEnabled=
+        aFuncContextP->getLocalVar(0)->getAsBoolean();
+    }
+    #endif
+  }; // func_SetLog
+
+
+  // SETREADONLY(integer readonly)
+  // set readonly option of this sync session
+  static void func_SetReadOnly(TItemField *&aTermP, TScriptContext *aFuncContextP)
+  {
+    TSyncSession *sessionP = aFuncContextP->getSession();
+    if (sessionP) {
+    	sessionP->setReadOnly(aFuncContextP->getLocalVar(0)->getAsBoolean());
+    }
+  }; // func_SetReadOnly
+
+
   // string CONFIGVAR(string varname)
   static void func_ConfigVar(TItemField *&aTermP, TScriptContext *aFuncContextP)
   {
@@ -2113,6 +2157,9 @@ const TBuiltInFuncDef BuiltInFuncDefs[] = {
   { "SESSIONVAR", TBuiltinStdFuncs::func_SessionVar, fty_none, 1, param_oneString },
   { "SETSESSIONVAR", TBuiltinStdFuncs::func_SetSessionVar, fty_none, 2, param_SetSessionVar },
   { "ABORTSESSION", TBuiltinStdFuncs::func_AbortSession, fty_none, 1, param_oneInteger },
+  { "SETDEBUGLOG", TBuiltinStdFuncs::func_SetDebugLog, fty_none, 1, param_oneInteger },
+  { "SETLOG", TBuiltinStdFuncs::func_SetLog, fty_none, 1, param_oneInteger },
+  { "SETREADONLY", TBuiltinStdFuncs::func_SetReadOnly, fty_none, 1, param_oneInteger },
   { "CONFIGVAR", TBuiltinStdFuncs::func_ConfigVar, fty_string, 1, param_oneString },
   { "TREATASLOCALTIME", TBuiltinStdFuncs::func_SetTreatAsLocaltime, fty_none, 1, param_oneInteger },
   { "TREATASUTC", TBuiltinStdFuncs::func_SetTreatAsUTC, fty_none, 1, param_oneInteger },

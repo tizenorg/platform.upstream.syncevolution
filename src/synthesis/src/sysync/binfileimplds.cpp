@@ -29,9 +29,92 @@ namespace sysync {
 // Script Functions
 // ================
 
+
 class TBFDSfuncs {
 public:
 
+	static TItemField *fieldFromStructField(cAppCharP aFieldName, const TStructFieldInfo *aStructFieldInfos, sInt32 aNumFields, uInt8P aStructAddr, TScriptContext *aFuncContextP)
+  {
+  	TItemField *fldP = NULL;
+  	// search for name
+    for (sInt32 i=0; i<aNumFields; i++) {
+    	const TStructFieldInfo *info = &aStructFieldInfos[i];
+    	if (strucmp(info->valName, aFieldName)==0 && info->valSiz>0) {
+      	// found field
+        if (info->valType==VALTYPE_TEXT) {
+        	// text
+		      fldP = newItemField(fty_string, aFuncContextP->getSessionZones());
+          fldP->setAsString((cAppCharP)(aStructAddr+info->fieldOffs));
+          return fldP;
+        }
+        else if (info->valType==VALTYPE_TIME64) {
+        	// timestamp
+		      fldP = newItemField(fty_timestamp, aFuncContextP->getSessionZones());
+          static_cast<TTimestampField *>(fldP)->setTimestampAndContext(
+          	*((lineartime_t *)(aStructAddr+info->fieldOffs)),
+            TCTX_UTC // internal timestamps are UTC
+          );
+          return fldP;
+        }
+        else {
+        	// all other types are treated as integers
+          fieldinteger_t fint = 0;
+          switch(info->valSiz) {
+          	case 1 : fint = *((uInt8 *)(aStructAddr+info->fieldOffs)); break;
+          	case 2 : fint = *((uInt16 *)(aStructAddr+info->fieldOffs)); break;
+          	case 4 : fint = *((uInt32 *)(aStructAddr+info->fieldOffs)); break;
+          	case 8 : fint = *((uInt64 *)(aStructAddr+info->fieldOffs)); break;
+          }
+          fldP = newItemField(fty_integer, aFuncContextP->getSessionZones());
+          fldP->setAsInteger(fint);
+          return fldP;
+        }
+      }    
+    }
+    // no such field, return an unassigned field
+    fldP=newItemField(fty_none, aFuncContextP->getSessionZones());
+    fldP->unAssign(); // make it (already is...) unassigned
+    return fldP;
+  } // fieldFromStructField
+
+
+  // variant PROFILESETTING(string settingsfieldname)
+  // returns data from profile settings (like /profiles/n does)
+  static void func_ProfileSetting(TItemField *&aTermP, TScriptContext *aFuncContextP)
+  {
+    string varname;
+    TBinfileImplDS *dsP = static_cast<TBinfileImplDS *>(aFuncContextP->getCallerContext());
+    // get name
+    aFuncContextP->getLocalVar(0)->getAsString(varname);
+    // get value
+    aTermP = fieldFromStructField(
+    	varname.c_str(),
+      ProfileFieldInfos, numProfileFieldInfos,
+      (uInt8P)&(static_cast<TBinfileImplClient *>(dsP->getSession())->fProfile),
+      aFuncContextP
+    );
+  }; // func_ProfileSetting
+
+
+  // variant TARGETSETTING(string settingsfieldname)
+  // returns data from target settings (like /profiles/n/targets/dbid/settingsfieldname does)
+  static void func_TargetSetting(TItemField *&aTermP, TScriptContext *aFuncContextP)
+  {
+    string varname;
+    TBinfileImplDS *dsP = static_cast<TBinfileImplDS *>(aFuncContextP->getCallerContext());
+    // get name
+    aFuncContextP->getLocalVar(0)->getAsString(varname);
+    // get value
+    aTermP = fieldFromStructField(
+    	varname.c_str(),
+      TargetFieldInfos, numTargetFieldInfos,
+      (uInt8P)&(dsP->fTarget),
+      aFuncContextP
+    );
+  }; // func_TargetSetting
+
+
+	/* %%% replaced by generic implementation above
   // variant TARGETSETTING(string settingsfieldname)
   // returns data from target settings (like /profiles/n/targets/dbid/settingsfieldname does)
   static void func_TargetSetting(TItemField *&aTermP, TScriptContext *aFuncContextP)
@@ -67,6 +150,9 @@ public:
       aTermP->unAssign(); // make it (already is...) unassigned
     }
   }; // func_TargetSetting
+	*/
+
+
 
 }; // TBFDSfuncs
 
@@ -75,6 +161,7 @@ const uInt8 param_OneStr[] = { VAL(fty_string) };
 
 const TBuiltInFuncDef BinfileDBFuncDefs[] = {
   { "TARGETSETTING", TBFDSfuncs::func_TargetSetting, fty_none, 1, param_OneStr },
+  { "PROFILESETTING", TBFDSfuncs::func_ProfileSetting, fty_none, 1, param_OneStr },
 };
 
 

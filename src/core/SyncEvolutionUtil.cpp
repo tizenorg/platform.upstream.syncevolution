@@ -83,7 +83,7 @@ void mkdir_p(const string &path)
             if (access(dirs.get(),
                        nextdir ? (R_OK|X_OK) : (R_OK|X_OK|W_OK)) &&
                 (errno != ENOENT ||
-                 mkdir(dirs.get(), 0777))) {
+                 mkdir(dirs.get(), 0700))) {
                 EvolutionSyncClient::throwError(string(dirs.get()), errno);
             }
         }
@@ -94,7 +94,8 @@ void mkdir_p(const string &path)
     } while (curr);
 }
 
-void rm_r(const string &path)
+void rm_r(const string &path, boost::function<bool (const string &,
+                                                    bool)> filter)
 {
     struct stat buffer;
     if (lstat(path.c_str(), &buffer)) {
@@ -106,7 +107,8 @@ void rm_r(const string &path)
     }
 
     if (!S_ISDIR(buffer.st_mode)) {
-        if (!unlink(path.c_str())) {
+        if (!filter(path, false) ||
+            !unlink(path.c_str())) {
             return;
         } else {
             EvolutionSyncClient::throwError(path, errno);
@@ -115,9 +117,10 @@ void rm_r(const string &path)
 
     ReadDir dir(path);
     BOOST_FOREACH(const string &entry, dir) {
-        rm_r(path + "/" + entry);
+        rm_r(path + "/" + entry, filter);
     }
-    if (rmdir(path.c_str())) {
+    if (filter(path, true) &&
+        rmdir(path.c_str())) {
         EvolutionSyncClient::throwError(path, errno);
     }
 }
@@ -192,6 +195,16 @@ ReadDir::ReadDir(const string &path) : m_path(path)
     }
 
     closedir(dir);
+}
+
+std::string ReadDir::find(const string &entry, bool caseSensitive)
+{
+    BOOST_FOREACH(const string &e, *this) {
+        if (caseSensitive ? e == entry : boost::iequals(e, entry)) {
+            return m_path + "/" + e;
+        }
+    }
+    return "";
 }
 
 bool ReadFile(const string &filename, string &content)
@@ -290,4 +303,42 @@ SyncMLStatus SyncEvolutionException::handle(SyncMLStatus *status)
         *status = new_status;
     }
     return status ? *status : new_status;
+}
+
+std::string SubstEnvironment(const std::string &str)
+{
+    std::stringstream res;
+    size_t envstart = std::string::npos;
+    size_t off;
+
+    for(off = 0; off < str.size(); off++) {
+        if (envstart != std::string::npos) {
+            if (str[off] == '}') {
+                std::string envname = str.substr(envstart, off - envstart);
+                envstart = std::string::npos;
+
+                const char *val = getenv(envname.c_str());
+                if (val) {
+                    res << val;
+                } else if (envname == "XDG_CONFIG_HOME") {
+                    res << getHome() << "/.config";
+                } else if (envname == "XDG_DATA_HOME") {
+                    res << getHome() << "/.local/share";
+                } else if (envname == "XDG_CACHE_HOME") {
+                    res << getHome() << "/.cache";
+                }
+            }
+        } else {
+            if (str[off] == '$' &&
+                off + 1 < str.size() &&
+                str[off + 1] == '{') {
+                envstart = off + 2;
+                off++;
+            } else {
+                res << str[off];
+            }
+        }
+    }
+
+    return res.str();
 }

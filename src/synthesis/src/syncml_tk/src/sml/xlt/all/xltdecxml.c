@@ -121,6 +121,19 @@ static Boolean_t readBytes(xmlScannerPrivPtr_t pScanner, Long_t bytes);
  */
 static void skipS(xmlScannerPrivPtr_t pScanner);
 
+/**
+ * BOM processing. Currently only check BOMs for UTF-8, UTF-16le, UTF-16be, 
+ * UTF-32le and UTF-32be. Note that SML_ERR_XLT_ENC_UNK is also returned 
+ * when BOMs of UTF-16le, UTF-16be, UTF-32le and UTF-32be are processed for
+ * these encodings are not supported in the current code base.
+ * @param pScanner (IN/OUT)
+ *        the scanner
+ * @return SML_ERR_OK if UTF-8 BOM or UTF-8 characters without a BOM
+ *         or 8-bit encodings like US-ACII 
+ *         SML_ERR_XLT_ENC_UNK if other Encodings or Encoding BOMs
+ */
+static Ret_t bomDecl(xmlScannerPrivPtr_t pScanner);
+
 static Ret_t xmlTag(xmlScannerPrivPtr_t pScanner, Byte_t endtag);
 static Ret_t xmlName(xmlScannerPrivPtr_t pScanner, String_t *name);
 static Ret_t xmlCharData(xmlScannerPrivPtr_t pScanner);
@@ -177,6 +190,9 @@ xltDecXmlInit(const MemPtr_t pBufEnd, MemPtr_t *ppBufPos, XltDecScannerPtr_t *pp
     pScanner->pushTok = _pushTok;
     pScanner->setBuf = _setBuf;
     pScanner->getPos = _getPos;
+
+    if((rc = bomDecl(pScanner)) != SML_ERR_OK)
+        return rc;
 
     if ((rc = xmlProlog(pScanner)) != SML_ERR_OK) {
       smlLibFree(pScanner->curtok);
@@ -339,6 +355,41 @@ static void skipS(xmlScannerPrivPtr_t pScanner)
                 return;
         }
     }
+}
+static Ret_t bomDecl(xmlScannerPrivPtr_t pScanner)
+{
+    if (pScanner->pos + 4 > pScanner->bufend) { /* 4 is the max length of BOM */
+        return SML_ERR_OK;
+    }
+
+    Short_t bomLength = 0;
+    MemByte_t bom0 = *(pScanner->pos);
+    MemByte_t bom1 = *(pScanner->pos + 1);
+    MemByte_t bom2 = *(pScanner->pos + 2);
+    MemByte_t bom3 = *(pScanner->pos + 3);
+
+    if (bom0 != 0x00 && bom1 != 0x00 &&
+            bom0 < 0xfe && bom1 < 0xfe) {//utf-8
+
+        /** check utf-8 BOM */
+        if (bom0 == 0xef && bom1 == 0xbb && bom2 == 0xbf) 
+            bomLength = 3; 
+        //else no bom
+    } else if (bom0 == 0x00 && bom1 == 0x00 &&
+            bom2 == 0xfe && bom3 == 0xff) {//utf-32(be)
+        return SML_ERR_XLT_ENC_UNK;
+    } else if (bom0 == 0xff && bom1 == 0xfe &&
+            bom2 == 0x00 && bom3 == 0x00) {//utf-32(le)
+        return SML_ERR_XLT_ENC_UNK;
+    } else if (bom0 == 0xfe && bom1 == 0xff) {//utf-16(be)
+        return SML_ERR_XLT_ENC_UNK;
+    } else if (bom0 == 0xff && bom1 == 0xfe) {//utf-16(le)
+        return SML_ERR_XLT_ENC_UNK;
+    } else { // unknown encoding or unknown encoding BOM
+        return SML_ERR_XLT_ENC_UNK;
+    }
+    pScanner->pos += bomLength; 
+    return SML_ERR_OK;
 }
 
 /**

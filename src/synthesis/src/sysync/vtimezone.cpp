@@ -374,11 +374,12 @@ bool VTIMEZONEtoInternal( const char*    aText, // VTIMEZONE string to be parsed
   MultipleSeq( aText, s,d );
 
   if  (s==0 && d==0) return false;
-  okM= s<=1 && d<=1; // currently not more than one section each is supported
+  okM= s<=1 && d<=1; // test if more than one section
  
   // find best match for VTIMEZONE: checks name and rules
-  // allows multiple timezone, if last is ok ! 
-  ok= g->matchTZ(t, aContext);
+  // allows multiple timezone, if last is ok !
+  if (!g) return false; // avoid crashes with g==NULL
+  ok=  g->matchTZ(t, aContext);
 
   if (!ok && !okM) { // store it "as is" if both is not ok
     ClrDST( t );
@@ -387,9 +388,6 @@ bool VTIMEZONEtoInternal( const char*    aText, // VTIMEZONE string to be parsed
     t.bias = 0;
     return FoundTZ( t, lName, aContext, g, true );
   } // if
-
-  // find best match for VTIMEZONE: checks name and rules
-//ok= g->matchTZ(t, aContext);
 
   #ifdef SYSYNC_TOOL
   if (ok) {
@@ -438,7 +436,7 @@ static string Encapsuled( string value, string txt )
 
 
 /*! Get the hour/minute string of <bias> */
-static string HourMinStr( int bias )
+string HourMinStr( int bias )
 {
   const char*  form;
   if (bias>=0) form= "%+03d%02d";
@@ -530,15 +528,16 @@ bool internalToVTIMEZONE( timecontext_t  aContext,
   cAppCharP id;
   bool      withDST= false;
   
-  bool tzEnum= GetTZ( aContext, t, g, yy );
+  bool tzEnum= TCTX_IS_TZ( aContext );
   if  (tzEnum) {
-    withDST=           t.std.wMonth!=0 &&
-                       t.dst.wMonth!=0;
-    if                (t.ident == "$") { aText= t.name; return true; } // just give it back
+    GetTZ( aContext, t, g, yy );
+    withDST=         t.std.wMonth!=0 &&
+                     t.dst.wMonth!=0;
+    if              (t.ident == "$") { aText= t.name; return true; } // just give it back
   }
   else {
     t.bias= TCTX_MINOFFSET( aContext );
-    t.name= "OFFS" + HourMinStr( t.bias );
+  //t.name= "OFFS" + HourMinStr( t.bias ); // will be done once at TimeZoneContextToName
   }
                  t_plus = t.bias;    id= " ";
   if (withDST) { t_plus+= t.biasDST; id= "s"; } // there is only an offset with DST
@@ -562,8 +561,8 @@ bool internalToVTIMEZONE( timecontext_t  aContext,
 
 	// make sure we get the right TZID string according to aPrefIdent
   string tzn = t.name;
-  if (aPrefIdent && tzEnum) {
-	  TimeZoneContextToName(aContext, tzn, g, aPrefIdent);
+  if (aPrefIdent || !tzEnum) {
+	  TimeZoneContextToName( aContext, tzn, g, aPrefIdent );
   }
   
   // at least one STANDARD or DAYLIGHT info is mandatory

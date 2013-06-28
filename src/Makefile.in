@@ -37,28 +37,38 @@ host_triplet = @host@
 EXTRA_PROGRAMS = $(am__EXEEXT_1)
 TESTS = $(am__EXEEXT_2)
 bin_PROGRAMS = syncevolution$(EXEEXT) $(am__EXEEXT_2)
+@COND_DBUS_TRUE@libexec_PROGRAMS = syncevo-dbus-server$(EXEEXT)
 @ENABLE_MODULES_FALSE@am__append_1 = $(SYNCSOURCES)
 @ENABLE_MODULES_FALSE@am__append_2 = $(SYNCSOURCES)
 @ENABLE_MODULES_TRUE@am__append_3 = $(BACKEND_REGISTRIES)
 @ENABLE_MODULES_FALSE@am__append_4 = $(BACKEND_REGISTRIES)
 
+# Always compile the registry files into client-test because that is
+# the only place where they are compiled with
+# ENABLE_INTEGRATION_TESTS.  This works without undefined references
+# because client-test is linked against all shared backend libraries
+# (non-portable, but works).
+@ENABLE_MODULES_TRUE@am__append_5 = $(BACKEND_REGISTRIES)
+
 # distribute test system?
 # yes: install client-test in bindir, test files in datadir
-@ENABLE_TESTING_TRUE@am__append_5 = client-test
 @ENABLE_TESTING_TRUE@am__append_6 = client-test
+@ENABLE_TESTING_TRUE@am__append_7 = client-test
 # The "all" dependency causes a rebuild even if the actual input files
 # haven't changed. If client-test is part of the regular targets built
 # by "all", then it must not depend on all!
-@ENABLE_TESTING_FALSE@am__append_7 = client-test
-@ENABLE_TESTING_FALSE@am__append_8 = all
+@ENABLE_TESTING_FALSE@am__append_8 = client-test
+@ENABLE_TESTING_FALSE@am__append_9 = all
 subdir = src
-DIST_COMMON = $(am__nobase_dist_doc_DATA_DIST) $(srcdir)/Makefile.am \
+DIST_COMMON = $(am__nobase_dist_doc_DATA_DIST) \
+	$(nobase_dist_sysconf_DATA) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_boost_base.m4 \
-	$(top_srcdir)/m4/libtool.m4 $(top_srcdir)/m4/ltoptions.m4 \
-	$(top_srcdir)/m4/ltsugar.m4 $(top_srcdir)/m4/ltversion.m4 \
-	$(top_srcdir)/m4/lt~obsolete.m4 $(top_srcdir)/configure.in
+	$(top_srcdir)/m4/intltool.m4 $(top_srcdir)/m4/libtool.m4 \
+	$(top_srcdir)/m4/ltoptions.m4 $(top_srcdir)/m4/ltsugar.m4 \
+	$(top_srcdir)/m4/ltversion.m4 $(top_srcdir)/m4/lt~obsolete.m4 \
+	$(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
@@ -66,10 +76,12 @@ CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 @ENABLE_TESTING_FALSE@am__EXEEXT_1 = client-test$(EXEEXT)
 @ENABLE_TESTING_TRUE@am__EXEEXT_2 = client-test$(EXEEXT)
-am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(bindir)" \
-	"$(DESTDIR)$(docdir)"
+am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(libexecdir)" \
+	"$(DESTDIR)$(bindir)" "$(DESTDIR)$(docdir)" \
+	"$(DESTDIR)$(sysconfdir)" "$(DESTDIR)$(servicedir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
-PROGRAMS = $(bin_PROGRAMS)
+libexecPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
+PROGRAMS = $(bin_PROGRAMS) $(libexec_PROGRAMS)
 am__client_test_SOURCES_DIST = client-test-app.cpp \
 	../test/ClientTest.cpp ../test/ClientTest.h \
 	../test/client-test-main.cpp \
@@ -85,11 +97,13 @@ am__objects_1 = client_test-AddressBookSourceRegister.$(OBJEXT) \
 	client_test-SQLiteContactSourceRegister.$(OBJEXT)
 @ENABLE_MODULES_FALSE@am__objects_2 = $(am__objects_1)
 am__objects_3 = $(am__objects_2)
+@ENABLE_MODULES_TRUE@am__objects_4 = $(am__objects_1)
 am_client_test_OBJECTS = client_test-client-test-app.$(OBJEXT) \
 	client_test-ClientTest.$(OBJEXT) \
-	client_test-client-test-main.$(OBJEXT) $(am__objects_3)
-am__objects_4 =
-@ENABLE_TESTING_FALSE@nodist_client_test_OBJECTS = $(am__objects_4)
+	client_test-client-test-main.$(OBJEXT) $(am__objects_3) \
+	$(am__objects_4)
+am__objects_5 =
+@ENABLE_TESTING_FALSE@nodist_client_test_OBJECTS = $(am__objects_5)
 client_test_OBJECTS = $(am_client_test_OBJECTS) \
 	$(nodist_client_test_OBJECTS)
 am__DEPENDENCIES_1 =
@@ -100,21 +114,47 @@ am__DEPENDENCIES_4 = $(am__DEPENDENCIES_3) core/libsyncevolution.la \
 client_test_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(client_test_CXXFLAGS) \
 	$(CXXFLAGS) $(client_test_LDFLAGS) $(LDFLAGS) -o $@
+am__syncevo_dbus_server_SOURCES_DIST = syncevo-dbus-server.cpp \
+	syncevo-dbus-server.h DBusSyncClient.cpp DBusSyncClient.h \
+	backends/addressbook/AddressBookSourceRegister.cpp \
+	backends/evolution/EvolutionCalendarSourceRegister.cpp \
+	backends/evolution/EvolutionContactSourceRegister.cpp \
+	backends/file/FileSyncSourceRegister.cpp \
+	backends/sqlite/SQLiteContactSourceRegister.cpp
+am__objects_6 =  \
+	syncevo_dbus_server-AddressBookSourceRegister.$(OBJEXT) \
+	syncevo_dbus_server-EvolutionCalendarSourceRegister.$(OBJEXT) \
+	syncevo_dbus_server-EvolutionContactSourceRegister.$(OBJEXT) \
+	syncevo_dbus_server-FileSyncSourceRegister.$(OBJEXT) \
+	syncevo_dbus_server-SQLiteContactSourceRegister.$(OBJEXT)
+@ENABLE_MODULES_FALSE@am__objects_7 = $(am__objects_6)
+am__objects_8 = $(am__objects_7)
+@COND_DBUS_TRUE@am_syncevo_dbus_server_OBJECTS = syncevo_dbus_server-syncevo-dbus-server.$(OBJEXT) \
+@COND_DBUS_TRUE@	syncevo_dbus_server-DBusSyncClient.$(OBJEXT) \
+@COND_DBUS_TRUE@	$(am__objects_8)
+@COND_DBUS_TRUE@nodist_syncevo_dbus_server_OBJECTS =  \
+@COND_DBUS_TRUE@	syncevo_dbus_server-syncevo-marshal.$(OBJEXT)
+syncevo_dbus_server_OBJECTS = $(am_syncevo_dbus_server_OBJECTS) \
+	$(nodist_syncevo_dbus_server_OBJECTS)
+syncevo_dbus_server_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CXXLD) \
+	$(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) \
+	$(syncevo_dbus_server_LDFLAGS) $(LDFLAGS) -o $@
 am__syncevolution_SOURCES_DIST = syncevolution.cpp \
 	backends/addressbook/AddressBookSourceRegister.cpp \
 	backends/evolution/EvolutionCalendarSourceRegister.cpp \
 	backends/evolution/EvolutionContactSourceRegister.cpp \
 	backends/file/FileSyncSourceRegister.cpp \
 	backends/sqlite/SQLiteContactSourceRegister.cpp
-am__objects_5 = syncevolution-AddressBookSourceRegister.$(OBJEXT) \
+am__objects_9 = syncevolution-AddressBookSourceRegister.$(OBJEXT) \
 	syncevolution-EvolutionCalendarSourceRegister.$(OBJEXT) \
 	syncevolution-EvolutionContactSourceRegister.$(OBJEXT) \
 	syncevolution-FileSyncSourceRegister.$(OBJEXT) \
 	syncevolution-SQLiteContactSourceRegister.$(OBJEXT)
-@ENABLE_MODULES_FALSE@am__objects_6 = $(am__objects_5)
-am__objects_7 = $(am__objects_6)
+@ENABLE_MODULES_FALSE@am__objects_10 = $(am__objects_9)
+am__objects_11 = $(am__objects_10)
 am_syncevolution_OBJECTS = syncevolution-syncevolution.$(OBJEXT) \
-	$(am__objects_7)
+	$(am__objects_11)
 syncevolution_OBJECTS = $(am_syncevolution_OBJECTS)
 syncevolution_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(syncevolution_CXXFLAGS) \
@@ -124,15 +164,6 @@ SCRIPTS = $(bin_SCRIPTS)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
-CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
-	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
-LTCXXCOMPILE = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
-	--mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
-	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
-CXXLD = $(CXX)
-CXXLINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
-	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
-	$(LDFLAGS) -o $@
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 LTCOMPILE = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
@@ -142,9 +173,20 @@ CCLD = $(CC)
 LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
+CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
+LTCXXCOMPILE = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+	--mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
+CXXLD = $(CXX)
+CXXLINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
+	$(LDFLAGS) -o $@
 SOURCES = $(client_test_SOURCES) $(nodist_client_test_SOURCES) \
-	$(syncevolution_SOURCES)
+	$(syncevo_dbus_server_SOURCES) \
+	$(nodist_syncevo_dbus_server_SOURCES) $(syncevolution_SOURCES)
 DIST_SOURCES = $(am__client_test_SOURCES_DIST) \
+	$(am__syncevo_dbus_server_SOURCES_DIST) \
 	$(am__syncevolution_SOURCES_DIST)
 RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	html-recursive info-recursive install-data-recursive \
@@ -163,7 +205,10 @@ am__vpath_adj = case $$p in \
   esac;
 am__strip_dir = `echo $$p | sed -e 's|^.*/||'`;
 nobase_dist_docDATA_INSTALL = $(install_sh_DATA)
-DATA = $(nobase_dist_doc_DATA)
+nobase_dist_sysconfDATA_INSTALL = $(install_sh_DATA)
+serviceDATA_INSTALL = $(INSTALL_DATA)
+DATA = $(nobase_dist_doc_DATA) $(nobase_dist_sysconf_DATA) \
+	$(service_DATA)
 RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
   distclean-recursive maintainer-clean-recursive
 ETAGS = etags
@@ -172,6 +217,7 @@ DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 ADDRESSBOOK_CFLAGS = @ADDRESSBOOK_CFLAGS@
 ADDRESSBOOK_LIBS = @ADDRESSBOOK_LIBS@
+ALL_LINGUAS = @ALL_LINGUAS@
 AMTAR = @AMTAR@
 AR = @AR@
 AUTOCONF = @AUTOCONF@
@@ -182,6 +228,8 @@ BACKEND_CPPFLAGS = @BACKEND_CPPFLAGS@
 BACKEND_DEFINES = @BACKEND_DEFINES@
 BOOST_CPPFLAGS = @BOOST_CPPFLAGS@
 BOOST_LDFLAGS = @BOOST_LDFLAGS@
+CATALOGS = @CATALOGS@
+CATOBJEXT = @CATOBJEXT@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
@@ -196,6 +244,11 @@ CXXCPP = @CXXCPP@
 CXXDEPMODE = @CXXDEPMODE@
 CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
+DATADIRNAME = @DATADIRNAME@
+DBUS_BINDING_TOOL = @DBUS_BINDING_TOOL@
+DBUS_GLIB_CFLAGS = @DBUS_GLIB_CFLAGS@
+DBUS_GLIB_LIBS = @DBUS_GLIB_LIBS@
+DBUS_SERVICES_DIR = @DBUS_SERVICES_DIR@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DSYMUTIL = @DSYMUTIL@
@@ -214,14 +267,46 @@ EXEEXT = @EXEEXT@
 FGREP = @FGREP@
 FILE_CFLAGS = @FILE_CFLAGS@
 FILE_LIBS = @FILE_LIBS@
+GETTEXT_PACKAGE = @GETTEXT_PACKAGE@
 GLIB_CFLAGS = @GLIB_CFLAGS@
+GLIB_GENMARSHAL = @GLIB_GENMARSHAL@
 GLIB_LIBS = @GLIB_LIBS@
+GMOFILES = @GMOFILES@
+GMSGFMT = @GMSGFMT@
 GREP = @GREP@
+GTK_BUILDER_CONV = @GTK_BUILDER_CONV@
+GUI_CFLAGS = @GUI_CFLAGS@
+GUI_LIBS = @GUI_LIBS@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+INSTOBJEXT = @INSTOBJEXT@
+INTLLIBS = @INTLLIBS@
+INTLTOOL_CAVES_RULE = @INTLTOOL_CAVES_RULE@
+INTLTOOL_DESKTOP_RULE = @INTLTOOL_DESKTOP_RULE@
+INTLTOOL_DIRECTORY_RULE = @INTLTOOL_DIRECTORY_RULE@
+INTLTOOL_EXTRACT = @INTLTOOL_EXTRACT@
+INTLTOOL_KBD_RULE = @INTLTOOL_KBD_RULE@
+INTLTOOL_KEYS_RULE = @INTLTOOL_KEYS_RULE@
+INTLTOOL_MERGE = @INTLTOOL_MERGE@
+INTLTOOL_OAF_RULE = @INTLTOOL_OAF_RULE@
+INTLTOOL_PERL = @INTLTOOL_PERL@
+INTLTOOL_POLICY_RULE = @INTLTOOL_POLICY_RULE@
+INTLTOOL_PONG_RULE = @INTLTOOL_PONG_RULE@
+INTLTOOL_PROP_RULE = @INTLTOOL_PROP_RULE@
+INTLTOOL_SCHEMAS_RULE = @INTLTOOL_SCHEMAS_RULE@
+INTLTOOL_SERVER_RULE = @INTLTOOL_SERVER_RULE@
+INTLTOOL_SERVICE_RULE = @INTLTOOL_SERVICE_RULE@
+INTLTOOL_SHEET_RULE = @INTLTOOL_SHEET_RULE@
+INTLTOOL_SOUNDLIST_RULE = @INTLTOOL_SOUNDLIST_RULE@
+INTLTOOL_THEME_RULE = @INTLTOOL_THEME_RULE@
+INTLTOOL_UI_RULE = @INTLTOOL_UI_RULE@
+INTLTOOL_UPDATE = @INTLTOOL_UPDATE@
+INTLTOOL_XAM_RULE = @INTLTOOL_XAM_RULE@
+INTLTOOL_XML_NOMERGE_RULE = @INTLTOOL_XML_NOMERGE_RULE@
+INTLTOOL_XML_RULE = @INTLTOOL_XML_RULE@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
@@ -234,7 +319,11 @@ LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
+MKINSTALLDIRS = @MKINSTALLDIRS@
 MODIFY_SYNCCOMPARE = @MODIFY_SYNCCOMPARE@
+MSGFMT = @MSGFMT@
+MSGFMT_OPTS = @MSGFMT_OPTS@
+MSGMERGE = @MSGMERGE@
 NM = @NM@
 NMEDIT = @NMEDIT@
 OBJEXT = @OBJEXT@
@@ -248,6 +337,10 @@ PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PKG_CONFIG = @PKG_CONFIG@
+POFILES = @POFILES@
+POSUB = @POSUB@
+PO_IN_DATADIR_FALSE = @PO_IN_DATADIR_FALSE@
+PO_IN_DATADIR_TRUE = @PO_IN_DATADIR_TRUE@
 RANLIB = @RANLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
@@ -257,6 +350,7 @@ SQLITE_LIBS = @SQLITE_LIBS@
 STRIP = @STRIP@
 SYNCEVOLUTION_CXXFLAGS = @SYNCEVOLUTION_CXXFLAGS@
 SYNCEVOLUTION_LDADD = @SYNCEVOLUTION_LDADD@ $(am__append_1)
+SYNCEVOLUTION_LOCALEDIR = @SYNCEVOLUTION_LOCALEDIR@
 SYNCSOURCES = @SYNCSOURCES@
 SYNTHESIS = @SYNTHESIS@
 SYNTHESISSRC = @SYNTHESISSRC@
@@ -268,7 +362,12 @@ SYNTHESIS_SRC = @SYNTHESIS_SRC@
 SYNTHESIS_SUBDIR = @SYNTHESIS_SUBDIR@
 TRANSPORT_CFLAGS = @TRANSPORT_CFLAGS@
 TRANSPORT_LIBS = @TRANSPORT_LIBS@
+UNIQUE_CFLAGS = @UNIQUE_CFLAGS@
+UNIQUE_LIBS = @UNIQUE_LIBS@
+USE_NLS = @USE_NLS@
 VERSION = @VERSION@
+XGETTEXT = @XGETTEXT@
+XSLT = @XSLT@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@
@@ -322,13 +421,23 @@ target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 BACKENDS = backends/addressbook backends/evolution backends/file backends/sqlite
-SUBDIRS = $(SYNTHESIS_SUBDIR) core $(BACKENDS)
-DIST_SUBDIRS = core $(BACKENDS)
-AM_CPPFLAGS = $(SUBDIRS:%=-I$(srcdir)/%) -I$(srcdir)/../test $(BACKEND_CPPFLAGS) $(GLIB_CFLAGS)
+@COND_DBUS_TRUE@servicedir = $(DBUS_SERVICES_DIR)
+@COND_DBUS_TRUE@service_in_files = org.Moblin.SyncEvolution.service.in
+@COND_DBUS_TRUE@service_DATA = $(service_in_files:.service.in=.service)
+# jump into interface directory directly instead of going through dbus
+@COND_DBUS_FALSE@@COND_GUI_TRUE@DBUS_DIR = dbus/interfaces
+@COND_DBUS_TRUE@DBUS_DIR = dbus
+@COND_GUI_TRUE@GUI_DIR = gtk-ui
+SUBDIRS = $(SYNTHESIS_SUBDIR) $(DBUS_DIR) core $(BACKENDS) $(GUI_DIR)
+DIST_SUBDIRS = dbus core $(BACKENDS) gtk-ui
+BUILT_SOURCES = 
+AM_CPPFLAGS = $(SUBDIRS:%=-I$(srcdir)/%) -I$(srcdir)/../test -I$(top_srcdir) $(BACKEND_CPPFLAGS) $(GLIB_CFLAGS)
 bin_SCRIPTS = synccompare
 SYNCEVOLUTION_DEP = $(am__append_2)
 EXTRA_DIST = shlibs.local Makefile-gen.am syncevolution.xml \
-	$(am__append_3)
+	$(service_in_files) $(am__append_3)
+TEMPLATE_FILES = default/syncevolution/Funambol/sources/memo/config.ini default/syncevolution/Funambol/sources/todo/config.ini default/syncevolution/Funambol/sources/addressbook/config.ini default/syncevolution/Funambol/sources/calendar/config.ini default/syncevolution/Funambol/config.ini default/syncevolution/ScheduleWorld/sources/memo/config.ini default/syncevolution/ScheduleWorld/sources/todo/config.ini default/syncevolution/ScheduleWorld/sources/addressbook/config.ini default/syncevolution/ScheduleWorld/sources/calendar/config.ini default/syncevolution/ScheduleWorld/config.ini 
+nobase_dist_sysconf_DATA = $(TEMPLATE_FILES)
 DISTCLEANFILES = synccompare
 MAINTAINERCLEANFILES = Makefile.in
 CLEANFILES = libstdc++.a client-test $(CLIENT_LIB_TEST_FILES)
@@ -360,18 +469,25 @@ syncevolution_LDADD = $(CORE_LDADD)
 syncevolution_LDFLAGS = $(CORE_LD_FLAGS)
 syncevolution_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS)
 syncevolution_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) # $(SYNTHESIS_DEP)
+@COND_DBUS_TRUE@syncevo_dbus_server_SOURCES = \
+@COND_DBUS_TRUE@	syncevo-dbus-server.cpp syncevo-dbus-server.h \
+@COND_DBUS_TRUE@	DBusSyncClient.cpp DBusSyncClient.h \
+@COND_DBUS_TRUE@	$(CORE_SOURCES)
+
+@COND_DBUS_TRUE@nodist_syncevo_dbus_server_SOURCES = dbus/interfaces/syncevo-marshal.c
+@COND_DBUS_TRUE@syncevo_dbus_server_LDADD = $(DBUS_GLIB_LIBS) $(CORE_LDADD)
+@COND_DBUS_TRUE@syncevo_dbus_server_CPPFLAGS = -DHAVE_CONFIG_H -Idbus/interfaces $(DBUS_GLIB_CFLAGS) $(AM_CPPFLAGS)
+@COND_DBUS_TRUE@syncevo_dbus_server_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS)
+@COND_DBUS_TRUE@syncevo_dbus_server_LDFLAGS = $(CORE_LD_FLAGS)
+@COND_DBUS_TRUE@syncevo_dbus_server_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) $(SYNTHESIS_DEP)
 
 # With --disable-shared autotools links against libfunambol.a which does not
 # pull any of the test suites into the test binary, so they would not be
 # executed. The workaround is to explicitly set them as undefined on the
 # link line.
-client_test_SOURCES = \
-	client-test-app.cpp \
-	../test/ClientTest.cpp \
-	../test/ClientTest.h \
-	../test/client-test-main.cpp \
-	$(CORE_SOURCES)
-
+client_test_SOURCES = client-test-app.cpp ../test/ClientTest.cpp \
+	../test/ClientTest.h ../test/client-test-main.cpp \
+	$(CORE_SOURCES) $(am__append_5)
 CLIENT_LIB_TEST_FILES = \
 	testcases/vcard21.vcf \
 	testcases/vcard30.vcf \
@@ -382,20 +498,21 @@ CLIENT_LIB_TEST_FILES = \
 client_test_CPPFLAGS = -DHAVE_CONFIG_H -DENABLE_INTEGRATION_TESTS -DENABLE_UNIT_TESTS $(AM_CPPFLAGS)
 client_test_CXXFLAGS = `cppunit-config --cflags` $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS)
 client_test_LDFLAGS = `cppunit-config --libs` `nm core/.libs/libsyncevolution.a | grep funambolAutoRegisterRegistry | sed -e 's/.* /-u /'` $(CORE_LD_FLAGS)
-client_test_LDADD = $(CORE_LDADD)
+client_test_LDADD = $(CORE_LDADD) $(SYNCSOURCES)
 # These dependencies are intentionally a bit too broad:
 # they ensure that all files are in place to *run* client-test.
 client_test_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) \
-	$(CLIENT_LIB_TEST_FILES) synccompare $(am__append_8)
+	$(CLIENT_LIB_TEST_FILES) synccompare $(am__append_9)
 
 # copy test files because client-test expects them here
 LOCAL_TEST_FILES = $(subst $(srcdir)/../test/,,$(wildcard $(srcdir)/../test/* $(srcdir)/../test/testcases/*))
 @ENABLE_TESTING_TRUE@nobase_dist_doc_DATA = $(CLIENT_LIB_TEST_FILES)
 @ENABLE_TESTING_FALSE@nodist_client_test_SOURCES = $(CLIENT_LIB_TEST_FILES)
-all: all-recursive
+all: $(BUILT_SOURCES)
+	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
 .SUFFIXES:
-.SUFFIXES: .cpp .lo .o .obj
+.SUFFIXES: .c .cpp .lo .o .obj
 $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -453,9 +570,40 @@ clean-binPROGRAMS:
 	  echo " rm -f $$p $$f"; \
 	  rm -f $$p $$f ; \
 	done
+install-libexecPROGRAMS: $(libexec_PROGRAMS)
+	@$(NORMAL_INSTALL)
+	test -z "$(libexecdir)" || $(MKDIR_P) "$(DESTDIR)$(libexecdir)"
+	@list='$(libexec_PROGRAMS)'; for p in $$list; do \
+	  p1=`echo $$p|sed 's/$(EXEEXT)$$//'`; \
+	  if test -f $$p \
+	     || test -f $$p1 \
+	  ; then \
+	    f=`echo "$$p1" | sed 's,^.*/,,;$(transform);s/$$/$(EXEEXT)/'`; \
+	   echo " $(INSTALL_PROGRAM_ENV) $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(libexecPROGRAMS_INSTALL) '$$p' '$(DESTDIR)$(libexecdir)/$$f'"; \
+	   $(INSTALL_PROGRAM_ENV) $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(libexecPROGRAMS_INSTALL) "$$p" "$(DESTDIR)$(libexecdir)/$$f" || exit 1; \
+	  else :; fi; \
+	done
+
+uninstall-libexecPROGRAMS:
+	@$(NORMAL_UNINSTALL)
+	@list='$(libexec_PROGRAMS)'; for p in $$list; do \
+	  f=`echo "$$p" | sed 's,^.*/,,;s/$(EXEEXT)$$//;$(transform);s/$$/$(EXEEXT)/'`; \
+	  echo " rm -f '$(DESTDIR)$(libexecdir)/$$f'"; \
+	  rm -f "$(DESTDIR)$(libexecdir)/$$f"; \
+	done
+
+clean-libexecPROGRAMS:
+	@list='$(libexec_PROGRAMS)'; for p in $$list; do \
+	  f=`echo $$p|sed 's/$(EXEEXT)$$//'`; \
+	  echo " rm -f $$p $$f"; \
+	  rm -f $$p $$f ; \
+	done
 client-test$(EXEEXT): $(client_test_OBJECTS) $(client_test_DEPENDENCIES) 
 	@rm -f client-test$(EXEEXT)
 	$(client_test_LINK) $(client_test_OBJECTS) $(client_test_LDADD) $(LIBS)
+syncevo-dbus-server$(EXEEXT): $(syncevo_dbus_server_OBJECTS) $(syncevo_dbus_server_DEPENDENCIES) 
+	@rm -f syncevo-dbus-server$(EXEEXT)
+	$(syncevo_dbus_server_LINK) $(syncevo_dbus_server_OBJECTS) $(syncevo_dbus_server_LDADD) $(LIBS)
 syncevolution$(EXEEXT): $(syncevolution_OBJECTS) $(syncevolution_DEPENDENCIES) 
 	@rm -f syncevolution$(EXEEXT)
 	$(syncevolution_LINK) $(syncevolution_OBJECTS) $(syncevolution_LDADD) $(LIBS)
@@ -493,12 +641,55 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-SQLiteContactSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-client-test-app.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-client-test-main.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-AddressBookSourceRegister.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-DBusSyncClient.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-EvolutionCalendarSourceRegister.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-EvolutionContactSourceRegister.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-FileSyncSourceRegister.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-SQLiteContactSourceRegister.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-syncevo-dbus-server.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-syncevo-marshal.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-AddressBookSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-EvolutionCalendarSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-EvolutionContactSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-FileSyncSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-SQLiteContactSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-syncevolution.Po@am__quote@
+
+.c.o:
+@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
+@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(COMPILE) -c $<
+
+.c.obj:
+@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
+@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(COMPILE) -c `$(CYGPATH_W) '$<'`
+
+.c.lo:
+@am__fastdepCC_TRUE@	$(LTCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
+@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LTCOMPILE) -c -o $@ $<
+
+syncevo_dbus_server-syncevo-marshal.o: dbus/interfaces/syncevo-marshal.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT syncevo_dbus_server-syncevo-marshal.o -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-syncevo-marshal.Tpo -c -o syncevo_dbus_server-syncevo-marshal.o `test -f 'dbus/interfaces/syncevo-marshal.c' || echo '$(srcdir)/'`dbus/interfaces/syncevo-marshal.c
+@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-syncevo-marshal.Tpo $(DEPDIR)/syncevo_dbus_server-syncevo-marshal.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='dbus/interfaces/syncevo-marshal.c' object='syncevo_dbus_server-syncevo-marshal.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o syncevo_dbus_server-syncevo-marshal.o `test -f 'dbus/interfaces/syncevo-marshal.c' || echo '$(srcdir)/'`dbus/interfaces/syncevo-marshal.c
+
+syncevo_dbus_server-syncevo-marshal.obj: dbus/interfaces/syncevo-marshal.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT syncevo_dbus_server-syncevo-marshal.obj -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-syncevo-marshal.Tpo -c -o syncevo_dbus_server-syncevo-marshal.obj `if test -f 'dbus/interfaces/syncevo-marshal.c'; then $(CYGPATH_W) 'dbus/interfaces/syncevo-marshal.c'; else $(CYGPATH_W) '$(srcdir)/dbus/interfaces/syncevo-marshal.c'; fi`
+@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-syncevo-marshal.Tpo $(DEPDIR)/syncevo_dbus_server-syncevo-marshal.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='dbus/interfaces/syncevo-marshal.c' object='syncevo_dbus_server-syncevo-marshal.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o syncevo_dbus_server-syncevo-marshal.obj `if test -f 'dbus/interfaces/syncevo-marshal.c'; then $(CYGPATH_W) 'dbus/interfaces/syncevo-marshal.c'; else $(CYGPATH_W) '$(srcdir)/dbus/interfaces/syncevo-marshal.c'; fi`
 
 .cpp.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -633,6 +824,104 @@ client_test-SQLiteContactSourceRegister.obj: backends/sqlite/SQLiteContactSource
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-SQLiteContactSourceRegister.obj `if test -f 'backends/sqlite/SQLiteContactSourceRegister.cpp'; then $(CYGPATH_W) 'backends/sqlite/SQLiteContactSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/sqlite/SQLiteContactSourceRegister.cpp'; fi`
 
+syncevo_dbus_server-syncevo-dbus-server.o: syncevo-dbus-server.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-syncevo-dbus-server.o -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-syncevo-dbus-server.Tpo -c -o syncevo_dbus_server-syncevo-dbus-server.o `test -f 'syncevo-dbus-server.cpp' || echo '$(srcdir)/'`syncevo-dbus-server.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-syncevo-dbus-server.Tpo $(DEPDIR)/syncevo_dbus_server-syncevo-dbus-server.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='syncevo-dbus-server.cpp' object='syncevo_dbus_server-syncevo-dbus-server.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-syncevo-dbus-server.o `test -f 'syncevo-dbus-server.cpp' || echo '$(srcdir)/'`syncevo-dbus-server.cpp
+
+syncevo_dbus_server-syncevo-dbus-server.obj: syncevo-dbus-server.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-syncevo-dbus-server.obj -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-syncevo-dbus-server.Tpo -c -o syncevo_dbus_server-syncevo-dbus-server.obj `if test -f 'syncevo-dbus-server.cpp'; then $(CYGPATH_W) 'syncevo-dbus-server.cpp'; else $(CYGPATH_W) '$(srcdir)/syncevo-dbus-server.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-syncevo-dbus-server.Tpo $(DEPDIR)/syncevo_dbus_server-syncevo-dbus-server.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='syncevo-dbus-server.cpp' object='syncevo_dbus_server-syncevo-dbus-server.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-syncevo-dbus-server.obj `if test -f 'syncevo-dbus-server.cpp'; then $(CYGPATH_W) 'syncevo-dbus-server.cpp'; else $(CYGPATH_W) '$(srcdir)/syncevo-dbus-server.cpp'; fi`
+
+syncevo_dbus_server-DBusSyncClient.o: DBusSyncClient.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-DBusSyncClient.o -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-DBusSyncClient.Tpo -c -o syncevo_dbus_server-DBusSyncClient.o `test -f 'DBusSyncClient.cpp' || echo '$(srcdir)/'`DBusSyncClient.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-DBusSyncClient.Tpo $(DEPDIR)/syncevo_dbus_server-DBusSyncClient.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='DBusSyncClient.cpp' object='syncevo_dbus_server-DBusSyncClient.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-DBusSyncClient.o `test -f 'DBusSyncClient.cpp' || echo '$(srcdir)/'`DBusSyncClient.cpp
+
+syncevo_dbus_server-DBusSyncClient.obj: DBusSyncClient.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-DBusSyncClient.obj -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-DBusSyncClient.Tpo -c -o syncevo_dbus_server-DBusSyncClient.obj `if test -f 'DBusSyncClient.cpp'; then $(CYGPATH_W) 'DBusSyncClient.cpp'; else $(CYGPATH_W) '$(srcdir)/DBusSyncClient.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-DBusSyncClient.Tpo $(DEPDIR)/syncevo_dbus_server-DBusSyncClient.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='DBusSyncClient.cpp' object='syncevo_dbus_server-DBusSyncClient.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-DBusSyncClient.obj `if test -f 'DBusSyncClient.cpp'; then $(CYGPATH_W) 'DBusSyncClient.cpp'; else $(CYGPATH_W) '$(srcdir)/DBusSyncClient.cpp'; fi`
+
+syncevo_dbus_server-AddressBookSourceRegister.o: backends/addressbook/AddressBookSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-AddressBookSourceRegister.o -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-AddressBookSourceRegister.Tpo -c -o syncevo_dbus_server-AddressBookSourceRegister.o `test -f 'backends/addressbook/AddressBookSourceRegister.cpp' || echo '$(srcdir)/'`backends/addressbook/AddressBookSourceRegister.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-AddressBookSourceRegister.Tpo $(DEPDIR)/syncevo_dbus_server-AddressBookSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/addressbook/AddressBookSourceRegister.cpp' object='syncevo_dbus_server-AddressBookSourceRegister.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-AddressBookSourceRegister.o `test -f 'backends/addressbook/AddressBookSourceRegister.cpp' || echo '$(srcdir)/'`backends/addressbook/AddressBookSourceRegister.cpp
+
+syncevo_dbus_server-AddressBookSourceRegister.obj: backends/addressbook/AddressBookSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-AddressBookSourceRegister.obj -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-AddressBookSourceRegister.Tpo -c -o syncevo_dbus_server-AddressBookSourceRegister.obj `if test -f 'backends/addressbook/AddressBookSourceRegister.cpp'; then $(CYGPATH_W) 'backends/addressbook/AddressBookSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/addressbook/AddressBookSourceRegister.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-AddressBookSourceRegister.Tpo $(DEPDIR)/syncevo_dbus_server-AddressBookSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/addressbook/AddressBookSourceRegister.cpp' object='syncevo_dbus_server-AddressBookSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-AddressBookSourceRegister.obj `if test -f 'backends/addressbook/AddressBookSourceRegister.cpp'; then $(CYGPATH_W) 'backends/addressbook/AddressBookSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/addressbook/AddressBookSourceRegister.cpp'; fi`
+
+syncevo_dbus_server-EvolutionCalendarSourceRegister.o: backends/evolution/EvolutionCalendarSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-EvolutionCalendarSourceRegister.o -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-EvolutionCalendarSourceRegister.Tpo -c -o syncevo_dbus_server-EvolutionCalendarSourceRegister.o `test -f 'backends/evolution/EvolutionCalendarSourceRegister.cpp' || echo '$(srcdir)/'`backends/evolution/EvolutionCalendarSourceRegister.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-EvolutionCalendarSourceRegister.Tpo $(DEPDIR)/syncevo_dbus_server-EvolutionCalendarSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/evolution/EvolutionCalendarSourceRegister.cpp' object='syncevo_dbus_server-EvolutionCalendarSourceRegister.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-EvolutionCalendarSourceRegister.o `test -f 'backends/evolution/EvolutionCalendarSourceRegister.cpp' || echo '$(srcdir)/'`backends/evolution/EvolutionCalendarSourceRegister.cpp
+
+syncevo_dbus_server-EvolutionCalendarSourceRegister.obj: backends/evolution/EvolutionCalendarSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-EvolutionCalendarSourceRegister.obj -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-EvolutionCalendarSourceRegister.Tpo -c -o syncevo_dbus_server-EvolutionCalendarSourceRegister.obj `if test -f 'backends/evolution/EvolutionCalendarSourceRegister.cpp'; then $(CYGPATH_W) 'backends/evolution/EvolutionCalendarSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/evolution/EvolutionCalendarSourceRegister.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-EvolutionCalendarSourceRegister.Tpo $(DEPDIR)/syncevo_dbus_server-EvolutionCalendarSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/evolution/EvolutionCalendarSourceRegister.cpp' object='syncevo_dbus_server-EvolutionCalendarSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-EvolutionCalendarSourceRegister.obj `if test -f 'backends/evolution/EvolutionCalendarSourceRegister.cpp'; then $(CYGPATH_W) 'backends/evolution/EvolutionCalendarSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/evolution/EvolutionCalendarSourceRegister.cpp'; fi`
+
+syncevo_dbus_server-EvolutionContactSourceRegister.o: backends/evolution/EvolutionContactSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-EvolutionContactSourceRegister.o -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-EvolutionContactSourceRegister.Tpo -c -o syncevo_dbus_server-EvolutionContactSourceRegister.o `test -f 'backends/evolution/EvolutionContactSourceRegister.cpp' || echo '$(srcdir)/'`backends/evolution/EvolutionContactSourceRegister.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-EvolutionContactSourceRegister.Tpo $(DEPDIR)/syncevo_dbus_server-EvolutionContactSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/evolution/EvolutionContactSourceRegister.cpp' object='syncevo_dbus_server-EvolutionContactSourceRegister.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-EvolutionContactSourceRegister.o `test -f 'backends/evolution/EvolutionContactSourceRegister.cpp' || echo '$(srcdir)/'`backends/evolution/EvolutionContactSourceRegister.cpp
+
+syncevo_dbus_server-EvolutionContactSourceRegister.obj: backends/evolution/EvolutionContactSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-EvolutionContactSourceRegister.obj -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-EvolutionContactSourceRegister.Tpo -c -o syncevo_dbus_server-EvolutionContactSourceRegister.obj `if test -f 'backends/evolution/EvolutionContactSourceRegister.cpp'; then $(CYGPATH_W) 'backends/evolution/EvolutionContactSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/evolution/EvolutionContactSourceRegister.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-EvolutionContactSourceRegister.Tpo $(DEPDIR)/syncevo_dbus_server-EvolutionContactSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/evolution/EvolutionContactSourceRegister.cpp' object='syncevo_dbus_server-EvolutionContactSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-EvolutionContactSourceRegister.obj `if test -f 'backends/evolution/EvolutionContactSourceRegister.cpp'; then $(CYGPATH_W) 'backends/evolution/EvolutionContactSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/evolution/EvolutionContactSourceRegister.cpp'; fi`
+
+syncevo_dbus_server-FileSyncSourceRegister.o: backends/file/FileSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-FileSyncSourceRegister.o -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-FileSyncSourceRegister.Tpo -c -o syncevo_dbus_server-FileSyncSourceRegister.o `test -f 'backends/file/FileSyncSourceRegister.cpp' || echo '$(srcdir)/'`backends/file/FileSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-FileSyncSourceRegister.Tpo $(DEPDIR)/syncevo_dbus_server-FileSyncSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/file/FileSyncSourceRegister.cpp' object='syncevo_dbus_server-FileSyncSourceRegister.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-FileSyncSourceRegister.o `test -f 'backends/file/FileSyncSourceRegister.cpp' || echo '$(srcdir)/'`backends/file/FileSyncSourceRegister.cpp
+
+syncevo_dbus_server-FileSyncSourceRegister.obj: backends/file/FileSyncSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-FileSyncSourceRegister.obj -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-FileSyncSourceRegister.Tpo -c -o syncevo_dbus_server-FileSyncSourceRegister.obj `if test -f 'backends/file/FileSyncSourceRegister.cpp'; then $(CYGPATH_W) 'backends/file/FileSyncSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/file/FileSyncSourceRegister.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-FileSyncSourceRegister.Tpo $(DEPDIR)/syncevo_dbus_server-FileSyncSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/file/FileSyncSourceRegister.cpp' object='syncevo_dbus_server-FileSyncSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-FileSyncSourceRegister.obj `if test -f 'backends/file/FileSyncSourceRegister.cpp'; then $(CYGPATH_W) 'backends/file/FileSyncSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/file/FileSyncSourceRegister.cpp'; fi`
+
+syncevo_dbus_server-SQLiteContactSourceRegister.o: backends/sqlite/SQLiteContactSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-SQLiteContactSourceRegister.o -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-SQLiteContactSourceRegister.Tpo -c -o syncevo_dbus_server-SQLiteContactSourceRegister.o `test -f 'backends/sqlite/SQLiteContactSourceRegister.cpp' || echo '$(srcdir)/'`backends/sqlite/SQLiteContactSourceRegister.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-SQLiteContactSourceRegister.Tpo $(DEPDIR)/syncevo_dbus_server-SQLiteContactSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/sqlite/SQLiteContactSourceRegister.cpp' object='syncevo_dbus_server-SQLiteContactSourceRegister.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-SQLiteContactSourceRegister.o `test -f 'backends/sqlite/SQLiteContactSourceRegister.cpp' || echo '$(srcdir)/'`backends/sqlite/SQLiteContactSourceRegister.cpp
+
+syncevo_dbus_server-SQLiteContactSourceRegister.obj: backends/sqlite/SQLiteContactSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-SQLiteContactSourceRegister.obj -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-SQLiteContactSourceRegister.Tpo -c -o syncevo_dbus_server-SQLiteContactSourceRegister.obj `if test -f 'backends/sqlite/SQLiteContactSourceRegister.cpp'; then $(CYGPATH_W) 'backends/sqlite/SQLiteContactSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/sqlite/SQLiteContactSourceRegister.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-SQLiteContactSourceRegister.Tpo $(DEPDIR)/syncevo_dbus_server-SQLiteContactSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/sqlite/SQLiteContactSourceRegister.cpp' object='syncevo_dbus_server-SQLiteContactSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-SQLiteContactSourceRegister.obj `if test -f 'backends/sqlite/SQLiteContactSourceRegister.cpp'; then $(CYGPATH_W) 'backends/sqlite/SQLiteContactSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/sqlite/SQLiteContactSourceRegister.cpp'; fi`
+
 syncevolution-syncevolution.o: syncevolution.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -MT syncevolution-syncevolution.o -MD -MP -MF $(DEPDIR)/syncevolution-syncevolution.Tpo -c -o syncevolution-syncevolution.o `test -f 'syncevolution.cpp' || echo '$(srcdir)/'`syncevolution.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevolution-syncevolution.Tpo $(DEPDIR)/syncevolution-syncevolution.Po
@@ -740,6 +1029,42 @@ uninstall-nobase_dist_docDATA:
 	  $(am__vpath_adj) \
 	  echo " rm -f '$(DESTDIR)$(docdir)/$$f'"; \
 	  rm -f "$(DESTDIR)$(docdir)/$$f"; \
+	done
+install-nobase_dist_sysconfDATA: $(nobase_dist_sysconf_DATA)
+	@$(NORMAL_INSTALL)
+	test -z "$(sysconfdir)" || $(MKDIR_P) "$(DESTDIR)$(sysconfdir)"
+	@$(am__vpath_adj_setup) \
+	list='$(nobase_dist_sysconf_DATA)'; for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  $(am__vpath_adj) \
+	  echo " $(nobase_dist_sysconfDATA_INSTALL) '$$d$$p' '$(DESTDIR)$(sysconfdir)/$$f'"; \
+	  $(nobase_dist_sysconfDATA_INSTALL) "$$d$$p" "$(DESTDIR)$(sysconfdir)/$$f"; \
+	done
+
+uninstall-nobase_dist_sysconfDATA:
+	@$(NORMAL_UNINSTALL)
+	@$(am__vpath_adj_setup) \
+	list='$(nobase_dist_sysconf_DATA)'; for p in $$list; do \
+	  $(am__vpath_adj) \
+	  echo " rm -f '$(DESTDIR)$(sysconfdir)/$$f'"; \
+	  rm -f "$(DESTDIR)$(sysconfdir)/$$f"; \
+	done
+install-serviceDATA: $(service_DATA)
+	@$(NORMAL_INSTALL)
+	test -z "$(servicedir)" || $(MKDIR_P) "$(DESTDIR)$(servicedir)"
+	@list='$(service_DATA)'; for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  f=$(am__strip_dir) \
+	  echo " $(serviceDATA_INSTALL) '$$d$$p' '$(DESTDIR)$(servicedir)/$$f'"; \
+	  $(serviceDATA_INSTALL) "$$d$$p" "$(DESTDIR)$(servicedir)/$$f"; \
+	done
+
+uninstall-serviceDATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(service_DATA)'; for p in $$list; do \
+	  f=$(am__strip_dir) \
+	  echo " rm -f '$(DESTDIR)$(servicedir)/$$f'"; \
+	  rm -f "$(DESTDIR)$(servicedir)/$$f"; \
 	done
 
 # This directory's subdirectories are mostly independent; you can cd
@@ -993,14 +1318,16 @@ distdir: $(DISTFILES)
 	  dist-hook
 check-am: all-am
 	$(MAKE) $(AM_MAKEFLAGS) check-TESTS
-check: check-recursive
+check: $(BUILT_SOURCES)
+	$(MAKE) $(AM_MAKEFLAGS) check-recursive
 all-am: Makefile $(PROGRAMS) $(SCRIPTS) $(DATA)
 installdirs: installdirs-recursive
 installdirs-am:
-	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(docdir)"; do \
+	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(libexecdir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(docdir)" "$(DESTDIR)$(sysconfdir)" "$(DESTDIR)$(servicedir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
-install: install-recursive
+install: $(BUILT_SOURCES)
+	$(MAKE) $(AM_MAKEFLAGS) install-recursive
 install-exec: install-exec-recursive
 install-data: install-data-recursive
 uninstall: uninstall-recursive
@@ -1026,11 +1353,12 @@ distclean-generic:
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
+	-test -z "$(BUILT_SOURCES)" || rm -f $(BUILT_SOURCES)
 	-test -z "$(MAINTAINERCLEANFILES)" || rm -f $(MAINTAINERCLEANFILES)
 clean: clean-recursive
 
-clean-am: clean-binPROGRAMS clean-generic clean-libtool clean-local \
-	mostlyclean-am
+clean-am: clean-binPROGRAMS clean-generic clean-libexecPROGRAMS \
+	clean-libtool clean-local mostlyclean-am
 
 distclean: distclean-recursive
 	-rm -rf ./$(DEPDIR)
@@ -1048,11 +1376,12 @@ info: info-recursive
 
 info-am:
 
-install-data-am: install-nobase_dist_docDATA
+install-data-am: install-nobase_dist_docDATA install-serviceDATA
 
 install-dvi: install-dvi-recursive
 
-install-exec-am: install-binPROGRAMS install-binSCRIPTS
+install-exec-am: install-binPROGRAMS install-binSCRIPTS \
+	install-libexecPROGRAMS install-nobase_dist_sysconfDATA
 
 install-html: install-html-recursive
 
@@ -1085,29 +1414,35 @@ ps: ps-recursive
 ps-am:
 
 uninstall-am: uninstall-binPROGRAMS uninstall-binSCRIPTS \
-	uninstall-nobase_dist_docDATA
+	uninstall-libexecPROGRAMS uninstall-nobase_dist_docDATA \
+	uninstall-nobase_dist_sysconfDATA uninstall-serviceDATA
 
 .MAKE: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) install-am \
 	install-strip
 
 .PHONY: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) CTAGS GTAGS \
 	all all-am check check-TESTS check-am clean clean-binPROGRAMS \
-	clean-generic clean-libtool clean-local ctags ctags-recursive \
-	dist-hook distclean distclean-compile distclean-generic \
-	distclean-libtool distclean-local distclean-tags distdir dvi \
-	dvi-am html html-am info info-am install install-am \
-	install-binPROGRAMS install-binSCRIPTS install-data \
-	install-data-am install-dvi install-dvi-am install-exec \
-	install-exec-am install-html install-html-am install-info \
-	install-info-am install-man install-nobase_dist_docDATA \
-	install-pdf install-pdf-am install-ps install-ps-am \
-	install-strip installcheck installcheck-am installdirs \
-	installdirs-am maintainer-clean maintainer-clean-generic \
-	mostlyclean mostlyclean-compile mostlyclean-generic \
-	mostlyclean-libtool pdf pdf-am ps ps-am tags tags-recursive \
-	uninstall uninstall-am uninstall-binPROGRAMS \
-	uninstall-binSCRIPTS uninstall-nobase_dist_docDATA
+	clean-generic clean-libexecPROGRAMS clean-libtool clean-local \
+	ctags ctags-recursive dist-hook distclean distclean-compile \
+	distclean-generic distclean-libtool distclean-local \
+	distclean-tags distdir dvi dvi-am html html-am info info-am \
+	install install-am install-binPROGRAMS install-binSCRIPTS \
+	install-data install-data-am install-dvi install-dvi-am \
+	install-exec install-exec-am install-html install-html-am \
+	install-info install-info-am install-libexecPROGRAMS \
+	install-man install-nobase_dist_docDATA \
+	install-nobase_dist_sysconfDATA install-pdf install-pdf-am \
+	install-ps install-ps-am install-serviceDATA install-strip \
+	installcheck installcheck-am installdirs installdirs-am \
+	maintainer-clean maintainer-clean-generic mostlyclean \
+	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
+	pdf pdf-am ps ps-am tags tags-recursive uninstall uninstall-am \
+	uninstall-binPROGRAMS uninstall-binSCRIPTS \
+	uninstall-libexecPROGRAMS uninstall-nobase_dist_docDATA \
+	uninstall-nobase_dist_sysconfDATA uninstall-serviceDATA
 
+@COND_DBUS_TRUE@$(service_DATA): $(service_in_files) Makefile
+@COND_DBUS_TRUE@	@sed -e "s|\@libexecdir\@|$(libexecdir)|" $< > $@
 
 # synccompare is created by replacing its 'import Algorithm::Diff;'
 # with a simplified copy of Diff.pm.
@@ -1143,7 +1478,7 @@ dist-hook:
 		  ( rm -f ChangeLog.tmp ; \
 		     echo Failed to generate ChangeLog >&2 ) \
                 ); \
-	else \
+	elsif test $SYNTHESIS_SRC != "no-synthesis-source"; \
 		cp -a $(SYNTHESIS_SRC)/* $(distdir)/synthesis  && \
 		for i in _build autom4te.cache; do [ ! -d "$(SYNTHESIS_SRC)/$$i" ] || chmod -R u+rwx "$(SYNTHESIS_SRC)/$$i"; done && \
 		find "$(distdir)" -name .libs -o -name "*~" -o -name ".*" -o -name "*.o" -o -name "*.lo" -o -name CVS -o -name .svn -o -name .git -o -name autom4te.cache -print0 | xargs -0 rm -rf; \
@@ -1173,6 +1508,7 @@ valgrind : test
 $(srcdir)/Makefile.am: Makefile-gen.am
 	sed -e 's;[@]BACKEND_REGISTRIES[@];$(BACKEND_REGISTRIES);' \
 	    -e 's;[@]BACKENDS[@];$(BACKENDS);' \
+            -e 's;[@]TEMPLATE_FILES[@];$(TEMPLATE_FILES);' \
 	    $< >$@
 
 # old-style name for test program(s)

@@ -150,7 +150,7 @@ class TProfileHandler
 public:
 	// constructor/destructor
 	TProfileHandler(TProfileConfig *aProfileCfgP, TMultiFieldItemType *aItemTypeP);
-  ~TProfileHandler();
+  virtual ~TProfileHandler();
   #ifdef OBJECT_FILTERING
   // filtering
   // - get field index of given filter expression identifier.

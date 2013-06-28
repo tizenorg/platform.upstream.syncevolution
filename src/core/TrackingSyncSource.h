@@ -83,11 +83,17 @@ class TrackingSyncSource : public EvolutionSyncSource
     virtual void open() = 0;
 
     /**
-     * exports all items one after the other, separated by blank line;
-     * if that format is not suitable, then the derived class must
-     * override this call
+     * Dump all data from source unmodified into the given directory.
+     * The ConfigNode can be used to store meta information needed for
+     * restoring that state. Both directory and node are empty.
      */
-    virtual void exportData(ostream &out);
+    virtual void backupData(const string &dirname, ConfigNode &node, BackupReport &report);
+
+    /**
+     * Restore database from data stored in backupData(). Will be
+     * called inside open()/close() pair. beginSync() is *not* called.
+     */
+    virtual void restoreData(const string &dirname, const ConfigNode &node, bool dryrun, SyncSourceReport &report);
 
     typedef map<string, string> RevisionMap_t;
 
@@ -216,6 +222,7 @@ class TrackingSyncSource : public EvolutionSyncSource
 
   private:
     /* implementations of EvolutionSyncSource callbacks */
+    virtual bool checkStatus() { beginSyncThrow(true, true, false); return true; }
     virtual void beginSyncThrow(bool needAll,
                                 bool needPartial,
                                 bool deleteLocal);

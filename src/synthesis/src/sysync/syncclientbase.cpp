@@ -354,7 +354,7 @@ TSyncClientBase::~TSyncClientBase()
 // - dispatches to session's StartMessage
 Ret_t TSyncClientBase::StartMessage(
   InstanceID_t aSmlWorkspaceID, // SyncML toolkit workspace instance ID
-  VoidPtr_t aUserData, // user data, contains NULL or char* to transport-layer supported session ID
+  VoidPtr_t aUserData, // pointer to a TSyncClient descendant
   SmlSyncHdrPtr_t aContentP // SyncML tookit's decoded form of the <SyncHdr> element
 ) {
   TSyncSession *sessionP = static_cast<TSyncClient *>(aUserData); // the client session

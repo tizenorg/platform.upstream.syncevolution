@@ -209,7 +209,7 @@ class GZones {
         getDbgLogger= NULL;
       #endif
     } // constructor
-
+    
     /*! @brief populate GZones with system information
      *
      * Sets predefinedSysTZ, sysTZ and adds time zones
@@ -257,6 +257,7 @@ class GZones {
     public:
       /** @return true to stop iterating */
       virtual bool visit(const tz_entry &aTZ, timecontext_t aContext) = 0;
+	    virtual ~visitor() {} // destructor
     };
 
     /*! @brief invoke visitor once for each time zone

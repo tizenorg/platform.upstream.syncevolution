@@ -74,6 +74,7 @@ typedef enum {
   dbft_unixdate_s,  // integer value representing UNIX epoch date in seconds
   dbft_unixdate_ms, // integer value representing UNIX epoch date in milliseconds
   dbft_unixdate_us,  // integer value representing UNIX epoch date in microseconds
+  dbft_nsdate_s, // integer value representing NSDate (seconds since 2001-01-01 00:00)
   numDBfieldTypes
 } TDBFieldType;
 

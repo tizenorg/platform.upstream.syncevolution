@@ -516,8 +516,8 @@ void TDataObjType::generateData(TLocalEngineDS *aDatastoreP, TMultiFieldItem &aI
           #endif
         }
         else if ((*pos)->fBoolType) {   // best fitting for integer and string
-          int      i= fieldAP->getAsInteger();
-          switch ( i ) {                // this is the integer - boolean mapping
+          int      ii= fieldAP->getAsInteger();
+          switch ( ii ) {                // this is the integer - boolean mapping
             case -1: v= "false"; break; // a strange value for "false"
             case  0: v= "";      break; // 0 is the empty value (not assigned at parsing)
             case  1: v= "true";  break; // the 'normal' value for "true"
@@ -772,17 +772,17 @@ bool TDataObjType::parseData(const char *aText, stringSize aSize, TMultiFieldIte
     // parse all attributes and put them into <aList>
     aList.clear();
     while (!attr.empty()) {
-      int pos=     attr.find( "=\"" );
-      if (pos<0) { attr= ""; break; }
+      int apos=     attr.find( "=\"" );
+      if (apos<0) { attr= ""; break; }
 
-      a.name = attr.substr( 0,pos );
-      attr   = attr.substr( pos+2 );
+      a.name = attr.substr( 0,apos );
+      attr   = attr.substr( apos+2 );
 
-          pos=     attr.find( "\"" );
-      if (pos<0) { attr= ""; break; }
+          apos=     attr.find( "\"" );
+      if (apos<0) { attr= ""; break; }
 
-      a.value= attr.substr( 0,pos );
-      attr   = attr.substr( pos+1 );
+      a.value= attr.substr( 0,apos );
+      attr   = attr.substr( apos+1 );
       while   (attr.find(" ")==0) attr= attr.substr( 1 );
 
       aList.push_back( a );

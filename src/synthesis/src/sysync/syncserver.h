@@ -27,14 +27,27 @@ using namespace sysync;
 
 namespace sysync {
 
+
 // Support for SySync Diagnostic Tool
 #ifdef SYSYNC_TOOL
 int testLogin(int argc, const char *argv[]);
 int convertData(int argc, const char *argv[]);
 #endif
 
+
+/// @brief server engine state
+typedef enum {
+  ses_needdata,     ///< need SyncML request data, waiting for STEPCMD_GOTDATA
+  ses_processing,   ///< ready to perform next STEPCMD_STEP to process SyncML messages
+  ses_generating,   ///< ready to perform next STEPCMD_STEP to generate SyncML messages
+  ses_dataready,    ///< data is ready to be sent, waiting for STEPCMD_SENTDATA  
+  ses_done,         ///< session done
+  numServerEngineStates
+} TServerEngineState;
+
+
+
 // forward
-class TSyncSessionDispatch;
 class TSyncSessionHandle;
 class TSyncServer;
 
@@ -118,6 +131,14 @@ public:
     bool &aQueueForLater // will be set if command must be queued for later (re-)execution
   );
   #ifdef ENGINEINTERFACE_SUPPORT
+  // Support for EngineModule common interface
+  /// @brief Executes next step of the session
+  /// @param aStepCmd[in/out] step command (STEPCMD_xxx):
+  ///        - tells caller to send or receive data or end the session etc.
+  ///        - instructs engine to abort or time out the session etc.
+  /// @param aInfoP[in] pointer to a TEngineProgressInfo structure, NULL if no progress info needed
+  /// @return LOCERR_OK on success, SyncML or LOCERR_xxx error code on failure
+  TSyError SessionStep(uInt16 &aStepCmd, TEngineProgressInfo *aInfoP);
   /// @brief Get new session key to access details of this session
   virtual appPointer newSessionKey(TEngineInterface *aEngineInterfaceP);
   #endif
@@ -144,6 +165,15 @@ protected:
   // device info (uses defaults for server, override to customize)
   virtual string getDeviceID(void) { return SYSYNC_SERVER_DEVID; }
   virtual string getDeviceType(void) { return SYNCML_SERVER_DEVTYP; }
+  #ifdef ENGINEINTERFACE_SUPPORT
+  // Engine interface
+  // - Step that generates SyncML data
+  TSyError generatingStep(uInt16 &aStepCmd, TEngineProgressInfo *aInfoP);
+  // - Step that processes SyncML data
+  TSyError processingStep(uInt16 &aStepCmd, TEngineProgressInfo *aInfoP);
+  // - Server engine state
+  TServerEngineState fEngineState;
+  #endif // ENGINEINTERFACE_SUPPORT
   // set if map command received in this session
   bool fMapSeen;
   // standard nonce generation (without persistent device info)
@@ -166,58 +196,6 @@ protected:
 
 // Support for EngineModule common interface
 // =========================================
-
-
-// Engine module class
-class TServerEngineInterface :
-  public TEngineInterface
-{
-  typedef TEngineInterface inherited;
-public:
-  // constructor
-  TServerEngineInterface() {};
-
-  // appbase factory
-  virtual TSyncAppBase *newSyncAppBase(void);
-
-  #ifdef ENGINE_LIBRARY
-  #error "%%% tbd: Server version of the session running routines must be implemented"
-  // Running a Server Sync Session
-  // -----------------------------
-
-  /// @brief Open a session
-  /// @param aNewSessionH[out] receives session handle for all session execution calls
-  /// @param aSelector[in] selector, depending on session type.
-  /// @param aSessionName[in] a text name/id to identify a session, useage depending on session type.
-  /// @return LOCERR_OK on success, SyncML or LOCERR_xxx error code on failure
-  virtual TSyError OpenSessionInternal(SessionH &aNewSessionH, uInt32 aSelector, cAppCharP aSessionName);
-
-  /// @brief open session specific runtime parameter/settings key
-  /// @note key handle obtained with this call must be closed BEFORE SESSION IS CLOSED!
-  /// @param aNewKeyH[out] receives the opened key's handle on success
-  /// @param aSessionH[in] session handle obtained with OpenSession
-  /// @param aMode[in] the open mode
-  /// @return LOCERR_OK on success, SyncML or LOCERR_xxx error code on failure
-  virtual TSyError OpenSessionKey(SessionH aSessionH, KeyH &aNewKeyH, uInt16 aMode);
-          
-  /// @brief Close a session
-  /// @note  It depends on session type if this also destroys the session or if it may persist and can be re-opened.
-  /// @param aSessionH[in] session handle obtained with OpenSession
-  /// @return LOCERR_OK on success, SyncML or LOCERR_xxx error code on failure
-  virtual TSyError CloseSession(SessionH aSessionH);
-
-  /// @brief Executes sync session or other sync related activity step by step
-  /// @param aSessionH[in] session handle obtained with OpenSession
-  /// @param aStepCmd[in/out] step command (STEPCMD_xxx):
-  ///        - tells caller to send or receive data or end the session etc.
-  ///        - instructs engine to suspend or abort the session etc.
-  /// @param aInfoP[in] pointer to a TEngineProgressInfo structure, NULL if no progress info needed
-  /// @return LOCERR_OK on success, SyncML or LOCERR_xxx error code on failure    
-  virtual TSyError SessionStep(SessionH aSessionH, uInt16 &aStepCmd,  TEngineProgressInfo *aInfoP = NULL);
-  #endif
-
-}; // TServerEngineInterface
-
 
 // server runtime parameters
 class TServerParamsKey :

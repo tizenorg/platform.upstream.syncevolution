@@ -19,6 +19,7 @@
  */
 
 #include "FileConfigNode.h"
+#include "SafeConfigNode.h"
 #include "EvolutionSyncClient.h"
 #include "SyncEvolutionUtil.h"
 
@@ -31,10 +32,27 @@
 
 /** @TODO: replace stdio.h with streams */
 
-FileConfigNode::FileConfigNode(const string &path, const string &fileName) :
+boost::shared_ptr<ConfigNode> ConfigNode::createFileNode(const string &filename)
+{
+    string::size_type off = filename.rfind('/');
+    boost::shared_ptr<ConfigNode> filenode;
+    if (off != filename.npos) {
+        filenode.reset(new FileConfigNode(filename.substr(0, off),
+                                          filename.substr(off + 1),
+                                          false));
+    } else {
+        filenode.reset(new FileConfigNode(".", filename, false));
+    }
+    boost::shared_ptr<SafeConfigNode> savenode(new SafeConfigNode(filenode));
+    savenode->setMode(false);
+    return savenode;
+}
+
+FileConfigNode::FileConfigNode(const string &path, const string &fileName, bool readonly) :
     m_path(path),
     m_fileName(fileName),
     m_modified(false),
+    m_readonly(readonly),
     m_exists(false)
 {
     read();
@@ -66,6 +84,10 @@ void FileConfigNode::flush()
 {
     if (!m_modified) {
         return;
+    }
+
+    if (m_readonly) {
+        throw std::runtime_error(m_path + "/" + m_fileName + ": internal error: flushing read-only file config node not allowed");
     }
 
     mkdir_p(m_path);

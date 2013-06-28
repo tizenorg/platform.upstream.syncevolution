@@ -2115,6 +2115,12 @@ TSyError TItemFieldKey::SetValueInternal(
     // treat setting normalized value like setting as string
     if (aID & VALID_FLAG_NORM)
     	fty = fty_string; // treat like string
+    // handle NULL (empty) case
+    if (aBuffer==0) {
+    	// buffer==NULL means NULL value
+    	fieldP->assignEmpty();
+    	return LOCERR_OK;
+    }
     // now handle according to type
     switch (fty) {
       case fty_timestamp:

@@ -25,6 +25,7 @@
 #include "SyncEvolutionUtil.h"
 
 #include <boost/foreach.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 
 #include <unistd.h>
 #include <sys/stat.h>
@@ -35,7 +36,8 @@
 FileConfigTree::FileConfigTree(const string &root,
                                bool oldLayout) :
     m_root(root),
-    m_oldLayout(oldLayout)
+    m_oldLayout(oldLayout),
+    m_readonly(false)
 {
 }
 
@@ -49,6 +51,36 @@ void FileConfigTree::flush()
     BOOST_FOREACH(const NodeCache_t::value_type &node, m_nodes) {
         node.second->flush();
     }
+}
+
+/**
+ * remove config files, backup files of config files (with ~ at
+ * the end) and empty directories
+ */
+static bool rm_filter(const string &path, bool isDir)
+{
+    if (isDir) {
+        // skip non-empty directories
+        ReadDir dir(path);
+        return dir.begin() == dir.end();
+    } else {
+        // only delete well-known files
+        return boost::ends_with(path, "/config.ini") ||
+            boost::ends_with(path, "/config.ini~") ||
+            boost::ends_with(path, "/config.txt") ||
+            boost::ends_with(path, "/config.txt~") ||
+            boost::ends_with(path, "/.other.ini") ||
+            boost::ends_with(path, "/.other.ini~") ||
+            boost::ends_with(path, "/.internal.ini") ||
+            boost::ends_with(path, "/.internal.ini~") ||
+            path.find("/.synthesis/") != path.npos;
+    }
+}
+
+void FileConfigTree::remove()
+{
+    reset();
+    rm_r(getRootPath(), rm_filter);
 }
 
 void FileConfigTree::reset()
@@ -91,7 +123,7 @@ boost::shared_ptr<ConfigNode> FileConfigTree::open(const string &path,
     if (found != m_nodes.end()) {
         return found->second;
     } else {
-        boost::shared_ptr<ConfigNode> node(new FileConfigNode(fullpath, filename));
+        boost::shared_ptr<ConfigNode> node(new FileConfigNode(fullpath, filename, m_readonly));
         return m_nodes[fullname] = node;
     }
 }

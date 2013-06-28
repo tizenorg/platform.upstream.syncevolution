@@ -225,7 +225,7 @@ static TSyError writeTargetFeatureCheck(
 // dummy pointer needed for sizeof
 static const TBinfileDBSyncTarget *dP_tg=NULL;
 
-// accessor table for target key and for TARGETSETTING() function
+// accessor table for target key and for TARGETSETTING() script function
 const TStructFieldInfo TargetFieldInfos[] =
 {
   // valName, valType, writable, fieldOffs, valSiz
@@ -263,7 +263,7 @@ const TStructFieldInfo TargetFieldInfos[] =
   { "localFilters", VALTYPE_TEXT, true, OFFS_SZ_TG(localFilters) },
   #endif
 };
-
+const sInt32 numTargetFieldInfos = sizeof(TargetFieldInfos)/sizeof(TStructFieldInfo);
 
 // get table describing the fields in the struct
 const TStructFieldInfo *TBinfileTargetKey::getFieldsTable(void)
@@ -273,7 +273,7 @@ const TStructFieldInfo *TBinfileTargetKey::getFieldsTable(void)
 
 sInt32 TBinfileTargetKey::numFields(void)
 {
-  return sizeof(TargetFieldInfos)/sizeof(TStructFieldInfo);
+  return numTargetFieldInfos;
 } // TBinfileTargetKey::numFields
 
 
@@ -647,8 +647,8 @@ static TSyError writeReadOnlyCheck(
 // dummy pointer needed for sizeof
 static const TBinfileDBSyncProfile *dP_pf=NULL;
 
-// accessor table for profiles
-static const TStructFieldInfo ProfileFieldInfos[] =
+// accessor table for profiles and for PROFILESETTING script function
+const TStructFieldInfo ProfileFieldInfos[] =
 {
   // valName, valType, writable, fieldOffs, valSiz
   { "profileName", VALTYPE_TEXT, true, OFFS_SZ_PF(profileName) },
@@ -664,6 +664,8 @@ static const TStructFieldInfo ProfileFieldInfos[] =
   { "proxyUser", VALTYPE_TEXT, true, OFFS_SZ_PF(proxyUser) },
   { "proxyPassword", VALTYPE_TEXT_OBFUS, true, OFFS_SZ_PF(proxyPassword) },
   { "encoding", VALTYPE_ENUM, true, OFFS_SZ_PF(encoding) },
+  { "lastAuthMethod", VALTYPE_ENUM, true, OFFS_SZ_PF(lastAuthMethod) },
+  { "lastNonce", VALTYPE_TEXT, true, OFFS_SZ_PF(lastNonce) },
   { "syncmlvers", VALTYPE_ENUM, true, OFFS_SZ_PF(lastSyncMLVersion) },
   { "useProxy", VALTYPE_ENUM, true, OFFS_SZ_PF(useProxy) },
   { "useConnectionProxy", VALTYPE_ENUM, true, OFFS_SZ_PF(useConnectionProxy) },
@@ -689,6 +691,7 @@ static const TStructFieldInfo ProfileFieldInfos[] =
   { "timedSyncCradled", VALTYPE_INT16, true, OFFS_SZ_PF(TimedSyncCradledPeriod) },
   #endif
 };
+const sInt32 numProfileFieldInfos = sizeof(ProfileFieldInfos)/sizeof(TStructFieldInfo);
 
 
 // get table describing the fields in the struct
@@ -699,7 +702,7 @@ const TStructFieldInfo *TBinfileProfileKey::getFieldsTable(void)
 
 sInt32 TBinfileProfileKey::numFields(void)
 {
-  return sizeof(ProfileFieldInfos)/sizeof(TStructFieldInfo);
+  return numProfileFieldInfos;
 } // TBinfileProfileKey::numFields
 
 

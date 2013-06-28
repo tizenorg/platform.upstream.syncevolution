@@ -354,6 +354,9 @@ TSyncServer::TSyncServer(
   const char *aSessionID // a session ID
 ) :
   TSyncSession(aAppBaseP,aSessionID)  
+  #ifdef ENGINEINTERFACE_SUPPORT
+  ,fEngineState(ses_needdata)
+  #endif
 {
   // init answer buffer
   fBufferedAnswer=NULL;
@@ -1143,7 +1146,7 @@ bool TSyncServer::processMapCommand(
     if (datastoreP->testState(dssta_syncmodestable)) {
       // datastore is ready 
       PDEBUGBLOCKFMT(("ProcessMap", "Processing items from Map command", "datastore=%s", targetdburi));
-      bool allok=true; // assume all ok
+      allok=true; // assume all ok
       SmlMapItemListPtr_t nextnode = aMapCommandP->mapItemList;
       while (nextnode) {
         POINTERTEST(nextnode->mapItem,("MapItemList node w/o MapItem"));
@@ -1337,6 +1340,185 @@ bool TSyncServer::isAuthTypeAllowed(TAuthTypes aAuthType)
 
 #ifdef ENGINEINTERFACE_SUPPORT
 
+// Support for EngineModule common interface
+// -----------------------------------------
+
+
+/// @brief Executes next step of the session
+/// @param aStepCmd[in/out] step command (STEPCMD_xxx):
+///        - tells caller to send or receive data or end the session etc.
+///        - instructs engine to abort or time out the session etc.
+/// @param aInfoP[in] pointer to a TEngineProgressInfo structure, NULL if no progress info needed
+/// @return LOCERR_OK on success, SyncML or LOCERR_xxx error code on failure
+TSyError TSyncServer::SessionStep(uInt16 &aStepCmd, TEngineProgressInfo *aInfoP)
+{
+  uInt16 stepCmdIn = aStepCmd;
+  localstatus sta = LOCERR_WRONGUSAGE;
+
+  // init default response
+  aStepCmd = STEPCMD_ERROR; // error
+  if (aInfoP) {
+    aInfoP->eventtype=PEV_NOP;
+    aInfoP->targetID=0;
+    aInfoP->extra1=0;
+    aInfoP->extra2=0;
+    aInfoP->extra3=0;
+  }
+
+  // if session is already aborted, no more steps are required
+  if (isAborted()) {
+  	fEngineState = ses_done; // we are done
+  }
+
+  // handle pre-processed step command according to current engine state
+  switch (fEngineState) {
+
+    // Done state
+    case ses_done :
+      // session done, nothing happens any more
+      aStepCmd = STEPCMD_DONE;
+      sta = LOCERR_OK;
+      break;
+
+    // Waiting for SyncML request data
+    case ses_needdata:
+      switch (stepCmdIn) {
+        case STEPCMD_GOTDATA :
+          // got data, now start processing it
+          fEngineState = ses_processing;
+          aStepCmd = STEPCMD_OK;
+          sta = LOCERR_OK;
+          break;
+      } // switch stepCmdIn for ces_processing
+      break;
+
+    // Waiting until SyncML answer data is sent
+    case ces_dataready:
+      switch (stepCmdIn) {
+        case STEPCMD_SENTDATA :
+          // sent data, now wait for next request
+          fEngineState = ses_needdata;
+          aStepCmd = STEPCMD_NEEDDATA;
+          sta = LOCERR_OK;
+          break;
+      } // switch stepCmdIn for ces_processing
+      break;
+
+
+    // Ready for generation steps
+    case ses_generating:
+      switch (stepCmdIn) {
+        case STEPCMD_STEP :
+          sta = generatingStep(aStepCmd,aInfoP);
+          break;
+      } // switch stepCmdIn for ces_generating
+      break;
+
+    // Ready for processing steps
+    case ses_processing:
+      switch (stepCmdIn) {
+        case STEPCMD_STEP :
+          sta = processingStep(aStepCmd,aInfoP);
+          break;
+      } // switch stepCmdIn for ces_processing
+      break;
+
+  case numServerEngineStates:
+      // invalid
+      break;
+
+  } // switch fEngineState
+
+  // done
+  return sta;
+} // TSyncServer::SessionStep
+
+
+
+
+// Step that processes SyncML request data
+TSyError TSyncServer::processingStep(uInt16 &aStepCmd, TEngineProgressInfo *aInfoP)
+{
+  localstatus sta = LOCERR_WRONGUSAGE;
+  InstanceID_t myInstance = getSmlWorkspaceID();
+  Ret_t rc;
+  
+  
+  #error "%%% figure out encoding if we are starting a new session here"
+
+  // now process next command
+  PDEBUGPRINTFX(DBG_EXOTIC,("Calling smlProcessData(NEXT_COMMAND)"));
+  #ifdef SYDEBUG
+  MemPtr_t data = NULL;
+  MemSize_t datasize;
+  smlPeekMessageBuffer(getSmlWorkspaceID(), false, &data, &datasize);
+  #endif  
+  rc=smlProcessData(
+    myInstance,
+    SML_NEXT_COMMAND
+  );
+  if (rc==SML_ERR_CONTINUE) {
+    // processed ok, but message not completely processed yet
+    // - engine state remains as is
+    aStepCmd = STEPCMD_OK; // ok w/o progress %%% for now, progress is delivered via queue in next step
+    sta = LOCERR_OK;
+  }
+  else if (rc==SML_ERR_OK) {
+    // message completely processed
+    // - switch engine state to generating answer message (if any)
+    aStepCmd = STEPCMD_OK;
+    fEngineState = ses_generating;
+    sta = LOCERR_OK;
+  }
+  else {
+    // processing failed
+    PDEBUGPRINTFX(DBG_ERROR,("===> smlProcessData failed, returned 0x%hX",(sInt16)rc));
+    // dump the message that failed to process
+    #ifdef SYDEBUG
+    if (data) DumpSyncMLBuffer(data,datasize,false,rc);
+    #endif    
+    // abort the session (causing proper error events to be generated and reported back)
+    AbortSession(LOCERR_PROCESSMSG, true);
+    // session is now done
+    fEngineState = ces_done;
+    // step by itself is ok - let app continue stepping (to restart session or complete abort)
+    aStepCmd = STEPCMD_OK;
+    sta = LOCERR_OK;
+  }
+  // done
+  return sta;
+} // TSyncServer::processingStep
+
+
+
+// Step that generates SyncML answer data
+TSyError TSyncServer::generatingStep(uInt16 &aStepCmd, TEngineProgressInfo *aInfoP)
+{
+  localstatus sta = LOCERR_WRONGUSAGE;
+  bool done;
+
+  #error "%%% figure out encoding if we are starting a new session here"
+
+  //%%% at this time, generate next message in one step
+  sta = NextMessage(done);
+  if (done) {
+    // done with session, with or without error
+    fEngineState = ces_done; // blocks any further activity with the session
+    aStepCmd = STEPCMD_DONE;
+    // terminate session to provoke all end-of-session progress events
+    TerminateSession();
+  }
+  else if (sta==LOCERR_OK) {
+    // next is sending request to server
+    fEngineState = ces_dataready;
+    aStepCmd = STEPCMD_SENDDATA;
+    OBJ_PROGRESS_EVENT(getSyncAppBase(),pev_sendstart,NULL,0,0,0);
+  }
+  // return status
+  return sta;
+} // TSyncServer::generatingStep
+
+
 
 /// @brief Get new session key to access details of this session
 appPointer TSyncServer::newSessionKey(TEngineInterface *aEngineInterfaceP)
@@ -1344,40 +1526,6 @@ appPointer TSyncServer::newSessionKey(TEngineInterface *aEngineInterfaceP)
   return new TServerParamsKey(aEngineInterfaceP,this);
 } // TSyncServer::newSessionKey
 
-
-
-// Support for EngineModule common interface
-// =========================================
-
-
-#ifndef ENGINE_LIBRARY
-
-#ifndef _MSC_VER
-#warning "using ENGINEINTERFACE_SUPPORT in old-style appbase-rooted environment. Should be converted to real engine usage later"
-#endif
-
-// Engine factory function for non-Library case
-ENGINE_IF_CLASS *newEngine(void)
-{
-  // For real engine based targets, newEngine must create a target-specific derivate
-  // of the engine, which then has a suitable newSyncAppBase() method to create the
-  // appBase. For old-style environment, a generic TServerEngineInterface is ok, as this
-  // in turn calls the global newSyncAppBase() which then returns the appropriate
-  // target specific appBase. 
-  return new TServerEngineInterface;
-} // newEngine
-
-/// @brief returns a new application base.
-TSyncAppBase *TServerEngineInterface::newSyncAppBase(void)
-{
-  // For not really engine based targets, the appbase factory function is
-  // a global routine (for real engine targets, it is a true virtual of
-  // the engineInterface, implemented in the target's leaf engineInterface derivate.
-  // - for now, use the global appBase creator routine
-  return sysync::newSyncAppBase(); // use global factory function 
-} // TServerEngineInterface::newSyncAppBase
-
-#endif // not ENGINE_LIBRARY
 
 
 
@@ -1406,11 +1554,58 @@ static TSyError readLocalSessionID(
 } // readLocalSessionID
 
 
+// - read initial local URI
+static TSyError readInitialLocalURI(
+  TStructFieldsKey *aStructFieldsKeyP, const TStructFieldInfo *aFldInfoP,
+  appPointer aBuffer, memSize aBufSize, memSize &aValSize
+)
+{
+  TServerParamsKey *mykeyP = static_cast<TServerParamsKey *>(aStructFieldsKeyP);
+  return TStructFieldsKey::returnString(
+    mykeyP->fServerSessionP->getInitialLocalURI(),
+    aBuffer,aBufSize,aValSize
+  );
+} // readInitialLocalURI
+
+
+// - read abort status
+static TSyError readAbortStatus(
+  TStructFieldsKey *aStructFieldsKeyP, const TStructFieldInfo *aFldInfoP,
+  appPointer aBuffer, memSize aBufSize, memSize &aValSize
+)
+{
+  TServerParamsKey *mykeyP = static_cast<TServerParamsKey *>(aStructFieldsKeyP);
+  return TStructFieldsKey::returnInt(
+  	mykeyP->fServerSessionP->getAbortReasonStatus(),
+    sizeof(TSyError),
+    aBuffer,aBufSize,aValSize
+  );
+} // readAbortStatus
+
+
+
+// - write abort status, which means aborting a session
+TSyError writeAbortStatus(
+  TStructFieldsKey *aStructFieldsKeyP, const TStructFieldInfo *aFldInfoP,
+  cAppPointer aBuffer, memSize aValSize
+)
+{
+  TServerParamsKey *mykeyP = static_cast<TServerParamsKey *>(aStructFieldsKeyP);
+  // abort the session
+  TSyError sta = *((TSyError *)aBuffer);
+	mykeyP->fServerSessionP->AbortSession(sta, true);
+  return LOCERR_OK;
+} // writeAbortStatus
+
+
+
 // accessor table for server session key
 static const TStructFieldInfo ServerParamFieldInfos[] =
 {  
   // valName, valType, writable, fieldOffs, valSiz
   { "localSessionID", VALTYPE_TEXT, false, 0, 0, &readLocalSessionID, NULL },
+  { "initialLocalURI", VALTYPE_TEXT, false, 0, 0, &readInitialLocalURI, NULL },
+  { "abortStatus", VALTYPE_INT16, true, 0, 0, &readAbortStatus, &writeAbortStatus },
 };
 
 // get table describing the fields in the struct
@@ -1427,7 +1622,7 @@ sInt32 TServerParamsKey::numFields(void)
 // get actual struct base address
 uInt8P TServerParamsKey::getStructAddr(void)
 {
-  // prepared for accessing fields in client session object
+  // prepared for accessing fields in server session object
   return (uInt8P)fServerSessionP;
 } // TServerParamsKey::getStructAddr
 

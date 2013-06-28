@@ -174,6 +174,7 @@ void TClientConfig::clear(void)
   fNewSessionForAuthRetry=true; // all production Synthesis clients had it hardcoded (ifdeffed) this way until 2.9.8.7
   fNoRespURIForAuthRetry=true; // all production Synthesis clients had it hardcoded (ifdeffed) this way until 2.9.8.7
   #endif
+  fSmartAuthRetry=true; // try to be smart and try different auth retry (different from fNewSessionForAuthRetry/fNoRespURIForAuthRetry) if first attempts fail
   // other defaults
   fPutDevInfAtSlowSync=true; // smartner server needs it, and it does not harm so we have it on by default
   #ifndef NO_LOCAL_DBLOGIN
@@ -227,6 +228,8 @@ bool TClientConfig::localStartElement(const char *aElementName, const char **aAt
     expectBool(fNewSessionForAuthRetry);
   else if (strucmp(aElementName,"originaluriforretry")==0)
     expectBool(fNoRespURIForAuthRetry);
+  else if (strucmp(aElementName,"smartauthretry")==0)
+    expectBool(fSmartAuthRetry);
   // - other options
   else if (strucmp(aElementName,"putdevinfatslowsync")==0)
     expectBool(fPutDevInfAtSlowSync);
@@ -562,7 +565,7 @@ TSyError TSyncClient::processingStep(uInt16 &aStepCmd, TEngineProgressInfo *aInf
   }
   // done
   return sta;
-} // // TSyncClient::processingStep
+} // TSyncClient::processingStep
 
 #endif // ENGINEINTERFACE_SUPPORT
 
@@ -1398,13 +1401,24 @@ void TSyncClient::retryClientSessionStart(bool aOldMessageInBuffer)
 
   // now restarting
   PDEBUGPRINTFX(DBG_HOT,("=================> Retrying Client Session Start"));
-  #ifdef SYDEBUG
-  /*
-  #define AUTH_RETRY_USES_SAME_CLIENT_SESSION
-  #warning "For debugging mightyphone only!!!!"
-  */
-  #endif
-  if (configP->fNewSessionForAuthRetry) {
+  bool newSessionForAuthRetry = configP->fNewSessionForAuthRetry;
+  bool noRespURIForAuthRetry = configP->fNoRespURIForAuthRetry;
+	// check if we should use modified behaviour (smart retries)
+  if (configP->fSmartAuthRetry && fAuthRetries>MAX_NORMAL_AUTH_RETRIES) {
+  	if (newSessionForAuthRetry) {
+    	// if we had new session for retry, switch to in-session retry now
+      newSessionForAuthRetry = false;
+      noRespURIForAuthRetry = false;
+    }
+    else {
+    	// if we had in-session retry, try new session retry now
+      newSessionForAuthRetry = true;
+      noRespURIForAuthRetry = true;    
+    }
+    PDEBUGPRINTFX(DBG_PROTO,("Smart retry with modified behaviour: newSessionForAuthRetry=%d, noRespURIForAuthRetry=%d",newSessionForAuthRetry,noRespURIForAuthRetry));
+  }
+  // now retry
+  if (newSessionForAuthRetry) {
     // Notes:
     // - must apparently be disabled for SCTS 3.1.2 and eventually Mightyphone
     // - must be enabled e.g for for Magically Server
@@ -1417,7 +1431,7 @@ void TSyncClient::retryClientSessionStart(bool aOldMessageInBuffer)
     // only closes the incoming block when fIncomingMsgID>0
     PDEBUGENDBLOCK("SyncML_Incoming");
   }
-  if (configP->fNoRespURIForAuthRetry) {
+  if (noRespURIForAuthRetry) {
     // Notes:
     // - must apparently be switched on for Starfish.
     // - must apparently be switched off for SCTS 3.1.2.
@@ -1454,6 +1468,7 @@ void TSyncClient::retryClientSessionStart(bool aOldMessageInBuffer)
 // handle status received for SyncHdr, returns false if not handled
 bool TSyncClient::handleHeaderStatus(TStatusCommand *aStatusCmdP)
 {
+  TClientConfig *configP = static_cast<TClientConfig *>(getRootConfig()->fAgentConfigP);
   bool handled=true;
   const char *txt;
   SmlMetInfMetInfPtr_t chalmetaP=NULL;
@@ -1545,10 +1560,12 @@ bool TSyncClient::handleHeaderStatus(TStatusCommand *aStatusCmdP)
         fAuthRetries=2;
       else
         fAuthRetries++; // just count attempt to auth
+      /* %%% no longer required, is tested below at authfail:
       if (fAuthRetries>MAX_AUTH_RETRIES) {
         AbortSession(401,false); // abort session, too many retries
         break;
       }
+      */
       // Treat no nonce like empty nonce to make sure that a server (like SySync old versions...)
       // that does not send a nonce at all does not get auth with some old, invalid nonce string included.
       if (chalmetaP && chalmetaP->nextnonce==NULL) fRemoteNonce.erase();
@@ -1565,14 +1582,18 @@ bool TSyncClient::handleHeaderStatus(TStatusCommand *aStatusCmdP)
         AbortSession(400,true); // error in protocol handling from remote
         break;
       }
+      // Check if smart retries (with modified in-session vs out-of-session behaviour) are enabled
+      if (!configP->fSmartAuthRetry && fAuthRetries>MAX_NORMAL_AUTH_RETRIES) {
+      	fAuthRetries = MAX_SMART_AUTH_RETRIES+1; // skip additional smart retries
+      }
       // Missing or bad authorisation, evaluate chal
-      if (!chalmetaP || fAuthRetries>MAX_AUTH_RETRIES) {
+      if (!chalmetaP || fAuthRetries>MAX_SMART_AUTH_RETRIES) {
       	#ifdef SYDEBUG
       	if (!chalmetaP) {
 		      PDEBUGPRINTFX(DBG_ERROR,("Bad auth but no challenge in response status -> can't work - no retry"));
         }
         #endif
-        AbortSession(aStatusCmdP->getStatusCode(),true); // missing auth, but no chal -> can't work this way!
+        AbortSession(aStatusCmdP->getStatusCode(),false); // retries exhausted or no retry possible (no chal) -> stop session
         break;
       }
       // let descendant eventually save auth params

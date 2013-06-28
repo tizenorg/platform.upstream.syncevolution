@@ -65,6 +65,10 @@ protected:
 }; // TBinfileEngineInterface
 
 
+// extern for accessing these in TARGETSETTING script function
+extern const TStructFieldInfo TargetFieldInfos[];
+extern const sInt32 numTargetFieldInfos;
+
 
 // Binfile based target key
 class TBinfileTargetKey :
@@ -187,6 +191,10 @@ private:
 
 #endif // AUTOSYNC_SUPPORT
 
+
+// extern for accessing these in PROFILESETTING script function
+extern const TStructFieldInfo ProfileFieldInfos[];
+extern const sInt32 numProfileFieldInfos;
 
 // Binfile based profile key
 class TBinfileProfileKey :
@@ -539,7 +547,6 @@ public:
   TBinfileClientConfig *fConfigP;
   // unique ID to identify info record of remote party (profile for client, deviceentry for server)
   uInt32 fRemotepartyID;
-protected:
   // - check remote devinf to detect special behaviour needed for some servers. Base class
   //   does not do anything on server level (configured rules are handled at session level)
   virtual localstatus checkRemoteSpecifics(SmlDevInfDevInfPtr_t aDevInfP);

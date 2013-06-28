@@ -137,6 +137,8 @@ enum TValTypeEnum {
   VALTYPE_INT64 = 4,
   /** enum (for the SDK user, this is equivalent to VALTYPE_INT8) */
   VALTYPE_ENUM = 5,
+  /** no value (for writing only, only works for values that have no value status) */
+  VALTYPE_NULL = 6,
   /** raw buffer, binary (for texts, will return application charset,
      null terminated) */
   VALTYPE_BUF = 10,
@@ -240,10 +242,12 @@ enum TStepCmdEnum {
       and will always return STEPCMD_OK. The next in-order STEPCMD_xx must be issued
       in the next step to complete the suspend */
   STEPCMD_SUSPEND = 20,
-  /** abort the session */
+  /** abort the session (user abort) */
   STEPCMD_ABORT = 21,
   /** transport failure causes aborting the session */
   STEPCMD_TRANSPFAIL = 22,
+  /** timeout causes aborting the session */
+  STEPCMD_TIMEOUT = 23,
 
   /** process SAN in SyncML buffer */
   STEPCMD_SAN_CHECK = 40,

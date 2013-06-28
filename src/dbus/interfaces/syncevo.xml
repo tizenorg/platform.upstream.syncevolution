@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node name="/">
+  <interface name="org.Moblin.SyncEvolution">
+    <method name="StartSync">
+      <arg type="s" name="server" direction="in"/>
+      <arg type="a(si)" name="sources" direction="in"/>
+    </method>
+    <method name="AbortSync">
+      <arg type="s" name="server" direction="in"/>
+    </method>
+    <signal name="Progress">
+      <arg type="s" name="server"/>
+      <arg type="s" name="source"/>
+      <arg type="i" name="type"/>
+      <arg type="i" name="extra1"/>
+      <arg type="i" name="extra2"/>
+      <arg type="i" name="extra3"/>
+    </signal>
+    <signal name="ServerMessage">
+      <arg type="s" name="server"/>
+      <arg type="s" name="message"/>
+    </signal>
+    <signal name="NeedPassword">
+      <arg type="s" name="server"/>
+    </signal>
+    <method name="setPassword">
+      <arg type="s" name="server" direction="in"/>
+      <arg type="s" name="password" direction="in"/>
+    </method>
+    <method name="GetTemplates">
+      <arg type="a(sss)" name="templates" direction="out"/>
+    </method>
+    <method name="GetTemplateConfig">
+      <arg type="s" name="template" direction="in"/>
+      <arg type="a(sss)" name="properties" direction="out"/>
+    </method>
+    <method name="GetServers">
+      <arg type="a(sss)" name="servers" direction="out"/>
+    </method>
+    <method name="GetServerConfig">
+      <arg type="s" name="server" direction="in"/>
+      <arg type="a(sss)" name="properties" direction="out"/>
+    </method>
+    <method name="SetServerConfig">
+      <arg type="s" name="server" direction="in"/>
+      <arg type="a(sss)" name="properties" direction="in"/>
+    </method>
+    <method name="RemoveServerConfig">
+      <arg type="s" name="server" direction="in"/>
+    </method>
+    <method name="GetSyncReports">
+      <arg type="s" name="server" direction="in"/>
+      <arg type="i" name="count" direction="in"/>
+      <arg type="a(ia(siiiiiiiiiiiii))" name="reports" direction="out"/>
+    </method>
+  </interface>
+</node>

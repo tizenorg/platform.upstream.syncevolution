@@ -45,6 +45,11 @@ enum SyncMode {
 std::string PrettyPrintSyncMode(SyncMode mode, bool userVisible = true);
 
 /**
+ * Parse user-visible mode names.
+ */
+SyncMode StringToSyncMode(const std::string &str);
+
+/**
  * simple container for SyncML items
  */
 class SyncItem {
@@ -71,6 +76,7 @@ class SyncItem {
     const char *getData() const { return m_data.c_str(); }
     size_t getDataSize() const { return m_data.size(); }
     void setData(const char *data, size_t size) { m_data.assign(data, size); }
+    void setData(const std::string &data) { m_data = data; }
     void setDataType(const std::string &datatype) { m_datatype = datatype; }
     std::string getDataType() const { return m_datatype; }
 
@@ -103,6 +109,9 @@ enum SyncMLStatus {
     /** ok */
     STATUS_OK = 0,
 
+    /** more explicit ok status in cases where 0 might mean "unknown" (SyncReport) */
+    STATUS_HTTP_OK = 200,
+
     /** no content / end of file / end of iteration / empty/NULL value */
     STATUS_NO_CONTENT = 204,
     /** external data has been merged */
@@ -124,6 +133,30 @@ enum SyncMLStatus {
     STATUS_MAX = 0x7FFFFFF
 };
 
+/**
+ * Information about a database dump.
+ * Currently only records the number of items.
+ * A negative number of items means no backup
+ * available.
+ */
+class BackupReport {
+ public:
+    BackupReport() {
+        clear();
+    }
+
+    bool isAvailable() const { return m_numItems >= 0; }
+    long getNumItems() const { return m_numItems; }
+    void setNumItems(long numItems) { m_numItems = numItems; }
+
+    void clear() {
+        m_numItems = -1;
+    }
+
+ private:
+    long m_numItems;
+};
+
 class SyncSourceReport {
  public:
     SyncSourceReport() {
@@ -133,25 +166,14 @@ class SyncSourceReport {
         m_mode = SYNC_NONE;
         m_status = STATUS_OK;
     }
-    SyncSourceReport(const SyncSourceReport &other) {
-        *this = other;
-    }
-    SyncSourceReport &operator = (const SyncSourceReport &other) {
-        if (this != &other) {
-            memcpy(m_stat, other.m_stat, sizeof(m_stat));
-            m_first = other.m_first;
-            m_resume = other.m_resume;
-            m_mode = other.m_mode;
-            m_status = other.m_status;
-        }
-        return *this;
-    }
 
     enum ItemLocation {
         ITEM_LOCAL,
         ITEM_REMOTE,
         ITEM_LOCATION_MAX
     };
+    static std::string LocationToString(ItemLocation location);
+    static ItemLocation StringToLocation(const std::string &location);
     enum ItemState {
         ITEM_ADDED,
         ITEM_UPDATED,
@@ -159,6 +181,8 @@ class SyncSourceReport {
         ITEM_ANY,
         ITEM_STATE_MAX
     };
+    static std::string StateToString(ItemState state);
+    static ItemState StringToState(const std::string &state);
     enum ItemResult {
         ITEM_TOTAL,               /**< total number ADDED/UPDATED/REMOVED */
         ITEM_REJECT,              /**< number of rejected items, ANY state */
@@ -170,6 +194,11 @@ class SyncSourceReport {
         ITEM_RECEIVED_BYTES,      /**< number of received bytes, ANY, LOCAL */
         ITEM_RESULT_MAX
     };
+    static std::string ResultToString(ItemResult result);
+    static ItemResult StringToResult(const std::string &result);
+
+    static std::string StatTupleToString(ItemLocation location, ItemState state, ItemResult result);
+    static void StringToStatTuple(const std::string &str, ItemLocation &location, ItemState &state, ItemResult &result);
 
     /**
      * get item statistics
@@ -189,6 +218,11 @@ class SyncSourceReport {
                      int count) {
         m_stat[location][state][success] = count;
     }
+    void incrementItemStat(ItemLocation location,
+                           ItemState state,
+                           ItemResult success) {
+        m_stat[location][state][success]++;
+    }
 
     void recordFinalSyncMode(SyncMode mode) { m_mode = mode; }
     SyncMode getFinalSyncMode() const { return m_mode; }
@@ -202,9 +236,12 @@ class SyncSourceReport {
     void recordStatus(SyncMLStatus status ) { m_status = status; }
     SyncMLStatus getStatus() const { return m_status; }
 
+    /** information about database dump before and after session */
+    BackupReport m_backupBefore, m_backupAfter;
+
  private:
-    /** storage for getItemStat() */
-    int m_stat[ITEM_LOCATION_MAX][ITEM_STATE_MAX][ITEM_RESULT_MAX];
+    /** storage for getItemStat(): allow access with _MAX as index */
+    int m_stat[ITEM_LOCATION_MAX + 1][ITEM_STATE_MAX + 1][ITEM_RESULT_MAX + 1];
 
     SyncMode m_mode;
     bool m_first;
@@ -213,18 +250,68 @@ class SyncSourceReport {
 };
 
 class SyncReport : public std::map<std::string, SyncSourceReport> {
+    time_t m_start, m_end;
+    SyncMLStatus m_status;
+
  public:
+    SyncReport() :
+        m_start(0),
+        m_end(0),
+        m_status(STATUS_OK)
+        {}
+
     void addSyncSourceReport(const std::string &name,
                              const SyncSourceReport &report) {
         (*this)[name] = report;
     }
-    const SyncSourceReport &getSyncSourceReport(const std::string &name) {
+    SyncSourceReport &getSyncSourceReport(const std::string &name) {
         return (*this)[name];
     }
+
+    /** start time of sync, 0 if unknown */
+    time_t getStart() const { return m_start; }
+    void setStart(time_t start) { m_start = start; }
+    /** end time of sync, 0 if unknown (indicates a crash) */
+    time_t getEnd() const { return m_end; }
+    void setEnd(time_t end) { m_end = end; }
+
+    /**
+     * overall sync result
+     *
+     * STATUS_OK = 0 means unknown status (might have aborted prematurely),
+     * STATUS_HTTP_OK = 200 means successful completion
+     */
+    SyncMLStatus getStatus() const { return m_status; }
+    void setStatus(SyncMLStatus status) { m_status = status; }
+
+    void clear() {
+        std::map<std::string, SyncSourceReport>::clear();
+        m_start = m_end = 0;
+    }
+
+    /** generate short string representing start and duration of sync */
+    std::string formatSyncTimes() const;
+
+    /** pretty-print with options */
+    void prettyPrint(std::ostream &out, int flags) const;
+    enum {
+        WITHOUT_CLIENT = 1 << 1,
+        WITHOUT_SERVER = 1 << 2,
+        WITHOUT_CONFLICTS = 1 << 3,
+        WITHOUT_REJECTS = 1 << 4,
+        WITH_TOTAL = 1 << 5
+    };
 };
 
 /** pretty-print the report as an ASCII table */
 std::ostream &operator << (std::ostream &out, const SyncReport &report);
 
+class ConfigNode;
+
+/** write report into a ConfigNode */
+ConfigNode &operator << (ConfigNode &node, const SyncReport &report);
+
+/** read report from a ConfigNode */
+ConfigNode &operator >> (ConfigNode &node, SyncReport &report);
 
 #endif // INCL_SYNCML

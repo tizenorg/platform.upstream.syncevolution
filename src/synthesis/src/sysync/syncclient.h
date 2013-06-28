@@ -46,12 +46,6 @@ using namespace sysync;
 namespace sysync {
 
 
-#ifdef NON_FULLY_GRANULAR_ENGINE
-// queued progress events
-typedef std::list<TEngineProgressInfo> TEngineProgressInfoList;
-#endif
-
-
 /// @brief client engine state
 typedef enum {
   ces_idle,         ///< client engine is idle and can be initialized with STEPCMD_CLIENTSTART
@@ -134,6 +128,7 @@ public:
   // auth retry options (mainly for stupid servers like SCTS)
   bool fNewSessionForAuthRetry; // restart session for auth retries
   bool fNoRespURIForAuthRetry; // send retry to original URI for auth retries
+  bool fSmartAuthRetry; // try to be smart and try different auth retry (different from fNewSessionForAuthRetry/fNoRespURIForAuthRetry) if first attempts fail
   #ifndef NO_LOCAL_DBLOGIN
   // - user/pw to access local DB
   string fLocalDBUser;

@@ -161,7 +161,7 @@ public:
   // - Start/End Message: identifies Session, and creates new or assigns existing session
   Ret_t StartMessage(
     InstanceID_t aSmlWorkspaceID, // SyncML toolkit workspace instance ID
-    VoidPtr_t aUserData, // user data, should be NULL (as StartMessage is responsible for setting userdata)
+    VoidPtr_t aUserData, // pointer to a TSyncClient descendant
     SmlSyncHdrPtr_t aContentP // SyncML tookit's decoded form of the <SyncHdr> element
   );
   // Session handling

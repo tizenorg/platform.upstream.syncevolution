@@ -394,6 +394,10 @@ TSyError TSettingsKeyImpl::SetValueByID(
   // some kind of conversion needed
   // - switch by presented value type
   switch (aValType) {
+		// Set "no value"
+    case VALTYPE_NULL:
+    	sta = SetValueInternal(aID,aArrayIndex,NULL,0);
+      break;
 
     // Text presented
     case VALTYPE_TEXT:
@@ -513,6 +517,62 @@ TSyError TSettingsKeyImpl::SetValueByID(
 
 
 
+#define VALID_IDXOFFS_VALTYPE 0x100000
+#define VALID_MASK_IDX        0x00FFFF
+
+
+// helper for detecting generic field attribute access
+bool TSettingsKeyImpl::checkFieldAttrs(cAppCharP aName, size_t &aBaseNameSize, sInt32 &aFldID)
+{
+  aBaseNameSize = strlen(aName);
+  aFldID = 0; // basic
+  if (strucmp(aName+aBaseNameSize-strlen(VALSUFF_TYPE),VALSUFF_TYPE)==0) {
+    // value type
+    aBaseNameSize-=strlen(VALSUFF_TYPE);
+    aFldID += VALID_IDXOFFS_VALTYPE;
+  }
+  if (strucmp(aName,VALNAME_FLAG,aBaseNameSize)==0)
+    return true; // asking for flag mask only
+  return false; // aFldID is only the flag mask, caller must add base index
+} // TSettingsKeyImpl::checkFieldAttrs
+  
+
+
+// helper for returning generic field attribute type
+bool TSettingsKeyImpl::checkAttrValueType(sInt32 aID, uInt16 &aValType)
+{
+	if (aID>0 && (aID & VALID_IDXOFFS_VALTYPE)) {
+  	aValType = VALTYPE_INT16; // valtype is always uInt16
+    return true;
+  }
+  return false;
+} // TSettingsKeyImpl::checkAttrValueType
+
+  
+
+// helper for returning generic field attribute values
+bool TSettingsKeyImpl::checkAttrValue(
+  sInt32 aID, sInt32 aArrayIndex,
+  appPointer aBuffer, memSize aBufSize, memSize &aValSize
+)
+{
+	if (aID>0 && (aID & VALID_IDXOFFS_VALTYPE)) {
+  	// return type, not value
+    aValSize = 2;
+    uInt16 valtype = GetValueType(aID & VALID_MASK_IDX);
+    if (aBufSize>=aValSize) {
+    	memcpy(aBuffer,&valtype,aValSize);
+    }
+    return true;
+  }
+  return false;
+} // TSettingsKeyImpl::checkAttrValue
+
+
+
+
+
+
 // TReadOnlyInfoKey
 // ================
 
@@ -523,9 +583,13 @@ sInt32 TReadOnlyInfoKey::GetValueID(cAppCharP aName)
   const TReadOnlyInfo *tblP = getInfoTable();
 
   sInt32 idx=0;
+  size_t namsz;
+  sInt32 fldID;
+  if (checkFieldAttrs(aName,namsz,fldID))
+  	return fldID;
   while(tblP && idx<numInfos()) {
-    if (strucmp(aName,tblP[idx].valName)==0) {
-      return idx; // found
+    if (strucmp(aName,tblP[idx].valName,namsz)==0) {
+      return fldID+idx; // found
     }
     // next
     idx++;
@@ -547,6 +611,9 @@ sInt32 TReadOnlyInfoKey::GetValueID(cAppCharP aName)
 // get value's native type
 uInt16 TReadOnlyInfoKey::GetValueType(sInt32 aID)
 {
+  uInt16 valType;
+  if (checkAttrValueType(aID,valType))
+  	return valType;
   if (aID>=numInfos()) return VALTYPE_UNKNOWN;
   return getInfoTable()[aID].valType;
 } // TReadOnlyInfoKey::GetValueType
@@ -558,9 +625,10 @@ TSyError TReadOnlyInfoKey::GetValueInternal(
   appPointer aBuffer, memSize aBufSize, memSize &aValSize
 )
 {
+	if (checkAttrValue(aID,aArrayIndex,aBuffer,aBufSize,aValSize))
+  	return LOCERR_OK;  
   const TReadOnlyInfo *infoP = &(getInfoTable()[aID]);
   memSize siz = infoP->valSiz;
-
   if (siz==0 && infoP->valType==VALTYPE_TEXT)
     siz = strlen((cAppCharP)(infoP->valPtr));
   // return actual size
@@ -578,8 +646,27 @@ TSyError TReadOnlyInfoKey::GetValueInternal(
 // =============
 
 
+// get value's ID (config vars do NOT have a real ID!)
+sInt32 TConfigVarKey::GetValueID(cAppCharP aName)
+{
+  size_t namsz;
+  sInt32 fldID;
+  checkFieldAttrs(aName,namsz,fldID);
+  if (fldID!=0)
+  	return fldID; // is an attribute
+	// value itself cannot be accessed by ID - so cache name for next call to getValueInternal
+  fVarName = aName; // cache name
+  return KEYVAL_NO_ID;
+};
+
+
 // get value's native type (all config vars are text)
-uInt16 TConfigVarKey::GetValueType(sInt32 aID) {
+uInt16 TConfigVarKey::GetValueType(sInt32 aID)
+{
+  uInt16 valType;
+  if (checkAttrValueType(aID,valType))
+  	return valType;
+  // value itself is always text
   return VALTYPE_TEXT;
 } // TConfigVarKey::GetValueType
 
@@ -589,6 +676,8 @@ TSyError TConfigVarKey::GetValueInternal(
   sInt32 aID, sInt32 aArrayIndex,
   appPointer aBuffer, memSize aBufSize, memSize &aValSize
 ) {
+	if (checkAttrValue(aID,aArrayIndex,aBuffer,aBufSize,aValSize))
+  	return LOCERR_OK;  
   string s;
   if (!fEngineInterfaceP->getSyncAppBase()->getConfigVar(fVarName.c_str(),s))
     return DB_NotFound;
@@ -604,6 +693,7 @@ TSyError TConfigVarKey::SetValueInternal(
   sInt32 aID, sInt32 aArrayIndex,
   cAppPointer aBuffer, memSize aValSize
 ) {
+	if (!aBuffer) return LOCERR_WRONGUSAGE; // cannot handle NULL values
   if (!fEngineInterfaceP->getSyncAppBase()->setConfigVar(fVarName.c_str(),(cAppCharP)aBuffer))
     return DB_NotFound;
   return LOCERR_OK;
@@ -651,9 +741,13 @@ sInt32 TStructFieldsKey::GetValueID(cAppCharP aName)
   const TStructFieldInfo *tblP = getFieldsTable();
 
   sInt32 idx=0;
+  size_t namsz;
+  sInt32 fldID;
+  if (checkFieldAttrs(aName,namsz,fldID))
+  	return fldID;
   while(tblP && idx<numFields()) {
-    if (strucmp(aName,tblP[idx].valName)==0) {
-      return idx; // found
+    if (strucmp(aName,tblP[idx].valName,namsz)==0) {
+      return fldID+idx; // found
     }
     // next
     idx++;
@@ -675,9 +769,12 @@ sInt32 TStructFieldsKey::GetValueID(cAppCharP aName)
 // get value's native type
 uInt16 TStructFieldsKey::GetValueType(sInt32 aID)
 {
+  uInt16 valType;
+  if (checkAttrValueType(aID,valType))
+  	return valType;
   if (aID>=numFields()) return VALTYPE_UNKNOWN;
   const TStructFieldInfo *fldinfoP = &(getFieldsTable()[aID]);
-  uInt16 valType = fldinfoP->valType;
+  valType = fldinfoP->valType;
   if (valType == VALTYPE_ENUM) {
     // VALTYPE_ENUM: determine integer type from actual size of variable
     switch (fldinfoP->valSiz) {
@@ -700,6 +797,8 @@ TSyError TStructFieldsKey::GetValueInternal(
   appPointer aBuffer, memSize aBufSize, memSize &aValSize
 )
 {
+	if (checkAttrValue(aID,aArrayIndex,aBuffer,aBufSize,aValSize))
+  	return LOCERR_OK;  
   const TStructFieldInfo *fldinfoP = &(getFieldsTable()[aID]);
   // check for programmatic access to value
   if (fldinfoP->getValueProc) {
@@ -736,6 +835,9 @@ TSyError TStructFieldsKey::SetValueInternal(
   cAppPointer aBuffer, memSize aValSize
 )
 {
+	if (!aBuffer) return LOCERR_WRONGUSAGE; // cannot handle NULL values
+	if (aID & VALID_IDXOFFS_VALTYPE)
+  	return DB_Forbidden; // can't write type
   TSyError sta = LOCERR_OK;
   const TStructFieldInfo *fldinfoP = &(getFieldsTable()[aID]);
   // refuse writing to read-only fields

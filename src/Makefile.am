@@ -1,12 +1,37 @@
 BACKENDS =  backends/addressbook backends/evolution backends/file backends/sqlite
-SUBDIRS = $(SYNTHESIS_SUBDIR) core $(BACKENDS)
-DIST_SUBDIRS = core $(BACKENDS)
 
-AM_CPPFLAGS = $(SUBDIRS:%=-I$(srcdir)/%) -I$(srcdir)/../test $(BACKEND_CPPFLAGS) $(GLIB_CFLAGS)
+if COND_DBUS
+servicedir = $(DBUS_SERVICES_DIR)
+service_in_files = org.Moblin.SyncEvolution.service.in
+service_DATA = $(service_in_files:.service.in=.service)
+$(service_DATA): $(service_in_files) Makefile
+	@sed -e "s|\@libexecdir\@|$(libexecdir)|" $< > $@
+
+DBUS_DIR = dbus
+else
+if COND_GUI
+# jump into interface directory directly instead of going through dbus
+DBUS_DIR = dbus/interfaces
+endif
+endif
+
+if COND_GUI
+GUI_DIR = gtk-ui
+endif
+
+SUBDIRS = $(SYNTHESIS_SUBDIR) $(DBUS_DIR) core $(BACKENDS) $(GUI_DIR)
+DIST_SUBDIRS = dbus core $(BACKENDS) gtk-ui
+BUILT_SOURCES =
+
+AM_CPPFLAGS = $(SUBDIRS:%=-I$(srcdir)/%) -I$(srcdir)/../test -I$(top_srcdir) $(BACKEND_CPPFLAGS) $(GLIB_CFLAGS)
 
 EXTRA_PROGRAMS =
 TESTS =
 bin_PROGRAMS = syncevolution
+if COND_DBUS
+libexec_PROGRAMS = syncevo-dbus-server
+endif
+
 bin_SCRIPTS = synccompare
 SYNCEVOLUTION_DEP =
 if ENABLE_MODULES
@@ -14,7 +39,10 @@ else
 SYNCEVOLUTION_LDADD += $(SYNCSOURCES)
 SYNCEVOLUTION_DEP += $(SYNCSOURCES)
 endif
-EXTRA_DIST = shlibs.local Makefile-gen.am syncevolution.xml
+EXTRA_DIST = shlibs.local Makefile-gen.am syncevolution.xml $(service_in_files)
+
+TEMPLATE_FILES = default/syncevolution/Funambol/sources/memo/config.ini default/syncevolution/Funambol/sources/todo/config.ini default/syncevolution/Funambol/sources/addressbook/config.ini default/syncevolution/Funambol/sources/calendar/config.ini default/syncevolution/Funambol/config.ini default/syncevolution/ScheduleWorld/sources/memo/config.ini default/syncevolution/ScheduleWorld/sources/todo/config.ini default/syncevolution/ScheduleWorld/sources/addressbook/config.ini default/syncevolution/ScheduleWorld/sources/calendar/config.ini default/syncevolution/ScheduleWorld/config.ini 
+nobase_dist_sysconf_DATA = $(TEMPLATE_FILES)
 
 DISTCLEANFILES = synccompare
 MAINTAINERCLEANFILES = Makefile.in
@@ -89,7 +117,7 @@ dist-hook:
 		  ( rm -f ChangeLog.tmp ; \
 		     echo Failed to generate ChangeLog >&2 ) \
                 ); \
-	else \
+	elsif test $SYNTHESIS_SRC != "no-synthesis-source"; \
 		cp -a $(SYNTHESIS_SRC)/* $(distdir)/synthesis  && \
 		for i in _build autom4te.cache; do [ ! -d "$(SYNTHESIS_SRC)/$$i" ] || chmod -R u+rwx "$(SYNTHESIS_SRC)/$$i"; done && \
 		find "$(distdir)" -name .libs -o -name "*~" -o -name ".*" -o -name "*.o" -o -name "*.lo" -o -name CVS -o -name .svn -o -name .git -o -name autom4te.cache -print0 | xargs -0 rm -rf; \
@@ -106,6 +134,20 @@ distclean-local:
 	rm -rf $(SYNTHESIS_SUBDIR)
 	rm -rf $(CLEAN_CLIENT_SRC)
 
+if COND_DBUS
+syncevo_dbus_server_SOURCES = \
+	syncevo-dbus-server.cpp syncevo-dbus-server.h \
+	DBusSyncClient.cpp DBusSyncClient.h \
+	$(CORE_SOURCES)
+nodist_syncevo_dbus_server_SOURCES = dbus/interfaces/syncevo-marshal.c
+
+syncevo_dbus_server_LDADD = $(DBUS_GLIB_LIBS) $(CORE_LDADD)
+syncevo_dbus_server_CPPFLAGS = -DHAVE_CONFIG_H -Idbus/interfaces $(DBUS_GLIB_CFLAGS) $(AM_CPPFLAGS)
+syncevo_dbus_server_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS)
+syncevo_dbus_server_LDFLAGS = $(CORE_LD_FLAGS)
+syncevo_dbus_server_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) $(SYNTHESIS_DEP)
+endif
+
 # With --disable-shared autotools links against libfunambol.a which does not
 # pull any of the test suites into the test binary, so they would not be
 # executed. The workaround is to explicitly set them as undefined on the
@@ -116,6 +158,16 @@ client_test_SOURCES = \
 	../test/ClientTest.h \
 	../test/client-test-main.cpp \
 	$(CORE_SOURCES)
+
+# Always compile the registry files into client-test because that is
+# the only place where they are compiled with
+# ENABLE_INTEGRATION_TESTS.  This works without undefined references
+# because client-test is linked against all shared backend libraries
+# (non-portable, but works).
+if ENABLE_MODULES
+client_test_SOURCES += $(BACKEND_REGISTRIES)
+endif
+
 CLIENT_LIB_TEST_FILES = \
 	testcases/vcard21.vcf \
 	testcases/vcard30.vcf \
@@ -125,7 +177,7 @@ CLIENT_LIB_TEST_FILES = \
 client_test_CPPFLAGS = -DHAVE_CONFIG_H -DENABLE_INTEGRATION_TESTS -DENABLE_UNIT_TESTS $(AM_CPPFLAGS)
 client_test_CXXFLAGS = `cppunit-config --cflags` $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS)
 client_test_LDFLAGS = `cppunit-config --libs` `nm core/.libs/libsyncevolution.a | grep funambolAutoRegisterRegistry | sed -e 's/.* /-u /'` $(CORE_LD_FLAGS)
-client_test_LDADD = $(CORE_LDADD)
+client_test_LDADD = $(CORE_LDADD) $(SYNCSOURCES)
 # These dependencies are intentionally a bit too broad:
 # they ensure that all files are in place to *run* client-test.
 client_test_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) $(CLIENT_LIB_TEST_FILES) synccompare
@@ -163,6 +215,7 @@ valgrind : test
 $(srcdir)/Makefile.am: Makefile-gen.am
 	sed -e 's;[@]BACKEND_REGISTRIES[@];$(BACKEND_REGISTRIES);' \
 	    -e 's;[@]BACKENDS[@];$(BACKENDS);' \
+            -e 's;[@]TEMPLATE_FILES[@];$(TEMPLATE_FILES);' \
 	    $< >$@
 
 # old-style name for test program(s)

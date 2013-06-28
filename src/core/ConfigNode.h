@@ -23,7 +23,11 @@
 #include <map>
 #include <utility>
 #include <string>
+#include <sstream>
 using namespace std;
+
+#include <boost/shared_ptr.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 
 /**
  * This class corresponds to the Funambol C++ client
@@ -34,6 +38,9 @@ class ConfigNode {
  public:
     /** free resources without saving */
     virtual ~ConfigNode() {}
+
+    /** creates a file-backed config node which accepts arbitrary key/value pairs */
+    static boost::shared_ptr<ConfigNode> createFileNode(const string &filename);
 
     /** a name for the node that the user can understand */
     virtual string getName() const = 0;
@@ -70,6 +77,74 @@ class ConfigNode {
                              const string *defValue = NULL) = 0;
 
     /**
+     * Sets a boolean property, using "true/false".
+     */
+    void setProperty(const string &property, bool value) {
+        setProperty(property, value ? "true" : "false");
+    }
+
+    /**
+     * Sets a property value with automatic conversion to the underlying string,
+     * using stream formatting.
+     */
+    template <class T> void setProperty(const string &property,
+                                        const T &value) {
+        std::stringstream strval;
+        strval << value;
+        setProperty(property, strval.str());
+    }
+
+    bool getProperty(const string &property,
+                     string &value) {
+        value = readProperty(property);
+        return !value.empty();
+    }
+
+    bool getProperty(const string &property,
+                     bool &value) {
+        std::string str = readProperty(property);
+        if (str.empty()) {
+            return false;
+        }
+
+        /* accept keywords */
+        if (boost::iequals(str, "true") ||
+            boost::iequals(str, "yes") ||
+            boost::iequals(str, "on")) {
+            value = true;
+            return true;
+        }
+        if (boost::iequals(str, "false") ||
+            boost::iequals(str, "no") ||
+            boost::iequals(str, "off")) {
+            value = false;
+            return true;
+        }
+
+        /* zero means false */
+        double number;
+        if (getProperty(property, number)) {
+            value = number != 0;
+            return true;
+        }
+
+        return false;
+    }
+
+    template <class T> bool getProperty(const string &property,
+                                        T &value) {
+        std::string str = readProperty(property);
+        if (str.empty()) {
+            return false;
+        } else {
+            std::stringstream strval(str);
+            strval >> value;
+            return !strval.bad();
+        }
+    }
+
+
+    /**
      * Extract all list of all currently defined properties
      * and their values. Does not include values which were
      * initialized with their defaults, if the implementation
@@ -79,6 +154,7 @@ class ConfigNode {
      *                  to be empty before the call
      */
     virtual void readProperties(map<string, string> &props) const = 0;
+    typedef map<string, string> PropsType;
 
     /**
      * Remove a certain property.

@@ -23,6 +23,7 @@ typedef enum {
   // special time zones
   tctx_tz_unknown,                  //   0
   tctx_tz_system,                   //   0
+  tctx_tz_UTC,                      //   0    Coordinated Universal Time Europe, will be preferred
 
   // list of all Registry time zones
   tctx_tz_Afghanistan,              //   4.5  Kabul
@@ -269,7 +270,7 @@ typedef enum {
   tctx_tz_S,                        //  -6    Sierra Time Zone                 <Military>
   tctx_tz_T,                        //  -7    Tango Time Zone                  <Military>
   tctx_tz_U,                        //  -8    Uniform Time Zone                <Military>
-  tctx_tz_UTC,                      //   0    Coordinated Universal Time        Europe
+
   tctx_tz_V,                        //  -9    Victor Time Zone                 <Military>
   tctx_tz_W,                        // -10    Whiskey Time Zone                <Military>
   tctx_tz_WEST,                     //   1    Western European Summer Time      Europe
@@ -313,6 +314,7 @@ const tbl_tz_entry tbl_tz[tctx_numtimezones] =
 {
   { "unknown",           NULL,                         0,  0, "x",    "", {  0, 0,0, 0,0 },  {  0, 0,0, 0,0 } },  //   0
   { "system",            NULL,                         0,  0, "x",    "", {  0, 0,0, 0,0 },  {  0, 0,0, 0,0 } },  //   0
+  { "UTC",               NULL,                         0,  0, " ",    "", {  0, 0,0, 0,0 },  {  0, 0,0, 0,0 } },  //   0
 
   { "Afghanistan",       "Asia/Kabul",               270,  0, " ",    "", {  0, 0,0, 0,0 },  {  0, 0,0, 0,0 } },  //   4.5
   { "AKST/AKDT",         "America/Anchorage",       -540, 60, " ",    "", {  3, 0,2, 2,0 },  { 11, 0,1, 2,0 } },  //  -9
@@ -491,6 +493,7 @@ const tbl_tz_entry tbl_tz[tctx_numtimezones] =
   { "West_Asia",         "Asia/Karachi",             300,  0, " ",    "", {  0, 0,0, 0,0 },  {  0, 0,0, 0,0 } },  //   5
   { "West_Pacific",      "Pacific/Port_Moresby",     600,  0, " ",    "", {  0, 0,0, 0,0 },  {  0, 0,0, 0,0 } },  //  10
   { "Yakutsk",           "Asia/Yakutsk",             540, 60, " ",    "", {  3, 0,5, 2,0 },  { 10, 0,5, 3,0 } },  //   9
+
   { "A",                 NULL,                        60,  0, "m",    "", {  0, 0,0, 0,0 },  {  0, 0,0, 0,0 } },  //   1
   { "ACDT",              NULL,                       630,  0, "d",    "", {  0, 0,0, 0,0 },  {  0, 0,0, 0,0 } },  //  10.5
   { "ACST",              NULL,                       570,  0, "s",    "", {  0, 0,0, 0,0 },  {  0, 0,0, 0,0 } },  //   9.5
@@ -556,7 +559,7 @@ const tbl_tz_entry tbl_tz[tctx_numtimezones] =
   { "S",                 NULL,                      -360,  0, "m",    "", {  0, 0,0, 0,0 },  {  0, 0,0, 0,0 } },  //  -6
   { "T",                 NULL,                      -420,  0, "m",    "", {  0, 0,0, 0,0 },  {  0, 0,0, 0,0 } },  //  -7
   { "U",                 NULL,                      -480,  0, "m",    "", {  0, 0,0, 0,0 },  {  0, 0,0, 0,0 } },  //  -8
-  { "UTC",               NULL,                         0,  0, " ",    "", {  0, 0,0, 0,0 },  {  0, 0,0, 0,0 } },  //   0
+
   { "V",                 NULL,                      -540,  0, "m",    "", {  0, 0,0, 0,0 },  {  0, 0,0, 0,0 } },  //  -9
   { "W",                 NULL,                      -600,  0, "m",    "", {  0, 0,0, 0,0 },  {  0, 0,0, 0,0 } },  // -10
   { "WEST",              NULL,                        60,  0, "d",    "", {  0, 0,0, 0,0 },  {  0, 0,0, 0,0 } },  //   1

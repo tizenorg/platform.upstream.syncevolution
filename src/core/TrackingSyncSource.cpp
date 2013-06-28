@@ -23,6 +23,9 @@
 #include "PrefixConfigNode.h"
 
 #include <ctype.h>
+#include <errno.h>
+
+#include <fstream>
 
 TrackingSyncSource::TrackingSyncSource(const EvolutionSyncSourceParams &params) :
     EvolutionSyncSource(params),
@@ -129,18 +132,143 @@ void TrackingSyncSource::endSyncThrow()
     }
 }
 
-void TrackingSyncSource::exportData(ostream &out)
+void TrackingSyncSource::backupData(const string &dir, ConfigNode &node, BackupReport &report)
 {
     RevisionMap_t revisions;
     listAllItems(revisions);
 
+    unsigned long counter = 1;
+    errno = 0;
     BOOST_FOREACH(const StringPair &mapping, revisions) {
         const string &uid = mapping.first;
+        const string &rev = mapping.second;
         cxxptr<SyncItem> item(createItem(uid), "sync item");
 
-        out << (char *)item->getData() << "\n";
+        stringstream filename;
+        filename << dir << "/" << counter;
+
+        ofstream out(filename.str().c_str());
+        out.write(item->getData(), item->getDataSize());
+        out.close();
+        if (out.fail()) {
+            throwError(string("error writing ") + filename.str() + ": " + strerror(errno));
+        }
+
+        stringstream key;
+        key << counter << "-uid";
+        node.setProperty(key.str(), uid);
+        key.clear();
+        key << counter << "-rev";
+        node.setProperty(key.str(), rev);
+
+        counter++;
+    }
+
+    stringstream value;
+    value << counter - 1;
+    node.setProperty("numitems", value.str());
+    node.flush();
+
+    report.setNumItems(counter - 1);
+}
+
+void TrackingSyncSource::restoreData(const string &dir, const ConfigNode &node, bool dryrun, SyncSourceReport &report)
+{
+    RevisionMap_t revisions;
+    listAllItems(revisions);
+
+    long numitems;
+    string strval;
+    strval = node.readProperty("numitems");
+    stringstream stream(strval);
+    stream >> numitems;
+
+    for (long counter = 1; counter <= numitems; counter++) {
+        stringstream key;
+        key << counter << "-uid";
+        string uid = node.readProperty(key.str());
+        key.clear();
+        key << counter << "-rev";
+        string rev = node.readProperty(key.str());
+        RevisionMap_t::iterator it = revisions.find(uid);
+        report.incrementItemStat(report.ITEM_LOCAL,
+                                 report.ITEM_ANY,
+                                 report.ITEM_TOTAL);
+        if (it != revisions.end() &&
+            it->second == rev) {
+            // item exists in backup and database with same revision:
+            // nothing to do
+        } else {
+            // add or update, so need item
+            SyncItem item;
+            stringstream filename;
+            filename << dir << "/" << counter;
+            string data;
+            if (!ReadFile(filename.str(), data)) {
+                throwError(StringPrintf("restoring %s from %s failed: could not read file",
+                                        uid.c_str(),
+                                        filename.str().c_str()));
+            }
+            item.setData(data);
+            item.setDataType("raw");
+
+            // TODO: it would be nicer to recreate the item
+            // with the original revision. If multiple peers
+            // synchronize against us, then some of them
+            // might still be in sync with that revision. By
+            // updating the revision here we force them to
+            // needlessly receive an update.
+            //
+            // For the current peer for which we restore this is
+            // avoided by the revision check above: unchanged
+            // items aren't touched.
+            SyncSourceReport::ItemState state =
+                it == revisions.end() ?
+                SyncSourceReport::ITEM_ADDED :   // not found in database, create anew
+                SyncSourceReport::ITEM_UPDATED;  // found, update existing item
+            try {
+                report.incrementItemStat(report.ITEM_LOCAL,
+                                         state,
+                                         report.ITEM_TOTAL);
+                if (!dryrun) {
+                    insertItem(it == revisions.end() ? "" : uid,
+                               item);
+                }
+            } catch (...) {
+                report.incrementItemStat(report.ITEM_LOCAL,
+                                         state,
+                                         report.ITEM_REJECT);
+                throw;
+            }
+        }
+
+        // remove handled item from revision list so
+        // that when we are done, the only remaining
+        // items listed there are the ones which did
+        // no exist in the backup
+        if (it != revisions.end()) {
+            revisions.erase(it);
+        }
+    }
+
+    // now remove items that were not in the backup
+    BOOST_FOREACH(const StringPair &mapping, revisions) {
+        try {
+            report.incrementItemStat(report.ITEM_LOCAL,
+                                     report.ITEM_REMOVED,
+                                     report.ITEM_TOTAL);
+            if (!dryrun) {
+                deleteItem(mapping.first);
+            }
+        } catch(...) {
+            report.incrementItemStat(report.ITEM_LOCAL,
+                                     report.ITEM_REMOVED,
+                                     report.ITEM_REJECT);
+            throw;
+        }
     }
 }
+
 
 SyncMLStatus TrackingSyncSource::addItemThrow(SyncItem& item)
 {

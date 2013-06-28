@@ -249,14 +249,6 @@ class RegisterSyncSourceTest
                            const string &testCaseName);
     virtual ~RegisterSyncSourceTest() {}
 
-    /**
-     * Dump items in the native format, not the one currently selected
-     * for exchange with the SyncML server. Useful for testing sync
-     * sources which normally use one format internally, but also
-     * support another one (EvolutionContactSource).
-     */
-    static int dump(ClientTest &client, EvolutionSyncSource &source, const char *file);
-
     const string m_configName;
     const string m_testCaseName;
 };
@@ -375,14 +367,19 @@ class EvolutionSyncSource : public EvolutionSyncSourceConfig, public LoggerBase,
     virtual void close() = 0;
 
     /**
-     * Dump all data from source unmodified into the given stream.
+     * Dump all data from source unmodified into the given directory.
+     * The ConfigNode can be used to store meta information needed for
+     * restoring that state. Both directory and node are empty.
+     * Information about the created backup is added to the
+     * report.
      */
-    virtual void exportData(ostream &out) = 0;
+    virtual void backupData(const string &dirname, ConfigNode &node, BackupReport &report) = 0;
 
     /**
-     * file suffix for database files
+     * Restore database from data stored in backupData().  Will be
+     * called inside open()/close() pair. beginSync() is *not* called.
      */
-    virtual string fileSuffix() const = 0;
+    virtual void restoreData(const string &dirname, const ConfigNode &node, bool dryrun, SyncSourceReport &report) = 0;
 
     /**
      * Returns the preferred mime type of the items handled by the sync source.
@@ -542,12 +539,16 @@ class EvolutionSyncSource : public EvolutionSyncSourceConfig, public LoggerBase,
      * @name default implementation of SyncSource iterators
      */
     /**@{*/
+    virtual long getNumItems() throw() { return m_allItems.size(); }
     virtual SyncItem* getFirstItem() throw() { return m_allItems.start(); }
     virtual SyncItem* getNextItem() throw() { return m_allItems.iterate(); }
+    virtual long getNumNewItems() throw() { return m_newItems.size(); }
     virtual SyncItem* getFirstNewItem() throw() { return m_newItems.start(); }
     virtual SyncItem* getNextNewItem() throw() { return m_newItems.iterate(); }
+    virtual long getNumUpdatedItems() throw() { return m_updatedItems.size(); }
     virtual SyncItem* getFirstUpdatedItem() throw() { return m_updatedItems.start(); }
     virtual SyncItem* getNextUpdatedItem() throw() { return m_updatedItems.iterate(); }
+    virtual long getNumDeletedItems() throw() { return m_deletedItems.size(); }
     virtual SyncItem* getFirstDeletedItem() throw() { return m_deletedItems.start(); }
     virtual SyncItem* getNextDeletedItem() throw() { return m_deletedItems.iterate(); }
     /**@}*/
@@ -591,6 +592,20 @@ class EvolutionSyncSource : public EvolutionSyncSourceConfig, public LoggerBase,
      */
     virtual SyncMLStatus removeAllItems() throw();
 
+    /**
+     * initialize information about local changes and items
+     * as in beginSync() with all parameters set to true,
+     * but without changing the state of the underlying database
+     *
+     * This method will be called to check for local changes without
+     * actually running a sync, so there is no matching end call.
+     * There might be sources which don't support non-destructive
+     * change tracking (in other words, checking changes permanently
+     * modifies the state of the source and cannot be repeated). Such
+     * a source can refuse to execute this call by returning false.
+     */
+    virtual bool checkStatus() = 0;
+     
     /**
      * source specific part of beginSync() - throws exceptions in case of error
      *

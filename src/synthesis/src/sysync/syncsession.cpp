@@ -1258,20 +1258,27 @@ void TSyncSession::InternalResetSessionEx(bool terminationCall)
   #endif
   #ifdef SCRIPT_SUPPORT
   // delete the script context if any
+  /* %%% don't re-initialize the session context
   if (fSessionScriptContextP) {
     delete fSessionScriptContextP;
     fSessionScriptContextP=NULL;
   }
-  if (!terminationCall && !fTerminated) {
-    // prepare session-level scripts
-    TScriptContext::rebuildContext(getSyncAppBase(),getSessionConfig()->fSessionInitScript,fSessionScriptContextP,this);
-    TScriptContext::rebuildContext(getSyncAppBase(),getSessionConfig()->fSentItemStatusScript,fSessionScriptContextP,this);
-    TScriptContext::rebuildContext(getSyncAppBase(),getSessionConfig()->fReceivedItemStatusScript,fSessionScriptContextP,this);
-    TScriptContext::rebuildContext(getSyncAppBase(),getSessionConfig()->fSessionFinishScript,fSessionScriptContextP,this);
-    TScriptContext::rebuildContext(getSyncAppBase(),getSessionConfig()->fCustomGetHandlerScript,fSessionScriptContextP,this);
-    TScriptContext::rebuildContext(getSyncAppBase(),getSessionConfig()->fCustomGetPutScript,fSessionScriptContextP,this);
-    TScriptContext::rebuildContext(getSyncAppBase(),getSessionConfig()->fCustomEndPutScript,fSessionScriptContextP,this);
-    TScriptContext::rebuildContext(getSyncAppBase(),getSessionConfig()->fCustomPutResultHandlerScript,fSessionScriptContextP,this,true); // now instantiate vars
+  */
+  /* %%% new approach: retain session variables if InternalResetSessionEx() is called more than once in the same session
+   *     (which is normal procedure in clients, where SelectProfile calls ResetSession)
+   */
+  if (!fSessionScriptContextP) {
+    if (!terminationCall && !fTerminated) {
+      // prepare session-level scripts
+      TScriptContext::rebuildContext(getSyncAppBase(),getSessionConfig()->fSessionInitScript,fSessionScriptContextP,this);
+      TScriptContext::rebuildContext(getSyncAppBase(),getSessionConfig()->fSentItemStatusScript,fSessionScriptContextP,this);
+      TScriptContext::rebuildContext(getSyncAppBase(),getSessionConfig()->fReceivedItemStatusScript,fSessionScriptContextP,this);
+      TScriptContext::rebuildContext(getSyncAppBase(),getSessionConfig()->fSessionFinishScript,fSessionScriptContextP,this);
+      TScriptContext::rebuildContext(getSyncAppBase(),getSessionConfig()->fCustomGetHandlerScript,fSessionScriptContextP,this);
+      TScriptContext::rebuildContext(getSyncAppBase(),getSessionConfig()->fCustomGetPutScript,fSessionScriptContextP,this);
+      TScriptContext::rebuildContext(getSyncAppBase(),getSessionConfig()->fCustomEndPutScript,fSessionScriptContextP,this);
+      TScriptContext::rebuildContext(getSyncAppBase(),getSessionConfig()->fCustomPutResultHandlerScript,fSessionScriptContextP,this,true); // now instantiate vars
+    }
   }
   #endif
   /* %%% moved to ResetSession() because this might not be called from

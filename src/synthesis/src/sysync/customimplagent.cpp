@@ -62,6 +62,7 @@ const char * const DBFieldTypeNames[numDBfieldTypes] = {
   "unixdate_s",
   "unixdate_ms",
   "unixdate_us",
+  "nsdate"
 };
 
 
@@ -77,6 +78,9 @@ lineartime_t dbIntToLineartime(sInt64 aDBInt, TDBFieldType aDbfty)
     case dbft_unixdate_s:
       // integer value representing UNIX epoch date in seconds
       return secondToLinearTimeFactor*aDBInt+UnixToLineartimeOffset;
+    case dbft_nsdate_s:
+      // integer value representing NSDate in seconds
+      return secondToLinearTimeFactor*aDBInt+NSDateToLineartimeOffset;    
     case dbft_unixtime_ms:
     case dbft_unixdate_ms:
       // integer value representing UNIX epoch date in milliseconds
@@ -104,6 +108,9 @@ sInt64 lineartimeToDbInt(lineartime_t aLinearTime, TDBFieldType aDbfty)
     case dbft_unixdate_s:
       // integer value representing UNIX epoch date in seconds
       return (aLinearTime-UnixToLineartimeOffset)/secondToLinearTimeFactor;
+    case dbft_nsdate_s:
+      // integer value representing NSDate in seconds
+      return (aLinearTime-NSDateToLineartimeOffset)/secondToLinearTimeFactor;
     case dbft_unixtime_ms:
     case dbft_unixdate_ms:
       // integer value representing UNIX epoch date in milliseconds
@@ -308,43 +315,6 @@ public:
   }; // func_Unknowndevice
 
 
-  // SETREADONLY(integer readonly)
-  // set readonly option of this sync session
-  static void func_SetReadOnly(TItemField *&aTermP, TScriptContext *aFuncContextP)
-  {
-    static_cast<TSyncSession *>(aFuncContextP->getCallerContext())->setReadOnly(
-      aFuncContextP->getLocalVar(0)->getAsBoolean()
-    );
-  }; // func_SetReadOnly
-
-
-  // SETDEBUGLOG(integer enabled)
-  // set debug log output for this sync session
-  static void func_SetDebugLog(TItemField *&aTermP, TScriptContext *aFuncContextP)
-  {
-    #ifdef SYDEBUG
-    static_cast<TSyncSession *>(aFuncContextP->getCallerContext())->getDbgLogger()->setEnabled(
-      aFuncContextP->getLocalVar(0)->getAsBoolean()
-    );
-    /// @todo: remove this
-    // %%% for now, we also need to set this separate flag
-    static_cast<TSyncSession *>(aFuncContextP->getCallerContext())->fSessionDebugLogs=
-      aFuncContextP->getLocalVar(0)->getAsBoolean();
-    #endif
-  }; // func_SetDebugLog
-
-
-  // SETLOG(integer enabled)
-  // set debug log output for this sync session
-  static void func_SetLog(TItemField *&aTermP, TScriptContext *aFuncContextP)
-  {
-    #ifndef MINIMAL_CODE
-    static_cast<TSyncSession *>(aFuncContextP->getCallerContext())->fLogEnabled=
-      aFuncContextP->getLocalVar(0)->getAsBoolean();
-    #endif
-  }; // func_SetLog
-
-
   // string USERKEY()
   // returns user key
   static void func_UserKey(TItemField *&aTermP, TScriptContext *aFuncContextP)
@@ -477,9 +447,6 @@ const TBuiltInFuncDef CustomAgentFuncDefs[numCustomAgentFuncs] = {
   { "AUTHDEVICEID", TCustomAgentFuncs::func_AuthDeviceID, fty_string, 0, NULL },
   { "AUTHTYPE", TCustomAgentFuncs::func_AuthType, fty_integer, 0, NULL },
   { "UNKNOWNDEVICE", TCustomAgentFuncs::func_Unknowndevice, fty_integer, 0, NULL },
-  { "SETREADONLY", TCustomAgentFuncs::func_SetReadOnly, fty_none, 1, param_oneInteger },
-  { "SETDEBUGLOG", TCustomAgentFuncs::func_SetDebugLog, fty_none, 1, param_oneInteger },
-  { "SETLOG", TCustomAgentFuncs::func_SetLog, fty_none, 1, param_oneInteger },
   { "SETUSERKEY", TCustomAgentFuncs::func_SetUserKey, fty_none, 1, param_variant },
   { "SETDEVICEKEY", TCustomAgentFuncs::func_SetDeviceKey, fty_none, 1, param_variant },
 };

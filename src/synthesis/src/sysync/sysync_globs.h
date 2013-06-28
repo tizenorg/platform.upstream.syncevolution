@@ -111,7 +111,8 @@ typedef TSyError localstatus;
 
 // - maximum auth retries attempted (client) before giving up
 //   Note: since 2.0.4.6 this includes the attitional "retry" required to request auth chal from the server
-#define MAX_AUTH_RETRIES 2 // Note: retry only once (plus once for chal request) to avoid strict servers (such as COA-S) to lock accounts
+#define MAX_NORMAL_AUTH_RETRIES 2 // Note: retry only once (plus once for chal request) to avoid strict servers (such as COA-S) to lock accounts
+#define MAX_SMART_AUTH_RETRIES 4 // when fSmartAuthRetry option is set, some additional retries happen after MAX_NORMAL_AUTH_RETRIES are exhausted
 // - maximum auth attempts allowed (server) before session gets aborted
 #define MAX_AUTH_ATTEMPTS 3
 // - number of message resend retries (client)
