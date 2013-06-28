@@ -1817,32 +1817,38 @@ sInt32 TItemFieldKey::GetValueID(cAppCharP aName)
   // check special suffixes
   size_t namsz = strlen(aName);
   sInt32 fldID = 0; // basic
-  if (strucmp(aName+namsz-strlen(VALSUFF_TZNAME),VALSUFF_TZNAME)==0) {
+  if (namsz >= strlen(VALSUFF_TZNAME) &&
+      strucmp(aName+namsz-strlen(VALSUFF_TZNAME),VALSUFF_TZNAME)==0) {
     // time zone name as string requested
     namsz-=7;
     fldID += VALID_FLAG_TZNAME;
   }
-  else if (strucmp(aName+namsz-strlen(VALSUFF_TZOFFS),VALSUFF_TZOFFS)==0) {
+  else if (namsz >= strlen(VALSUFF_TZOFFS) &&
+           strucmp(aName+namsz-strlen(VALSUFF_TZOFFS),VALSUFF_TZOFFS)==0) {
     // time zone offset in minutes
     namsz-=7;
     fldID += VALID_FLAG_TZOFFS;
   }
-  else if (strucmp(aName+namsz-strlen(VALSUFF_NORM),VALSUFF_NORM)==0) {
+  else if (namsz >= strlen(VALSUFF_NORM) &&
+           strucmp(aName+namsz-strlen(VALSUFF_NORM),VALSUFF_NORM)==0) {
     // normalized value
     namsz-=5;
     fldID += VALID_FLAG_NORM;
   }
-  else if (strucmp(aName+namsz-strlen(VALSUFF_ARRSZ),VALSUFF_ARRSZ)==0) {
+  else if (namsz >= strlen(VALSUFF_ARRSZ) &&
+           strucmp(aName+namsz-strlen(VALSUFF_ARRSZ),VALSUFF_ARRSZ)==0) {
     // array size
     namsz-=10;
     fldID += VALID_FLAG_ARRSIZ;
   }
-  else if (strucmp(aName+namsz-strlen(VALSUFF_NAME),VALSUFF_NAME)==0) {
+  else if (namsz >= strlen(VALSUFF_NAME) &&
+           strucmp(aName+namsz-strlen(VALSUFF_NAME),VALSUFF_NAME)==0) {
     // value name
     namsz-=8;
     fldID += VALID_FLAG_VALNAME;
   }
-  else if (strucmp(aName+namsz-strlen(VALSUFF_TYPE),VALSUFF_TYPE)==0) {
+  else if (namsz >= strlen(VALSUFF_TYPE) &&
+           strucmp(aName+namsz-strlen(VALSUFF_TYPE),VALSUFF_TYPE)==0) {
     // value type
     namsz-=8;
     fldID += VALID_FLAG_VALTYPE;
@@ -2015,9 +2021,10 @@ TSyError TItemFieldKey::GetValueInternal(
           if (aID & VALID_FLAG_TZNAME) {
             // time zone name is a text
             sval.erase(); // no zone
-            if (!tsFldP->isFloating()) {
-              // has a zone, get name
-              TimeZoneContextToName(tsFldP->getTimeContext(), sval, tsFldP->getGZones());
+            tctx = tsFldP->getTimeContext();
+            if (!TCTX_IS_UNKNOWN(tctx) || TCTX_IS_DURATION(tctx) || TCTX_IS_DATEONLY(tctx)) {
+              // has a zone (or is duration/dateonly), get name
+              TimeZoneContextToName(tctx, sval, tsFldP->getGZones());
             }
             aValSize = sval.size();
             valPtr = (appPointer)sval.c_str();

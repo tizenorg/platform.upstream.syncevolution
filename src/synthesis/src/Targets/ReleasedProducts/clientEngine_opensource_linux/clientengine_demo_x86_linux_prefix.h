@@ -15,6 +15,9 @@
 #define _BSD_SOURCE 1
 #define USE_TM_GMTOFF 1
 
+// required for vasprintf
+#define _GNU_SOURCE 1
+
 #ifdef __cplusplus
   // include all headers that are suitable for precompiled use
   // - target options can incfluence everything

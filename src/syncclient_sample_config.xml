@@ -37,6 +37,36 @@
         return "syuid" + NUMFORMAT(RANDOM(1000000),6,"0") + "." + (string)MILLISECONDS(NOW());
       }
     ]]></function>
+    <macro name="VCARD_INCOMING_SCRIPT_EVOLUTION"><![CDATA[
+      // a wordaround for cellphone in evolution. for incoming contacts, if there is only one CELL,
+      // strip the HOME or WORK flag from it. Evolution then should show it. */
+      INTEGER i, wanted, cell_phones;
+      i = 0;
+      cell_phones = 0;
+      while(i < SIZE(TEL_FLAGS)) {
+        // 0x10 is the flag of 'cell' type of telephone
+        if(TEL_FLAGS[i] & 0x10) {
+          cell_phones = cell_phones + 1;
+          wanted = i;
+        }
+        i = i + 1;
+      }
+      if(cell_phones == 1) {
+        TEL_FLAGS[wanted] = 0x10;
+      }
+
+      // Google sends TYPE=WORK and TYPE=HOME when it means
+      // normal VOICE phone numbers. Add that flag when
+      // importing into Evolution, because Evolution does not
+      // display the numbers without VOICE.
+      i = 0;
+      while(i < SIZE(TEL_FLAGS)) {
+        if(TEL_FLAGS[i] == 1 || TEL_FLAGS[i] == 2) {
+          TEL_FLAGS[i] = TEL_FLAGS[i] | 8;
+        }
+        i = i + 1;
+      }
+    ]]></macro>
 
 
 		<!-- define script macros for scripts that are used by both vCalendar 1.0 and iCalendar 2.0 -->
@@ -85,6 +115,19 @@
             }
             i=i+1;
           }
+        }
+        // If vcalendar1.0, rrule is not secondly, minutely, or hourly, we strip time information
+        // and only reserve date information
+        if (ITEMDATATYPE()=="vCalendar10" && RR_FREQ!="h" && RR_FREQ!="m" && RR_FREQ!="s") {
+          timestamp exdate;
+          i = 0;
+          while (i<SIZE(EXDATES)) {
+            exdate = EXDATES[i];
+            if (!ISDATEONLY(exdate)) {
+              EXDATES[i] = DATEONLY(exdate);
+            }
+            i=i+1;
+          }  
         }
 
         // - shape attendees (and make sure ATTENDEES[] is assigned even for empty email addresses)

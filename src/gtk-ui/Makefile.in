@@ -36,7 +36,8 @@ host_triplet = @host@
 EXTRA_PROGRAMS = sync-ui$(EXEEXT) sync-ui-gtk$(EXEEXT) \
 	sync-ui-moblin$(EXEEXT)
 subdir = src/gtk-ui
-DIST_COMMON = README $(srcdir)/Makefile.am $(srcdir)/Makefile.in
+DIST_COMMON = README $(dist_icon_DATA) $(srcdir)/Makefile.am \
+	$(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4-repo/ax_boost_base.m4 \
 	$(top_srcdir)/m4/intltool.m4 $(top_srcdir)/configure.in
@@ -46,7 +47,8 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(applicationsdir)" \
-	"$(DESTDIR)$(gladedir)" "$(DESTDIR)$(themercdir)"
+	"$(DESTDIR)$(icondir)" "$(DESTDIR)$(gladedir)" \
+	"$(DESTDIR)$(themercdir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
 am_sync_ui_OBJECTS = sync_ui-main.$(OBJEXT) sync_ui-sync-ui.$(OBJEXT) \
@@ -116,10 +118,11 @@ am__vpath_adj = case $$p in \
   esac;
 am__strip_dir = `echo $$p | sed -e 's|^.*/||'`;
 applicationsDATA_INSTALL = $(INSTALL_DATA)
+dist_iconDATA_INSTALL = $(INSTALL_DATA)
 gladeDATA_INSTALL = $(INSTALL_DATA)
 themercDATA_INSTALL = $(INSTALL_DATA)
-DATA = $(applications_DATA) $(glade_DATA) $(noinst_DATA) \
-	$(themerc_DATA)
+DATA = $(applications_DATA) $(dist_icon_DATA) $(glade_DATA) \
+	$(noinst_DATA) $(themerc_DATA)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -200,6 +203,8 @@ INTLTOOL_EXTRACT = @INTLTOOL_EXTRACT@
 INTLTOOL_MERGE = @INTLTOOL_MERGE@
 INTLTOOL_PERL = @INTLTOOL_PERL@
 INTLTOOL_UPDATE = @INTLTOOL_UPDATE@
+KEYRING_2_20_CFLAGS = @KEYRING_2_20_CFLAGS@
+KEYRING_2_20_LIBS = @KEYRING_2_20_LIBS@
 KEYRING_CFLAGS = @KEYRING_CFLAGS@
 KEYRING_LIBS = @KEYRING_LIBS@
 LDFLAGS = @LDFLAGS@
@@ -271,6 +276,8 @@ am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
+backenddir = @backenddir@
+backendsearchdir = @backendsearchdir@
 bindir = @bindir@
 build = @build@
 build_alias = @build_alias@
@@ -311,13 +318,15 @@ target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 applicationsdir = $(datadir)/applications
-applications_in_files = sync.desktop.in
+applications_in_files = sync.desktop.in sync-gtk.desktop.in
 applications_generated = $(applications_in_files:.desktop.in=.desktop)
 applications_DATA = $(GUI_DESKTOP_FILES)
 gladedir = $(datadir)/syncevolution/
 glade_DATA = \
 	ui.xml
 
+icondir = $(datadir)/icons/hicolor/48x48/apps
+dist_icon_DATA = sync.png
 themercdir = $(datadir)/syncevolution/
 themerc_DATA = \
 	close.png close_hover.png settings.png settings_hover.png \
@@ -362,6 +371,7 @@ noinst_DATA = sync-ui-marshal.list
 
 CLEANFILES = $(BUILT_SOURCES) \
 	ui.xml \
+	sync-moblin.desktop \
         $(applications_generated)
 
 all: $(BUILT_SOURCES)
@@ -801,6 +811,23 @@ uninstall-applicationsDATA:
 	  echo " rm -f '$(DESTDIR)$(applicationsdir)/$$f'"; \
 	  rm -f "$(DESTDIR)$(applicationsdir)/$$f"; \
 	done
+install-dist_iconDATA: $(dist_icon_DATA)
+	@$(NORMAL_INSTALL)
+	test -z "$(icondir)" || $(MKDIR_P) "$(DESTDIR)$(icondir)"
+	@list='$(dist_icon_DATA)'; for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  f=$(am__strip_dir) \
+	  echo " $(dist_iconDATA_INSTALL) '$$d$$p' '$(DESTDIR)$(icondir)/$$f'"; \
+	  $(dist_iconDATA_INSTALL) "$$d$$p" "$(DESTDIR)$(icondir)/$$f"; \
+	done
+
+uninstall-dist_iconDATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(dist_icon_DATA)'; for p in $$list; do \
+	  f=$(am__strip_dir) \
+	  echo " rm -f '$(DESTDIR)$(icondir)/$$f'"; \
+	  rm -f "$(DESTDIR)$(icondir)/$$f"; \
+	done
 install-gladeDATA: $(glade_DATA)
 	@$(NORMAL_INSTALL)
 	test -z "$(gladedir)" || $(MKDIR_P) "$(DESTDIR)$(gladedir)"
@@ -914,7 +941,7 @@ check: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) check-am
 all-am: Makefile $(PROGRAMS) $(DATA)
 installdirs:
-	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(applicationsdir)" "$(DESTDIR)$(gladedir)" "$(DESTDIR)$(themercdir)"; do \
+	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(applicationsdir)" "$(DESTDIR)$(icondir)" "$(DESTDIR)$(gladedir)" "$(DESTDIR)$(themercdir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: $(BUILT_SOURCES)
@@ -964,8 +991,8 @@ info: info-am
 
 info-am:
 
-install-data-am: install-applicationsDATA install-gladeDATA \
-	install-themercDATA
+install-data-am: install-applicationsDATA install-dist_iconDATA \
+	install-gladeDATA install-themercDATA
 
 install-dvi: install-dvi-am
 
@@ -1002,7 +1029,8 @@ ps: ps-am
 ps-am:
 
 uninstall-am: uninstall-applicationsDATA uninstall-binPROGRAMS \
-	uninstall-gladeDATA uninstall-themercDATA
+	uninstall-dist_iconDATA uninstall-gladeDATA \
+	uninstall-themercDATA
 
 .MAKE: install-am install-strip
 
@@ -1011,22 +1039,28 @@ uninstall-am: uninstall-applicationsDATA uninstall-binPROGRAMS \
 	distclean-generic distclean-libtool distclean-tags distdir dvi \
 	dvi-am html html-am info info-am install install-am \
 	install-applicationsDATA install-binPROGRAMS install-data \
-	install-data-am install-dvi install-dvi-am install-exec \
-	install-exec-am install-gladeDATA install-html install-html-am \
-	install-info install-info-am install-man install-pdf \
-	install-pdf-am install-ps install-ps-am install-strip \
-	install-themercDATA installcheck installcheck-am installdirs \
-	maintainer-clean maintainer-clean-generic mostlyclean \
-	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
-	pdf pdf-am ps ps-am tags uninstall uninstall-am \
-	uninstall-applicationsDATA uninstall-binPROGRAMS \
+	install-data-am install-dist_iconDATA install-dvi \
+	install-dvi-am install-exec install-exec-am install-gladeDATA \
+	install-html install-html-am install-info install-info-am \
+	install-man install-pdf install-pdf-am install-ps \
+	install-ps-am install-strip install-themercDATA installcheck \
+	installcheck-am installdirs maintainer-clean \
+	maintainer-clean-generic mostlyclean mostlyclean-compile \
+	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
+	tags uninstall uninstall-am uninstall-applicationsDATA \
+	uninstall-binPROGRAMS uninstall-dist_iconDATA \
 	uninstall-gladeDATA uninstall-themercDATA
 
 @INTLTOOL_DESKTOP_RULE@
 
-# would be nicer to have different descriptions and names...
-sync-gtk.desktop sync-moblin.desktop: sync-%.desktop: sync.desktop
-	sed -e 's/Exec=sync-ui/Exec=sync-ui-$*/' $< >$@
+# When installing both the plain GTK and the Moblin-themed version,
+# the Moblin version uses the normal "Sync - Up to date" name/comment
+# and the GTK version uses "Sync (GTK)" as name with the same
+# comment. This is a somewhat arbitrary choice, with the rationale
+# being that a Moblin user is less likely to care about the
+# distinction while a GTK user might understand what "(GTK)" means.
+sync-moblin.desktop: sync.desktop
+	cp $< $@
 
 ui.xml: ui.glade
 	$(GTK_BUILDER_CONV) $< $(@F)

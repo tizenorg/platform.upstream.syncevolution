@@ -227,11 +227,10 @@ void FilterFields( string &aDat, string aFilter );
 bool GlobContextFound( string dbName, GlobContext* &g );
 
 
+/* ---------- UI call-in: tunnel itemKey --------------------- */
+TSyError  OpenTunnel_ItemKey( TunnelWrapper* tw );
+TSyError CloseTunnel_ItemKey( TunnelWrapper* tw );
 
-/* ---------- UI callback ------------------------------------ */
-TSyError UI_OpenKeyByPath( void* aCB, KeyH *aKeyH,
-                           KeyH  aParentKeyH, cAppCharP aPath, uInt16 aMode );
-TSyError UI_CloseKey     ( void* aCB, KeyH aKeyH );
 
 
 } // namespace

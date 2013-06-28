@@ -157,9 +157,6 @@ class TPluginApiDS:
   typedef TODBCApiDS inherited;
   #endif
   friend class TApiBlobProxy;
-  #if defined(DBAPI_ASKEYITEMS) && defined(ENGINEINTERFACE_SUPPORT)
-  friend class TDBItemKey;
-  #endif // DBAPI_ASKEYITEMS + ENGINEINTERFACE_SUPPORT
 private:
   void InternalResetDataStore(void); // reset for re-use without re-creation
 public:
@@ -319,34 +316,31 @@ private:
   // - alert possible thread change to plugins
   //   Does not check if API is locked or not, see dsThreadMayChangeNow()
   void ThreadMayChangeNow(void);
-  // api helpers, public because called from non-member callbacks
+  #ifdef DBAPI_TEXTITEMS
+  // Text item handling
   // - store itemdata field into mapped TItemField
-  bool storeField(
-    const char *aName,
-    const char *aParams,
-    const char *aValue,
+  virtual bool storeField(
+    cAppCharP aName,
+    cAppCharP aParams,
+    cAppCharP aValue,
     TMultiFieldItem &aItem,
     uInt16 aSetNo,
     sInt16 aArrayIndex
   );
-  #ifdef DBAPI_TEXTITEMS
-  // - parse itemdata into item
-  bool parseItemData(
+  // - parse itemdata into item using DB mappings
+  bool parseDBItemData(
     TMultiFieldItem &aItem,
-    const char *aItemData,
+    cAppCharP aItemData,
     uInt16 aSetNo
   );
   // - create itemdata from mapped fields
-  bool generateItemData(
+  bool generateDBItemData(
     bool aAssignedOnly,
     TMultiFieldItem &aItem,
     uInt16 aSetNo,
     string &aDataFields
   );
   #endif
-  #if defined(DBAPI_ASKEYITEMS) && defined(ENGINEINTERFACE_SUPPORT)
-  TDBItemKey *newDBItemKey(TMultiFieldItem *aItemP);
-  #endif // DBAPI_ASKEYITEMS + ENGINEINTERFACE_SUPPORT
   // - post process item after reading from DB (run script)
   bool postReadProcessItem(TMultiFieldItem &aItem, uInt16 aSetNo);
   // - pre-process item before writing to DB (run script)
@@ -406,40 +400,6 @@ private:
 }; // TApiBlobProxy
 
 #endif
-
-
-#if defined(DBAPI_ASKEYITEMS) && defined(ENGINEINTERFACE_SUPPORT)
-
-// key for access to a item using the settings key API
-class TDBItemKey :
-  public TItemFieldKey
-{
-  typedef TItemFieldKey inherited;
-public:
-  TDBItemKey(TEngineInterface *aEngineInterfaceP, TMultiFieldItem *aItemP, TPluginApiDS *aPluginApiDS) :
-    inherited(aEngineInterfaceP),
-    fPluginApiDS(aPluginApiDS),
-    fItemP(aItemP)
-  {};
-
-protected:
-
-  // methods to actually access a TItemField
-  virtual sInt16 getFidFor(cAppCharP aName, stringSize aNameSz);
-  virtual bool getFieldNameFromFid(sInt16 aFid, string &aFieldName);
-  virtual TItemField *getBaseFieldFromFid(sInt16 aFid);
-
-  // the datastore
-  TPluginApiDS *fPluginApiDS;
-  // the item being accessed
-  TMultiFieldItem *fItemP;
-  // iterator
-  TFieldMapList::iterator fIterator;
-
-}; // TDBItemKey
-
-#endif // DBAPI_ASKEYITEMS + ENGINEINTERFACE_SUPPORT
-
 
 
 } // namespace sysync

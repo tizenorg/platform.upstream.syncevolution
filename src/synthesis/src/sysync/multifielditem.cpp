@@ -1639,6 +1639,73 @@ void TMultiFieldItem::debugShowItem(uInt32 aDbgMask)
 /* end of TMultiFieldItem implementation */
 
 
+#ifdef DBAPI_TUNNEL_SUPPORT
+
+// TMultiFieldItemKey
+// ==================
+
+
+// set new content item
+void TMultiFieldItemKey::setItem(TMultiFieldItem *aItemP, bool aPassOwner)
+{
+  forgetItem();
+  fItemP = aItemP;
+  fOwnsItem = aPassOwner;
+  fWritten = fItemP; // if we have set an item, this counts as written
+} // TMultiFieldItemKey::setItem
+
+
+// get FID for specified name
+sInt16 TMultiFieldItemKey::getFidFor(cAppCharP aName, stringSize aNameSz)
+{
+	if (!fItemP) return VARIDX_UNDEFINED; // no item, no field is accessible
+
+  TFieldListConfig *flcP = fItemP->getFieldDefinitions();
+
+  // check for iterator commands first
+  if (strucmp(aName,VALNAME_FIRST)==0) {
+    fIteratorFid = 0;
+    if (fIteratorFid<flcP->numFields())
+      return fIteratorFid;
+  }
+  else if (strucmp(aName,VALNAME_NEXT)==0) {
+    if (fIteratorFid<flcP->numFields())
+      fIteratorFid++;
+    if (fIteratorFid<flcP->numFields())
+      return fIteratorFid;
+  }
+  else {
+  	return flcP->fieldIndex(aName,aNameSz);
+  }
+  // none found
+  return VARIDX_UNDEFINED;
+} // TMultiFieldItemKey::getFidFor
+
+
+
+TItemField *TMultiFieldItemKey::getBaseFieldFromFid(sInt16 aFid)
+{
+	if (!fItemP) return false; // no item, no field is accessible
+  return fItemP->getField(aFid);
+} // TMultiFieldItemKey::getBaseFieldFromFid
+
+
+bool TMultiFieldItemKey::getFieldNameFromFid(sInt16 aFid, string &aFieldName)
+{
+	if (!fItemP) return false; // no item, no field is accessible
+  // name is field name
+  TFieldListConfig *flcP = fItemP->getFieldDefinitions();
+  if (aFid>=0 && aFid<flcP->numFields()) {
+  	aFieldName = flcP->fFields[aFid].fieldname;
+    return true;
+  }
+  // none found
+  return false;
+} // TMultiFieldItemKey::getFieldNameFromFid
+
+
+#endif // DBAPI_TUNNEL_SUPPORT
+
 
 } // namespace sysync
 

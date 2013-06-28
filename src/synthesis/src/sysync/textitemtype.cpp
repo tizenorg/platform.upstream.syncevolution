@@ -117,7 +117,7 @@ bool TTextTypeConfig::localStartElement(const char *aElementName, const char **a
 void TTextTypeConfig::localResolve(bool aLastPass)
 {
   // check correct type of profile
-  if (dynamic_cast<TTextProfileConfig *>(fProfileConfigP)==NULL)
+  if (DYN_CAST<TTextProfileConfig *>(fProfileConfigP)==NULL)
     SYSYNC_THROW(TConfigParseException("missing 'use' of a 'textprofile' in datatype"));
   // resolve inherited
   inherited::localResolve(aLastPass);

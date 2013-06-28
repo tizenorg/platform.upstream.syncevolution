@@ -531,7 +531,7 @@ static bool tzcmp( const tz_entry &t, const tz_entry &tzi )
                        t.biasDST!=tzi.biasDST) return false;
   } // if
 
-  return tzi.ident != "-"  && // not removed
+  return !(tzi.ident=="-") && // not removed
                      ( idN ||
            t.ident.empty() ||
            t.ident == tzi.ident );
@@ -612,7 +612,7 @@ bool FoundTZ( const tz_entry &tc,
   tz_entry t = tc;
 
   if (!t.ident.empty() && // specific items will not contain more info
-       t.ident != " ") {
+     !(t.ident==" ")) {
     ClrDST  ( t );
   } // if
 
@@ -642,7 +642,7 @@ bool FoundTZ( const tz_entry &tc,
     for (pos= g->tzP.begin();
          pos!=g->tzP.end(); pos++) {
       if (j<0 &&
-          pos->ident != "-" && // element must not be removed
+          !(pos->ident=="-") && // element must not be removed
           tzcmp( t, *pos )) {
         aName= pos->name;
         ok   = true; break;
@@ -709,7 +709,7 @@ bool RemoveTZ( const tz_entry &t, GZones* g )
   TZList::iterator pos;
   for (pos= g->tzP.begin();
        pos!=g->tzP.end(); pos++) {
-    if (pos->ident != "-" && // element must not be removed
+    if (!(pos->ident=="-") && // element must not be removed
         tzcmp( t, *pos )) {
       pos->ident = "-";
     //gz()->tzP.erase( pos ); // do not remove it, keep it persistent

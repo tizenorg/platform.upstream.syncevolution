@@ -890,6 +890,32 @@ public:
   #endif
   /// @}
 
+  #ifdef DBAPI_TUNNEL_SUPPORT
+  /// @name TunnelXXX methods allowing abstracted access to datastores from UIApi from within a tunnel session
+  /// @{
+  //
+
+  virtual TSyError TunnelStartDataRead(cAppCharP aLastToken, cAppCharP aResumeToken) { return LOCERR_NOTIMP; };
+  virtual TSyError TunnelReadNextItem(ItemID aID, appCharP *aItemData, sInt32 *aStatus, bool aFirst) { return LOCERR_NOTIMP; };
+  virtual TSyError TunnelReadItem(cItemID aID, appCharP *aItemData) { return LOCERR_NOTIMP; };
+  virtual TSyError TunnelEndDataRead() { return LOCERR_NOTIMP; };
+  virtual TSyError TunnelStartDataWrite() { return LOCERR_NOTIMP; };
+  virtual TSyError TunnelInsertItem(cAppCharP aItemData, ItemID aID) { return LOCERR_NOTIMP; };
+  virtual TSyError TunnelUpdateItem(cAppCharP aItemData, cItemID aID, ItemID aUpdID) { return LOCERR_NOTIMP; };
+  virtual TSyError TunnelMoveItem(cItemID aID, cAppCharP aNewParID) { return LOCERR_NOTIMP; };
+  virtual TSyError TunnelDeleteItem(cItemID aID) { return LOCERR_NOTIMP; };
+  virtual TSyError TunnelEndDataWrite(bool aSuccess, appCharP *aNewToken) { return LOCERR_NOTIMP; };
+  virtual void     TunnelDisposeObj(void* aMemory) { return; };
+
+  virtual TSyError TunnelReadNextItemAsKey(ItemID aID, KeyH aItemKey, sInt32 *aStatus, bool aFirst) { return LOCERR_NOTIMP; };
+  virtual TSyError TunnelReadItemAsKey(cItemID aID, KeyH aItemKey) { return LOCERR_NOTIMP; };
+  virtual TSyError TunnelInsertItemAsKey(KeyH aItemKey, ItemID aID) { return LOCERR_NOTIMP; };
+  virtual TSyError TunnelUpdateItemAsKey(KeyH aItemKey, cItemID aID, ItemID aUpdID) { return LOCERR_NOTIMP; };
+  
+  virtual TSettingsKeyImpl *newTunnelKey(TEngineInterface *) { return NULL; };
+
+  /// @}
+  #endif
 
   /// @name dsXXXX (usually abstract) virtuals defining the interface to derived datastore classes (logic, implementation, api)
   ///   These are usually designed such that they should always call inherited::dsXXX to let the entire chain

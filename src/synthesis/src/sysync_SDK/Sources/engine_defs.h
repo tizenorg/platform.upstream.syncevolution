@@ -36,13 +36,13 @@ enum TCharsetEnum {
 
 /* ---- line end modes ---- */
 enum TLineendEnum {
-  /** none specified */
+  /** none specified   */
   LEM_NONE = 0,
-  /** 0x0A           */
+  /** LF = 0x0A, Unix, Linux, MacOS X */
   LEM_UNIX = 1,
-  /** 0x0D           */
+  /** CR = 0x0D, Mac OS classic       */
   LEM_MAC = 2,
-  /** 0x0D 0x0A      */
+  /** CRLF = 0x0D 0x0A, Windows, DOS  */
   LEM_DOS = 3,
   /** as in C strings, '\n' which is 0x0A normally
       (but might be 0x0D on some platforms) */
@@ -207,7 +207,9 @@ enum TProfileFlagsEnum {
   /** we should log the next session (not handled in engine!) */
   PROFILEFLAG_LOGNEXTSYNC = 0x00000001,
   /** run session in legacy mode */
-  PROFILEFLAG_LEGACYMODE = 0x00000002
+  PROFILEFLAG_LEGACYMODE = 0x00000002,
+  /** run session in lenient mode */
+  PROFILEFLAG_LENIENTMODE = 0x00000004
 };
 
 
@@ -270,6 +272,8 @@ enum TStepCmdEnum {
   /** engine needs new data, use GetSyncMLBuffer() to get access to the
       empty buffer where to put data */
   STEPCMD_NEEDDATA = 111,
+  /** engine needs to reset status to resend data */
+  STEPCMD_RESENDDATA = 112,
   /** session done, SAN processed, Autosync checked etc.
       No further action required */
   STEPCMD_DONE = 120,
@@ -400,7 +404,14 @@ enum TProgressEventEnum {
       extra2=incoming bytes) */
   PEV_DSSTATS_D = 30,
   /** engine is in process of suspending */
-  PEV_SUSPENDING = 31
+  PEV_SUSPENDING = 31,
+
+  /**
+   * range of event codes that can be used by applications for their
+   * own purposes
+   */
+  PEV_CUSTOM_START = 128,
+  PEV_CUSTOM_END = 255
 };
 
 

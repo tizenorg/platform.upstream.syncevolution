@@ -44,9 +44,9 @@ CVersion Plugin_Version( short buildNumber )
   #define P 256
   long    v;
 
-  #define SDK_VERSION_MAJOR 1 /* Release: V1.5.2, change this if you need troubles */
-  #define SDK_VERSION_MINOR 5
-  #define SDK_SUBVERSION    2
+  #define SDK_VERSION_MAJOR 1 /* Release: V1.6.0, change this if you need troubles */
+  #define SDK_VERSION_MINOR 6
+  #define SDK_SUBVERSION    0
 
   /* allowed range for the local build number */
   if (buildNumber<  0) buildNumber=   0;
@@ -545,22 +545,37 @@ static void CallbackExotic( void* aCB, cAppCharP text )
 static void CallbackVPrintf( DB_Callback aCB, cAppCharP format, va_list args, uInt16 outputMode )
 {
   #ifdef SYDEBUG
-    char       message[ maxmsglen ];
+    #ifdef __GNUC__
+      int isMax;
+    #endif
+
+    char               message[ maxmsglen ];
+    char* ptr= (char*)&message;
+
                message[ 0 ]= '\0';                /* start with an empty <msg> */
     vsnprintf( message, maxmsglen, format,args ); /* assemble the message string */
 
+    #ifdef __GNUC__
+          isMax= strlen(message)==maxmsglen-1;
+      if (isMax) vasprintf( &ptr, format, args );
+    #endif
+
     switch (outputMode) {
-      case OutputNorm        : CallbackPuts  ( aCB, message ); break;
+      case OutputNorm        : CallbackPuts  ( aCB, ptr ); break;
    /* case OutputExoticBefore: */
    /* case OutputExoticAfter : */
-      case OutputExotic      : CallbackExotic( aCB, message ); break;
+      case OutputExotic      : CallbackExotic( aCB, ptr ); break;
       case OutputConsole     :
       case OutputExoticBefore:
       case OutputExoticAfter :
       case OutputBefore      :
       case OutputAfter       : NBlk   ( (void*)aCB );
-                               ConsolePuts        ( message ); break;
+                               ConsolePuts        ( ptr ); break;
     } /* switch */
+
+    #ifdef __GNUC__
+      if (isMax) free( ptr );
+    #endif
   #endif
 } /* CallbackVPrintf */
 

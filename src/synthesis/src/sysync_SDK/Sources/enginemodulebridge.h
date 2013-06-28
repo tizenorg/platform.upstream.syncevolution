@@ -83,26 +83,26 @@ class TEngineModuleBridge : public TEngineModuleBase
                                         cAppPointer aBuffer,                          memSize  aValSize );
 
     // ---- Tunnel methods ----------------------------------------------------------------------
-    virtual TSyError StartDataRead    ( CContext    ac,  cAppCharP   lastToken,
+    virtual TSyError StartDataRead    ( SessionH    ac,  cAppCharP   lastToken,
                                                          cAppCharP resumeToken );
-    virtual TSyError ReadNextItem     ( CContext    ac,     ItemID aID,      appCharP *aItemData,
+    virtual TSyError ReadNextItem     ( SessionH    ac,     ItemID aID,      appCharP *aItemData,
                                                                                sInt32 *aStatus, bool aFirst );
-    virtual TSyError ReadItem         ( CContext    ac,    cItemID aID,      appCharP *aItemData );
-    virtual TSyError EndDataRead      ( CContext    ac );
-    virtual TSyError StartDataWrite   ( CContext    ac );
-    virtual TSyError InsertItem       ( CContext    ac,  cAppCharP aItemData, cItemID  aID );
-    virtual TSyError UpdateItem       ( CContext    ac,  cAppCharP aItemData, cItemID  aID, ItemID updID );
-    virtual TSyError MoveItem         ( CContext    ac,    cItemID aID,     cAppCharP           newParID );
-    virtual TSyError DeleteItem       ( CContext    ac,    cItemID aID );
-    virtual TSyError EndDataWrite     ( CContext    ac,       bool success,  appCharP *newToken );
-    virtual void     DisposeObj       ( CContext    ac,      void* memory );
+    virtual TSyError ReadItem         ( SessionH    ac,    cItemID aID,      appCharP *aItemData );
+    virtual TSyError EndDataRead      ( SessionH    ac );
+    virtual TSyError StartDataWrite   ( SessionH    ac );
+    virtual TSyError InsertItem       ( SessionH    ac,  cAppCharP aItemData,  ItemID  aID );
+    virtual TSyError UpdateItem       ( SessionH    ac,  cAppCharP aItemData, cItemID  aID, ItemID updID );
+    virtual TSyError MoveItem         ( SessionH    ac,    cItemID aID,     cAppCharP           newParID );
+    virtual TSyError DeleteItem       ( SessionH    ac,    cItemID aID );
+    virtual TSyError EndDataWrite     ( SessionH    ac,       bool success,  appCharP *newToken );
+    virtual void     DisposeObj       ( SessionH    ac,      void* memory );
 
     // ---- asKey ----
-    virtual TSyError ReadNextItemAsKey( CContext    ac,     ItemID aID,    KeyH aItemKey,
-                                                                               sInt32 *aStatus, bool aFirst );
-    virtual TSyError ReadItemAsKey    ( CContext    ac,    cItemID aID,    KeyH aItemKey );
-    virtual TSyError InsertItemAsKey  ( CContext    ac, KeyH aItemKey,  cItemID  aID );
-    virtual TSyError UpdateItemAsKey  ( CContext    ac, KeyH aItemKey,  cItemID  aID, ItemID updID );
+    virtual TSyError ReadNextItemAsKey( SessionH    ac,     ItemID aID,    KeyH  aItemKey,
+                                                                         sInt32 *aStatus, bool aFirst );
+    virtual TSyError ReadItemAsKey    ( SessionH    ac,    cItemID aID,    KeyH  aItemKey );
+    virtual TSyError InsertItemAsKey  ( SessionH    ac, KeyH aItemKey,   ItemID  aID );
+    virtual TSyError UpdateItemAsKey  ( SessionH    ac, KeyH aItemKey,  cItemID  aID, ItemID updID );
 }; // TEngineModuleBridge
 
 }  // namespace

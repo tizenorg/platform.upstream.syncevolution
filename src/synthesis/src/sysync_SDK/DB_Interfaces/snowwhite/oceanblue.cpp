@@ -275,7 +275,7 @@ TSyError OceanBlue::GetValueByID( KeyH aItemKey,    sInt32  aID,       sInt32  a
                             appPointer aBuffer,    memSize  aBufSize, memSize &aValSize, string suff )
 {
   if      (!fCB->ui.GetValueByID) return LOCERR_NOTIMP;
-  if (suff!="") aID+= GetValueID     ( aItemKey, VALNAME_FLAG, suff );
+  AppendSuffixToID                   ( aItemKey, aID, suff.c_str() );
   return    fCB->ui.GetValueByID( fCB, aItemKey, aID, arrIndex,    aValType, aBuffer, aBufSize, &aValSize ); 
 } // GetValueByID
 
@@ -292,9 +292,19 @@ TSyError OceanBlue::SetValueByID( KeyH aItemKey,    sInt32  aID,       sInt32  a
                             appPointer aBuffer,                       memSize  aValSize, string suff )
 {   
   if      (!fCB->ui.SetValueByID) return LOCERR_NOTIMP;
-  if (suff!="") aID+= GetValueID     ( aItemKey, VALNAME_FLAG, suff );
+  AppendSuffixToID                   ( aItemKey, aID, suff.c_str() );
   return    fCB->ui.SetValueByID( fCB, aItemKey, aID, arrIndex,    aValType, aBuffer, aValSize ); 
 } // SetValueByID
+
+
+// -------------------------------------------------
+void OceanBlue::AppendSuffixToID( KeyH aItemKeyH, sInt32 &aID, cAppCharP suff )
+{
+  string s= suff;
+  if    (s=="") return;
+                               s= VALNAME_FLAG + s; 
+  aID+= GetValueID( aItemKeyH, s.c_str() );
+} // AppendSuffixToID
 
 
 

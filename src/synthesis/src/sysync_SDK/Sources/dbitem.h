@@ -68,7 +68,11 @@ template <class T> void DeleteNext( T* &next, void* aCB= NULL,
                                     const char* s= "", bool dbg= false )
 // delete the rest of the list <act>
 {
+  #ifndef ANDROID
+  // no rtti support for Android
   if (dbg) DEBUG_Exotic_DB( aCB, "","Delete", "%s (%s)", typeid( T ).name(), s );
+  #endif
+
   if      (next) {
     delete next;
            next= NULL; // don't let it undefined
@@ -115,13 +119,15 @@ class TDBItem : public TDBItemField
 {
     typedef TDBItemField inherited;
   public:
-             TDBItem( void* aCB= NULL ) { len= 1; fCB= aCB; fLoaded= false; } // constructor
-    virtual ~TDBItem() { TDBItem**    act= (TDBItem**)&next;                  //  destructor
+             TDBItem( void* aCB= NULL ) { len= 1; fCB= aCB; fLoaded = false;
+                                                            fChanged= false; } // constructor
+    virtual ~TDBItem() { TDBItem**    act= (TDBItem**)&next;                   //  destructor
                          DeleteNext( *act, fCB, c_str(), true ); }
 
     TDBItemField item;      // the header element
     int          len;       // length of all fields of this item
     bool         fLoaded;   // indicates, if already loaded
+    bool         fChanged;  // indicates, if already changed
 
     string         itemID;
     string       parentID;

@@ -32,8 +32,6 @@
   #error "SYSYNC_CLIENT must be defined when compiling syncclient.cpp"
 #endif
 
-
-
 namespace sysync {
 
 
@@ -449,20 +447,30 @@ TSyError TSyncClient::SessionStep(uInt16 &aStepCmd, TEngineProgressInfo *aInfoP)
           aStepCmd = STEPCMD_OK;
           sta = LOCERR_OK;
           break;
-      } // switch stepCmdIn for ces_processing
+        case STEPCMD_RESENDDATA :
+        	// instead of having received new data, the network layer has found it needs to re-send the data.
+          // performing the STEPCMD_RESENDDATA just generates a new send start event, but otherwise no engine action
+          fEngineState = ces_resending;
+          aStepCmd = STEPCMD_RESENDDATA; // return the same step command, to differentiate it from STEPCMD_SENDDATA
+          OBJ_PROGRESS_EVENT(getSyncAppBase(),pev_sendstart,NULL,0,0,0);
+          sta = LOCERR_OK;
+          break;
+      } // switch stepCmdIn for ces_needdata
       break;
 
     // Waiting until SyncML data is sent
     case ces_dataready:
+    case ces_resending:
       switch (stepCmdIn) {
         case STEPCMD_SENTDATA :
-          // sent data, now request answer data
+        	// allowed in dataready or resending state
+          // sent (or re-sent) data, now request answer data
           OBJ_PROGRESS_EVENT(getSyncAppBase(),pev_sendend,NULL,0,0,0);
           fEngineState = ces_needdata;
           aStepCmd = STEPCMD_NEEDDATA;
           sta = LOCERR_OK;
           break;
-      } // switch stepCmdIn for ces_processing
+      } // switch stepCmdIn for ces_dataready
       break;
 
   case numClientEngineStates:
@@ -493,6 +501,15 @@ TSyError TSyncClient::generatingStep(uInt16 &aStepCmd, TEngineProgressInfo *aInf
     TerminateSession();
   }
   else if (sta==LOCERR_OK) {
+  	// finished generating outgoing message
+    // - make sure read pointer is set (advanced in case incoming
+    //   message had trailing garbage) to beginning of generated
+    //   answer. With incoming message being clean SyncML without
+    //   garbage, this call is not needed, however with garbage
+    //   it is important because otherwise outgoing message
+    //   would have that garbage inserted before actual message
+    //   start.
+    smlReadOutgoingAgain(getSmlWorkspaceID());
     // next is sending request to server
     fEngineState = ces_dataready;
     aStepCmd = STEPCMD_SENDDATA;
@@ -594,6 +611,8 @@ void TSyncClient::InternalResetSession(void)
   // will be cleared to suppress automatic use of DS 1.2 SINCE/BEFORE filters
   // (e.g. for date range in func_SetDaysRange())
   fServerHasSINCEBEFORE = true;
+	// no outgoing alert 222 sent so far
+  fOutgoingAlertRequests = 0;
 } // TSyncClient::InternalResetSession
 
 
@@ -667,6 +686,8 @@ localstatus TSyncClient::SelectProfile(uInt32 aProfileSelector, bool aAutoSyncSe
   // Reset session after profile change
   // and also remove any datastores we might have
   ResetAndRemoveDatastores();
+  // if tunnel, that's all for now
+  if (aProfileSelector==TUNNEL_PROFILE_ID) return LOCERR_OK;
   // - create and init datastores needed for this session from config
   //   Note: probably config has no sync requests, but they are created later
   //         programmatically
@@ -869,6 +890,8 @@ localstatus TSyncClient::NextMessage(bool &aDone)
   else {
     // check for proper end of session (caused by MessageEnded analysis)
     if (!fInProgress) {
+      // give an opportunity to let make outgoing message end and flush xml end message 
+      FinishMessage(true, false);  
       // end sync in all datastores (save anchors etc.)
       PDEBUGPRINTFX(DBG_PROTO,("Successful end of session -> calling engFinishDataStoreSync() for datastores now"));
       for (pos=fLocalDataStores.begin(); pos!=fLocalDataStores.end(); ++pos)
@@ -1087,6 +1110,8 @@ localstatus TSyncClient::NextMessage(bool &aDone)
       }
     }
   }
+  /* A dummy alert indicates this is a message with only alert222 request*/
+  bool dummyAlert = false;
   if (!outgoingfinal) {
     // - send Alert 222 if we need to continue package but have nothing to send
     //   (or ALWAYS_CONTINUE222 defined)
@@ -1094,6 +1119,34 @@ localstatus TSyncClient::NextMessage(bool &aDone)
     if (!fNeedToAnswer)
     #endif
     {
+      /* End-less loop detection
+       * Some servers will never end and triggers client sends
+       * ALERT222 forever. Detect this scenario and abort the session if
+       * detected.
+       * It is still valid for the server to use ALERT222 to "keep-alive" the
+       * connection.
+       * Therefore the loop detection criteria is:
+       * 5 adjecent alerts within 20 seconds
+       */
+      if (!fNeedToAnswer) {
+        dummyAlert = true;
+        if (fOutgoingAlertRequests++ == 0) {
+        	// start of 222 loop detection time
+          fOutgoingAlertStart = getSystemNowAs(TCTX_UTC);
+        } else if (fOutgoingAlertRequests > 5) {
+          lineartime_t curTime = getSystemNowAs(TCTX_UTC);
+          if (curTime - fOutgoingAlertStart < 20*secondToLinearTimeFactor) {
+            PDEBUGPRINTFX(DBG_ERROR,(
+              "Warning: More than 5 consecutive Alert 222 within 20 seconds- "
+              "looks like endless loop, abort session"
+            ));
+            AbortSession(400, false);
+            return getAbortReasonStatus();
+          } else {
+            fOutgoingAlertRequests = 0;
+          }
+        }
+      }
       // not final, and nothing to answer otherwise: create alert-Command to request more info
       TAlertCommand *alertCmdP = new TAlertCommand(this,NULL,(uInt16)222);
       // %%% not clear from spec what has to be in item for 222 alert code
@@ -1106,6 +1159,11 @@ localstatus TSyncClient::NextMessage(bool &aDone)
       ISSUE_COMMAND_ROOT(this,alertCmdP);
     }
   }
+  // We send a response with no dummy alert, so reset the alert detector
+  if (!dummyAlert) {
+    fOutgoingAlertRequests = 0;
+  }
+
   // send custom end-of session puts
   if (!isSuspending() && outgoingfinal && fOutgoingState==psta_map) {
     // End of outgoing map package; let custom PUTs which may transmit some session statistics etc. happen now
@@ -1826,6 +1884,29 @@ uInt8P TClientParamsKey::getStructAddr(void)
   // prepared for accessing fields in client session object
   return (uInt8P)fClientSessionP;
 } // TClientParamsKey::getStructAddr
+
+
+// open subkey by name (not by path!)
+TSyError TClientParamsKey::OpenSubKeyByName(
+  TSettingsKeyImpl *&aSettingsKeyP,
+  cAppCharP aName, stringSize aNameSize,
+  uInt16 aMode
+) {
+  #ifdef DBAPI_TUNNEL_SUPPORT
+  if (strucmp(aName,"tunnel",aNameSize)==0) {
+    // get tunnel datastore pointer
+    TLocalEngineDS *ds = fClientSessionP->getTunnelDS();
+    if (!ds) return LOCERR_WRONGUSAGE;
+    // opens current session's tunnel key
+    aSettingsKeyP = ds->newTunnelKey(fEngineInterfaceP);
+  }
+  else
+  #endif
+    return inherited::OpenSubKeyByName(aSettingsKeyP,aName,aNameSize,aMode);
+  // opened a key
+  return LOCERR_OK;
+} // TBinFileClientParamsKey::OpenSubKeyByName
+
 
 #endif // ENGINEINTERFACE_SUPPORT
 

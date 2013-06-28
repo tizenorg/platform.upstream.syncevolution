@@ -326,6 +326,8 @@ typedef list<TSyncSetItem *> TSyncSetList;
 typedef list<TMultiFieldItem *> TMultiFieldItemList;
 
 
+class TDBItemKey;
+
 class TCustomImplDS:
   #ifdef BASED_ON_BINFILE_CLIENT
   public TBinfileImplDS
@@ -340,6 +342,9 @@ class TCustomImplDS:
   #endif
   friend class TCustomDSfuncs;
   friend class TCustomCommonFuncs;
+  friend class TDBItemKey;
+  friend class TCustomDSTunnelKey;
+
 private:
   void InternalResetDataStore(void); // reset for re-use without re-creation
 protected:
@@ -391,7 +396,7 @@ public:
   //
 
   #ifndef BASED_ON_BINFILE_CLIENT
-  /// @brief Load admin data from ODBC database
+  /// @brief Load admin data from database
   /// @param aDeviceID[in]       remote device URI (device ID)
   /// @param aDatabaseID[in]     local database ID
   /// @param aRemoteDBID[in]     database ID of remote device
@@ -434,7 +439,7 @@ public:
     const char *aDatabaseID,  // database ID
     const char *aRemoteDBID  // database ID of remote device
   ) = 0;
-  /// @brief Save admin data to ODBC database
+  /// @brief Save admin data to database
   /// @param[in] aSessionFinished if true, this is a end-of-session save (and not only a suspend save) - but not necessarily a successful one
   /// @param[in] aSuccessful if true, this is a successful end-of-session
   ///   Must save to the target record addressed at LoadAdminData() by the triple (aDeviceID,aDatabaseID,aRemoteDBID)
@@ -494,6 +499,37 @@ public:
   virtual localstatus apiEndDataWrite(string &aThisSyncIdentifier) = 0;
 
   /// @}
+
+  #ifdef DBAPI_TUNNEL_SUPPORT
+  /// @name TunnelXXX methods allowing abstracted access to datastores from UIApi from within a tunnel session
+  /// @{
+  //
+
+  virtual TSyError TunnelStartDataRead(cAppCharP aLastToken, cAppCharP aResumeToken);
+  virtual TSyError TunnelReadNextItem(ItemID aID, appCharP *aItemData, sInt32 *aStatus, bool aFirst);
+  virtual TSyError TunnelReadItem(cItemID aID, appCharP *aItemData);
+  virtual TSyError TunnelEndDataRead();
+  virtual TSyError TunnelStartDataWrite();
+  virtual TSyError TunnelInsertItem(cAppCharP aItemData, ItemID aID);
+  virtual TSyError TunnelUpdateItem(cAppCharP aItemData, cItemID aID, ItemID aUpdID);
+  virtual TSyError TunnelMoveItem(cItemID aID, cAppCharP aNewParID);
+  virtual TSyError TunnelDeleteItem(cItemID aID);
+  virtual TSyError TunnelEndDataWrite(bool aSuccess, appCharP *aNewToken);
+  virtual void     TunnelDisposeObj(void* aMemory);
+
+  virtual TSyError TunnelReadNextItemAsKey(ItemID aID, KeyH aItemKey, sInt32 *aStatus, bool aFirst);
+  virtual TSyError TunnelReadItemAsKey(cItemID aID, KeyH aItemKey);
+  virtual TSyError TunnelInsertItemAsKey(KeyH aItemKey, ItemID aID);
+  virtual TSyError TunnelUpdateItemAsKey(KeyH aItemKey, cItemID aID, ItemID aUpdID);
+
+  virtual TSettingsKeyImpl *newTunnelKey(TEngineInterface *aEngineInterfaceP);
+
+	// helpers
+	void setupTunnelTypes(TSyncItemType *aItemTypeP=NULL);
+
+  /// @}
+  #endif
+
 
 
 public:
@@ -763,7 +799,131 @@ protected:
   bool fOptionFilterTested;
   bool fOptionFilterWorksOnDBLevel; // set if option filters can be executed by DB
   #endif
+
+	#ifdef DBAPI_TUNNEL_SUPPORT
+  // Tunnel DB access support
+  bool fTunnelReadStarted;
+  bool generateTunnelItemData(bool aAssignedOnly, TMultiFieldItem *aItemP, string &aDataFields);
+  bool parseTunnelItemData(TMultiFieldItem &aItem, const char *aItemData);
+	TSyError TunnelReadNextItemInternal(ItemID aID, TSyncItem *&aItemP, sInt32 *aStatus, bool aFirst);
+	TSyError TunnelInsertItemInternal(TMultiFieldItem *aItemP, ItemID aNewID);
+	TSyError TunnelUpdateItemInternal(TMultiFieldItem *aItemP, cItemID aID, ItemID aUpdID);
+  #endif // DBAPI_TUNNEL_SUPPORT
+
+	#ifdef DBAPI_TEXTITEMS
+  // Text item handling
+  // - store itemdata field into named TItemField (derived DBApi store will override this with DB-mapped version)
+  virtual bool storeField(
+    const char *aName,
+    const char *aParams,
+    const char *aValue,
+    TMultiFieldItem &aItem,
+    uInt16 aSetNo,
+    sInt16 aArrayIndex
+  );
+  // - parse itemdata into item (generic, using virtual storeField() for actually finding field by name)
+  bool parseItemData(
+    TMultiFieldItem &aItem,
+    const char *aItemData,
+    uInt16 aSetNo
+  );
+	// - generate text data for one field (common for Tunnel and DB API)
+  bool generateItemFieldData(
+  	bool aAssignedOnly, TCharSets aDataCharSet, TLineEndModes aDataLineEndMode, timecontext_t aTimeContext,
+  	TItemField *aBasefieldP, cAppCharP aBaseFieldName, string &aDataFields
+  );
+	#endif // DBAPI_TEXTITEMS
+
+	#if (defined(DBAPI_ASKEYITEMS) || defined(DBAPI_TUNNEL_SUPPORT)) && defined(ENGINEINTERFACE_SUPPORT)
+  TDBItemKey *newDBItemKey(TMultiFieldItem *aItemP, bool aOwnsItem=false);
+	#endif // (DBAPI_ASKEYITEMS or DBAPI_TUNNEL_SUPPORT) and ENGINEINTERFACE_SUPPORT
+
 }; // TCustomImplDS
+
+
+#ifdef DBAPI_TEXTITEMS
+
+// helper to process params
+// - if aParamName!=NULL, it searches for the value of the requested parameter and returns != NULL, NULL if none found
+// - if aParamName==NULL, it scans until all params are skipped and returns end of params
+cAppCharP paramScan(cAppCharP aParams,cAppCharP aParamName, string &aValue);
+
+#endif // DBAPI_TEXTITEMS
+
+
+#if (defined(DBAPI_ASKEYITEMS) || defined(DBAPI_TUNNEL_SUPPORT)) && defined(ENGINEINTERFACE_SUPPORT)
+
+// key for access to a item using the settings key API
+class TDBItemKey :
+  public TItemFieldKey
+{
+  typedef TItemFieldKey inherited;
+public:
+  TDBItemKey(TEngineInterface *aEngineInterfaceP, TMultiFieldItem *aItemP, TCustomImplDS *aCustomImplDS, bool aOwnsItem=false) :
+    inherited(aEngineInterfaceP),
+    fCustomImplDS(aCustomImplDS),
+    fItemP(aItemP),
+    fOwnsItem(aOwnsItem)
+  {};
+  virtual ~TDBItemKey() { forgetItem(); };
+  TMultiFieldItem *getItem(void) { return fItemP; };
+  void setItem(TMultiFieldItem *aItemP, bool aPassOwner=false);
+
+protected:
+
+  // methods to actually access a TItemField
+  virtual sInt16 getFidFor(cAppCharP aName, stringSize aNameSz);
+  virtual bool getFieldNameFromFid(sInt16 aFid, string &aFieldName);
+  virtual TItemField *getBaseFieldFromFid(sInt16 aFid);
+
+  // the datastore
+  TCustomImplDS *fCustomImplDS;
+  // the item being accessed
+  TMultiFieldItem *fItemP;
+  bool fOwnsItem;
+  // iterator
+  TFieldMapList::iterator fIterator;
+  
+private:
+	void forgetItem() { if (fOwnsItem && fItemP) { delete fItemP; } fItemP=NULL; };
+  
+
+}; // TDBItemKey
+
+#endif // (DBAPI_ASKEYITEMS or DBAPI_TUNNEL_SUPPORT) and ENGINEINTERFACE_SUPPORT
+
+
+#ifdef DBAPI_TUNNEL_SUPPORT
+
+// tunnel DB API parameters
+class TCustomDSTunnelKey :
+  public TStructFieldsKey
+{
+  typedef TStructFieldsKey inherited;
+
+public:
+  TCustomDSTunnelKey(TEngineInterface *aEngineInterfaceP, TCustomImplDS *aCustomImplDsP);
+  virtual ~TCustomDSTunnelKey();
+  TCustomImplDS *getCustomImplDs(void) { return fCustomImplDsP; }
+
+protected:
+  // open subkey by name (not by path!)
+  // - this is the actual implementation
+  virtual TSyError OpenSubKeyByName(
+    TSettingsKeyImpl *&aSettingsKeyP,
+    cAppCharP aName, stringSize aNameSize,
+    uInt16 aMode
+  );
+  // field access
+  const TStructFieldInfo *getFieldsTable(void);
+	sInt32 numFields(void);
+  // fields
+  TCustomImplDS *fCustomImplDsP;
+}; // TCustomDSTunnelKey
+
+
+#endif // DBAPI_TUNNEL_SUPPORT
+
 
 } // namespace sysync
 

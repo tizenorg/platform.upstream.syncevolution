@@ -600,10 +600,10 @@ TSyError Session_Login( CContext sContext, cAppCharP sUsername, appCharP *sPassw
 
   appCharP                               pw= *sPassword;
   if  (err && (mode==Password_ClrText_OUT ||
-               mode==Password_MD5_OUT )) pw= "";
+               mode==Password_MD5_OUT )) pw= (appCharP)"";
 
   appCharP                               uk= *sUsrKey;
-  if  (err)                              uk= "";
+  if  (err)                              uk= (appCharP)"";
 
   DEBUG_DB( sc->fCB, MyDB,Se_LI,"%d usr='%s' pwd='%s' => key='%s' err=%d",
                                  sc, sUsername, pw,uk, err );
@@ -846,8 +846,6 @@ TSyError CreateContext( CContext *aContext, cAppCharP aContextName, DB_Callback 
                                             cAppCharP sDevKey, 
                                             cAppCharP sUsrKey )
 {
-//long v= MoC( aCB->cContext )->fCC->cEngineVersion;
-
   ContextP             ac= new TDBContext( aContextName, aCB, sDevKey,sUsrKey );
   if                  (ac==NULL) return DB_Full; // this is really fatal
   *aContext= (CContext)ac;
@@ -885,6 +883,9 @@ void ThreadMayChangeNow( CContext aContext )
 {
   ContextP         ac= DBC( aContext );
   DEBUG_Exotic_DB( ac->fCB, MyDB,Da_TC, "(%08X)", ac );
+
+                   ac->fNewItem.SaveDB ( false ); // eventually partly save
+                   ac->fItemList.SaveDB( false );
 } /* ThreadMayChangeNow */
 
 
@@ -1047,7 +1048,7 @@ TSyError ReadNextItemAsKey( CContext /* aContext */, ItemID /* aID */,     KeyH 
 static bool ItemFound( cItemID aID, TDBItem* &actL )
 {
   appCharP p= aID->parent; 
-  if  (!p) p= "";
+  if  (!p) p= (appCharP)"";
 
   while         (ListNext( actL )) {
     if (strcmp( aID->item, actL->itemID.c_str()   )==0 && // search for item <aID>
@@ -1068,7 +1069,8 @@ TSyError ReadItem( CContext aContext, cItemID aID, appCharP *aItemData )
   int           a= 0;
   string        s, dat;
 
-  *aItemData= "";     actL= &ac->fItemList;
+  *aItemData= (appCharP)"";
+                      actL= &ac->fItemList;
   if (ItemFound( aID, actL )) {
                       actK     = &ac->fItemList.item; // now concatenate <aItemData>
     int n= 0;              actF=         &actL->item;
@@ -1298,7 +1300,8 @@ TSyError EndDataWrite( CContext aContext, bool success, appCharP *newToken )
 
   TSyError     err= DB_Error;
                     ac->fNewItem.SaveDB ( false );
-  if (success) err= ac->fItemList.SaveDB( false );
+  if (success) err= ac->fItemList.SaveDB( false ); // be aware that this implementation
+         // in case of no success might have saved already a part at "ThreadMyChangeNow"
   if (err) ac->fNewToken= ac->fLastToken;
   *newToken=    StrAlloc( ac->fNewToken.c_str() );
 

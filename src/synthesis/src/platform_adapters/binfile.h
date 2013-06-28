@@ -18,6 +18,11 @@
 
 #include "binfilebase.h"
 
+#ifdef ANDROID
+#include <stdio.h>
+#include <unistd.h>
+#endif
+
 namespace sysync {
 
 class TBinFile : public TBinFileBase

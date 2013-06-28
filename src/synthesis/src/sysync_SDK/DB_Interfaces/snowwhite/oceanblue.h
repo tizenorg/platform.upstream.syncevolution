@@ -260,6 +260,9 @@ class OceanBlue
 
     virtual TSyError SetInt32ByID( KeyH aItemKey, sInt32  aID,         sInt32  aValue,
                                                   sInt32  arrIndex= 0, string  suff="" );
+    
+    /* suffix handling */                                              
+    virtual void AppendSuffixToID( KeyH aItemKey, sInt32 &aID,      cAppCharP  suff    );
 }; // OceanBlue
 
 

@@ -204,7 +204,11 @@ bool getSystemTimeZoneContext(timecontext_t &aContext, GZones* aGZones)
   tz_entry t;
   bool ok = true;
 
+  #ifdef ANDROID
+  // BFO_INCOMPLETE
+  #else
   tzset();
+  #endif
   t.name = tzname[ 0 ];
   if (strcmp( t.name.c_str(),tzname[ 1 ] )!=0) {
     t.name+= "/";

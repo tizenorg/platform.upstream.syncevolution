@@ -1475,7 +1475,9 @@ TSyError TSyncServer::processingStep(uInt16 &aStepCmd, TEngineProgressInfo *aInf
   InstanceID_t myInstance = getSmlWorkspaceID();
   Ret_t rc;
   
-  
+  // %%% non-functional at this time
+  sta = LOCERR_NOTIMP;
+  /*
   #error "%%% figure out encoding if we are starting a new session here"
 
   // now process next command
@@ -1517,6 +1519,7 @@ TSyError TSyncServer::processingStep(uInt16 &aStepCmd, TEngineProgressInfo *aInf
     aStepCmd = STEPCMD_OK;
     sta = LOCERR_OK;
   }
+  */
   // done
   return sta;
 } // TSyncServer::processingStep
@@ -1529,6 +1532,9 @@ TSyError TSyncServer::generatingStep(uInt16 &aStepCmd, TEngineProgressInfo *aInf
   localstatus sta = LOCERR_WRONGUSAGE;
   bool done;
 
+  // %%% non-functional at this time
+  sta = LOCERR_NOTIMP;
+  /*
   #error "%%% figure out encoding if we are starting a new session here"
 
   //%%% at this time, generate next message in one step
@@ -1546,6 +1552,7 @@ TSyError TSyncServer::generatingStep(uInt16 &aStepCmd, TEngineProgressInfo *aInf
     aStepCmd = STEPCMD_SENDDATA;
     OBJ_PROGRESS_EVENT(getSyncAppBase(),pev_sendstart,NULL,0,0,0);
   }
+  */
   // return status
   return sta;
 } // TSyncServer::generatingStep

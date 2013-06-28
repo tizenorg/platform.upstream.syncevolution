@@ -83,10 +83,10 @@ class TBlob {
     string fDevKey;
     string fUsrKey;
 
-    FILE*  fFile;     // assigned file
-    bool   fOpened;   // Is it currently opened ?
-    ulong  fCurPos;   // current position
-    ulong  fSize;     // BLOB's size
+    FILE*   fFile;     // assigned file
+    bool    fOpened;   // Is it currently opened ?
+    memSize fCurPos;   // current position
+    memSize fSize;     // BLOB's size
 
     string fName;     // BLOB's file name
 

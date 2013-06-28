@@ -2084,8 +2084,8 @@ TSyError TDB_Api::WriteBlob( ItemID_Struct  aID, cAppCharP aBlobID,
                                     cItemID aID,
                                   cAppCharP aBlobID,
                                  appPointer blkPtr,
-                                      ulong blkSize,
-                                      ulong totSize,
+                                    memSize blkSize,
+                                    memSize totSize,
                                        bool aFirst,
                                        bool aLast );
 

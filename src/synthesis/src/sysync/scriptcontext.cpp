@@ -1253,8 +1253,10 @@ public:
       return PCRE_ERROR_NULL; // -2, regexp did not compile
     }
     else {
-      // regExp is ok and can be executed agains subject
-      return pcre_exec(regex, NULL, aSubject, aSubjLen, aSubjStart, 0, aOutVec, aOVSize);
+      // regExp is ok and can be executed against subject
+      int r = pcre_exec(regex, NULL, aSubject, aSubjLen, aSubjStart, 0, aOutVec, aOVSize);
+      pcre_free(regex);
+      return r;
     }
   } // run_pcre
 
@@ -2038,7 +2040,7 @@ public:
         // - set the mode code (none = 0 = default)
         profileHandlerP->setProfileMode(aFuncContextP->getLocalVar(1)->getAsInteger());
         profileHandlerP->setRelatedDatastore(NULL); // no datastore in particular is related
-#ifndef NO_REMOTE_RULES
+				#ifndef NO_REMOTE_RULES
         // - try to find remote rule
         TItemField *field = aFuncContextP->getLocalVar(2);
         if (field) {
@@ -2046,7 +2048,7 @@ public:
           if (!s.empty())
             profileHandlerP->setRemoteRule(s);
         }
-#endif
+				#endif
         // - convert, after clearing the string (some generateText() implementations
         // append instead of overwriting)
         s = "";
@@ -2298,7 +2300,7 @@ void TScriptContext::clearFields(void)
       if (i>=fNumVars) break; // all instantiated vars done, stop even if more might be defined
       if (fFieldsP[i]) {
         if (!(*pos)->fIsRef)
-          delete fFieldsP[i]; // delete field object (but only if not reference
+          delete fFieldsP[i]; // delete field object (but only if not reference)
         fFieldsP[i]=NULL;
       }
     }

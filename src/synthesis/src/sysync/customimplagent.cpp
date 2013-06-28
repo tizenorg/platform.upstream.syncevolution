@@ -679,25 +679,40 @@ void TCustomImplAgent::ResetSession(void)
 // initialize session for DBAPI tunnel usage
 localstatus TCustomImplAgent::InitializeTunnelSession(cAppCharP aDatastoreName)
 {
-  localstatus sta;
+  localstatus sta = LOCERR_OK;
 
-  // find datastore to work with
-  TLocalDSConfig *dsCfgP = getSessionConfig()->getLocalDS(aDatastoreName);
-  if (!dsCfgP) {
-    // no such datastore found
-    sta = DB_NotFound;
-  }
-  else {
-    // found config for given name, instantiate the datastore object
-    fTunnelDatastoreP = static_cast<TCustomImplDS *>(dsCfgP->newLocalDataStore(this));
-    if (!fTunnelDatastoreP)
-      sta = DB_Error;
+	// do the minimum of profile selection needed to make DBs work
+  sta = SelectProfile(TUNNEL_PROFILE_ID, false);
+  if (sta==LOCERR_OK) {
+    // find datastore to work with
+    TLocalDSConfig *dsCfgP = getSessionConfig()->getLocalDS(aDatastoreName);
+    if (!dsCfgP) {
+      // no such datastore found
+      sta = DB_NotFound;
+    }
+    else {
+      // found config for given name, instantiate the datastore object
+      fTunnelDatastoreP = static_cast<TCustomImplDS *>(dsCfgP->newLocalDataStore(this));
+      if (!fTunnelDatastoreP)
+        sta = DB_Error;
+    }
   }
   // done
   return sta;
-} // TCustomImplAgent::CreateTunnelSession
+} // TCustomImplAgent::InitializeTunnelSession
+
+
+// return the datastore initialized for tunnel access
+TLocalEngineDS *TCustomImplAgent::getTunnelDS()
+{
+	return fTunnelDatastoreP; 
+} // TCustomImplAgent::getTunnelDS
+
 
 #endif // DBAPI_TUNNEL_SUPPORT
+
+
+
 
 
 

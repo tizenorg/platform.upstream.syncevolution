@@ -24,6 +24,10 @@
 #endif
 #include <ctype.h>
 
+#ifdef ANDROID
+  #include <stdarg.h>
+#endif
+
 #include "generic_types.h"
 
 using namespace std;

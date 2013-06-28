@@ -88,11 +88,11 @@
 
 /* ---- Plugin support ---- */
 /* For the first versions, "N" is the platform identifier */
-/*      VP_Init               0x01000000   * V1.0.N.0 : Initial version                                 */
-/*      VP_1st                0x01000002   * V1.0.N.2 : 1st delivered version                           */
-/*      VP_Session_Login      0x01000003   * V1.0.N.3 : VAR_String for Session_Login: this version only */
-
 enum Version {
+/*VP_Init                  0x01000000   * V1.0.N.0 : Initial version */
+/*VP_1st                   0x01000002   * V1.0.N.2 : 1st delivered version */
+/*VP_Session_Login         0x01000003   * V1.0.N.3 : VAR_String for Session_Login: this version only */
+
   /** V1.0.N.4 : <engineVersion> param for "Module_PluginParams" */
   VP_EngineVersionParam  = 0x01000004,
   /** V1.0.N.5 : Callback version >= 2 supported                 */
@@ -104,7 +104,7 @@ enum Version {
   /** V1.0.N.8 : Supports "InsertMapItem"                        */
   VP_InsertMapItem       = 0x01000008,
 
-/* From now on, the platform info can be found at he capabilities, "X" is a user defined build nr       */
+/* From now on, the platform info can be found at he capabilities, "X" is a user defined build nr */
   /** V1.0.5.X : "X": With customer defined plugin build number  */
   VP_NewBuildNumber      = 0x01000500,
   /** V1.0.6.X : Suspend/Resume extension for 'StartDataRead'    */
@@ -118,22 +118,22 @@ enum Version {
   /** V1.0.10.X: With enhanced "scripting" function "AdaptItem"  */
   VP_AdaptItem           = 0x01000a00,
 
-/* The new SyncML engine V2.9.X/V3.X.X runs best with versions from here onwards                        */
+/* The new SyncML engine V2.9.X/V3.X.X runs best with versions from here onwards */
   /** V1.1.0.X : Enhanced Plugin Info support: Server > 2.9.5.0  */
   VP_Plugin_Info         = 0x01010000,
   /** V1.2.1.X : With additional password mode + JNI adaption    */
   VP_MD5_Nonce_IN        = 0x01020100,
-/*      VP_061012             0x01020200   * V1.2.2.X : Released 12-Oct-06                              */
-/*      VP_061207             0x01030000   * V1.3.0.X : Released 07-Dec-06, Visual Studio support       */
+/*VP_061012                0x01020200   * V1.2.2.X : Released 12-Oct-06 */
+/*VP_061207                0x01030000   * V1.3.0.X : Released 07-Dec-06, Visual Studio support */
   /** V1.3.1.X : With UI function support                        */
   VP_UI_Support          = 0x01030100,
-/*      VP_070131             0x01030200   * V1.3.2.X : Released 31-Jan-07                              */
-/*      VP_070201             0x01030300   * V1.3.3.X : Released 01-Feb-07                              */
+/*VP_070131                0x01030200   * V1.3.2.X : Released 31-Jan-07 */
+/*VP_070201                0x01030300   * V1.3.3.X : Released 01-Feb-07 */
   /** V1.3.4.X : Java Callback with <cContext>                   */
   VP_Call_cContext       = 0x01030400,
   /** V1.3.4.X : Callback version >= 7 supported: UI / thisCB    */
   VP_CB_Version7         = 0x01030400,
-/*      VP_070212             0x01030600   * V1.3.6.X : Released 12-Feb-07                              */
+/*VP_070212                0x01030600   * V1.3.6.X : Released 12-Feb-07 */
   /** V1.3.8.X : Support for GlobContext structure               */
   VP_GlobContext         = 0x01030800,
   /** V1.3.9.X : Callback version >= 8 supported: extended UI    */
@@ -150,9 +150,11 @@ enum Version {
   VP_GlobMulti           = 0x01050100,
   /** V1.5.2.X : Callback version >= 11 supported: dbapi tunnel  */
   VP_CB_Version11        = 0x01050200,
-  /** V1.5.2.X : Current version, use 'Plugin_Version()'         */
-  VP_CurrentVersion      = 0x01050200,
-/*                                         *                                                            */
+  /** V1.6.0.X : Tunnel support                                  */
+  VP_Tunnel              = 0x01060000,
+  /** V1.6.0.X : Current version, use 'Plugin_Version()'         */
+  VP_CurrentVersion      = 0x01060000,
+
   /** -------- : Bad/undefined version                           */
   VP_BadVersion          = 0xffffffff,
 
@@ -340,13 +342,6 @@ struct GlobContext {
 #define GlobContext_JavaVM "JavaVM"
 
 
-/*! Wrapper for tunnel context callback */
-struct TunnelWrapper {
-  void*    tCB;
-  CContext tContext;
-};
-
-
 /*! Undefined function for place holder at 'ConnectFunctions', must have pointer size */
 #define XX (char *)-1
 
@@ -454,8 +449,8 @@ typedef TSyError (*Rd_ItemKFunc)( CContext ac,   cItemID aID,            KeyH  a
 typedef TSyError     (*EDR_Func)( CContext ac );
 
 typedef TSyError     (*SDW_Func)( CContext ac );
-typedef TSyError (*InsItemSFunc)( CContext ac, cAppCharP aItemData, cItemID aID );
-typedef TSyError (*InsItemKFunc)( CContext ac,      KeyH aItemKey,  cItemID aID );
+typedef TSyError (*InsItemSFunc)( CContext ac, cAppCharP aItemData,  ItemID aID );
+typedef TSyError (*InsItemKFunc)( CContext ac,      KeyH aItemKey,   ItemID aID );
 typedef TSyError (*UpdItemSFunc)( CContext ac, cAppCharP aItemData, cItemID aID,    ItemID    updID );
 typedef TSyError (*UpdItemKFunc)( CContext ac,      KeyH aItemKey,  cItemID aID,    ItemID    updID );
 typedef TSyError (*MovItem_Func)( CContext ac,                      cItemID aID, cAppCharP newParID );
@@ -607,6 +602,17 @@ typedef struct SDK_InterfaceType {
 /* special case for <callbackVersion> = 8, higher versions contain a size field */
 #define SDK_Interface_Struct_V8         8
 #define SDK_Interface_Struct_V8_Size  184
+
+
+
+/*! Wrapper for tunnel context callback */
+struct TunnelWrapper {
+  UI_Call_In tCB;          /* the Call-In reference */
+  SessionH   tContext;     /* the tunnel session context */
+  appCharP   tContextName; /* the tunnel session context name, needed for reopen in context */
+  KeyH       tItemKey;     /* an item key element for AsKey operations */
+  uInt16     tAfterWrite;  /* is true after first Insert/Update/Move/Delete */
+}; /* Tunnelwrapper */
 
 
 

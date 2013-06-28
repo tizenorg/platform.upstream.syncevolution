@@ -20,6 +20,10 @@
   #include <windows.h>
 #endif
 
+#ifdef ANDROID
+  #include <pthread.h>
+#endif
+
 /*
 #ifndef _MSC_VER
   using namespace sysync;

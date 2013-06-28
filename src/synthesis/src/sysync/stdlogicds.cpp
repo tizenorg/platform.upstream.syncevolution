@@ -130,12 +130,10 @@ localstatus TStdLogicDS::logicMakeAdminReady(cAppCharP aDataStoreURI, cAppCharP 
       PDEBUGPRINTFX(DBG_PROTO,("First time sync or config changed since last sync -> remote should see our devinf"));
       fSessionP->remoteMustSeeDevinf();
     }
-    // Invalidate saved anchors if first time sync.
-    // Don't just use empty strings, ScheduleWorld didn't like
-    // that.
+    // empty saved anchors if first time sync (should be empty anyway, but...)
     if (fFirstTimeSync) {
-      fLastLocalAnchor = "no local anchor";
-      fLastRemoteAnchor = "no remote anchor";
+      fLastLocalAnchor.empty();
+      fLastRemoteAnchor.empty();
     }
   }
   PDEBUGENDBLOCK("MakeAdminReady");

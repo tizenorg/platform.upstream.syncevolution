@@ -20,7 +20,7 @@ using namespace std;
 
 namespace sysync {
 
-#if defined(WINCE) || defined(__EPOC_OS__)
+#if defined(WINCE) || defined(__EPOC_OS__) || defined(ANDROID)
 // eVC + EPOC cannot process throw() qualifier
 #define NOTHROW
 // eVC + EPOC has no exception base class

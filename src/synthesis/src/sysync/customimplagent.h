@@ -182,6 +182,7 @@ public:
   #ifdef DBAPI_TUNNEL_SUPPORT
   // Initialize a datastore tunnel session
   virtual localstatus InitializeTunnelSession(cAppCharP aDatastoreName);
+  virtual TLocalEngineDS *getTunnelDS();
   #endif
   // Login and device management only if not based on binfile client
   #ifndef BASED_ON_BINFILE_CLIENT

@@ -25,7 +25,9 @@ using namespace std;
 
 namespace sysync {
 
+#ifndef ANDROID
 #pragma pack(push,4) // 32bit
+#endif
 
 // general defines for bindatastore
 
@@ -40,7 +42,9 @@ typedef struct {
   uInt32 uniquerecordid; // ever increasing counter to generate unique IDs for records
 } TBinFileHeader;
 
+#ifndef ANDROID
 #pragma pack(pop)
+#endif
 
 typedef uInt16 bferr;
 #define BFE_OK          0 // ok
@@ -59,6 +63,12 @@ typedef enum {
   fopm_create   // create for read and write (truncate eventually existing)
 } TFileOpenModes;
 
+// DB version update function:
+// - when called with aOldRecordData==aNewRecordData==NULL, just checks if update is possible and returns new record size if yes
+// - when called with aOldRecordData==NULL, but aNewRecordData!=0, aNewRecordData points to the extra header and should be
+//   updated for new version (only called when extra header size is actually different)
+// - when called with aOldRecordData!=0 and aNewRecordData!=0, it must update the record data to the new version.
+//   This is repeated for all records in the binfile.
 typedef uInt32 (*TUpdateFunc)(uInt32 aOldVersion, uInt32 aNewVersion, void *aOldRecordData, void *aNewRecordData, uInt32 aOldSize);
 
 class TBinFileBase
@@ -72,8 +82,10 @@ public:
   void destruct(void); // to be called by ALL destructors of derivates.
   virtual ~TBinFileBase();
   // DB file access
-  // - set path to binary file containing the database
-  void setFileInfo(const char *aFilename,uInt32 aVersion,uInt32 aIdWord);
+  // - set path to binary file containing the database (aExpectedRecordSize can be zero if record size is not predetermined by a sizeof())
+  void setFileInfo(const char *aFilename, uInt32 aVersion, uInt32 aIdWord, uInt32 aExpectedRecordSize);
+  // - get version file had when opening
+  uInt32 getFoundVersion(void) { return fFoundVersion; };
   // - check if open
   bool isOpen(void) { return platformFileIsOpen(); };
   // - try to open existing DB file according to params set with setFileInfo
@@ -132,6 +144,8 @@ private:
   string fFilename;
   uInt32 fIdWord;
   uInt32 fVersion;
+  uInt32 fFoundVersion; // version of file found when opening (to check after opening for happened upgrade)
+  uInt32 fExpectedRecordSize;
   // cached header
   bool fHeaderDirty; // set if header must be written back to DB file
   bool fExtraHeaderDirty; // set if extra header must be written back to DB file

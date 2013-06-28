@@ -585,6 +585,7 @@ protected:
   );
 }; // TBinFileClientParamsKey
 
+
 #endif // ENGINEINTERFACE_SUPPORT
 
 } // namespace sysync

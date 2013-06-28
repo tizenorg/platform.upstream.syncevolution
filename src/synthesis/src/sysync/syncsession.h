@@ -116,6 +116,8 @@ public:
   string fDevId;
   string fDevTyp;
   // - options specific for that remote party (0=false, 1=true, -1=unspecified)
+  sInt8 fLegacyMode; // set if remote is known legacy, so don't use new types
+  sInt8 fLenientMode; // set if remote's SyncML should be handled leniently, i.e. not too strict checking where not absolutely needed
   sInt8 fLimitedFieldLengths; // set if remote has limited field lengths
   sInt8 fDontSendEmptyProperties; // set if remote does not want empty properties
   sInt8 fDoQuote8BitContent; // set if 8-bit chars should generally be encoded with QP in MIME-DIR
@@ -293,6 +295,7 @@ public:
   #ifdef DBAPI_TUNNEL_SUPPORT
   // Initialize a datastore tunnel session
   virtual localstatus InitializeTunnelSession(cAppCharP aDatastoreName) { return LOCERR_NOTIMP; }; // is usually implemented in customimplagent, as it depends on DBApi architecture
+  virtual TLocalEngineDS *getTunnelDS() { return NULL; }; // is usually implemented in customimplagent
   #endif
   // called when incoming SyncHdr fails to execute
   virtual bool syncHdrFailure(bool aTryAgain) = 0;
@@ -628,6 +631,8 @@ public:
   #endif
   // legacy mode
   bool fLegacyMode; // if set, remote will see the types marked preferred="legacy" in devInf as preferred types, not the regular preferred ones
+  // lenient mode
+  bool fLenientMode; // if set, enine is less strict in checking (e.g. client-side anchor checking, terminating session while some status missing etc.)
   #ifdef EXPIRES_AFTER_DATE
   // copy of scrambled now
   sInt32 fCopyOfScrambledNow;

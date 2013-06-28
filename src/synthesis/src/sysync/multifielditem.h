@@ -368,6 +368,46 @@ private:
 }; // TMultiFieldItem
 
 
+#ifdef DBAPI_TUNNEL_SUPPORT
+
+// key for access to a item using the settings key API
+class TMultiFieldItemKey :
+  public TItemFieldKey
+{
+  typedef TItemFieldKey inherited;
+public:
+  TMultiFieldItemKey(TEngineInterface *aEngineInterfaceP, TMultiFieldItem *aItemP, bool aOwnsItem=false) :
+    inherited(aEngineInterfaceP),
+    fItemP(aItemP),
+    fOwnsItem(aOwnsItem)
+  {};
+  virtual ~TMultiFieldItemKey() { forgetItem(); };
+  TMultiFieldItem *getItem(void) { return fItemP; };
+  void setItem(TMultiFieldItem *aItemP, bool aPassOwner=false);
+
+protected:
+
+  // methods to actually access a TItemField
+  virtual sInt16 getFidFor(cAppCharP aName, stringSize aNameSz);
+  virtual bool getFieldNameFromFid(sInt16 aFid, string &aFieldName);
+  virtual TItemField *getBaseFieldFromFid(sInt16 aFid);
+
+  // the item being accessed
+  TMultiFieldItem *fItemP;
+  bool fOwnsItem;
+  // iterator
+  sInt16 fIteratorFid;
+  
+private:
+	void forgetItem() { if (fOwnsItem && fItemP) { delete fItemP; } fItemP=NULL; };
+  
+}; // TMultiFieldItemKey
+
+#endif // DBAPI_TUNNEL_SUPPORT
+
+
+
+
 }	// namespace sysync
 
 #endif	// MultiFieldItem_H

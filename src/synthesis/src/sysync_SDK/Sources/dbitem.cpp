@@ -298,6 +298,8 @@ TSyError TDBItem::DeleteItem( TDBItem* actL )
   prvL->next= actL->next;
   actL->next= NULL; // avoid destroying the whole chain
   delete      actL;
+
+  fChanged= true;
   return LOCERR_OK;
 } /* DeleteItem */
 
@@ -366,6 +368,7 @@ void TDBItem::CreateItem( string newItemID, string parentID, TDBItem* &actL )
   } // while
 
   actL->len--; // termination is included already
+  fChanged= true;
 } // CreateItem
 
 
@@ -635,7 +638,7 @@ void TDBItem::Array_TDB( cAppCharP &q, cAppCharP aKey, TDBItem* hdI, string &aVa
 
     if (!firstElem) {
           s.assign( q, (unsigned int)( qA-q ) );
-      if (s!=aKey)      break;
+      if (!(s==aKey)) break;
 
     //if (strcmp( aKey, s.c_str() )!=0) break; // not the same key
     } // if
@@ -716,6 +719,7 @@ TSyError TDBItem::UpdateFields( void* aCB, cAppCharP aItemData, TDBItem* hdI, bo
     if (err) break;
   } // while
 
+  fChanged= true;
   return err;
 } // UpdateFields
 
@@ -934,7 +938,8 @@ TSyError TDBItem::LoadDB( bool withKey, cAppCharP aPrefix, void* aCB )
     } // while
 
     fclose( f );
-    fLoaded= true;
+    fLoaded = true;
+    fChanged= false;
   } // if
 
   DEBUG_EndBlock( aCB, LDB );
@@ -947,6 +952,7 @@ TSyError TDBItem::SaveDB( bool withKey, void* aCB )
   cAppCharP SDB= "-SaveDB"; // collapsed display with '-' at the beginning
   TSyError err= LOCERR_OK;
 
+  if (!fChanged)         return LOCERR_OK; // nothing changed, no saving
   if (fFileName.empty()) return DB_NotFound;
 
   if (aCB==NULL) aCB= fCB; // get the default callback, if not overridden by <aCB>
@@ -992,6 +998,7 @@ TSyError TDBItem::SaveDB( bool withKey, void* aCB )
     } // while
 
     fclose( f );
+    fChanged= false;
   } // if
 
   DEBUG_EndBlock( aCB, SDB );

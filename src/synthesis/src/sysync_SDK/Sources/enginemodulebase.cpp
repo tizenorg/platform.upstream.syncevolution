@@ -185,6 +185,16 @@ TSyError TEngineModuleBase::SetInt32Value( KeyH aKeyH, cAppCharP aValName, uInt3
 } // SetInt32Value
 
 
+// ----------------------------------------------------------------------------------------------
+void     TEngineModuleBase::AppendSuffixToID( KeyH aKeyH, sInt32 &aID, cAppCharP aSuffix )
+{
+  string s= aSuffix;
+  if    (s=="") return;
+                           s= VALNAME_FLAG + s; 
+  aID+= GetValueID( aKeyH, s.c_str() );
+} // AppendSuffixToID
+
+
 
 } // namespace sysync
 /* end of TEngineModuleBase implementation */

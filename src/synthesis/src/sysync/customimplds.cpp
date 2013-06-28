@@ -20,6 +20,10 @@
 #include "customimplds.h"
 #include "customimplagent.h"
 
+#ifdef DBAPI_TUNNEL_SUPPORT
+#include "SDK_util.h"
+#endif
+
 
 namespace sysync {
 
@@ -291,7 +295,7 @@ bool TCustomDSConfig::localStartElement(const char *aElementName, const char **a
     else {
       // look for field list
       TMultiFieldDatatypesConfig *mfcfgP =
-        dynamic_cast<TMultiFieldDatatypesConfig *>(getSyncAppBase()->getRootConfig()->fDatatypesConfigP);
+        DYN_CAST<TMultiFieldDatatypesConfig *>(getSyncAppBase()->getRootConfig()->fDatatypesConfigP);
       if (!mfcfgP) SYSYNC_THROW(TConfigParseException("no multifield config"));
       TFieldListConfig *cfgP = mfcfgP->getFieldList(ref);
       if (!cfgP)
@@ -907,7 +911,7 @@ TCustomImplDS::TCustomImplDS(
   // make a local copy of the typed agent pointer
   fAgentP=static_cast<TCustomImplAgent *>(fSessionP);
   // make a local copy of the typed agent config pointer
-  fAgentConfigP = dynamic_cast<TCustomAgentConfig *>(
+  fAgentConfigP = DYN_CAST<TCustomAgentConfig *>(
     aSessionP->getRootConfig()->fAgentConfigP
   );
   if (!fAgentConfigP) SYSYNC_THROW(TSyncException(DEBUGTEXT("TCustomImplDS finds no AgentConfig","odds7")));
@@ -975,6 +979,10 @@ void TCustomImplDS::InternalResetDataStore(void)
     }
     #endif
   }
+	#ifdef DBAPI_TUNNEL_SUPPORT
+  // Tunnel DB access support
+  fTunnelReadStarted = false;
+  #endif
 } // TCustomImplDS::InternalResetDataStore
 
 
@@ -1492,7 +1500,7 @@ localstatus TCustomImplDS::implMakeAdminReady(
       TFieldMapList::iterator pos;
       for (pos=fConfigP->fFieldMappings.fFieldMapList.begin(); pos!=fConfigP->fFieldMappings.fFieldMapList.end(); pos++) {
         if ((*pos)->isArray()) {
-          TFieldMapArrayItem *fmaiP = dynamic_cast<TFieldMapArrayItem *>(*pos);
+          TFieldMapArrayItem *fmaiP = DYN_CAST<TFieldMapArrayItem *>(*pos);
           if (fmaiP) {
             // rebuild
             // %%% note, this is not capable of nested arrays yet
@@ -3249,6 +3257,826 @@ uInt32 TCustomImplDS::lastDBError(void)
 
 
 #endif // BASED_ON_BINFILE_CLIENT
+
+
+#ifdef DBAPI_TEXTITEMS
+
+// helper to process params
+// - if aParamName!=NULL, it searches for the value of the requested parameter and returns != NULL, NULL if none found
+// - if aParamName==NULL, it scans until all params are skipped and returns end of params
+cAppCharP paramScan(cAppCharP aParams,cAppCharP aParamName, string &aValue)
+{
+  cAppCharP p = aParams;
+  cAppCharP q,r;
+  int nl,vl;
+  bool quotedvalue=false;
+  if (!p) return false;
+  while (*p && *p==';') {
+    // skip param intro
+    p++;
+    // find end of param name
+    for (q=p; *q!=0 && *q!=';' && *q!=':' && *q!='=';) q++;
+    nl=q-p;
+    // - now: p=start of name, nl=length of name
+    // find end of param value
+    if (nl && *q=='=') {
+      // value starts after equal sign
+      q++;
+      if (*q=='"') { // " ) { work around bug in colorizer
+        // quoted value
+        quotedvalue=true;
+        r=++q;
+        while (*r && *r!='"') { // " ) { work around bug in colorizer
+          if (*r=='\\') {
+            r++;
+            if (*r) r++;
+          }
+          else
+            r++;
+        }
+        vl=r-q;
+        if (*r) r++; // skip closing quote if not delimited by end of string
+      }
+      else {
+        // unquoted value, ends at next colon, semicolon or line end (no value case)
+        for (r=q; *r && *r!=':'  && *r!=';' && *r!='\r' && *r!='\n';) r++;
+        vl = r-q;
+      }
+      // - now: q=start of value, vl=length of value, *r=char after value
+    }
+    else {
+      // no value
+      r=q;
+      vl=0;
+    }
+    // check if it's our value
+    if (aParamName) {
+      // we are searching a single parameter
+      if (strucmp(p,aParamName,nl)==0) {
+        // found, return it's value
+        if (quotedvalue)
+          CStrToStrAppend(q, aValue, true); // stop at quote or end of line
+        else
+          aValue.assign(q,vl);
+        return p; // position of parameter name
+      }
+    }
+    // next param
+    p=r;
+  }
+  // end of all params
+  if (aParamName) return NULL; // we were searching for a special param and haven't found it
+  // we were scanning for the end of all params
+  // - save all params
+  aValue.assign(aParams,p-aParams);
+  // - return pointer to what comes after params
+  return p;
+} // paramScan
+
+
+// store API key/value pair field in named field
+bool TCustomImplDS::storeField(
+  cAppCharP aName,
+  cAppCharP aParams,
+  cAppCharP aValue,
+  TMultiFieldItem &aItem,
+  uInt16 aSetNo, // unused here in base class
+  sInt16 aArrayIndex
+)
+{
+  string s;
+  // find field by name
+  TItemField *fieldP = aItem.getArrayField(aName, aArrayIndex, false); // create element if not existing
+  if (!fieldP) return false; // nothing stored
+  // convert to app string
+  s.erase();
+  appendStringAsUTF8(aValue, s, chs_utf8, lem_cstr);
+  // treat timestamp specially
+  if (fieldP->isBasedOn(fty_timestamp)) {
+    TTimestampField *tsfP = static_cast<TTimestampField *>(fieldP);
+		// default time zone is none
+  	timecontext_t tctx = TCTX_UNKNOWN;
+    // modify time zone if params contain a TZNAME
+    if (paramScan(aParams,"TZNAME",s)) {
+      // convert to time zone context
+      TimeZoneNameToContext(s.c_str(), tctx, tsfP->getGZones());
+    }
+    // now parse text string into field
+    tsfP->setAsISO8601(aValue, tctx, false);    
+  }
+  else {
+    // all others: just set as string
+    fieldP->setAsString(aValue);
+  }
+  return true;
+} // TCustomImplDS::storeField
+
+
+// - parse text data into item
+//   Note: generic implementation, using virtual storeField() method
+//         to differentiate between use with mapped fields in DBApi and
+//         direct (unmapped) TMultiFieldItem access in Tunnel API.
+bool TCustomImplDS::parseItemData(
+  TMultiFieldItem &aItem,
+  cAppCharP aItemData,
+  uInt16 aSetNo
+)
+{
+  // read data from input string into mapped fields (or local vars)
+  cAppCharP p = aItemData;
+  cAppCharP q;
+  string fieldname,params,value;
+  bool readsomething=false;
+  uInt16 arrayindex;
+  // show item data as is
+  PDEBUGPRINTFX(DBG_USERDATA+DBG_DBAPI+DBG_EXOTIC+DBG_HOT,("parseItemData received string from DBApi:"));
+  PDEBUGPUTSXX(DBG_USERDATA+DBG_DBAPI+DBG_EXOTIC,aItemData,0,true);
+  // read all fields
+  while(*p) {
+    arrayindex=0;
+    // find name
+    for (q=p; *q && *q!='[' && *q!=':' && *q!=';';) q++;
+    fieldname.assign(p,q-p);
+    // check for array index
+    if (*q=='[') {
+      q++;
+      q+=StrToUShort(q,arrayindex);
+      if (*q==']') q++;
+    }
+    p=q;
+    // find and skip params
+    p = paramScan(p,NULL,params);
+    // p should now point to ':'
+    if (*p==':' || !params.empty()) { // blobs needn't to contain a ':'
+      value.erase();
+      if (*p==':') { // only get a value, if there is one !!
+        p++; // consume colon
+        // get value
+        p += CStrToStrAppend( p,value,true ); // stop at quote or ctrl char
+      } // if
+      // store field now
+      if (storeField(
+        fieldname.c_str(),
+        params.c_str(),
+        value.c_str(),
+        aItem,
+        aSetNo, // ordering of params is correct now ( before <arrayindex> !! )
+        arrayindex
+      ))
+        readsomething=true;
+    }
+    // skip everything up to next end of line (in case value was terminated by a quote or other ctrl char)
+    while (*p && *p!='\r' && *p!='\n') p++;
+    // skip all line end chars up to beginning of next line or end of record
+    while (*p && (*p=='\r' || *p=='\n')) p++;
+    // p now points to next line's beginning
+  };
+  return readsomething;
+} // TCustomImplDS::parseItemData
+
+
+
+
+// generate text representation of a single item field
+bool TCustomImplDS::generateItemFieldData(
+  bool aAssignedOnly,
+  TCharSets aDataCharSet,
+  TLineEndModes aDataLineEndMode,
+  timecontext_t aTimeContext,
+  TItemField *aBasefieldP,
+  cAppCharP aBaseFieldName,
+  string &aDataFields
+)
+{
+	TItemField *leaffieldP;
+  string val;
+
+  if (!aBasefieldP) return false;
+  // ignore field if it is not assigned and assignedonly flag is set
+  if (aAssignedOnly && aBasefieldP->isUnassigned()) return false;
+  // yes, we want to write this field
+  #ifdef ARRAYFIELD_SUPPORT
+  uInt16 arrayIndex=0;
+  #endif
+  do {
+    // first check if there is an element at all
+    #ifdef ARRAYFIELD_SUPPORT
+    if (aBasefieldP->isArray())
+      leaffieldP = aBasefieldP->getArrayField(arrayIndex,true); // get existing leaf fields only
+    else
+      leaffieldP = aBasefieldP; // leaf is base field
+    #else
+    leaffieldP = aBasefieldP; // leaf is base field
+    #endif
+    // if no leaf field, we'll need to exit here (we're done with the array)
+    if (leaffieldP==NULL) break;
+    // we have some data, first append name
+    aDataFields += aBaseFieldName;
+    #ifdef ARRAYFIELD_SUPPORT
+    // append array index if this is an array field
+    if (aBasefieldP->isArray())
+      StringObjAppendPrintf(aDataFields,"[%d]",arrayIndex);
+    #endif
+    // append value
+    if (aBasefieldP->isBasedOn(fty_blob)) {
+      // - for blobs we use a BlobID and send the data later
+      aDataFields += ";BLOBID=";
+      aDataFields += aBaseFieldName;
+      #ifdef ARRAYFIELD_SUPPORT
+      // append array index if this is an array field
+      if (aBasefieldP->isArray())
+        StringObjAppendPrintf(aDataFields,"[%d]",arrayIndex);
+      #endif
+    }
+    else {
+      // - literal value (converted to DB charset as C-escaped string)
+      if (leaffieldP->isBasedOn(fty_timestamp)) {
+        TTimestampField *tsfP = static_cast<TTimestampField *>(leaffieldP);
+        // get original zone
+        timecontext_t tctx = tsfP->getTimeContext();
+        if (TCTX_IS_DURATION(tctx) || TCTX_IS_DATEONLY(tctx) ||!TCTX_IS_UNKNOWN(tctx)) {
+          // not fully floating, get name
+          TimeZoneContextToName(tctx, val, tsfP->getGZones());
+          // append it
+          aDataFields+= ";TZNAME=";
+          aDataFields+= val;
+        }
+        // now convert to database time zone
+        tctx = aTimeContext; // desired output zone
+        // report as-is if we have a floating map or if it IS floating
+        if (tsfP->isFloating())
+          tctx = TCTX_UNKNOWN; // report as-is
+        // now create ISO8601 representation in the requested output time zone
+        // Note: unless output time zone is "FLOATING", this timestamp is *not* in the time zone
+        //       of TZNAME, but normalized to the requested output time zone!
+        tsfP->getAsISO8601(val,tctx,true,false,false);
+      }
+      else {
+        leaffieldP->getAsString(val); // get value
+      }
+      aDataFields+=':'; // delimiter
+      string valDB;
+      appendUTF8ToString(
+        val.c_str(),
+        valDB,
+        aDataCharSet,
+        aDataLineEndMode
+      );
+      StrToCStrAppend(valDB.c_str(),aDataFields,true); // allow 8-bit chars to be represented as-is (no \xXX escape needed)
+    } // if
+    aDataFields+="\r\n"; // CRLF at end
+    // next item in array
+    #ifdef ARRAYFIELD_SUPPORT
+    arrayIndex++;
+    #endif
+  } while(aBasefieldP->isArray()); // only arrays do loop
+  // generated something
+  return true;
+} // TCustomImplDS::generateItemFieldData
+
+
+#ifdef DBAPI_TUNNEL_SUPPORT
+
+// - parse itemdata into item using DB mappings
+bool TCustomImplDS::parseTunnelItemData(
+  TMultiFieldItem &aItem,
+  cAppCharP aItemData
+)
+{
+	return parseItemData(aItem, aItemData, 0); // internal fields don't have set numbers
+} // TCustomImplDS::parseTunnelItemData
+
+
+// generate text representations of item's fields (BLOBs and parametrized fields not included)
+// - returns true if at least one field appended
+bool TCustomImplDS::generateTunnelItemData(
+  bool aAssignedOnly,
+  TMultiFieldItem *aItemP,
+  string &aDataFields
+)
+{
+  bool createdone=false;
+
+  // create text representation for all fields in the field list
+  TFieldListConfig *flcP = aItemP->getFieldDefinitions();
+	sInt16 fid = 0;
+  while (fid<flcP->numFields()) {
+    // get base field
+    TItemField *basefieldP = aItemP->getField(fid);
+    // The plugin api docs say that text items should be UTF8 with CRLF line ends.
+    // Plugins might choose how they render their timestamps, we choose UTC (so rendered timestamps will have trailing Z,
+    // unless they are really floating). Note that the TZNAME param still indicates the originating timezone (so is NOT
+    // always UTC!).
+    if (generateItemFieldData(aAssignedOnly, chs_utf8, lem_dos, TCTX_UTC, basefieldP, TCFG_CSTR(flcP->fFields[fid].fieldname), aDataFields))
+      createdone=true; // we now have at least one field
+    fid++;
+  } // for all field mappings
+  PDEBUGPRINTFX(DBG_USERDATA+DBG_EXOTIC+DBG_HOT,("generateItemData generated string for TunnelAPI:"));
+  PDEBUGPUTSXX(DBG_USERDATA+DBG_EXOTIC,aDataFields.c_str(),0,true);
+  return createdone;
+} // TCustomImplDS::generateTunnelItemData
+
+#endif // DBAPI_TUNNEL_SUPPORT
+
+#endif // DBAPI_TEXTITEMS 
+
+
+
+#if defined(DBAPI_ASKEYITEMS) && defined(ENGINEINTERFACE_SUPPORT)
+
+
+// - get a settings key instance that can access the item
+//   NULL is allowed for aItemP for cases where we don't have or want an item (!ReadNextItem:allfields)
+TDBItemKey *TCustomImplDS::newDBItemKey(TMultiFieldItem *aItemP, bool aOwnsItem)
+{
+  return new TDBItemKey(getSession()->getSyncAppBase()->fEngineInterfaceP,aItemP,this,aOwnsItem);
+} // TCustomImplDS::newDBItemKey
+
+
+// TDBItemKey
+// ==========
+
+
+// set new content item
+void TDBItemKey::setItem(TMultiFieldItem *aItemP, bool aPassOwner)
+{
+  forgetItem();
+  fItemP = aItemP;
+  fOwnsItem = aPassOwner;
+  fWritten = fItemP; // if we have set an item, this counts as written
+} // TDBItemKey::setItem
+
+
+// get FID for specified name
+sInt16 TDBItemKey::getFidFor(cAppCharP aName, stringSize aNameSz)
+{
+	if (!fItemP) return VARIDX_UNDEFINED; // no item, no field is accessible
+
+  TFieldMapList *fmlP = &(fCustomImplDS->fConfigP->fFieldMappings.fFieldMapList);
+
+  // check for iterator commands first
+  if (strucmp(aName,VALNAME_FIRST)==0) {
+    fIterator=fmlP->begin();
+    if (fIterator!=fmlP->end())
+      return static_cast<TFieldMapItem *>(*fIterator)->fid;
+  }
+  else if (strucmp(aName,VALNAME_NEXT)==0) {
+    if (fIterator!=fmlP->end())
+      fIterator++;
+    if (fIterator!=fmlP->end())
+      return static_cast<TFieldMapItem *>(*fIterator)->fid;
+  }
+  else {
+    TFieldMapList::iterator pos;
+    for (pos=fmlP->begin(); pos!=fmlP->end(); pos++) {
+      // check for name
+      TFieldMapItem *fmiP = static_cast<TFieldMapItem *>(*pos);
+      if (strucmp(aName,fmiP->getName(),aNameSz)==0) {
+        // return field ID (negative = local script var, positive = item field)
+        return fmiP->fid;
+      }
+    }
+  }
+  // none found
+  return VARIDX_UNDEFINED;
+} // TDBItemKey::getFidFor
+
+
+
+TItemField *TDBItemKey::getBaseFieldFromFid(sInt16 aFid)
+{
+	if (!fItemP) return false; // no item, no field is accessible
+  return fCustomImplDS->getMappedBaseFieldOrVar(*fItemP, aFid);
+} // TDBItemKey::getBaseFieldFromFid
+
+
+bool TDBItemKey::getFieldNameFromFid(sInt16 aFid, string &aFieldName)
+{
+	if (!fItemP) return false; // no item, no field is accessible
+  // name is map name (NOT field name!)
+  TFieldMapList *fmlP = &(fCustomImplDS->fConfigP->fFieldMappings.fFieldMapList);
+  TFieldMapList::iterator pos;
+  TFieldMapItem *fmiP;
+
+  // search field map item by fid, return name
+  for (pos=fmlP->begin(); pos!=fmlP->end(); pos++) {
+    fmiP = static_cast<TFieldMapItem *>(*pos);
+    // check for fid
+    if (fmiP->fid == aFid) {
+      // return name
+      aFieldName = fmiP->getName();
+      return true;
+    }
+  }
+  // none found
+  return false;
+} // TDBItemKey::getFieldNameFromFid
+
+
+#endif // DBAPI_ASKEYITEMS and ENGINEINTERFACE_SUPPORT
+
+
+// Tunnel DB API (accessing a datastore from UIAPI) within a tunnel session
+// ------------------------------------------------------------------------
+
+
+#ifdef DBAPI_TUNNEL_SUPPORT
+
+// private helper preparing type infrastucture so we can use it
+void TCustomImplDS::setupTunnelTypes(TSyncItemType *aItemTypeP)
+{
+	// make sure we have types, or set type if we explicitly specify one
+  if (!canCreateItemForRemote() || aItemTypeP) {
+  	// default to preferred TX type if none specified
+  	if (!aItemTypeP) aItemTypeP = getPreferredTxItemType();
+    // install single type for everything
+  	setSendTypeInfo(aItemTypeP,aItemTypeP);
+  	setReceiveTypeInfo(aItemTypeP,aItemTypeP);
+  }
+}
+
+
+
+
+// must be called to start accesses (read or write)
+TSyError TCustomImplDS::TunnelStartDataRead(cAppCharP lastToken, cAppCharP resumeToken)
+{
+	TSyError sta = LOCERR_OK;
+  
+	// forget previously started stuff
+	InternalResetDataStore();
+  // force reading all data (we are simulating a plugin, which always reports entire sync set!)
+  fSlowSync = true;
+  // make admin ready
+  string deviceID = "tunnelSession_";
+  deviceID += getName(); // append datastore name to build pseudo device name
+  sta = implMakeAdminReady(deviceID.c_str(), getName(), "tunnelDBAPI");
+  if (sta==LOCERR_OK) {
+  	// setup types - default to preferred tx if not explicitly set (via /tunnel/itemtype)
+    setupTunnelTypes();
+    // make sure types are ready for use
+    initDataTypeUse();
+    // start anew
+    sta = implStartDataRead();
+  }
+  return sta;
+}
+
+
+
+TSyError TCustomImplDS::TunnelReadNextItemInternal(ItemID aID, TSyncItem *&aItemP, sInt32 *aStatus, bool aFirst)
+{
+  TSyError sta = LOCERR_OK;
+	// rewind if first item requested
+  if (aFirst) {
+    sta = implStartDataRead();
+  }
+	// get next item from DB
+  if (sta==LOCERR_OK) {
+  	bool isEOF;
+    bool changed = false; // report all items, not only changed ones
+    aItemP = NULL;
+  	sta = implGetItem(isEOF, changed, aItemP);
+    if (sta==LOCERR_OK) {
+    	if (isEOF) {
+      	// no item
+      	*aStatus = ReadNextItem_EOF;
+      }
+      else {
+      	// item found
+        // Note: changed status is not really reliable, does not differentiate resumed/normal
+        //       and does not relate to tokens passed in TunnelStartDataRead().
+        //       It reflects what the next normal sync would report as changed
+        *aStatus = changed ? ReadNextItem_Changed : ReadNextItem_Unchanged;
+      	// implGetItem should deliver some data in all cases
+        if (!aItemP) return DB_Error; // something's wrong
+        // get ID
+        aID->item = StrAlloc(aItemP->getLocalID());
+        aID->parent = NULL; // none
+      }
+    }
+  }
+	return sta;
+} // TCustomImplDS::TunnelReadNextItemInternal
+
+
+TSyError TCustomImplDS::TunnelReadNextItem(ItemID aID, appCharP *aItemData, sInt32 *aStatus, bool aFirst)
+{ 
+  TSyncItem *itemP = NULL;
+  *aItemData = NULL;
+  TSyError sta = TunnelReadNextItemInternal(aID,itemP,aStatus,aFirst);
+  if (itemP) {
+    if (aItemData) {
+      // create text version and return it
+      string textData;
+      textData.erase();
+      generateTunnelItemData(false,static_cast<TMultiFieldItem *>(itemP),textData);
+			*aItemData = StrAlloc(textData.c_str());
+    }
+    // not used any more, we have the text representation
+    delete itemP;
+  }
+  return sta;
+}
+
+
+TSyError TCustomImplDS::TunnelReadNextItemAsKey(ItemID aID, KeyH aItemKey, sInt32 *aStatus, bool aFirst)
+{
+  TSyncItem *itemP = NULL;
+  TSyError sta = TunnelReadNextItemInternal(aID,itemP,aStatus,aFirst);
+  if (itemP) {
+    // assign data
+    if (aItemKey) {
+      // pass the item to the key and let key own it, so item will be deleted with key
+      reinterpret_cast<TMultiFieldItemKey *>(aItemKey)->setItem(static_cast<TMultiFieldItem *>(itemP), true);
+    }
+    else {
+      // nobody wants the item, delete it
+      delete itemP;
+    }
+  }
+	return sta;
+} // TCustomImplDS::TunnelReadNextItemAsKey
+
+
+
+TSyError TCustomImplDS::TunnelReadItem(cItemID aID, appCharP *aItemData)
+{
+  *aItemData = NULL;
+	// create empty item
+  TMultiFieldItem *itemP = static_cast<TMultiFieldItem *>(newItemForRemote(ity_multifield));
+  // set localID to retrieve
+  itemP->setLocalID(aID->item);
+	// retrieve  
+  TStatusCommand dummy(getSession());
+	TSyError sta = implRetrieveItemByID(*itemP, dummy) ? LOCERR_OK : dummy.getStatusCode();
+  if (sta==LOCERR_OK) {
+    if (aItemData) {
+      // create text version and return it
+      string textData;
+      textData.erase();
+      generateTunnelItemData(false,static_cast<TMultiFieldItem *>(itemP),textData);
+			*aItemData = StrAlloc(textData.c_str());
+    }
+    // not used any more, we have the text representation
+    delete itemP;
+  }
+  return sta;
+}
+
+
+TSyError TCustomImplDS::TunnelReadItemAsKey(cItemID aID, KeyH aItemKey)
+{
+	// get item
+  TMultiFieldItem *itemP = reinterpret_cast<TMultiFieldItemKey *>(aItemKey)->getItem();
+  // set localID to retrieve
+  itemP->setLocalID(aID->item);
+	// retrieve  
+  TStatusCommand dummy(getSession());
+	return implRetrieveItemByID(*itemP, dummy) ? LOCERR_OK : dummy.getStatusCode();
+} // TCustomImplDS::TunnelReadItemAsKey
+
+
+
+// end of accessing sync set (single item retrieval still possible)
+TSyError TCustomImplDS::TunnelEndDataRead()
+{
+	// just pass on
+	return implEndDataRead();
+} // TCustomImplDS::TunnelEndDataRead
+
+
+
+TSyError TCustomImplDS::TunnelStartDataWrite()
+{
+	// just pass on
+	return apiStartDataWrite();
+} // TCustomImplDS::TunnelStartDataWrite
+
+
+
+// helper routine for insert
+TSyError TCustomImplDS::TunnelInsertItemInternal(TMultiFieldItem *aItemP, ItemID aNewID)
+{
+	string newid;
+	TSyError sta = apiAddItem(*aItemP, newid);
+  if (sta==LOCERR_OK) {
+  	if (aNewID) {
+    	aNewID->item = StrAlloc(newid.c_str());
+    	aNewID->parent = NULL; // none
+    }
+  }
+	return sta;
+} // TCustomImplDS::TunnelInsertItemInternal
+
+
+TSyError TCustomImplDS::TunnelInsertItem(cAppCharP aItemData, ItemID aID)
+{
+  TMultiFieldItem *itemP = static_cast<TMultiFieldItem *>(newItemForRemote(ity_multifield));
+  TSyError sta = LOCERR_WRONGUSAGE; // no parseable data
+  if (parseItemData(*itemP, aItemData, 0)) {
+  	// parsed some data, insert it
+	  sta = TunnelInsertItemInternal(itemP,aID);
+	}    
+  // delete the item
+  delete itemP;
+	return sta;
+} // TCustomImplDS::TunnelInsertItem
+
+
+TSyError TCustomImplDS::TunnelInsertItemAsKey(KeyH aItemKey, ItemID aID)
+{
+	return TunnelInsertItemInternal(reinterpret_cast<TMultiFieldItemKey *>(aItemKey)->getItem(),aID);
+} // TCustomImplDS::TunnelInsertItemAsKey
+
+
+
+// helper routine for update
+TSyError TCustomImplDS::TunnelUpdateItemInternal(TMultiFieldItem *aItemP, cItemID aID, ItemID aUpdID)
+{
+	string updid;
+  aItemP->setLocalID(aID->item);
+	TSyError sta = apiUpdateItem(*aItemP);
+  if (sta==LOCERR_OK) {
+  	if (aUpdID) {
+    	cAppCharP newID = aItemP->getLocalID();
+      if (strcmp(newID,aID->item)!=0)
+	    	aUpdID->item = StrAlloc(newID);
+      else
+	    	aUpdID->item = NULL;
+      aUpdID->parent = NULL; // none
+    }
+  }
+	return sta;
+} // TCustomImplDS::TunnelUpdateItemInternal
+
+
+TSyError TCustomImplDS::TunnelUpdateItem(cAppCharP aItemData, cItemID aID, ItemID aUpdID)
+{ 
+  TMultiFieldItem *itemP = static_cast<TMultiFieldItem *>(newItemForRemote(ity_multifield));
+  TSyError sta = LOCERR_WRONGUSAGE; // no parseable data
+  if (parseItemData(*itemP, aItemData, 0)) {
+  	// parsed some data, insert it
+	  sta = TunnelUpdateItemInternal(itemP,aID,aUpdID);
+	}
+  // delete the item
+  delete itemP;
+	return sta;
+} // TCustomImplDS::TunnelUpdateItem
+
+
+TSyError TCustomImplDS::TunnelUpdateItemAsKey(KeyH aItemKey, cItemID aID, ItemID aUpdID)
+{
+	return TunnelUpdateItemInternal(reinterpret_cast<TMultiFieldItemKey *>(aItemKey)->getItem(),aID,aUpdID);
+} // TCustomImplDS::TunnelUpdateItemAsKey
+
+
+
+TSyError TCustomImplDS::TunnelMoveItem(cItemID aID, cAppCharP newParID)
+{
+	return LOCERR_NOTIMP;
+} // TCustomImplDS::TunnelMoveItem
+
+
+
+TSyError TCustomImplDS::TunnelDeleteItem(cItemID aID)
+{
+  TMultiFieldItem *itemP = static_cast<TMultiFieldItem *>(newItemForRemote(ity_multifield));
+  itemP->setLocalID(aID->item);
+  TSyError sta = apiDeleteItem(*itemP);
+	delete itemP;
+  return sta;
+} // TCustomImplDS::TunnelDeleteItem
+
+
+
+TSyError TCustomImplDS::TunnelEndDataWrite(bool aSuccess, appCharP *aNewToken)
+{
+	string newToken;
+	TSyError sta = apiEndDataWrite(newToken);
+  if (aNewToken) {
+  	*aNewToken = StrAlloc(newToken.c_str());
+  }
+  return sta;
+} // TCustomImplDS::TunnelEndDataWrite
+
+
+
+void TCustomImplDS::TunnelDisposeObj(void* aMemory)
+{
+	// return string we have created as a plugin (is NULL safe)
+	StrDispose(aMemory);
+} // TCustomImplDS::TunnelDisposeObj
+
+
+
+// Tunnel key factory method
+TSettingsKeyImpl *TCustomImplDS::newTunnelKey(TEngineInterface *aEngineInterfaceP)
+{
+	return new TCustomDSTunnelKey(aEngineInterfaceP,this);
+} // TCustomImplDS::newTunnelKey
+
+
+
+// TTunnelKey
+// ----------
+
+// constructor
+TCustomDSTunnelKey::TCustomDSTunnelKey(
+  TEngineInterface *aEngineInterfaceP,
+  TCustomImplDS *aCustomImplDsP
+) :
+  inherited(aEngineInterfaceP),
+  fCustomImplDsP(aCustomImplDsP)
+{
+} // TCustomDSTunnelKey::TCustomDSTunnelKey
+
+
+// destructor - close key
+TCustomDSTunnelKey::~TCustomDSTunnelKey()
+{
+  // closing key
+} // TCustomDSTunnelKey::~TCustomDSTunnelKey
+
+
+// open subkey by name (not by path!)
+// - this is the actual implementation
+TSyError TCustomDSTunnelKey::OpenSubKeyByName(
+  TSettingsKeyImpl *&aSettingsKeyP,
+  cAppCharP aName, stringSize aNameSize,
+  uInt16 aMode
+) {
+  if (strucmp(aName,"item",aNameSize)==0) {
+    // make sure defaults are initialized
+    fCustomImplDsP->setupTunnelTypes();  	
+  	// create a sendable item
+  	TMultiFieldItem *itemP = static_cast<TMultiFieldItem *>(fCustomImplDsP->newItemForRemote(ity_multifield));
+    // wrap it into a item key
+    aSettingsKeyP = new TMultiFieldItemKey(fEngineInterfaceP, itemP, true); // item is owned by key, which means that it will be deleted with key
+  	// done
+    return LOCERR_OK;
+  }
+  else
+    return inherited::OpenSubKeyByName(aSettingsKeyP,aName,aNameSize,aMode);
+  // opened a key
+  return LOCERR_OK;
+} // TCustomDSTunnelKey::OpenSubKeyByName
+
+
+// - get item type name (if not written before, this will be the preferred type of the datastore)
+static TSyError readItemType(
+  TStructFieldsKey *aStructFieldsKeyP, const TStructFieldInfo *aFldInfoP,
+  appPointer aBuffer, memSize aBufSize, memSize &aValSize
+)
+{
+  TCustomImplDS *ds = static_cast<TCustomDSTunnelKey *>(aStructFieldsKeyP)->getCustomImplDs();
+	// make sure defaults are initialized
+  ds->setupTunnelTypes();
+  // get name of fLocalSendToRemoteTypeP  
+  return TStructFieldsKey::returnString(ds->getLocalSendType()->getTypeName(), aBuffer, aBufSize, aValSize);
+} // readItemType
+
+
+
+// - set item type
+static TSyError writeItemType(
+  TStructFieldsKey *aStructFieldsKeyP, const TStructFieldInfo *aFldInfoP,
+  cAppPointer aBuffer, memSize aValSize
+)
+{
+  TCustomImplDS *ds = static_cast<TCustomDSTunnelKey *>(aStructFieldsKeyP)->getCustomImplDs();
+  cAppCharP p=cAppCharP(aBuffer);
+  TSyncItemType *ty = ds->getSendType(p,NULL);
+  if (!ty) return 404; // type not found
+	ds->setupTunnelTypes(ty);
+	// done
+	return LOCERR_OK;
+} // writeItemType
+
+
+// accessor table for tunnel key values
+const TStructFieldInfo TunnelFieldInfos[] =
+{
+  // valName, valType, writable, fieldOffs, valSiz
+  { "itemtype", VALTYPE_TEXT, true, 0, 0, &readItemType, &writeItemType },
+};
+const sInt32 numTunnelFieldInfos = sizeof(TunnelFieldInfos)/sizeof(TStructFieldInfo);
+
+
+// get table describing the fields in the struct
+const TStructFieldInfo *TCustomDSTunnelKey::getFieldsTable(void)
+{
+  return TunnelFieldInfos;
+} // TCustomDSTunnelKey::getFieldsTable
+
+sInt32 TCustomDSTunnelKey::numFields(void)
+{
+  return numTunnelFieldInfos;
+} // TCustomDSTunnelKey::numFields
+
+
+
+#endif // DBAPI_TUNNEL_SUPPORT
 
 /* end of TCustomImplDS implementation */
 

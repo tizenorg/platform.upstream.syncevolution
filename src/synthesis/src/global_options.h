@@ -50,13 +50,13 @@
 #endif
 
 #ifndef SYSYNC_SUBVERSION
-#define SYSYNC_SUBVERSION           0
-#define SYSYNC_SUBVERSION_TXT      "0"
+#define SYSYNC_SUBVERSION           1
+#define SYSYNC_SUBVERSION_TXT      "1"
 #endif
 
 #ifndef SYSYNC_BUILDNUMBER
-#define SYSYNC_BUILDNUMBER          32
-#define SYSYNC_BUILDNUMBER_TXT     "32"
+#define SYSYNC_BUILDNUMBER          0
+#define SYSYNC_BUILDNUMBER_TXT     "0"
 #endif
 
 

@@ -51,6 +51,7 @@ typedef enum {
   ces_idle,         ///< client engine is idle and can be initialized with STEPCMD_CLIENTSTART
   ces_generating,   ///< ready to perform next STEPCMD_STEP to generate SyncML messages
   ces_dataready,    ///< data is ready to be sent, waiting for STEPCMD_SENTDATA
+	ces_resending,		///< data already sent, but app indicates with STEPCMD_RESENDDATA that it needed to resend the data
   ces_needdata,     ///< need response data, waiting for STEPCMD_GOTDATA
   ces_processing,   ///< ready to perform next STEPCMD_STEP to process SyncML messages
   ces_done,         ///< session done
@@ -176,6 +177,7 @@ class TSyncClientBase;
 
 // default profile ID
 #define DEFAULT_PROFILE_ID 0xFFFFFFFF
+#define TUNNEL_PROFILE_ID 0xFFFFFFFE
 
 class TSyncClient: public TSyncSession
 {
@@ -320,6 +322,10 @@ protected:
   // - Client engine state
   TClientEngineState fEngineState;
   #endif // ENGINEINTERFACE_SUPPORT
+  // - client side consecutive Alert 222, used to detect endless loop
+  uInt32 fOutgoingAlertRequests;
+  // Loop detecting time frame to avoid wrong detection of "keep-alive" message
+  lineartime_t fOutgoingAlertStart;
 public:
   // - can be cleared to suppress automatic use of DS 1.2 SINCE/BEFORE filters
   //   (e.g. for date range in func_SetDaysRange())
@@ -341,7 +347,12 @@ class TClientParamsKey :
 public:
   TClientParamsKey(TEngineInterface *aEngineInterfaceP, TSyncClient *aClientSessionP);
   virtual ~TClientParamsKey() {};
-
+  // open subkey by name (not by path!)
+  virtual TSyError OpenSubKeyByName(
+    TSettingsKeyImpl *&aSettingsKeyP,
+    cAppCharP aName, stringSize aNameSize,
+    uInt16 aMode
+  );
 protected:
   // get table describing the fields in the struct
   virtual const TStructFieldInfo *getFieldsTable(void);

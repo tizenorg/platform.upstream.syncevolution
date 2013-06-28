@@ -4,8 +4,8 @@
  *
  */
 
-// SYNCML CLIENT ENGINE LIBRARY DEMO Linux
-// #######################################
+// SYNCML CLIENT ENGINE LIBRARY OPENSOURCE LINUX
+// #############################################
 
 // define platform
 #define LINUX
@@ -18,7 +18,7 @@
 // Eval limit options
 // ==================
 
-// INTERNAL library linked directly with Synthesis' App Store products does not expire
+// OpenSource Library does not have any expiry mechanisms
 #define NEVER_EXPIRES_IS_OK 1 // to explicitly override check in SyncAppBase
 
 // now include platform independent product options (which include global_options.h)

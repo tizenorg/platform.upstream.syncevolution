@@ -28,7 +28,7 @@ static DB_Callback        DBC ( void*    aCB      ) { return            (DB_Call
 static TEngineModuleBase* URef( void*    aCB      ) { return (TEngineModuleBase*)DBC( aCB )->thisBase; }
 static TunnelWrapper*     TW  ( CContext aContext ) { return (TunnelWrapper*)aContext;                 }
 static TEngineModuleBase* TRef( CContext aContext ) { return       URef( TW( aContext )->tCB );        }
-static CContext           TCon( CContext aContext ) { return             TW( aContext )->tContext;     }
+static SessionH           TCon( CContext aContext ) { return             TW( aContext )->tContext;     }
 
 
 // --- Callback entries --------------------------
@@ -204,7 +204,7 @@ TSyError             StartDataWrite   ( CContext ac ) {
   return TRef( ac )->StartDataWrite   (    TCon( ac ) );
 } //                 StartDataWrite
 
-TSyError             InsertItem       ( CContext ac, cAppCharP aItemData, cItemID   aID ) {
+TSyError             InsertItem       ( CContext ac, cAppCharP aItemData,  ItemID   aID ) {
   return TRef( ac )->InsertItem       (    TCon( ac ),         aItemData,           aID );
 } //                 InsertItem
 
@@ -239,7 +239,7 @@ TSyError             ReadItemAsKey    ( CContext ac, cItemID aID, KeyH aItemKey 
   return TRef( ac )->ReadItemAsKey    (    TCon( ac ),       aID,      aItemKey );
 } //                 ReadItemAsKey
 
-TSyError             InsertItemAsKey  ( CContext ac, KeyH aItemKey, cItemID   aID ) {
+TSyError             InsertItemAsKey  ( CContext ac, KeyH aItemKey,  ItemID   aID ) {
   return TRef( ac )->InsertItemAsKey  (    TCon( ac ),    aItemKey,           aID );
 } //                 InsertItemAsKey
 

@@ -20,7 +20,7 @@
   namespace sysync {
 #endif
 
-#define MyDB "SDK" /* local debug name */
+//#define MyDB "SDK" /* local debug name */
 #define FLen  30   /* max length of (internal) item name */
 
 
@@ -565,7 +565,7 @@ CVersion VersionNr( string s )
   } // for
 
   return v;
-} // VersionStr
+} // VersionNr
 
 
 
@@ -689,6 +689,10 @@ string LineConv( string str, uInt32 maxLen, bool visibleN )
 
   while (NextToken( str,nx, "\n" )) {
     if    (first && str.empty()) return nx;
+
+    string        rema; // cut \r
+    NextToken( nx,rema, "\r" );
+    nx=           rema;
 
     string v=       nx;
     if  (NextToken( nx,value, ":" ) && !nx.empty()) {
@@ -869,11 +873,11 @@ bool FlagOK( string aDat, string aKey, bool isYes )
   GetField( aDat, aKey, value );
   bool  ok, emp=  aKey.empty();
 
-  if (isYes) { ok= !emp   && ( value=="yes"
-                          ||   value=="true"
-                          ||   value=="both"  ); }
-  else       { ok=  emp   || ( value!="no"
-                          &&   value!="false" ); }
+  if (isYes) { ok= !emp   &&  ( value=="yes"
+                          ||    value=="true"
+                          ||    value=="both"  ); }
+  else       { ok=  emp   || !( value=="no"
+                          ||    value=="false" ); }
 
 //printf( "value=%-10s isYes=%-5d ok=%-5d aEmp=%-5d aKey='%s'\n",
 //         value.c_str(), isYes, ok, aDat.empty(), aKey.c_str() );
@@ -938,39 +942,33 @@ bool GlobContextFound( string dbName, GlobContext* &g )
 
 
 
-/* ---------- UI callback ------------------------------------ */
-/* Check, if <aCB> structure supports at least extended UI callback */
-static bool CB_UIX( void* aCB ) { return CB_OK( aCB,8 ); }
-
-
-TSyError UI_OpenKeyByPath( void* aCB, KeyH *aKeyH,
-                           KeyH aParentKeyH, cAppCharP aPath, uInt16 aMode )
+/* ---------- Tunnel itemKey --------------------------------- */
+TSyError  OpenTunnel_ItemKey( TunnelWrapper* tw )
 {
-  TSyError err= LOCERR_NOTIMP;
+  TSyError err, cer;
+  SDK_UI_Struct* ui= &tw->tCB->ui;
 
-  DB_Callback cb= (DB_Callback)aCB;
-  if (CB_UIX( aCB )) {
-    err= cb->ui.OpenKeyByPath( cb->callbackRef, aKeyH, aParentKeyH, aPath, aMode );
-    DEBUG_DB( aCB, MyDB, "OpenKeyByPath", "%08X path='%s' mode=%04X err=%d",
-                                            *aKeyH,              aPath, aMode, err );
+  KeyH                                                    tKey, sKey;
+         err= ui->OpenSessionKey( tw->tCB, tw->tContext,       &sKey,           0 );
+  if   (!err) {
+         err= ui->OpenKeyByPath ( tw->tCB,               &tKey, sKey, "tunnel", 0 );
+    if (!err)  {
+         err= ui->OpenKeyByPath ( tw->tCB, &tw->tItemKey, tKey,       "item",   0 );
+         cer= ui->CloseKey      ( tw->tCB, tKey ); if (!err) err= cer;
+    } // if
+
+         cer= ui->CloseKey      ( tw->tCB, sKey ); if (!err) err= cer;
   } // if
 
   return err;
-} // UI_OpenKeyByPath
+} // OpenTunnel_ItemKey
 
 
-TSyError UI_CloseKey( void* aCB, KeyH aKeyH )
+TSyError CloseTunnel_ItemKey( TunnelWrapper* tw )
 {
-  TSyError err= LOCERR_NOTIMP;
-
-  DB_Callback cb= (DB_Callback)aCB;
-  if (CB_UIX( aCB )) {
-    err= cb->ui.CloseKey( cb->callbackRef, aKeyH );
-    DEBUG_DB( aCB, MyDB, "CloseKey", "%08X err=%d", aKeyH, err );
-  } // if
-
-  return err;
-} // UI_CloseKey
+  SDK_UI_Struct* ui= &tw->tCB->ui;
+  return         ui->CloseKey( tw->tCB, tw->tItemKey );
+} // CloseTunnel_ItemKey
 
 
 

@@ -80,7 +80,7 @@ static TSyError FSTime( string tStr, time_t &u )
 // UTC is currently not supported
 {
   string      tt= tStr.substr(  8,1 );
-  if         (tt!="T") return DB_Forbidden;
+  if       (!(tt=="T")) return DB_Forbidden;
               tt= tStr.substr( 15,1 );
   //bool usUTC= tt=="Z";
 

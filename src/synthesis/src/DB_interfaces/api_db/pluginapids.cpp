@@ -276,7 +276,7 @@ TPluginApiDS::TPluginApiDS(
   fPluginDSConfigP=aConfigP;
   // make a local copy of the typed agent pointer (note that the agent itself does
   // NOT YET have its constructor completely run so we can't just copy the agents pointer)
-  fPluginAgentConfigP = dynamic_cast<TPluginAgentConfig *>(
+  fPluginAgentConfigP = DYN_CAST<TPluginAgentConfig *>(
     aSessionP->getRootConfig()->fAgentConfigP
   );
   if (!fPluginAgentConfigP) SYSYNC_THROW(TSyncException(DEBUGTEXT("TPluginApiDS finds no AgentConfig","api1")));
@@ -318,86 +318,14 @@ void TPluginApiDS::InternalResetDataStore(void)
 
 
 
-// helper to process params
-// - if aParamName!=NULL, it searches for the value of the requested parameter and returns != NULL, NULL if none found
-// - if aParamName==NULL, it scans until all params are skipped and returns end of params
-static const char *paramScan(const char *aParams,const char *aParamName, string &aValue)
-{
-  const char *p = aParams;
-  const char *q,*r;
-  int nl,vl;
-  bool quotedvalue=false;
-  if (!p) return false;
-  while (*p && *p==';') {
-    // skip param intro
-    p++;
-    // find end of param name
-    for (q=p; *q!=0 && *q!=';' && *q!=':' && *q!='=';) q++;
-    nl=q-p;
-    // - now: p=start of name, nl=length of name
-    // find end of param value
-    if (nl && *q=='=') {
-      // value starts after equal sign
-      q++;
-      if (*q=='"') { // " ) { work around bug in colorizer
-        // quoted value
-        quotedvalue=true;
-        r=++q;
-        while (*r && *r!='"') { // " ) { work around bug in colorizer
-          if (*r=='\\') {
-            r++;
-            if (*r) r++;
-          }
-          else
-            r++;
-        }
-        vl=r-q;
-        if (*r) r++; // skip closing quote if not delimited by end of string
-      }
-      else {
-        // unquoted value, ends at next colon, semicolon or line end (no value case)
-        for (r=q; *r && *r!=':'  && *r!=';' && *r!='\r' && *r!='\n';) r++;
-        vl = r-q;
-      }
-      // - now: q=start of value, vl=length of value, *r=char after value
-    }
-    else {
-      // no value
-      r=q;
-      vl=0;
-    }
-    // check if it's our value
-    if (aParamName) {
-      // we are searching a single parameter
-      if (strucmp(p,aParamName,nl)==0) {
-        // found, return it's value
-        if (quotedvalue)
-          CStrToStrAppend(q, aValue, true); // stop at quote or end of line
-        else
-          aValue.assign(q,vl);
-        return p; // position of parameter name
-      }
-    }
-    // next param
-    p=r;
-  }
-  // end of all params
-  if (aParamName) return NULL; // we were searching for a special param and haven't found it
-  // we were scanning for the end of all params
-  // - save all params
-  aValue.assign(aParams,p-aParams);
-  // - return pointer to what comes after params
-  return p;
-} // paramScan
-
 
 #ifdef DBAPI_TEXTITEMS
 
 // store API key/value pair field in mapped field, if one is defined
 bool TPluginApiDS::storeField(
-  const char *aName,
-  const char *aParams,
-  const char *aValue,
+  cAppCharP aName,
+  cAppCharP aParams,
+  cAppCharP aValue,
   TMultiFieldItem &aItem,
   uInt16 aSetNo,
   sInt16 aArrayIndex
@@ -455,7 +383,7 @@ bool TPluginApiDS::storeField(
         case dbft_blob:
           // blob is treated as 1:1 string if there's no proxy for it
         default:
-          // for all other types, simply set as string w/o charset conversion etc.
+          // for all other DB types, string w/o charset conversion is enough (these are by definition all single-line, ASCII-only)
           if (fieldP->isBasedOn(fty_timestamp)) {
             // interpret timestamps in dataTimeZone context (or as floating if this field is mapped in "f" mode)
             TTimestampField *tsfP = static_cast<TTimestampField *>(fieldP);
@@ -484,69 +412,74 @@ bool TPluginApiDS::storeField(
 
 
 
-// - parse data into item
-bool TPluginApiDS::parseItemData(
+// - parse text data into item
+//   Note: generic implementation, using virtual storeField() method
+//         to differentiate between use with mapped fields in DBApi and
+//         direct (unmapped) TMultiFieldItem access in Tunnel API.
+bool TPluginApiDS::parseDBItemData(
   TMultiFieldItem &aItem,
-  const char *aItemData,
+  cAppCharP aItemData,
   uInt16 aSetNo
 )
 {
-  // read data from input string into mapped fields (or local vars)
-  const char *p = aItemData;
-  const char *q;
-  string fieldname,params,value;
-  bool readsomething=false;
-  uInt16 arrayindex;
-  // show item data as is
-  PDEBUGPRINTFX(DBG_USERDATA+DBG_DBAPI+DBG_EXOTIC+DBG_HOT,("parseItemData received string from DBApi:"));
-  PDEBUGPUTSXX(DBG_USERDATA+DBG_DBAPI+DBG_EXOTIC,aItemData,0,true);
-  // read all fields
-  while(*p) {
-    arrayindex=0;
-    // find name
-    for (q=p; *q && *q!='[' && *q!=':' && *q!=';';) q++;
-    fieldname.assign(p,q-p);
-    // check for array index
-    if (*q=='[') {
-      q++;
-      q+=StrToUShort(q,arrayindex);
-      if (*q==']') q++;
-    }
-    p=q;
-    // find and skip params
-    p = paramScan(p,NULL,params);
-    // p should now point to ':'
-    if (*p==':' || !params.empty()) { // blobs needn't to contain a ':'
-      value.erase();
-
-      if (*p==':') { // only get a value, if there is one !!
-        p++; // consume colon
-        // get value
-        p += CStrToStrAppend( p,value,true ); // stop at quote or ctrl char
-      } // if
-
-      // store field now
-      if (storeField(
-        fieldname.c_str(),
-        params.c_str(),
-        value.c_str(),
-        aItem,
-        aSetNo, // ordering of params is correct now ( before <arrayindex> !! )
-        arrayindex
-      ))
-        readsomething=true;
-    }
-    // skip everything up to next end of line (in case value was terminated by a quote or other ctrl char)
-    while (*p && *p!='\r' && *p!='\n') p++;
-    // skip all line end chars up to beginning of next line or end of record
-    while (*p && (*p=='\r' || *p=='\n')) p++;
-    // p now points to next line's beginning
-  };
-  // post-process
-  return postReadProcessItem(aItem,aSetNo);
+	bool stored = parseItemData(aItem,aItemData,aSetNo);
+  if (stored) {
+    // post-process
+    stored = postReadProcessItem(aItem,aSetNo);
+  }
+  return stored;
 } // TPluginApiDS::parseItemData
 
 
+
+// generate text representations of item's fields (BLOBs and parametrized fields not included)
+// - returns true if at least one field appended
+bool TPluginApiDS::generateDBItemData(
+  bool aAssignedOnly,
+  TMultiFieldItem &aItem,
+  uInt16 aSetNo,
+  string &aDataFields
+)
+{
+  TFieldMapList *fmlP = &(fPluginDSConfigP->fFieldMappings.fFieldMapList);
+  TFieldMapList::iterator pos;
+  TApiFieldMapItem *fmiP;
+  string val;
+  bool createdone=false;
+
+  // pre-process (run scripts)
+  if (!preWriteProcessItem(aItem)) return false;
+  // create text representation for all mapped and writable fields
+  for (pos=fmlP->begin(); pos!=fmlP->end(); pos++) {
+    fmiP = static_cast<TApiFieldMapItem *>(*pos);
+    if (
+      fmiP->writable &&
+      fmiP->setNo==aSetNo
+    ) {
+      // get field
+      TItemField *basefieldP;
+      sInt16 fid = fmiP->fid;
+      // determine base field (might be array)
+      basefieldP = getMappedBaseFieldOrVar(aItem,fid);
+      if (generateItemFieldData(
+      	aAssignedOnly,
+				fPluginDSConfigP->fDataCharSet,
+        fPluginDSConfigP->fDataLineEndMode,
+        fPluginDSConfigP->fDataTimeZone,
+        basefieldP,
+        fmiP->getName(),
+        aDataFields
+      ))
+	    	createdone=true; // we now have at least one field
+		} // if writable field
+  } // for all field mappings
+  PDEBUGPRINTFX(DBG_USERDATA+DBG_DBAPI+DBG_EXOTIC+DBG_HOT,("generateDBItemData generated string for DBApi:"));
+  PDEBUGPUTSXX(DBG_USERDATA+DBG_DBAPI+DBG_EXOTIC,aDataFields.c_str(),0,true);
+  return createdone;
+} // TPluginApiDS::generateDBItemData
+
+
+/* %%% old version, common base part now moved to customimplds
 
 // generate text representations of item's fields (BLOBs and parametrized fields not included)
 // - returns true if at least one field appended
@@ -664,25 +597,9 @@ bool TPluginApiDS::generateItemData(
   return createdone;
 } // TPluginApiDS::generateItemData
 
+*/
+
 #endif // DBAPI_TEXTITEMS
-
-
-
-#if defined(DBAPI_ASKEYITEMS) && defined(ENGINEINTERFACE_SUPPORT)
-
-// - get a settings key instance that can access the item
-//   NULL is allowed for aItemP for cases where we don't have or want an item (!ReadNextItem:allfields)
-TDBItemKey *TPluginApiDS::newDBItemKey(TMultiFieldItem *aItemP)
-{
-  return new TDBItemKey(getSession()->getSyncAppBase()->fEngineInterfaceP,aItemP,this);
-} // TPluginApiDS::newDBItemKey
-
-#endif // DBAPI_ASKEYITEMS + ENGINEINTERFACE_SUPPORT
-
-
-
-
-
 
 
 // - post process item after reading from DB (run script)
@@ -1443,7 +1360,7 @@ localstatus TPluginApiDS::apiAddItem(TMultiFieldItem &aItem, string &aLocalID)
   #ifdef DBAPI_TEXTITEMS
   {
     string itemData;
-    generateItemData(
+    generateDBItemData(
       false, // all fields, not only assigned ones
       aItem,
       0, // we do not use different sets for now
@@ -1574,7 +1491,7 @@ localstatus TPluginApiDS::apiUpdateItem(TMultiFieldItem &aItem)
   #ifdef DBAPI_TEXTITEMS
   {
     string itemData;
-    generateItemData(
+    generateDBItemData(
       true, // only assigned fields
       aItem,
       0, // we do not use different sets for now
@@ -1656,9 +1573,9 @@ localstatus TPluginApiDS::apiEndDataWrite(string &aThisSyncIdentifier)
 
   // nothing special to do in ODBC case, as we do not have a separate sync identifier
   TDB_Api_Str newSyncIdentifier;
-  bool ok=fDBApi_Data.EndDataWrite(true, newSyncIdentifier)==LOCERR_OK;
+  TSyError sta = fDBApi_Data.EndDataWrite(true, newSyncIdentifier);
   aThisSyncIdentifier=newSyncIdentifier.c_str();
-  return ok;
+  return sta;
 } // TPluginApiDS::apiEndDataWrite
 
 
@@ -2673,7 +2590,7 @@ size_t TApiBlobProxy::readBlobStream(TStringField *aFieldP, size_t &aPos, void *
 #endif // STREAMFIELD_SUPPORT
 
 
-
+/*
 #if defined(DBAPI_ASKEYITEMS) && defined(ENGINEINTERFACE_SUPPORT)
 
 // TDBItemKey
@@ -2747,7 +2664,7 @@ bool TDBItemKey::getFieldNameFromFid(sInt16 aFid, string &aFieldName)
 
 
 #endif // DBAPI_ASKEYITEMS + ENGINEINTERFACE_SUPPORT
-
+*/
 
 
 

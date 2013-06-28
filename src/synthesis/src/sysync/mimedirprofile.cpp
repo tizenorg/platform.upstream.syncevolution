@@ -3162,8 +3162,8 @@ bool TMimeDirProfileHandler::MIMEStringToField(
             lineartime_t ts = tsFldP->getTimestampAs(fItemTimeContext,&tctx); // get in item context or floating
             lineartime_t ts0 = lineartime2dateonlyTime(ts);
             if (ts0!=ts && AlldayCount(ts0,ts)>0) { // only if not already a 0:00
-              // this is a 23:59 type end-of-day, convert it to midnight of next day
-              tsFldP->setTimestamp(lineartime2dateonlyTime(ts)+linearDateToTimeFactor);
+              // this is a 23:59 type end-of-day, convert it to midnight of next day (AND adjust time context, in case it is now different from original)
+              tsFldP->setTimestampAndContext(lineartime2dateonlyTime(ts)+linearDateToTimeFactor,tctx);
             }
           }
         }

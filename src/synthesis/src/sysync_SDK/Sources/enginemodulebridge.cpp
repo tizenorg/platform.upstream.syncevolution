@@ -250,114 +250,114 @@ TSyError TEngineModuleBridge::SetValueByID( KeyH aKeyH,    sInt32 aID, sInt32 ar
 
 
 // ---- tunnel functions -----------------------------------------------------------------
-TSyError TEngineModuleBridge::StartDataRead( CContext aContext, cAppCharP   lastToken,
+TSyError TEngineModuleBridge::StartDataRead( SessionH aContext, cAppCharP   lastToken,
                                                                 cAppCharP resumeToken )
 {
   SDR_Func     p= fCI->dt.StartDataRead; if (!p) return LOCERR_NOTIMP;
-  return       p( aContext, lastToken, resumeToken );
+  return       p( (CContext)aContext, lastToken, resumeToken );
 } // StartDataRead
 
 
-TSyError TEngineModuleBridge::ReadNextItem( CContext aContext, ItemID  aID, appCharP *aItemData,
+TSyError TEngineModuleBridge::ReadNextItem( SessionH aContext, ItemID  aID, appCharP *aItemData,
                                                                sInt32 *aStatus, bool  aFirst )
 {
   RdNItemSFunc p= fCI->dt.ReadNextItem; if (!p) return LOCERR_NOTIMP;
-  return       p( aContext, aID, aItemData, aStatus, aFirst );
+  return       p( (CContext)aContext, aID, aItemData, aStatus, aFirst );
 } // ReadNextItem
 
 
-TSyError TEngineModuleBridge::ReadItem( CContext aContext, cItemID aID, appCharP *aItemData )
+TSyError TEngineModuleBridge::ReadItem( SessionH aContext, cItemID aID, appCharP *aItemData )
 {
   Rd_ItemSFunc p= fCI->dt.ReadItem; if (!p) return LOCERR_NOTIMP;
-  return       p( aContext, aID, aItemData );
+  return       p( (CContext)aContext, aID, aItemData );
 } // ReadItem
 
 
-TSyError TEngineModuleBridge::EndDataRead( CContext aContext )
+TSyError TEngineModuleBridge::EndDataRead( SessionH aContext )
 {
   EDR_Func     p= fCI->dt.EndDataRead; if (!p) return LOCERR_NOTIMP;
-  return       p( aContext );
+  return       p( (CContext)aContext );
 } // EndDataRead
 
 
-TSyError TEngineModuleBridge::StartDataWrite( CContext aContext )
+TSyError TEngineModuleBridge::StartDataWrite( SessionH aContext )
 {
   SDW_Func     p= fCI->dt.StartDataWrite; if (!p) return LOCERR_NOTIMP;
-  return       p( aContext );
+  return       p( (CContext)aContext );
 } // StartDataWrite
 
 
-TSyError TEngineModuleBridge::InsertItem( CContext aContext, cAppCharP aItemData, cItemID aID )
+TSyError TEngineModuleBridge::InsertItem( SessionH aContext, cAppCharP aItemData, ItemID aID )
 {
   InsItemSFunc p= fCI->dt.InsertItem; if (!p) return LOCERR_NOTIMP;
-  return       p( aContext, aItemData, aID );
+  return       p( (CContext)aContext, aItemData, aID );
 } // InsertItem
 
 
-TSyError TEngineModuleBridge::UpdateItem( CContext aContext, cAppCharP aItemData, cItemID   aID,
+TSyError TEngineModuleBridge::UpdateItem( SessionH aContext, cAppCharP aItemData, cItemID   aID,
                                                                                    ItemID updID )
 {
   UpdItemSFunc p= fCI->dt.UpdateItem; if (!p) return LOCERR_NOTIMP;
-  return       p( aContext, aItemData, aID, updID  );
+  return       p( (CContext)aContext, aItemData, aID, updID  );
 } // UpdateItem
 
 
-TSyError TEngineModuleBridge::MoveItem( CContext aContext, cItemID aID, cAppCharP newParID )
+TSyError TEngineModuleBridge::MoveItem( SessionH aContext, cItemID aID, cAppCharP newParID )
 {
   MovItem_Func p= fCI->dt.MoveItem; if (!p) return LOCERR_NOTIMP;
-  return       p( aContext, aID, newParID );
+  return       p( (CContext)aContext, aID, newParID );
 } // MoveItem
 
 
-TSyError TEngineModuleBridge::DeleteItem( CContext aContext, cItemID aID )
+TSyError TEngineModuleBridge::DeleteItem( SessionH aContext, cItemID aID )
 {
   DelItem_Func p= fCI->dt.DeleteItem; if (!p) return LOCERR_NOTIMP;
-  return       p( aContext, aID );
+  return       p( (CContext)aContext, aID );
 } // DeleteItem
 
 
-TSyError TEngineModuleBridge::EndDataWrite( CContext aContext, bool success, appCharP *newToken )
+TSyError TEngineModuleBridge::EndDataWrite( SessionH aContext, bool success, appCharP *newToken )
 {
   EDW_Func     p= fCI->dt.EndDataWrite; if (!p) return LOCERR_NOTIMP;
-  return       p( aContext, success, newToken );
+  return       p( (CContext)aContext, success, newToken );
 } // EndDataWrite
 
 
-void     TEngineModuleBridge::DisposeObj( CContext aContext, void* memory )
+void     TEngineModuleBridge::DisposeObj( SessionH aContext, void* memory )
 {
   DisposeProc  p= fCI->dt.DisposeObj; if (!p) return;
-               p( aContext, memory );
+               p( (CContext)aContext, memory );
 } // DisposeObj
 
 
 // --- asKey ---
-TSyError TEngineModuleBridge::ReadNextItemAsKey( CContext aContext, ItemID  aID,     KeyH aItemKey,
+TSyError TEngineModuleBridge::ReadNextItemAsKey( SessionH aContext, ItemID  aID,     KeyH aItemKey,
                                                                     sInt32 *aStatus, bool aFirst )
 {
   RdNItemKFunc p= fCI->dt.ReadNextItemAsKey; if (!p) return LOCERR_NOTIMP;
-  return       p( aContext, aID, aItemKey, aStatus, aFirst );
+  return       p( (CContext)aContext, aID, aItemKey, aStatus, aFirst );
 } // ReadNextItemAsKey
 
 
-TSyError TEngineModuleBridge::ReadItemAsKey( CContext aContext, cItemID aID, KeyH aItemKey )
+TSyError TEngineModuleBridge::ReadItemAsKey( SessionH aContext, cItemID aID, KeyH aItemKey )
 {
   Rd_ItemKFunc p= fCI->dt.ReadItemAsKey; if (!p) return LOCERR_NOTIMP;
-  return       p( aContext, aID, aItemKey );
+  return       p( (CContext)aContext, aID, aItemKey );
 } // ReadItemAsKey
 
 
-TSyError TEngineModuleBridge::InsertItemAsKey( CContext aContext, KeyH aItemKey, cItemID aID )
+TSyError TEngineModuleBridge::InsertItemAsKey( SessionH aContext, KeyH aItemKey, ItemID aID )
 {
   InsItemKFunc p= fCI->dt.InsertItemAsKey; if (!p) return LOCERR_NOTIMP;
-  return       p( aContext, aItemKey, aID );
+  return       p( (CContext)aContext, aItemKey, aID );
 } // InsertItemAsKey
 
 
-TSyError TEngineModuleBridge::UpdateItemAsKey( CContext aContext, KeyH aItemKey, cItemID   aID,
+TSyError TEngineModuleBridge::UpdateItemAsKey( SessionH aContext, KeyH aItemKey, cItemID   aID,
                                                                                   ItemID updID )
 {
   UpdItemKFunc p= fCI->dt.UpdateItemAsKey; if (!p) return LOCERR_NOTIMP;
-  return       p( aContext, aItemKey, aID, updID  );
+  return       p( (CContext)aContext, aItemKey, aID, updID  );
 } // UpdateItemAsKey
 
 

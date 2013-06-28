@@ -164,7 +164,7 @@
 // -----------------
 
 // - support DBApi tunnel
-//#define DBAPI_TUNNEL_SUPPORT 1
+#define DBAPI_TUNNEL_SUPPORT 1
 
 // - link in customimplds on top of binfile
 #define BASED_ON_BINFILE_CLIENT 1

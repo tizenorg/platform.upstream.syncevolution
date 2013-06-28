@@ -512,6 +512,10 @@ void TRootConfig::localResolve(bool aLastPass)
   // - for SysyTool, resolve now, where resolving dbg output has gone /dev/null already
   fDebugConfig.Resolve(aLastPass);
   #endif
+  // try to resolve variable config here, but without forcing new one
+  if (aLastPass) {
+  	loadVarConfig(false);
+  }
 } // TRootConfig::localResolve
 
 

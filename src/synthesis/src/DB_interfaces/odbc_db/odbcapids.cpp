@@ -1968,7 +1968,7 @@ void TODBCApiDS::DoDataSubstitutions(
 			  sInt16 arrindex=0;
         TItemField *fldP;
         int substCode = DataSubstHandlers[handlerid].substCode;
-        DEBUGPRINTFX(DBG_DBAPI+DBG_EXOTIC,("- found %%%s (%ld chars)",DataSubstHandlers[substCode].substTag,(long)n));
+        //DEBUGPRINTFX(DBG_DBAPI+DBG_EXOTIC,("- found %%%s (%ld chars)",DataSubstHandlers[substCode].substTag,(long)n));
         switch (substCode) {
           case dsh_datakey:
             if (aItemP) s=aItemP->getLocalID();
@@ -2150,9 +2150,9 @@ void TODBCApiDS::DoDataSubstitutions(
           // have non-processed sequences processed for the other substitution possibilities now
           //   %f=folderkey, %u=userkey, %d=devicekey, %t=targetkey, %C=domain
           //   Note: it is important that %t and %d is checked here, after %d(), %tL and %tS above!!
-          DEBUGPRINTFX(DBG_DBAPI+DBG_EXOTIC,("Intermediate before applying basic substitutions: '%s'",intermediateStr.c_str()));
+          //DEBUGPRINTFX(DBG_DBAPI+DBG_EXOTIC,("Intermediate before applying basic substitutions: '%s'",intermediateStr.c_str()));
           DoSQLSubstitutions(intermediateStr);
-          DEBUGPRINTFX(DBG_DBAPI+DBG_EXOTIC,("Intermediate after applying basic substitutions: '%s'",intermediateStr.c_str()));
+          //DEBUGPRINTFX(DBG_DBAPI+DBG_EXOTIC,("Intermediate after applying basic substitutions: '%s'",intermediateStr.c_str()));
           // add it to the output string
           aSQL+=intermediateStr;
           // add the substitution (will NOT BE PROCESSED AGAIN!!)
@@ -2161,8 +2161,8 @@ void TODBCApiDS::DoDataSubstitutions(
           inStr.erase(0,i+n); // remove already processed stuff and escape sequence now
           // reset parsing position in inStr
           i=0;
-          DEBUGPRINTFX(DBG_DBAPI+DBG_EXOTIC,("- substitution with '%s' done, SQL so far: '%s'",s.c_str(),aSQL.c_str()));
-          DEBUGPRINTFX(DBG_DBAPI+DBG_EXOTIC,("Remaining input string to process: '%s'",inStr.c_str()));
+          //DEBUGPRINTFX(DBG_DBAPI+DBG_EXOTIC,("- substitution with '%s' done, SQL so far: '%s'",s.c_str(),aSQL.c_str()));
+          //DEBUGPRINTFX(DBG_DBAPI+DBG_EXOTIC,("Remaining input string to process: '%s'",inStr.c_str()));
         }
         // sequence substitution done
         break;

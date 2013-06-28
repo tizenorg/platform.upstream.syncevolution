@@ -28,7 +28,7 @@ ENGINE_IF_CLASS *newEngine(void)
 {
   // For real engine based targets, newEngine must create a target-specific derivate
   // of the engine, which then has a suitable newSyncAppBase() method to create the
-  // appBase. For old-style environment, a generic TServerEngineInterface is ok, as this
+  // appBase. For old-style environment, a generic TClientEngineInterface is ok, as this
   // in turn calls the global newSyncAppBase() which then returns the appropriate
   // target specific appBase.
   return new TClientEngineInterface;
@@ -111,7 +111,7 @@ TSyError TClientEngineInterface::OpenSessionInternal(SessionH &aNewSessionH, uIn
     fSessionStatus = clientBaseP->CreateTunnelSession(aSessionName);
     if (fSessionStatus==LOCERR_OK) {
       // return the session pointer as handle
-      aNewSessionH=clientBaseP->fClientSessionP;
+      aNewSessionH=(SessionH)clientBaseP->fClientSessionP;
     }
     #else
     return LOCERR_NOTIMP; // tunnel not implemented

@@ -432,8 +432,8 @@ bool VTIMEZONEtoInternal( const char*    aText, // VTIMEZONE string to be parsed
   VTIMEZONEtoTZEntry( aText, t, stdName, dstName, aLogP );
   if (aTzidP) *aTzidP = t.name; // return the original TZID as found, needed to match with TZID occurences in rest of vCalendar
 
-  bool sC= stdName!="";
-  bool dC= dstName!="";
+  bool sC= !(stdName=="");
+  bool dC= !(dstName=="");
 
   string tName = t.name;
   if  (sC || dC) tName = ""; // TZID will be replaced in case of unknown
@@ -687,12 +687,12 @@ bool TzDaylightToContext( const char*    aText,     ///< DAYLIGHT property value
     */
     if (!NextStr( s, l   )) return false;   // mismatch
 
-    if (l=="FALSE" ) { s= ""; break; } // no DST
-    if (l!="TRUE"  ) return false;     // either "TRUE" or "FALSE"
+    if   (l=="FALSE")     { s= ""; break; } // no DST
+    if (!(l=="TRUE" ))      return false;   // either "TRUE" or "FALSE"
 
-    if (!NextStr( s, hrs )) return false;     // mismatch
-    if (!NextStr( s, dst )) return false;     // mismatch
-    if (!NextStr( s, std )) return false;     // mismatch
+    if (!NextStr( s, hrs )) return false;   // mismatch
+    if (!NextStr( s, dst )) return false;   // mismatch
+    if (!NextStr( s, std )) return false;   // mismatch
 
     int minsDST= MinsPerHour; // %%% not yet perfect for Namibia !!
 

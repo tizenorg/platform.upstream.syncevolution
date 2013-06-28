@@ -331,44 +331,47 @@ class TEngineModuleBase
     virtual TSyError GetStrValue      ( KeyH aKeyH, cAppCharP aValName, string  &aText );
     virtual TSyError SetStrValue      ( KeyH aKeyH, cAppCharP aValName, string   aText );
 
-    virtual TSyError GetInt8Value     ( KeyH aKeyH, cAppCharP aValName, sInt8  &aValue );
-    virtual TSyError GetInt8Value     ( KeyH aKeyH, cAppCharP aValName, uInt8  &aValue );
+    virtual TSyError GetInt8Value     ( KeyH aKeyH, cAppCharP aValName, sInt8  &aValue ); // signed
+    virtual TSyError GetInt8Value     ( KeyH aKeyH, cAppCharP aValName, uInt8  &aValue ); // unsigned
     virtual TSyError SetInt8Value     ( KeyH aKeyH, cAppCharP aValName, uInt8   aValue );
 
-    virtual TSyError GetInt16Value    ( KeyH aKeyH, cAppCharP aValName, sInt16 &aValue );
-    virtual TSyError GetInt16Value    ( KeyH aKeyH, cAppCharP aValName, uInt16 &aValue );
+    virtual TSyError GetInt16Value    ( KeyH aKeyH, cAppCharP aValName, sInt16 &aValue ); // signed
+    virtual TSyError GetInt16Value    ( KeyH aKeyH, cAppCharP aValName, uInt16 &aValue ); // unsigned
     virtual TSyError SetInt16Value    ( KeyH aKeyH, cAppCharP aValName, uInt16  aValue );
 
-    virtual TSyError GetInt32Value    ( KeyH aKeyH, cAppCharP aValName, sInt32 &aValue );
-    virtual TSyError GetInt32Value    ( KeyH aKeyH, cAppCharP aValName, uInt32 &aValue );
+    virtual TSyError GetInt32Value    ( KeyH aKeyH, cAppCharP aValName, sInt32 &aValue ); // signed
+    virtual TSyError GetInt32Value    ( KeyH aKeyH, cAppCharP aValName, uInt32 &aValue ); // unsigned
     virtual TSyError SetInt32Value    ( KeyH aKeyH, cAppCharP aValName, uInt32  aValue );
+
+    virtual void     AppendSuffixToID ( KeyH aKeyH, sInt32   &aID,   cAppCharP aSuffix );
+
 
 
     // Tunnel Interface Methods ---------------------------------------------------------------------
-    virtual TSyError StartDataRead    ( CContext ac,  cAppCharP    lastToken,
-                                                      cAppCharP  resumeToken )                = 0;
-    virtual TSyError ReadNextItem     ( CContext ac,     ItemID  aID,  appCharP *aItemData,
-                                                         sInt32 *aStatus,  bool  aFirst )     = 0;
-    virtual TSyError ReadItem         ( CContext ac,    cItemID  aID,  appCharP *aItemData )  = 0;
-    virtual TSyError EndDataRead      ( CContext ac ) = 0;
-    virtual TSyError StartDataWrite   ( CContext ac ) = 0;
-    virtual TSyError InsertItem       ( CContext ac,  cAppCharP  aItemData,    cItemID   aID )= 0;
-    virtual TSyError UpdateItem       ( CContext ac,  cAppCharP  aItemData,    cItemID   aID,
-                                                                                ItemID updID )= 0;
+    virtual TSyError StartDataRead    ( SessionH aSessionH,  cAppCharP    lastToken,
+                                                      			 cAppCharP  resumeToken )                = 0;
+    virtual TSyError ReadNextItem     ( SessionH aSessionH,     ItemID  aID,  appCharP *aItemData,
+                                                                sInt32 *aStatus,  bool  aFirst )     = 0;
+    virtual TSyError ReadItem         ( SessionH aSessionH,    cItemID  aID,  appCharP *aItemData )  = 0;
+    virtual TSyError EndDataRead      ( SessionH aSessionH ) = 0;
+    virtual TSyError StartDataWrite   ( SessionH aSessionH ) = 0;
+    virtual TSyError InsertItem       ( SessionH aSessionH,  cAppCharP  aItemData,     ItemID   aID )= 0;
+    virtual TSyError UpdateItem       ( SessionH aSessionH,  cAppCharP  aItemData,    cItemID   aID,
+                                                                                       ItemID updID )= 0;
 
-    virtual TSyError MoveItem         ( CContext ac,    cItemID  aID,    cAppCharP  newParID )= 0;
-    virtual TSyError DeleteItem       ( CContext ac,    cItemID  aID )                        = 0;
-    virtual TSyError EndDataWrite     ( CContext ac,       bool  success, appCharP *newToken )= 0;
-    virtual void     DisposeObj       ( CContext ac,      void*  memory )                     = 0;
+    virtual TSyError MoveItem         ( SessionH aSessionH,    cItemID  aID,    cAppCharP  newParID )= 0;
+    virtual TSyError DeleteItem       ( SessionH aSessionH,    cItemID  aID )                        = 0;
+    virtual TSyError EndDataWrite     ( SessionH aSessionH,       bool  success, appCharP *newToken )= 0;
+    virtual void     DisposeObj       ( SessionH aSessionH,      void*  memory )                     = 0;
 
     // -- asKey --
-    virtual TSyError ReadNextItemAsKey( CContext ac,     ItemID  aID,          KeyH aItemKey,
-                                                         sInt32 *aStatus,      bool aFirst   )= 0;
-    virtual TSyError ReadItemAsKey    ( CContext ac,    cItemID  aID,          KeyH aItemKey )= 0;
+    virtual TSyError ReadNextItemAsKey( SessionH aSessionH,     ItemID  aID,          KeyH aItemKey,
+                                                                sInt32 *aStatus,      bool aFirst   )= 0;
+    virtual TSyError ReadItemAsKey    ( SessionH aSessionH,    cItemID  aID,          KeyH aItemKey )= 0;
 
-    virtual TSyError InsertItemAsKey  ( CContext ac,       KeyH  aItemKey,     cItemID   aID )= 0;
-    virtual TSyError UpdateItemAsKey  ( CContext ac,       KeyH  aItemKey,     cItemID   aID,
-                                                                                ItemID updID )= 0;
+    virtual TSyError InsertItemAsKey  ( SessionH aSessionH,       KeyH  aItemKey,      ItemID   aID )= 0;
+    virtual TSyError UpdateItemAsKey  ( SessionH aSessionH,       KeyH  aItemKey,     cItemID   aID,
+                                                                                       ItemID updID )= 0;
     virtual TSyError debugPuts(cAppCharP aFile, int aLine, cAppCharP aFunction,
                                int aDbgLevel, cAppCharP aLinePrefix,
                                cAppCharP aText) { return LOCERR_NOTIMP; }

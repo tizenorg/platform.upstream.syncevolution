@@ -36,6 +36,9 @@
 /* sqlite available */
 #undef ENABLE_SQLITE
 
+/* enable SSL certificate check in server templates */
+#undef ENABLE_SSL_CERTIFICATE_CHECK
+
 /* enable single-app-instance functionality */
 #undef ENABLE_UNIQUE
 
@@ -47,6 +50,9 @@
 
 /* The gettext package name */
 #undef GETTEXT_PACKAGE
+
+/* define if gnome keyring version is above 2.20 */
+#undef GNOME_KEYRING_220
 
 /* Define to 1 if you have the `bind_textdomain_codeset' function. */
 #undef HAVE_BIND_TEXTDOMAIN_CODESET

@@ -1870,7 +1870,7 @@ bool RRULE2toInternal(
           }
         }
         // check if anything is behind endindex
-        if (endIndex == string::npos && startIndex < byday.length() - 1)
+        if (endIndex == string::npos && startIndex < byday.length())
         {
           endIndex = byday.length();
           if (!setWeekday(byday, firstmask, lastmask, startIndex, endIndex, false))
@@ -1916,7 +1916,7 @@ bool RRULE2toInternal(
           }
         }
         // check if anything is behind endindex
-        if (endIndex == string::npos && startIndex < byday.length() - 1)
+        if (endIndex == string::npos && startIndex < byday.length())
         {
           endIndex = byday.length();
           if (!setWeekday(byday, firstmask, lastmask, startIndex, endIndex, false))
@@ -1957,7 +1957,7 @@ bool RRULE2toInternal(
           }
         }
         // check if anything is behind endindex
-        if (endIndex == string::npos && startIndex < bymonthday.length() - 1)
+        if (endIndex == string::npos && startIndex < bymonthday.length())
         {
           endIndex = bymonthday.length();
           if (!setMonthDay(bymonthday, firstmask, lastmask, startIndex, endIndex))
@@ -1986,7 +1986,7 @@ bool RRULE2toInternal(
           }
         }
         // check if anything is behind endindex
-        if (endIndex == string::npos && startIndex < byday.length() - 1)
+        if (endIndex == string::npos && startIndex < byday.length())
         {
           endIndex = byday.length();
           if (!setWeekday(byday, firstmask, lastmask, startIndex, endIndex, true))

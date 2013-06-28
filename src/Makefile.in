@@ -43,23 +43,16 @@ bin_PROGRAMS = syncevolution$(EXEEXT) $(am__EXEEXT_2)
 @ENABLE_MODULES_TRUE@am__append_3 = $(BACKEND_REGISTRIES)
 @ENABLE_MODULES_FALSE@am__append_4 = $(BACKEND_REGISTRIES)
 
-# Always compile the registry files into client-test because that is
-# the only place where they are compiled with
-# ENABLE_INTEGRATION_TESTS.  This works without undefined references
-# because client-test is linked against all shared backend libraries
-# (non-portable, but works).
-@ENABLE_MODULES_TRUE@am__append_5 = $(BACKEND_REGISTRIES)
-
 # distribute test system?
 # yes: install client-test in bindir, test files in datadir
+@ENABLE_TESTING_TRUE@am__append_5 = client-test
 @ENABLE_TESTING_TRUE@am__append_6 = client-test
-@ENABLE_TESTING_TRUE@am__append_7 = client-test
 # The "all" dependency causes a rebuild even if the actual input files
 # haven't changed. If client-test is part of the regular targets built
 # by "all", then it must not depend on all!
-@ENABLE_TESTING_FALSE@am__append_8 = client-test
-@ENABLE_TESTING_FALSE@am__append_9 = $(CLIENT_LIB_TEST_FILES)
-@ENABLE_TESTING_FALSE@am__append_10 = all
+@ENABLE_TESTING_FALSE@am__append_7 = client-test
+@ENABLE_TESTING_FALSE@am__append_8 = $(CLIENT_LIB_TEST_FILES)
+@ENABLE_TESTING_FALSE@am__append_9 = all
 subdir = src
 DIST_COMMON = $(am__nobase_dist_doc_DATA_DIST) \
 	$(nobase_dist_sysconf_DATA) $(srcdir)/Makefile.am \
@@ -85,7 +78,7 @@ abort_redirect_OBJECTS = $(am_abort_redirect_OBJECTS)
 am__DEPENDENCIES_1 =
 @ENABLE_MODULES_FALSE@am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
 am__DEPENDENCIES_3 = $(am__DEPENDENCIES_2)
-am__DEPENDENCIES_4 = $(am__DEPENDENCIES_3) core/libsyncevolution.la \
+am__DEPENDENCIES_4 = $(am__DEPENDENCIES_3) syncevo/libsyncevolution.la \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 abort_redirect_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) \
@@ -106,16 +99,14 @@ am__objects_1 = client_test-AddressBookSourceRegister.$(OBJEXT) \
 	client_test-SQLiteContactSourceRegister.$(OBJEXT)
 @ENABLE_MODULES_FALSE@am__objects_2 = $(am__objects_1)
 am__objects_3 = $(am__objects_2)
-@ENABLE_MODULES_TRUE@am__objects_4 = $(am__objects_1)
 am_client_test_OBJECTS = client_test-client-test-app.$(OBJEXT) \
 	client_test-ClientTest.$(OBJEXT) \
-	client_test-client-test-main.$(OBJEXT) $(am__objects_3) \
-	$(am__objects_4)
-am__objects_5 =
-am__objects_6 = $(am__objects_5)
-@ENABLE_TESTING_FALSE@am__objects_7 = $(am__objects_6)
+	client_test-client-test-main.$(OBJEXT) $(am__objects_3)
+am__objects_4 =
+am__objects_5 = $(am__objects_4)
+@ENABLE_TESTING_FALSE@am__objects_6 = $(am__objects_5)
 nodist_client_test_OBJECTS = client_test-test.$(OBJEXT) \
-	$(am__objects_7)
+	$(am__objects_6)
 client_test_OBJECTS = $(am_client_test_OBJECTS) \
 	$(nodist_client_test_OBJECTS)
 client_test_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
@@ -128,17 +119,17 @@ am__syncevo_dbus_server_SOURCES_DIST = syncevo-dbus-server.cpp \
 	backends/evolution/EvolutionContactSourceRegister.cpp \
 	backends/file/FileSyncSourceRegister.cpp \
 	backends/sqlite/SQLiteContactSourceRegister.cpp
-am__objects_8 =  \
+am__objects_7 =  \
 	syncevo_dbus_server-AddressBookSourceRegister.$(OBJEXT) \
 	syncevo_dbus_server-EvolutionCalendarSourceRegister.$(OBJEXT) \
 	syncevo_dbus_server-EvolutionContactSourceRegister.$(OBJEXT) \
 	syncevo_dbus_server-FileSyncSourceRegister.$(OBJEXT) \
 	syncevo_dbus_server-SQLiteContactSourceRegister.$(OBJEXT)
-@ENABLE_MODULES_FALSE@am__objects_9 = $(am__objects_8)
-am__objects_10 = $(am__objects_9)
+@ENABLE_MODULES_FALSE@am__objects_8 = $(am__objects_7)
+am__objects_9 = $(am__objects_8)
 @COND_DBUS_TRUE@am_syncevo_dbus_server_OBJECTS = syncevo_dbus_server-syncevo-dbus-server.$(OBJEXT) \
 @COND_DBUS_TRUE@	syncevo_dbus_server-DBusSyncClient.$(OBJEXT) \
-@COND_DBUS_TRUE@	$(am__objects_10)
+@COND_DBUS_TRUE@	$(am__objects_9)
 @COND_DBUS_TRUE@nodist_syncevo_dbus_server_OBJECTS =  \
 @COND_DBUS_TRUE@	syncevo_dbus_server-syncevo-marshal.$(OBJEXT) \
 @COND_DBUS_TRUE@	syncevo_dbus_server-test.$(OBJEXT)
@@ -148,21 +139,22 @@ syncevo_dbus_server_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) \
 	$(syncevo_dbus_server_LDFLAGS) $(LDFLAGS) -o $@
-am__syncevolution_SOURCES_DIST = syncevolution.cpp \
+am__syncevolution_SOURCES_DIST = syncevolution.cpp CmdlineSyncClient.h \
+	CmdlineSyncClient.cpp \
 	backends/addressbook/AddressBookSourceRegister.cpp \
 	backends/evolution/EvolutionCalendarSourceRegister.cpp \
 	backends/evolution/EvolutionContactSourceRegister.cpp \
 	backends/file/FileSyncSourceRegister.cpp \
 	backends/sqlite/SQLiteContactSourceRegister.cpp
-am__objects_11 = syncevolution-AddressBookSourceRegister.$(OBJEXT) \
+am__objects_10 = syncevolution-AddressBookSourceRegister.$(OBJEXT) \
 	syncevolution-EvolutionCalendarSourceRegister.$(OBJEXT) \
 	syncevolution-EvolutionContactSourceRegister.$(OBJEXT) \
 	syncevolution-FileSyncSourceRegister.$(OBJEXT) \
 	syncevolution-SQLiteContactSourceRegister.$(OBJEXT)
-@ENABLE_MODULES_FALSE@am__objects_12 = $(am__objects_11)
-am__objects_13 = $(am__objects_12)
+@ENABLE_MODULES_FALSE@am__objects_11 = $(am__objects_10)
+am__objects_12 = $(am__objects_11)
 am_syncevolution_OBJECTS = syncevolution-syncevolution.$(OBJEXT) \
-	$(am__objects_13)
+	syncevolution-CmdlineSyncClient.$(OBJEXT) $(am__objects_12)
 nodist_syncevolution_OBJECTS = syncevolution-test.$(OBJEXT)
 syncevolution_OBJECTS = $(am_syncevolution_OBJECTS) \
 	$(nodist_syncevolution_OBJECTS)
@@ -304,6 +296,8 @@ INTLTOOL_EXTRACT = @INTLTOOL_EXTRACT@
 INTLTOOL_MERGE = @INTLTOOL_MERGE@
 INTLTOOL_PERL = @INTLTOOL_PERL@
 INTLTOOL_UPDATE = @INTLTOOL_UPDATE@
+KEYRING_2_20_CFLAGS = @KEYRING_2_20_CFLAGS@
+KEYRING_2_20_LIBS = @KEYRING_2_20_LIBS@
 KEYRING_CFLAGS = @KEYRING_CFLAGS@
 KEYRING_LIBS = @KEYRING_LIBS@
 LDFLAGS = @LDFLAGS@
@@ -375,6 +369,8 @@ am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
+backenddir = @backenddir@
+backendsearchdir = @backendsearchdir@
 bindir = @bindir@
 build = @build@
 build_alias = @build_alias@
@@ -422,8 +418,8 @@ service_in_files = org.Moblin.SyncEvolution.service.in
 @COND_DBUS_FALSE@@COND_GUI_TRUE@DBUS_DIR = dbus/interfaces
 @COND_DBUS_TRUE@DBUS_DIR = dbus
 @COND_GUI_TRUE@GUI_DIR = gtk-ui
-SUBDIRS = $(SYNTHESIS_SUBDIR) $(DBUS_DIR) core $(BACKENDS) $(GUI_DIR)
-DIST_SUBDIRS = dbus core $(BACKENDS) gtk-ui
+SUBDIRS = $(SYNTHESIS_SUBDIR) $(DBUS_DIR) syncevo $(BACKENDS) $(GUI_DIR)
+DIST_SUBDIRS = dbus syncevo $(BACKENDS) gtk-ui
 BUILT_SOURCES = 
 AM_CPPFLAGS = $(SUBDIRS:%=-I$(srcdir)/%) -I$(srcdir)/../test -I$(top_srcdir) $(BACKEND_CPPFLAGS) $(GLIB_CFLAGS)
 bin_SCRIPTS = synccompare
@@ -449,11 +445,13 @@ CORE_SOURCES = $(am__append_4)
 # still need to be included in "make dist".
 BACKEND_REGISTRIES = backends/addressbook/AddressBookSourceRegister.cpp backends/evolution/EvolutionCalendarSourceRegister.cpp backends/evolution/EvolutionContactSourceRegister.cpp backends/file/FileSyncSourceRegister.cpp backends/sqlite/SQLiteContactSourceRegister.cpp
 CORE_CXXFLAGS = $(SYNTHESIS_CFLAGS)
-CORE_LDADD = $(SYNCEVOLUTION_LDADD) core/libsyncevolution.la $(GLIB_LIBS) $(LIBS)
-CORE_DEP = $(SYNCEVOLUTION_DEP) core/libsyncevolution.la $(SYNTHESIS_DEP)
+CORE_LDADD = $(SYNCEVOLUTION_LDADD) syncevo/libsyncevolution.la $(GLIB_LIBS) $(LIBS)
+CORE_DEP = $(SYNCEVOLUTION_DEP) syncevo/libsyncevolution.la $(SYNTHESIS_DEP)
 CORE_LD_FLAGS = -uSyncEvolution_Module_Version -Wl,--export-dynamic
 syncevolution_SOURCES = \
 	syncevolution.cpp \
+	CmdlineSyncClient.h \
+	CmdlineSyncClient.cpp \
 	$(CORE_SOURCES)
 
 nodist_syncevolution_SOURCES = ../test/test.cpp
@@ -461,9 +459,9 @@ nodist_syncevolution_SOURCES = ../test/test.cpp
 # SYNCEVOLUTION_LDADD will be replaced with libsyncebook.la/libsyncecal.la/libsyncsqlite.la
 # if linking statically against them, empty otherwise;
 # either way this does not lead to a dependency on those libs - done explicitly
-syncevolution_LDADD = $(CORE_LDADD)
+syncevolution_LDADD = $(CORE_LDADD) $(KEYRING_LIBS)
 syncevolution_LDFLAGS = $(CORE_LD_FLAGS)
-syncevolution_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS)
+syncevolution_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS) $(KEYRING_CFLAGS)
 syncevolution_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) # $(SYNTHESIS_DEP)
 @COND_DBUS_TRUE@syncevo_dbus_server_SOURCES = \
 @COND_DBUS_TRUE@	syncevo-dbus-server.cpp syncevo-dbus-server.h \
@@ -484,10 +482,25 @@ syncevolution_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) # $(SYNTHESIS_DEP)
 # pull any of the test suites into the test binary, so they would not be
 # executed. The workaround is to explicitly set them as undefined on the
 # link line.
-client_test_SOURCES = client-test-app.cpp ../test/ClientTest.cpp \
-	../test/ClientTest.h ../test/client-test-main.cpp \
-	$(CORE_SOURCES) $(am__append_5)
-nodist_client_test_SOURCES = ../test/test.cpp $(am__append_9)
+client_test_SOURCES = \
+	client-test-app.cpp \
+	../test/ClientTest.cpp \
+	../test/ClientTest.h \
+	../test/client-test-main.cpp \
+	$(CORE_SOURCES)
+
+nodist_client_test_SOURCES = ../test/test.cpp $(am__append_8)
+
+# Always compile the registry files into client-test because that is
+# the only place where they are compiled with
+# ENABLE_INTEGRATION_TESTS.  This works without undefined references
+# because client-test is linked against all shared backend libraries
+# (non-portable, but works).
+# Disabled now, the client test can also be dynamically loaded and registered
+# just the same as syncevolution
+# if ENABLE_MODULES
+# client_test_SOURCES += $(BACKEND_REGISTRIES)
+# endif
 
 # list of test file base files
 #
@@ -507,15 +520,15 @@ TEST_FILES_GENERATED = $(subst .patch,,$(subst $(srcdir)/../test/,,$(TEST_FILES_
 TEST_FILES_PATCHED = $(wildcard testcases/*.tem)
 client_test_CPPFLAGS = -DHAVE_CONFIG_H -DENABLE_INTEGRATION_TESTS -DENABLE_UNIT_TESTS $(AM_CPPFLAGS)
 client_test_CXXFLAGS = `cppunit-config --cflags` $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS)
-client_test_LDFLAGS = `cppunit-config --libs` `nm core/.libs/libsyncevolution.a | grep funambolAutoRegisterRegistry | sed -e 's/.* /-u /'` $(CORE_LD_FLAGS)
-client_test_LDADD = $(CORE_LDADD) $(SYNCSOURCES)
+client_test_LDFLAGS = `cppunit-config --libs` `nm synccevo/.libs/libsyncevolution.a | grep funambolAutoRegisterRegistry | sed -e 's/.* /-u /'` $(CORE_LD_FLAGS)
+client_test_LDADD = $(CORE_LDADD) 
 
 # The binary does not really depend on the test cases, only running it does.
 # Listing the dependencies here is done to ensure that one doesn't accidentally
 # runs the binary with out-dated auxiliary files.
 client_test_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) \
 	$(CLIENT_LIB_TEST_FILES) testcase2patch synccompare \
-	$(am__append_10)
+	$(am__append_9)
 @ENABLE_TESTING_TRUE@nobase_dist_doc_DATA = $(CLIENT_LIB_TEST_FILES)
 abort_redirect_SOURCES = ../test/abort-redirect.cpp
 abort_redirect_CPPFLAGS = -DHAVE_CONFIG_H $(AM_CPPFLAGS)
@@ -671,6 +684,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-syncevo-marshal.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-AddressBookSourceRegister.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-CmdlineSyncClient.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-EvolutionCalendarSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-EvolutionContactSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-FileSyncSourceRegister.Po@am__quote@
@@ -999,6 +1013,20 @@ syncevolution-syncevolution.obj: syncevolution.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='syncevolution.cpp' object='syncevolution-syncevolution.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -c -o syncevolution-syncevolution.obj `if test -f 'syncevolution.cpp'; then $(CYGPATH_W) 'syncevolution.cpp'; else $(CYGPATH_W) '$(srcdir)/syncevolution.cpp'; fi`
+
+syncevolution-CmdlineSyncClient.o: CmdlineSyncClient.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -MT syncevolution-CmdlineSyncClient.o -MD -MP -MF $(DEPDIR)/syncevolution-CmdlineSyncClient.Tpo -c -o syncevolution-CmdlineSyncClient.o `test -f 'CmdlineSyncClient.cpp' || echo '$(srcdir)/'`CmdlineSyncClient.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevolution-CmdlineSyncClient.Tpo $(DEPDIR)/syncevolution-CmdlineSyncClient.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='CmdlineSyncClient.cpp' object='syncevolution-CmdlineSyncClient.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -c -o syncevolution-CmdlineSyncClient.o `test -f 'CmdlineSyncClient.cpp' || echo '$(srcdir)/'`CmdlineSyncClient.cpp
+
+syncevolution-CmdlineSyncClient.obj: CmdlineSyncClient.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -MT syncevolution-CmdlineSyncClient.obj -MD -MP -MF $(DEPDIR)/syncevolution-CmdlineSyncClient.Tpo -c -o syncevolution-CmdlineSyncClient.obj `if test -f 'CmdlineSyncClient.cpp'; then $(CYGPATH_W) 'CmdlineSyncClient.cpp'; else $(CYGPATH_W) '$(srcdir)/CmdlineSyncClient.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevolution-CmdlineSyncClient.Tpo $(DEPDIR)/syncevolution-CmdlineSyncClient.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='CmdlineSyncClient.cpp' object='syncevolution-CmdlineSyncClient.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -c -o syncevolution-CmdlineSyncClient.obj `if test -f 'CmdlineSyncClient.cpp'; then $(CYGPATH_W) 'CmdlineSyncClient.cpp'; else $(CYGPATH_W) '$(srcdir)/CmdlineSyncClient.cpp'; fi`
 
 syncevolution-AddressBookSourceRegister.o: backends/addressbook/AddressBookSourceRegister.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -MT syncevolution-AddressBookSourceRegister.o -MD -MP -MF $(DEPDIR)/syncevolution-AddressBookSourceRegister.Tpo -c -o syncevolution-AddressBookSourceRegister.o `test -f 'backends/addressbook/AddressBookSourceRegister.cpp' || echo '$(srcdir)/'`backends/addressbook/AddressBookSourceRegister.cpp

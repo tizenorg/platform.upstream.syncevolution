@@ -54,29 +54,32 @@ am__vpath_adj = case $$p in \
     *) f=$$p;; \
   esac;
 am__strip_dir = `echo $$p | sed -e 's|^.*/||'`;
-am__installdirs = "$(DESTDIR)$(pkglibdir)"
-pkglibLTLIBRARIES_INSTALL = $(INSTALL)
-LTLIBRARIES = $(noinst_LTLIBRARIES) $(pkglib_LTLIBRARIES)
+am__installdirs = "$(DESTDIR)$(backenddir)"
+backendLTLIBRARIES_INSTALL = $(INSTALL)
+LTLIBRARIES = $(backend_LTLIBRARIES) $(noinst_LTLIBRARIES)
 am__DEPENDENCIES_1 =
 syncebook_la_DEPENDENCIES = $(am__DEPENDENCIES_1) \
-	../../core/libsyncevolution.la
-am__objects_1 = syncebook_la-EvolutionContactSource.lo
+	../../syncevo/libsyncevolution.la
+am__objects_1 = syncebook_la-EvolutionSyncSource.lo \
+	syncebook_la-EvolutionContactSource.lo
 am_syncebook_la_OBJECTS = $(am__objects_1)
 syncebook_la_OBJECTS = $(am_syncebook_la_OBJECTS)
 syncebook_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(syncebook_la_CXXFLAGS) \
 	$(CXXFLAGS) $(syncebook_la_LDFLAGS) $(LDFLAGS) -o $@
 @ENABLE_MODULES_FALSE@am_syncebook_la_rpath =
-@ENABLE_MODULES_TRUE@am_syncebook_la_rpath = -rpath $(pkglibdir)
-syncecal_la_DEPENDENCIES = ../../core/libsyncevolution.la
-am__syncecal_la_SOURCES_DIST = EvolutionCalendarSource.h \
+@ENABLE_MODULES_TRUE@am_syncebook_la_rpath = -rpath $(backenddir)
+syncecal_la_DEPENDENCIES = ../../syncevo/libsyncevolution.la
+am__syncecal_la_SOURCES_DIST = EvolutionSyncSource.h \
+	EvolutionSyncSource.cpp EvolutionCalendarSource.h \
 	EvolutionMemoSource.h EvolutionCalendarSource.cpp \
 	EvolutionMemoSource.cpp libical/icalstrdup.c \
 	libical/icalstrdup.h e-cal-check-timezones.c \
 	e-cal-check-timezones.h
 @ENABLE_ECAL_TRUE@am__objects_2 = syncecal_la-icalstrdup.lo \
 @ENABLE_ECAL_TRUE@	syncecal_la-e-cal-check-timezones.lo
-am__objects_3 = syncecal_la-EvolutionCalendarSource.lo \
+am__objects_3 = syncecal_la-EvolutionSyncSource.lo \
+	syncecal_la-EvolutionCalendarSource.lo \
 	syncecal_la-EvolutionMemoSource.lo $(am__objects_2)
 am_syncecal_la_OBJECTS = $(am__objects_3)
 syncecal_la_OBJECTS = $(am_syncecal_la_OBJECTS)
@@ -84,7 +87,7 @@ syncecal_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(syncecal_la_CXXFLAGS) \
 	$(CXXFLAGS) $(syncecal_la_LDFLAGS) $(LDFLAGS) -o $@
 @ENABLE_MODULES_FALSE@am_syncecal_la_rpath =
-@ENABLE_MODULES_TRUE@am_syncecal_la_rpath = -rpath $(pkglibdir)
+@ENABLE_MODULES_TRUE@am_syncecal_la_rpath = -rpath $(backenddir)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -188,6 +191,8 @@ INTLTOOL_EXTRACT = @INTLTOOL_EXTRACT@
 INTLTOOL_MERGE = @INTLTOOL_MERGE@
 INTLTOOL_PERL = @INTLTOOL_PERL@
 INTLTOOL_UPDATE = @INTLTOOL_UPDATE@
+KEYRING_2_20_CFLAGS = @KEYRING_2_20_CFLAGS@
+KEYRING_2_20_LIBS = @KEYRING_2_20_LIBS@
 KEYRING_CFLAGS = @KEYRING_CFLAGS@
 KEYRING_LIBS = @KEYRING_LIBS@
 LDFLAGS = @LDFLAGS@
@@ -259,6 +264,8 @@ am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
+backenddir = @backenddir@
+backendsearchdir = @backendsearchdir@
 bindir = @bindir@
 build = @build@
 build_alias = @build_alias@
@@ -298,35 +305,39 @@ sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-AM_CPPFLAGS = -I$(srcdir)/../../core -I$(top_srcdir)/test $(BACKEND_CPPFLAGS)
+AM_CPPFLAGS = -I$(srcdir)/../../ -I$(top_srcdir)/test $(BACKEND_CPPFLAGS)
 EXTRA_DIST = configure-sub.in
 MOSTLYCLEANFILES = $(SYNCSOURCES)
-@ENABLE_MODULES_TRUE@pkglib_LTLIBRARIES = $(SYNCSOURCES)
+@ENABLE_MODULES_TRUE@backend_LTLIBRARIES = $(SYNCSOURCES)
 @ENABLE_MODULES_FALSE@noinst_LTLIBRARIES = $(SYNCSOURCES)
 MAINTAINERCLEANFILES = Makefile.in
-SYNCECAL_SOURCES = EvolutionCalendarSource.h EvolutionMemoSource.h \
+SYNCECAL_SOURCES = EvolutionSyncSource.h EvolutionSyncSource.cpp \
+	EvolutionCalendarSource.h EvolutionMemoSource.h \
 	EvolutionCalendarSource.cpp EvolutionMemoSource.cpp \
 	$(am__append_1)
 SYNCEBOOK_SOURCES = \
+	EvolutionSyncSource.h \
+	EvolutionSyncSource.cpp \
         EvolutionContactSource.h \
 	EvolutionContactSource.cpp
 
 syncecal_la_SOURCES = $(SYNCECAL_SOURCES)
-syncecal_la_LIBADD = @ECAL_LIBS@ ../../core/libsyncevolution.la
+syncecal_la_LIBADD = @ECAL_LIBS@ ../../syncevo/libsyncevolution.la
 # _GNU_SOURCE and -ldl for libical.c + dlsym():
 syncecal_la_CPPFLAGS = -D_GNU_SOURCE \
 	-De_cal_check_timezones=syncevolution_check_timezones \
 	-De_cal_tzlookup_ecal=syncevolution_tzlookup_ecal \
 	-De_cal_tzlookup_icomp=syncevolution_tzlookup_icomp \
 	-De_cal_match_tzid=syncevolution_match_tzid \
+	-DENABLE_INTEGRATION_TESTS \
 	$(AM_CPPFLAGS)
 
-syncecal_la_LDFLAGS = -module -rpath '$(pkglibdir)' -ldl
+syncecal_la_LDFLAGS = -module -avoid-version -ldl
 syncecal_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS)
 syncebook_la_SOURCES = $(SYNCEBOOK_SOURCES)
-syncebook_la_LIBADD = $(EBOOK_LIBS) ../../core/libsyncevolution.la
-syncebook_la_LDFLAGS = -module -rpath '$(pkglibdir)'
-syncebook_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS)
+syncebook_la_LIBADD = $(EBOOK_LIBS) ../../syncevo/libsyncevolution.la
+syncebook_la_LDFLAGS = -module -avoid-version 
+syncebook_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) -DENABLE_INTEGRATION_TESTS
 all: all-am
 
 .SUFFIXES:
@@ -360,37 +371,37 @@ $(top_srcdir)/configure:  $(am__configure_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
+install-backendLTLIBRARIES: $(backend_LTLIBRARIES)
+	@$(NORMAL_INSTALL)
+	test -z "$(backenddir)" || $(MKDIR_P) "$(DESTDIR)$(backenddir)"
+	@list='$(backend_LTLIBRARIES)'; for p in $$list; do \
+	  if test -f $$p; then \
+	    f=$(am__strip_dir) \
+	    echo " $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(backendLTLIBRARIES_INSTALL) $(INSTALL_STRIP_FLAG) '$$p' '$(DESTDIR)$(backenddir)/$$f'"; \
+	    $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(backendLTLIBRARIES_INSTALL) $(INSTALL_STRIP_FLAG) "$$p" "$(DESTDIR)$(backenddir)/$$f"; \
+	  else :; fi; \
+	done
 
-clean-noinstLTLIBRARIES:
-	-test -z "$(noinst_LTLIBRARIES)" || rm -f $(noinst_LTLIBRARIES)
-	@list='$(noinst_LTLIBRARIES)'; for p in $$list; do \
+uninstall-backendLTLIBRARIES:
+	@$(NORMAL_UNINSTALL)
+	@list='$(backend_LTLIBRARIES)'; for p in $$list; do \
+	  p=$(am__strip_dir) \
+	  echo " $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=uninstall rm -f '$(DESTDIR)$(backenddir)/$$p'"; \
+	  $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=uninstall rm -f "$(DESTDIR)$(backenddir)/$$p"; \
+	done
+
+clean-backendLTLIBRARIES:
+	-test -z "$(backend_LTLIBRARIES)" || rm -f $(backend_LTLIBRARIES)
+	@list='$(backend_LTLIBRARIES)'; for p in $$list; do \
 	  dir="`echo $$p | sed -e 's|/[^/]*$$||'`"; \
 	  test "$$dir" != "$$p" || dir=.; \
 	  echo "rm -f \"$${dir}/so_locations\""; \
 	  rm -f "$${dir}/so_locations"; \
 	done
-install-pkglibLTLIBRARIES: $(pkglib_LTLIBRARIES)
-	@$(NORMAL_INSTALL)
-	test -z "$(pkglibdir)" || $(MKDIR_P) "$(DESTDIR)$(pkglibdir)"
-	@list='$(pkglib_LTLIBRARIES)'; for p in $$list; do \
-	  if test -f $$p; then \
-	    f=$(am__strip_dir) \
-	    echo " $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(pkglibLTLIBRARIES_INSTALL) $(INSTALL_STRIP_FLAG) '$$p' '$(DESTDIR)$(pkglibdir)/$$f'"; \
-	    $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(pkglibLTLIBRARIES_INSTALL) $(INSTALL_STRIP_FLAG) "$$p" "$(DESTDIR)$(pkglibdir)/$$f"; \
-	  else :; fi; \
-	done
 
-uninstall-pkglibLTLIBRARIES:
-	@$(NORMAL_UNINSTALL)
-	@list='$(pkglib_LTLIBRARIES)'; for p in $$list; do \
-	  p=$(am__strip_dir) \
-	  echo " $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=uninstall rm -f '$(DESTDIR)$(pkglibdir)/$$p'"; \
-	  $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=uninstall rm -f "$(DESTDIR)$(pkglibdir)/$$p"; \
-	done
-
-clean-pkglibLTLIBRARIES:
-	-test -z "$(pkglib_LTLIBRARIES)" || rm -f $(pkglib_LTLIBRARIES)
-	@list='$(pkglib_LTLIBRARIES)'; for p in $$list; do \
+clean-noinstLTLIBRARIES:
+	-test -z "$(noinst_LTLIBRARIES)" || rm -f $(noinst_LTLIBRARIES)
+	@list='$(noinst_LTLIBRARIES)'; for p in $$list; do \
 	  dir="`echo $$p | sed -e 's|/[^/]*$$||'`"; \
 	  test "$$dir" != "$$p" || dir=.; \
 	  echo "rm -f \"$${dir}/so_locations\""; \
@@ -408,8 +419,10 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncebook_la-EvolutionContactSource.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncebook_la-EvolutionSyncSource.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncecal_la-EvolutionCalendarSource.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncecal_la-EvolutionMemoSource.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncecal_la-EvolutionSyncSource.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncecal_la-e-cal-check-timezones.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncecal_la-icalstrdup.Plo@am__quote@
 
@@ -469,12 +482,26 @@ syncecal_la-e-cal-check-timezones.lo: e-cal-check-timezones.c
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LTCXXCOMPILE) -c -o $@ $<
 
+syncebook_la-EvolutionSyncSource.lo: EvolutionSyncSource.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncebook_la_CXXFLAGS) $(CXXFLAGS) -MT syncebook_la-EvolutionSyncSource.lo -MD -MP -MF $(DEPDIR)/syncebook_la-EvolutionSyncSource.Tpo -c -o syncebook_la-EvolutionSyncSource.lo `test -f 'EvolutionSyncSource.cpp' || echo '$(srcdir)/'`EvolutionSyncSource.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncebook_la-EvolutionSyncSource.Tpo $(DEPDIR)/syncebook_la-EvolutionSyncSource.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='EvolutionSyncSource.cpp' object='syncebook_la-EvolutionSyncSource.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncebook_la_CXXFLAGS) $(CXXFLAGS) -c -o syncebook_la-EvolutionSyncSource.lo `test -f 'EvolutionSyncSource.cpp' || echo '$(srcdir)/'`EvolutionSyncSource.cpp
+
 syncebook_la-EvolutionContactSource.lo: EvolutionContactSource.cpp
 @am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncebook_la_CXXFLAGS) $(CXXFLAGS) -MT syncebook_la-EvolutionContactSource.lo -MD -MP -MF $(DEPDIR)/syncebook_la-EvolutionContactSource.Tpo -c -o syncebook_la-EvolutionContactSource.lo `test -f 'EvolutionContactSource.cpp' || echo '$(srcdir)/'`EvolutionContactSource.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncebook_la-EvolutionContactSource.Tpo $(DEPDIR)/syncebook_la-EvolutionContactSource.Plo
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='EvolutionContactSource.cpp' object='syncebook_la-EvolutionContactSource.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncebook_la_CXXFLAGS) $(CXXFLAGS) -c -o syncebook_la-EvolutionContactSource.lo `test -f 'EvolutionContactSource.cpp' || echo '$(srcdir)/'`EvolutionContactSource.cpp
+
+syncecal_la-EvolutionSyncSource.lo: EvolutionSyncSource.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncecal_la_CPPFLAGS) $(CPPFLAGS) $(syncecal_la_CXXFLAGS) $(CXXFLAGS) -MT syncecal_la-EvolutionSyncSource.lo -MD -MP -MF $(DEPDIR)/syncecal_la-EvolutionSyncSource.Tpo -c -o syncecal_la-EvolutionSyncSource.lo `test -f 'EvolutionSyncSource.cpp' || echo '$(srcdir)/'`EvolutionSyncSource.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncecal_la-EvolutionSyncSource.Tpo $(DEPDIR)/syncecal_la-EvolutionSyncSource.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='EvolutionSyncSource.cpp' object='syncecal_la-EvolutionSyncSource.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncecal_la_CPPFLAGS) $(CPPFLAGS) $(syncecal_la_CXXFLAGS) $(CXXFLAGS) -c -o syncecal_la-EvolutionSyncSource.lo `test -f 'EvolutionSyncSource.cpp' || echo '$(srcdir)/'`EvolutionSyncSource.cpp
 
 syncecal_la-EvolutionCalendarSource.lo: EvolutionCalendarSource.cpp
 @am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncecal_la_CPPFLAGS) $(CPPFLAGS) $(syncecal_la_CXXFLAGS) $(CXXFLAGS) -MT syncecal_la-EvolutionCalendarSource.lo -MD -MP -MF $(DEPDIR)/syncecal_la-EvolutionCalendarSource.Tpo -c -o syncecal_la-EvolutionCalendarSource.lo `test -f 'EvolutionCalendarSource.cpp' || echo '$(srcdir)/'`EvolutionCalendarSource.cpp
@@ -573,7 +600,7 @@ check-am: all-am
 check: check-am
 all-am: Makefile $(LTLIBRARIES)
 installdirs:
-	for dir in "$(DESTDIR)$(pkglibdir)"; do \
+	for dir in "$(DESTDIR)$(backenddir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-am
@@ -604,8 +631,8 @@ maintainer-clean-generic:
 	-test -z "$(MAINTAINERCLEANFILES)" || rm -f $(MAINTAINERCLEANFILES)
 clean: clean-am
 
-clean-am: clean-generic clean-libtool clean-noinstLTLIBRARIES \
-	clean-pkglibLTLIBRARIES mostlyclean-am
+clean-am: clean-backendLTLIBRARIES clean-generic clean-libtool \
+	clean-noinstLTLIBRARIES mostlyclean-am
 
 distclean: distclean-am
 	-rm -rf ./$(DEPDIR)
@@ -623,11 +650,11 @@ info: info-am
 
 info-am:
 
-install-data-am:
+install-data-am: install-backendLTLIBRARIES
 
 install-dvi: install-dvi-am
 
-install-exec-am: install-pkglibLTLIBRARIES
+install-exec-am:
 
 install-html: install-html-am
 
@@ -659,24 +686,24 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am: uninstall-pkglibLTLIBRARIES
+uninstall-am: uninstall-backendLTLIBRARIES
 
 .MAKE: install-am install-strip
 
-.PHONY: CTAGS GTAGS all all-am check check-am clean clean-generic \
-	clean-libtool clean-noinstLTLIBRARIES clean-pkglibLTLIBRARIES \
-	ctags distclean distclean-compile distclean-generic \
-	distclean-libtool distclean-tags distdir dvi dvi-am html \
-	html-am info info-am install install-am install-data \
-	install-data-am install-dvi install-dvi-am install-exec \
-	install-exec-am install-html install-html-am install-info \
-	install-info-am install-man install-pdf install-pdf-am \
-	install-pkglibLTLIBRARIES install-ps install-ps-am \
-	install-strip installcheck installcheck-am installdirs \
-	maintainer-clean maintainer-clean-generic mostlyclean \
-	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
-	pdf pdf-am ps ps-am tags uninstall uninstall-am \
-	uninstall-pkglibLTLIBRARIES
+.PHONY: CTAGS GTAGS all all-am check check-am clean \
+	clean-backendLTLIBRARIES clean-generic clean-libtool \
+	clean-noinstLTLIBRARIES ctags distclean distclean-compile \
+	distclean-generic distclean-libtool distclean-tags distdir dvi \
+	dvi-am html html-am info info-am install install-am \
+	install-backendLTLIBRARIES install-data install-data-am \
+	install-dvi install-dvi-am install-exec install-exec-am \
+	install-html install-html-am install-info install-info-am \
+	install-man install-pdf install-pdf-am install-ps \
+	install-ps-am install-strip installcheck installcheck-am \
+	installdirs maintainer-clean maintainer-clean-generic \
+	mostlyclean mostlyclean-compile mostlyclean-generic \
+	mostlyclean-libtool pdf pdf-am ps ps-am tags uninstall \
+	uninstall-am uninstall-backendLTLIBRARIES
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

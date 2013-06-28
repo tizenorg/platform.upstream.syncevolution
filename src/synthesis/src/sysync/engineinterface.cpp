@@ -1649,98 +1649,124 @@ TSyError TEngineInterface::SetValueByID(
 // DBApi-like access to datastores
 // ===============================
 
-TSyError TEngineInterface::StartDataRead( CContext ac, cAppCharP lastToken, cAppCharP resumeToken )
+TSyError TEngineInterface::StartDataRead(SessionH aSessionH, cAppCharP lastToken, cAppCharP resumeToken)
 {
-  #error "complete these for real DBAPI_TUNNEL_SUPPORT (or do not define DBAPI_TUNNEL_SUPPORT to switch it off)"
-  return DB_Error;
+	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
+  return ds->TunnelStartDataRead(lastToken,resumeToken);
 } // StartDataRead
 
 
-TSyError TEngineInterface::ReadNextItem ( CContext ac, ItemID  aID, appCharP *aItemData,
-                                                       sInt32 *aStatus, bool  aFirst )
+TSyError TEngineInterface::ReadNextItem(SessionH aSessionH, ItemID  aID, appCharP *aItemData, sInt32 *aStatus, bool  aFirst)
 {
-  return DB_Error;
+	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
+  return ds->TunnelReadNextItem(aID,aItemData,aStatus,aFirst);
 } // ReadNextItem
 
 
-TSyError TEngineInterface::ReadItem( CContext ac, cItemID aID, appCharP *aItemData )
+TSyError TEngineInterface::ReadItem(SessionH aSessionH, cItemID aID, appCharP *aItemData)
 {
-  return DB_Error;
+	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
+  return ds->TunnelReadItem(aID,aItemData);
 } // ReadItem
 
 
-TSyError TEngineInterface::EndDataRead( CContext ac )
+TSyError TEngineInterface::EndDataRead(SessionH aSessionH)
 {
-  return DB_Error;
+	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
+  return ds->TunnelEndDataRead();
 } // EndDataRead
 
 
-TSyError TEngineInterface::StartDataWrite( CContext ac )
+TSyError TEngineInterface::StartDataWrite(SessionH aSessionH)
 {
-  return DB_Error;
+	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
+  return ds->TunnelStartDataWrite();
 } // StartDataWrite
 
 
-TSyError TEngineInterface::InsertItem( CContext ac, cAppCharP aItemData, cItemID aID )
+TSyError TEngineInterface::InsertItem(SessionH aSessionH, cAppCharP aItemData, ItemID aID)
 {
-  return DB_Error;
+	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
+  return ds->TunnelInsertItem(aItemData,aID);
 } // InsertItem
 
 
-TSyError TEngineInterface::UpdateItem( CContext ac, cAppCharP aItemData, cItemID   aID,
-                                                                          ItemID updID )
+TSyError TEngineInterface::UpdateItem(SessionH aSessionH, cAppCharP aItemData, cItemID aID, ItemID updID )
 {
-  return DB_Error;
+	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
+  return ds->TunnelUpdateItem(aItemData,aID,updID);
 } // UpdateItem
 
 
-TSyError TEngineInterface::MoveItem( CContext ac, cItemID aID, cAppCharP newParID )
+TSyError TEngineInterface::MoveItem(SessionH aSessionH, cItemID aID, cAppCharP newParID)
 {
-  return DB_Error;
+	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
+  return ds->TunnelMoveItem(aID,newParID);
 } // MoveItem
 
 
-TSyError TEngineInterface::DeleteItem( CContext ac, cItemID aID )
+TSyError TEngineInterface::DeleteItem(SessionH aSessionH, cItemID aID)
 {
-  return DB_Error;
+	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
+  return ds->TunnelDeleteItem(aID);
 } // DeleteItem
 
 
-TSyError TEngineInterface::EndDataWrite( CContext ac, bool success, appCharP *newToken )
+TSyError TEngineInterface::EndDataWrite(SessionH aSessionH, bool success, appCharP *newToken)
 {
-  return DB_Error;
+	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
+  return ds->TunnelEndDataWrite(success,newToken);
 } // EndDataWrite
 
 
-void     TEngineInterface::DisposeObj( CContext ac, void* memory )
+void TEngineInterface::DisposeObj(SessionH aSessionH, void* memory)
 {
+	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  if (!ds) return; // need properly opened tunnel session/datastore
+  return ds->TunnelDisposeObj(memory);
 } // DisposeObj
 
 
 // ---- asKey ----
-TSyError TEngineInterface::ReadNextItemAsKey( CContext ac, ItemID  aID, KeyH aItemKey,
-                                                           sInt32 *aStatus,   bool aFirst )
+TSyError TEngineInterface::ReadNextItemAsKey(SessionH aSessionH, ItemID  aID, KeyH aItemKey, sInt32 *aStatus, bool aFirst)
 {
-  return DB_Error;
+	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
+  return ds->TunnelReadNextItemAsKey(aID,aItemKey,aStatus,aFirst);
 } // ReadNextItemAsKey
 
 
-TSyError TEngineInterface::ReadItemAsKey( CContext ac, cItemID aID, KeyH aItemKey )
+TSyError TEngineInterface::ReadItemAsKey(SessionH aSessionH, cItemID aID, KeyH aItemKey)
 {
-  return DB_Error;
+	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
+  return ds->TunnelReadItemAsKey(aID,aItemKey);
 } // ReadItemAsKey
 
 
-TSyError TEngineInterface::InsertItemAsKey( CContext ac, KeyH aItemKey, cItemID aID )
+TSyError TEngineInterface::InsertItemAsKey(SessionH aSessionH, KeyH aItemKey, ItemID aID)
 {
-  return DB_Error;
+	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
+  return ds->TunnelInsertItemAsKey(aItemKey,aID);
 } // InsertItemAsKey
 
 
-TSyError TEngineInterface::UpdateItemAsKey( CContext ac, KeyH aItemKey, cItemID   aID,
-                                                                         ItemID updID )
+TSyError TEngineInterface::UpdateItemAsKey(SessionH aSessionH, KeyH aItemKey, cItemID aID, ItemID updID)
 {
-  return DB_Error;
+	TLocalEngineDS *ds = reinterpret_cast<TSyncSession *>(aSessionH)->getTunnelDS();
+  if (!ds) return LOCERR_WRONGUSAGE; // need properly opened tunnel session/datastore
+  return ds->TunnelUpdateItemAsKey(aItemKey,aID,updID);
 } // UpdateItemAsKey
 
 #endif // DBAPI_TUNNEL_SUPPORT
@@ -1816,7 +1842,7 @@ TSyError SYSYNC_EXTERNAL(DisconnectEngine)( UI_Call_In aCI )
 
 
 
-#endif // SIMPLE_LINKING
+#endif // not SIMPLE_LINKING
 
 
 } // namespace sysync

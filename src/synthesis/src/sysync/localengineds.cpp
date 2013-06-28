@@ -1159,6 +1159,13 @@ void TLocalEngineDS::InternalResetDataStore(void)
   fTempGUIDMap.clear();
   #endif
 
+	/// Init type negotiation
+  /// - for sending data
+  fLocalSendToRemoteTypeP = NULL;
+  fRemoteReceiveFromLocalTypeP = NULL;  
+  /// - for receiving data
+  fLocalReceiveFromRemoteTypeP = NULL;
+  fRemoteSendToLocalTypeP = NULL;
 
   /// Init Filtering @ref dsFiltering
   #ifdef OBJECT_FILTERING
@@ -2417,13 +2424,22 @@ TAlertCommand *TLocalEngineDS::engProcessSyncAlert(
       if (
         (
           (
-            (!fLastRemoteAnchor.empty() && fLastRemoteAnchor==aLastRemoteAnchor) || // either anchors must match...
+            (!fLastRemoteAnchor.empty() && 
+            	( (fLastRemoteAnchor==aLastRemoteAnchor)
+                #ifdef SYSYNC_CLIENT
+                || (fSessionP->fLenientMode)
+                #endif
+              )
+            ) || // either anchors must match (or lenient mode for client)...
             (fResuming && *aLastRemoteAnchor==0) // ...or in case of resume, remote not sending anchor is ok as well
           )
           && !fForceSlowSync // ...but no force for slowsync may be set internally
         )
         || fSlowSync // if slow sync is requested by the remote anyway, we don't need to be in sync anyway, so just go on
       ) {
+      	if (fLastRemoteAnchor!=aLastRemoteAnchor && fSessionP->fLenientMode) {
+        	PDEBUGPRINTFX(DBG_ERROR,("Warning - remote anchor mismatch but tolerated in lenient mode"));
+        }
         // sync state ok or Slow sync requested anyway:
         #ifndef SYSYNC_CLIENT
         // we can generate Alert with same code as sent
@@ -2940,13 +2956,13 @@ bool TLocalEngineDS::engHandleSyncOpStatus(TStatusCommand *aStatusCmdP,TSyncOpCo
   switch (sop) {
     case sop_wants_add:
     case sop_add:
-      if (statuscode==201) {
+      if (statuscode<300 || statuscode==419) {
+      	// All ok status 2xx as well as special "merged" 419 is ok for an add:
+      	// Whatever remote said, I know this is an add and so I counts this as such
+        // (even if the remote somehow merged it with existing data,
+        // it is obviously a new item in my sync set with this remote)
         fRemoteItemsAdded++;
         dsConfirmItemOp(sop_add,localID,remoteID,true); // ok added
-      }
-      else if (statuscode==200) {
-        fRemoteItemsUpdated++;
-        dsConfirmItemOp(sop_replace,localID,remoteID,true); // ok replaced
       }
       else if (
         statuscode==418 &&
@@ -2983,7 +2999,6 @@ bool TLocalEngineDS::engHandleSyncOpStatus(TStatusCommand *aStatusCmdP,TSyncOpCo
     // case sop_copy: break;
     case sop_wants_replace:
     case sop_replace:
-    case sop_soft_add:
       #ifndef SYSYNC_CLIENT
       if (statuscode==404 || statuscode==410) {
         // obviously, remote item that we wanted to change does not exist any more.
@@ -3004,7 +3019,7 @@ bool TLocalEngineDS::engHandleSyncOpStatus(TStatusCommand *aStatusCmdP,TSyncOpCo
       }
       else
       #endif
-      if (statuscode==201 || (statuscode==200 && sop == sop_soft_add)) {
+      if (statuscode==201) {
         fRemoteItemsAdded++;
         dsConfirmItemOp(sop_add,localID,remoteID,true); // ok as add
       }

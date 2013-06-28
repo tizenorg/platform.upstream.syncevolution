@@ -198,17 +198,11 @@ void MyAdapter::DisplayFields( KeyH aItemKey )
 
     // for each array element do ...
     for (int i= 0; i<nFields; i++) {
-              err= GetStrByID( aItemKey, id, vName, i ); if (err) break;
-      switch (err) {
-        case   0: DEBUG_DB( fCB, MyDB,DF, "  (%2d) %s:%s%s", 
-                                          vType, vKey.c_str(),
-                                                vName.c_str(),
-                                                  vTZ.c_str() );  break;
-        case 204:
-        case 404: break; // do nothing
-        
-        default : DEBUG_DB( fCB, MyDB,DF, "  err=%d" );
-      } // switch
+      err= GetStrByID( aItemKey, id, vName, i ); if (err) break;
+      
+      DEBUG_DB( fCB, MyDB,DF, "  (%2d) %s:%s%s", vType, vKey.c_str(),
+                                                       vName.c_str(),
+                                                         vTZ.c_str() );
     } // for
     
     step= VALNAME_NEXT; // next element

@@ -40,7 +40,9 @@ namespace sysync {
 // Defines
 // =======
 
+#ifndef ANDROID
 #pragma pack(push,4) // 32bit
+#endif
 
 // specific sync
 const uInt16 dbnamelen=32;
@@ -139,7 +141,8 @@ typedef struct {
   #define CHANGELOG_DB_SUFFIX "_clg.bfi"
 #endif
 #define CHANGELOG_DB_ID 4
-#define CHANGELOG_DB_VERSION 3
+#define LOWEST_CHANGELOG_DB_VERSION 2 // note: step from V2 to V3 was only change in header
+#define CHANGELOG_DB_VERSION 4 // create modcount added
 
 const uInt16 changeIndentifierMaxLen=128;
 
@@ -150,7 +153,6 @@ const uInt8 chgl_receive_only=0x20;
 const uInt8 chgl_markedforresume=0x10;
 const uInt8 chgl_resend=0x08;
 const uInt8 chgl_modbysync=0x04;
-const uInt8 chgl_newadd=0x02;
 //%%%never used, NOW CONFLICTS WITH chgl_resend and chgl_noresume: const uInt8 chgl_category_mask=0x0F;
 
 // single changelog entry
@@ -171,6 +173,11 @@ typedef struct {
   // flags
   uInt8 flags;
   uInt8 dummy;
+
+  // Version 4 fields start here
+  // ===========================
+  // - creation timestamp for the record
+  uInt32 modcount_created;
 } TChangeLogEntry;
 
 
@@ -609,7 +616,9 @@ typedef struct {
 #define PROFILE_DB_VERSION_4_SZ offsetof(o_TBinfileDBSyncProfile,URIpath)
 
 
+#ifndef ANDROID
 #pragma pack(pop)
+#endif
 
 
 // datastore config
@@ -906,6 +915,8 @@ private:
   void forgetChangeLog(void);
   /// private helper to prepare for apiSaveAdminData()
   localstatus SaveAdminData(bool aSessionFinished, bool aSuccessful);
+  /// load target record for this datastore
+	localstatus loadTarget(bool aCreateIfMissing, cAppCharP aRemoteDBID=NULL);
   // private utils
   #ifdef OBJECT_FILTERING
   // - Test Filters

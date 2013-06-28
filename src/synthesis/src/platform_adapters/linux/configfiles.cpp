@@ -14,6 +14,10 @@
 
 #include "sysync.h"
 
+#ifdef ANDROID
+#include <unistd.h>
+#endif
+
 #include <sys/types.h>
 #include <pwd.h>
 
@@ -147,7 +151,11 @@ bool makeOSDirPath(string &aPath, bool aMakeDirs)
     struct stat statinfo;
     int rc=stat(aPath.c_str(),&statinfo);
     if(rc!=0 || !S_ISDIR(statinfo.st_mode)) {
+      #ifdef ANDROID
+      rc = 0; // BFO_INCOMPLETE
+      #else
       rc = errno;
+      #endif
       // path does not exist yet - start from beginning to create it
       n=0;
       bool knownmissing=false;
@@ -164,7 +172,11 @@ bool makeOSDirPath(string &aPath, bool aMakeDirs)
           // test if this dir exists
           rc=stat(tmppath.c_str(),&statinfo);
           if(rc!=0 || !S_ISDIR(statinfo.st_mode)) {
+            #ifdef ANDROID
+            rc = 0; // BFO_INCOMPLETE
+            #else
             rc = errno;
+            #endif
             knownmissing=true;
           }
         }

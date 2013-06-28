@@ -716,6 +716,14 @@ SML_API Ret_t smlSetOutgoingBegin(InstanceID_t id)
 /**
  * resets the read pointer to the beginning of the outgoing message
  * (must be set previously using smlSetOutgoingBegin())
+ * Note: this can also be used to make sure next smlLockReadBuffer()
+ *       does not return unprocessed garbage from a message
+ *       written previously to the buffer (as it can be the case
+ *       when using the same sml instance for both request and
+ *       response processing, as in libsynthesis). In this case
+ *       calling smlReadOutgoingAgain() ADVANCES the read
+ *       pointer past unprocessed garbage to the point in the
+ *       buffer where the next outgoing message starts.
  *
  * @param id (IN)
  *        ID of the Instance

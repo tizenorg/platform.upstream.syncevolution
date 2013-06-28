@@ -385,6 +385,8 @@ void TRemoteRuleConfig::clear(void)
   fDevTyp.erase();
   // - options
   fRejectStatusCode=DONT_REJECT; // not rejected
+  fLegacyMode=-1; // set if remote is known legacy, so don't use new types
+  fLenientMode=-1; // set if remote's SyncML should be handled leniently, i.e. not too strict checking where not absolutely needed
   fLimitedFieldLengths=-1; // set if remote has limited field lengths
   fDontSendEmptyProperties=-1; // set if remote does not want empty properties
   fDoQuote8BitContent=-1; // normally, only use QP for contents with EOLNs in vCard 2.1
@@ -442,6 +444,10 @@ bool TRemoteRuleConfig::localStartElement(const char *aElementName, const char *
   else if (strucmp(aElementName,"devicetype")==0)
     expectString(fDevTyp);
   // - options
+  else if (strucmp(aElementName,"legacymode")==0)
+    expectTristate(fLegacyMode);
+  else if (strucmp(aElementName,"lenientmode")==0)
+    expectTristate(fLenientMode);
   else if (strucmp(aElementName,"limitedfieldlengths")==0)
     expectTristate(fLimitedFieldLengths);
   else if (strucmp(aElementName,"noemptyproperties")==0)
@@ -913,6 +919,7 @@ TSyncSession::TSyncSession(
   fCustomGetPutSent=false;
   // assume normal, full-featured session. Profile config or session progress might set this flag later 
   fLegacyMode = false;
+  fLenientMode = false;
   #ifdef SYDEBUG
   // initialize session debug logging
   fSessionDebugLogs=getRootConfig()->fDebugConfig.fSessionDebugLogs; /// init from config @todo: get rid of this special session level flag, handle it all via session logger's fDebugEnabled / getDbgMask()
@@ -1083,6 +1090,13 @@ void TSyncSession::TerminateSession(void)
     DEBUGPRINTFX(DBG_EXOTIC,("TSyncSession::TerminateSession: calling InternalResetSession"));
     InternalResetSessionEx(true);
     DEBUGPRINTFX(DBG_EXOTIC,("TSyncSession::TerminateSession: InternalResetSession called"));
+	  #ifdef SCRIPT_SUPPORT
+    // remove the session script context
+    if (fSessionScriptContextP) {
+    	delete fSessionScriptContextP;
+      fSessionScriptContextP = NULL;
+    }
+    #endif
     // remove all local datastores
     TLocalDataStorePContainer::iterator pos1;
     int n=fLocalDataStores.size();
@@ -1111,8 +1125,8 @@ void TSyncSession::TerminateSession(void)
       PDEBUGPRINTFX(DBG_PROFILE,("Session CPU usage statistics: (system/user/total)"));
       // sections
       for (i=0; i<numTPTypes; i++) {
-        sy=TP_GETSYSTEMMS(fTPInfo,(TTP_Types)i);
-        us=TP_GETUSERMS(fTPInfo,(TTP_Types)i);
+        sy = TP_GETSYSTEMMS(fTPInfo,(TTP_Types)i);
+        us = TP_GETUSERMS(fTPInfo,(TTP_Types)i);
         PDEBUGPRINTFX(DBG_PROFILE,(
           "- %-20s : %10ld /%10ld /%10ld ms",
           TP_TypeNames[i],
@@ -1122,8 +1136,8 @@ void TSyncSession::TerminateSession(void)
         ));
       }
       // total
-      sy=TP_GETTOTALSYSTEMMS(fTPInfo);
-      us=TP_GETTOTALUSERMS(fTPInfo);
+      sy = TP_GETTOTALSYSTEMMS(fTPInfo);
+      us = TP_GETTOTALUSERMS(fTPInfo);
       PDEBUGPRINTFX(DBG_PROFILE,(
         "- TOTAL                : %10ld /%10ld /%10ld ms",
         sy,
@@ -1131,7 +1145,7 @@ void TSyncSession::TerminateSession(void)
         sy+us
       ));
       // Real time
-      uInt32 rt=TP_GETREALTIME(fTPInfo);
+      uInt32 rt = TP_GETREALTIME(fTPInfo);
       PDEBUGPRINTFX(DBG_PROFILE,(
         "- Real Time            : %10ld ms",
         rt
@@ -1265,16 +1279,9 @@ void TSyncSession::InternalResetSessionEx(bool terminationCall)
   fLogEnabled = getSessionConfig()->fLogEnabled;
   #endif
   #ifdef SCRIPT_SUPPORT
-  // delete the script context if any
-  /* %%% don't re-initialize the session context
-  if (fSessionScriptContextP) {
-    delete fSessionScriptContextP;
-    fSessionScriptContextP=NULL;
-  }
-  */
-  /* %%% new approach: retain session variables if InternalResetSessionEx() is called more than once in the same session
-   *     (which is normal procedure in clients, where SelectProfile calls ResetSession)
-   */
+  // retain session variables if InternalResetSessionEx() is called more than once in the same session
+  // (which is normal procedure in clients, where SelectProfile calls ResetSession)
+  // Note: fSessionScriptContextP will be deleted in the destructor
   if (!fSessionScriptContextP) {
     if (!terminationCall && !fTerminated) {
       // prepare session-level scripts
@@ -4285,6 +4292,8 @@ localstatus TSyncSession::checkRemoteSpecifics(SmlDevInfDevInfPtr_t aDevInfP)
       // - only device specific
       fAppliedRemoteRuleP = ruleP; // save pointer to applied rule
       // - apply options that have a value
+      if (ruleP->fLegacyMode>=0) fLegacyMode = ruleP->fLegacyMode;
+      if (ruleP->fLenientMode>=0) fLenientMode = ruleP->fLenientMode;
       if (ruleP->fLimitedFieldLengths>=0) fLimitedRemoteFieldLengths = ruleP->fLimitedFieldLengths;
       if (ruleP->fDontSendEmptyProperties>=0) fDontSendEmptyProperties = ruleP->fDontSendEmptyProperties;
       if (ruleP->fDoQuote8BitContent>=0) fDoQuote8BitContent = ruleP->fDoQuote8BitContent;
@@ -4375,6 +4384,7 @@ localstatus TSyncSession::checkRemoteSpecifics(SmlDevInfDevInfPtr_t aDevInfP)
   PDEBUGPRINTFX(DBG_HOT+DBG_REMOTEINFO,("Summary of all behaviour options (eventually set by remote rule)"));
   PDEBUGPRINTFX(DBG_HOT+DBG_REMOTEINFO,("- Remote Description        : %s",fRemoteDescName.c_str()));
   PDEBUGPRINTFX(DBG_HOT+DBG_REMOTEINFO,("- Legacy mode               : %s",boolString(fLegacyMode)));
+  PDEBUGPRINTFX(DBG_HOT+DBG_REMOTEINFO,("- Lenient mode              : %s",boolString(fLenientMode)));
   PDEBUGPRINTFX(DBG_HOT+DBG_REMOTEINFO,("- Limited Field Lengths     : %s",boolString(fLimitedRemoteFieldLengths)));
   PDEBUGPRINTFX(DBG_HOT+DBG_REMOTEINFO,("- Do not send empty props   : %s",boolString(fDontSendEmptyProperties)));
   PDEBUGPRINTFX(DBG_HOT+DBG_REMOTEINFO,("- Quote 8bit content        : %s",boolString(fDoQuote8BitContent)));

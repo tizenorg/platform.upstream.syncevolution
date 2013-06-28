@@ -731,23 +731,24 @@ public:
     /// @note These all return LOCERR_NOTIMP when DBAPI_TUNNEL_SUPPORT is not defined
     ///
     /// @{
-    EMBVIRTUAL TSyError StartDataRead    ( CContext ac, cAppCharP lastToken, cAppCharP resumeToken ) TUNNEL_IMPL;
-    EMBVIRTUAL TSyError ReadNextItem     ( CContext ac,  ItemID aID, appCharP *aItemData, sInt32 *aStatus, bool aFirst ) TUNNEL_IMPL;
-    EMBVIRTUAL TSyError ReadItem         ( CContext ac, cItemID aID, appCharP *aItemData ) TUNNEL_IMPL;
-    EMBVIRTUAL TSyError EndDataRead      ( CContext ac ) TUNNEL_IMPL;
-    EMBVIRTUAL TSyError StartDataWrite   ( CContext ac ) TUNNEL_IMPL;
-    EMBVIRTUAL TSyError InsertItem       ( CContext ac, cAppCharP aItemData, cItemID aID ) TUNNEL_IMPL;
-    EMBVIRTUAL TSyError UpdateItem       ( CContext ac, cAppCharP aItemData, cItemID aID, ItemID updID ) TUNNEL_IMPL;
-    EMBVIRTUAL TSyError MoveItem         ( CContext ac, cItemID aID, cAppCharP newParID ) TUNNEL_IMPL;
-    EMBVIRTUAL TSyError DeleteItem       ( CContext ac, cItemID aID ) TUNNEL_IMPL;
-    EMBVIRTUAL TSyError EndDataWrite     ( CContext ac, bool success, appCharP *newToken ) TUNNEL_IMPL;
-    EMBVIRTUAL void     DisposeObj       ( CContext ac, void* memory ) TUNNEL_IMPL_VOID;
+    EMBVIRTUAL TSyError StartDataRead    ( SessionH aSessionH, cAppCharP lastToken, cAppCharP resumeToken ) TUNNEL_IMPL;
+    EMBVIRTUAL TSyError ReadNextItem     ( SessionH aSessionH,  ItemID aID, appCharP *aItemData, sInt32 *aStatus, bool aFirst ) TUNNEL_IMPL;
+    EMBVIRTUAL TSyError ReadItem         ( SessionH aSessionH, cItemID aID, appCharP *aItemData ) TUNNEL_IMPL;
+    EMBVIRTUAL TSyError EndDataRead      ( SessionH aSessionH ) TUNNEL_IMPL;
+    EMBVIRTUAL TSyError StartDataWrite   ( SessionH aSessionH ) TUNNEL_IMPL;
+    EMBVIRTUAL TSyError InsertItem       ( SessionH aSessionH, cAppCharP aItemData,  ItemID aID ) TUNNEL_IMPL;
+    EMBVIRTUAL TSyError UpdateItem       ( SessionH aSessionH, cAppCharP aItemData, cItemID aID, ItemID updID ) TUNNEL_IMPL;
+    EMBVIRTUAL TSyError MoveItem         ( SessionH aSessionH, cItemID aID, cAppCharP newParID ) TUNNEL_IMPL;
+    EMBVIRTUAL TSyError DeleteItem       ( SessionH aSessionH, cItemID aID ) TUNNEL_IMPL;
+    EMBVIRTUAL TSyError EndDataWrite     ( SessionH aSessionH, bool success, appCharP *newToken ) TUNNEL_IMPL;
+    EMBVIRTUAL void     DisposeObj       ( SessionH aSessionH, void* memory ) TUNNEL_IMPL_VOID;
 
     // ---- asKey ----
-    EMBVIRTUAL TSyError ReadNextItemAsKey( CContext ac,  ItemID aID, KeyH aItemKey, sInt32 *aStatus, bool aFirst ) TUNNEL_IMPL;
-    EMBVIRTUAL TSyError ReadItemAsKey    ( CContext ac, cItemID aID, KeyH aItemKey ) TUNNEL_IMPL;
-    EMBVIRTUAL TSyError InsertItemAsKey  ( CContext ac, KeyH aItemKey, cItemID aID ) TUNNEL_IMPL;
-    EMBVIRTUAL TSyError UpdateItemAsKey  ( CContext ac, KeyH aItemKey, cItemID aID, ItemID updID ) TUNNEL_IMPL;
+    EMBVIRTUAL TSyError ReadNextItemAsKey( SessionH aSessionH,  ItemID aID, KeyH aItemKey, sInt32 *aStatus, bool aFirst ) TUNNEL_IMPL;
+    EMBVIRTUAL TSyError ReadItemAsKey    ( SessionH aSessionH, cItemID aID, KeyH aItemKey ) TUNNEL_IMPL;
+    EMBVIRTUAL TSyError InsertItemAsKey  ( SessionH aSessionH, KeyH aItemKey,  ItemID aID ) TUNNEL_IMPL;
+    EMBVIRTUAL TSyError UpdateItemAsKey  ( SessionH aSessionH, KeyH aItemKey, cItemID aID, ItemID updID ) TUNNEL_IMPL;
+    
     /// @}
 
     /// @brief returns the current application base object

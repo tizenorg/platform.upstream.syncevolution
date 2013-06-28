@@ -508,6 +508,42 @@ void TBinfileImplDS::zapChangeLog(void)
 
 
 
+// update change log record contents
+static uInt32 changelogUpdateFunc(uInt32 aOldVersion, uInt32 aNewVersion, void *aOldRecordData, void *aNewRecordData, uInt32 aOldSize)
+{
+  if (aOldVersion<LOWEST_CHANGELOG_DB_VERSION || aOldVersion>CHANGELOG_DB_VERSION) return 0; // unknown old version or too new version, cannot update
+  if (aNewVersion!=CHANGELOG_DB_VERSION) return 0; // cannot update to other version than current
+  // create default values for profile
+  if (aOldRecordData && aNewRecordData) {
+  	// update records
+    TChangeLogEntry *chglogEntryP = (TChangeLogEntry *)aNewRecordData;
+    // copy old data - beginning of record is identical
+    memcpy(aNewRecordData,aOldRecordData,aOldSize);
+    // now initialize fields that old version didn't have
+    if (aOldVersion<4) {
+      // init new version 4 fields
+      chglogEntryP->modcount_created = 0; // assume created before changelogging history started
+    }
+  }
+  else if (aNewRecordData) {
+  	// update extra header
+    TChangeLogHeader *extraHeaderP = (TChangeLogHeader *)aNewRecordData;
+    if (aOldVersion<3) {
+    	// header has got new fields between v2 and v3
+      // Note: these will be updated with data from target fields after actually opening the changelog
+      //       Just init them now
+      extraHeaderP->lastChangeCheckIdentifier[0] = 0;
+      extraHeaderP->lastChangeCheck = noLinearTime;
+    }
+    // updated header ok
+	  return sizeof(TChangeLogHeader);
+  }
+  // updated ok (or updateable ok if no data pointers provided)
+  // - return size of new record
+  return sizeof(TChangeLogEntry);
+} // changelogUpdateFunc
+
+
 // returns true if we had a valid changelog
 bool TBinfileImplDS::openChangeLog(void)
 {
@@ -518,8 +554,8 @@ bool TBinfileImplDS::openChangeLog(void)
     getBinFilesPath(changelogname);
   changelogname += getName();
   changelogname += CHANGELOG_DB_SUFFIX;
-  fChangeLog.setFileInfo(changelogname.c_str(),CHANGELOG_DB_VERSION,CHANGELOG_DB_ID);
-  if (fChangeLog.open(sizeof(TChangeLogHeader),&fChgLogHeader)!=BFE_OK) {
+  fChangeLog.setFileInfo(changelogname.c_str(),CHANGELOG_DB_VERSION,CHANGELOG_DB_ID,sizeof(TChangeLogEntry));
+  if (fChangeLog.open(sizeof(TChangeLogHeader),&fChgLogHeader,changelogUpdateFunc)!=BFE_OK) { 
     // create new change log or overwrite incompatible one
     // - init changelog header fields
     fChgLogHeader.modcount=0;
@@ -529,6 +565,24 @@ bool TBinfileImplDS::openChangeLog(void)
     fChangeLog.create(sizeof(TChangeLogEntry),sizeof(TChangeLogHeader),&fChgLogHeader,true);
     PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI,("openChangeLog: changelog did not exist (or bad version) -> created new"));
     return false; // changelog is new, so we need a slow sync
+  }
+  else {
+  	// check if opening was an upgrade from version 2
+    if (fChangeLog.getFoundVersion()<3) {
+    	// version 3 has introduced saving the last-check date/identifiers in the changelog header,
+      // before that the identifiers used where (wrongly) those of the target. So copy
+      // the target info to the new header now. This gives perfect results only for single
+      // profile use, but existing products before update to v3 were single profile so we can
+      // safely assume this will give a smooth transition (without re-send-everything effects).
+      // - dummyIdentifier1 is the former lastSyncIdentifier and contains the token from the last change check towards the DB
+	  	AssignCString(fChgLogHeader.lastChangeCheckIdentifier,fTarget.dummyIdentifier1,changeIndentifierMaxLen);
+      // - lastChangeCheck is the former lastTwoWaySync and contains the timestamp of the last change check towards the DB
+  		fChgLogHeader.lastChangeCheck = fTarget.lastChangeCheck;
+      // - make sure it gets written back
+      fChangeLog.setExtraHeaderDirty();
+      fChangeLog.flushHeader();
+	    PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI,("openChangeLog: upgraded changelog from V2 to V4 (new header, new modcount_created)"));
+    }
   }
   return true; // changelog already existed, so we assume it's up-to-date
 } // TBinfileImplDS::openChangeLog
@@ -543,7 +597,7 @@ bool TBinfileImplDS::openPendingMaps(void)
     getBinFilesPath(pendingmapsname);
   pendingmapsname += getName();
   pendingmapsname += PENDINGMAP_DB_SUFFIX;
-  fPendingMaps.setFileInfo(pendingmapsname.c_str(),PENDINGMAP_DB_VERSION,PENDINGMAP_DB_ID);
+  fPendingMaps.setFileInfo(pendingmapsname.c_str(),PENDINGMAP_DB_VERSION,PENDINGMAP_DB_ID, sizeof(TPendingMapEntry));
   PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_EXOTIC,("openPendingMaps: file name='%s'",pendingmapsname.c_str()));
   if (fPendingMaps.open(sizeof(TPendingMapHeader),&fPendingMapHeader)!=BFE_OK) {
     // create new change log or overwrite incompatible one
@@ -723,17 +777,19 @@ localstatus TBinfileImplDS::changeLogPreflight(bool &aValidChangelog)
         // found
         #ifdef CHANGEDETECTION_AVAILABLE
         PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_EXOTIC,(
-          "- found in changelog at index=%ld, flags=0x%02hX, modcount=%ld",
+          "- found in changelog at index=%ld, flags=0x%02hX, modcount=%ld, modcount_created=%ld",
           (long)logindex,
           (uInt16)existingentries[logindex].flags,
-          (long)existingentries[logindex].modcount
+          (long)existingentries[logindex].modcount,
+          (long)existingentries[logindex].modcount_created
         ));
         #else
         PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_EXOTIC,(
-          "- found in changelog at index=%ld, flags=0x%02hX, modcount=%ld, saved CRC=0x%04hX",
-          logindex,
+          "- found in changelog at index=%ld, flags=0x%02hX, modcount=%ld, modcount_created=%ld, saved CRC=0x%04hX",
+          (long)logindex,
           (uInt16)existingentries[logindex].flags,
-          existingentries[logindex].modcount,
+          (long)existingentries[logindex].modcount,
+          (long)existingentries[logindex].modcount_created,
           existingentries[logindex].dataCRC
         ));
         #endif
@@ -747,11 +803,12 @@ localstatus TBinfileImplDS::changeLogPreflight(bool &aValidChangelog)
       newentry.flags=0;
       // modified now
       newentry.modcount=fCurrentModCount;
+      // set the creation modcount, this is used to detect a client-side newly added item
+      newentry.modcount_created=fCurrentModCount;
       #ifndef CHANGEDETECTION_AVAILABLE
       // no CRC yet
       newentry.dataCRC=0;
       #endif
-      newentry.flags |= chgl_newadd;
       PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_EXOTIC,("- does not yet exist in changelog, created new"));
     }
     // now check what to do
@@ -761,7 +818,6 @@ localstatus TBinfileImplDS::changeLogPreflight(bool &aValidChangelog)
     #endif
     // - check if new or changed
     if (chgentryexists) {
-        existingentries[logindex].flags &= ~chgl_newadd;
       // entry exists, could be changed
       #ifndef CHANGEDETECTION_AVAILABLE
       // - check CRC
@@ -822,19 +878,21 @@ localstatus TBinfileImplDS::changeLogPreflight(bool &aValidChangelog)
       // add it directly to the bin file
       #ifdef NUMERIC_LOCALIDS
       DEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_EXOTIC,(
-        "new entry %ld : localID=%ld, flags=0x%X, modcount=%ld",
-        fChangeLog.getNumRecords(),
+        "new entry %ld : localID=%ld, flags=0x%X, modcount=%ld, modcount_created=%ld",
+        (long)fChangeLog.getNumRecords(),
         newentry.dbrecordid,
         (int)newentry.flags,
-        newentry.modcount
+        (long)newentry.modcount,
+        (long)newentry.modcount_created
       ));
       #else
       DEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_EXOTIC,(
-        "new entry %ld : localID='%s', flags=0x%X, modcount=%ld",
+        "new entry %ld : localID='%s', flags=0x%X, modcount=%ld, modcount_created=%ld",
         fChangeLog.getNumRecords(),
         newentry.dbrecordid,
         (int)newentry.flags,
-        newentry.modcount
+        (long)newentry.modcount
+        (long)newentry.modcount_created
       ));
       #endif
       */
@@ -890,19 +948,21 @@ localstatus TBinfileImplDS::changeLogPreflight(bool &aValidChangelog)
     for (uInt32 si=0; si<numexistinglogentries; si++) {
       #ifdef NUMERIC_LOCALIDS
       DEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_EXOTIC,(
-        "%ld : localID=%ld, flags=0x%X, modcount=%ld",
-        si,
-        existingentries[si].dbrecordid,
-        (int)existingentries[si].flags,
-        existingentries[si].modcount
-      ));
-      #else
-      DEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_EXOTIC,(
-        "%ld : localID='%s', flags=0x%X, modcount=%ld",
+        "%ld : localID=%ld, flags=0x%X, modcount=%ld, modcount_created=%ld",
         (long)si,
         existingentries[si].dbrecordid,
         (int)existingentries[si].flags,
-        (long)existingentries[si].modcount
+        (long)existingentries[si].modcount,
+        (long)existingentries[si].modcount_created
+      ));
+      #else
+      DEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_EXOTIC,(
+        "%ld : localID='%s', flags=0x%X, modcount=%ld, modcount_created=%ld",
+        (long)si,
+        existingentries[si].dbrecordid,
+        (int)existingentries[si].flags,
+        (long)existingentries[si].modcount,
+        (long)existingentries[si].modcount_created
       ));
       #endif
     }
@@ -927,37 +987,9 @@ error:
 // Simple DB access interface methods
 // ==================================
 
-/// sync login (into this database)
-/// @note might be called several times (auth retries at beginning of session)
-/// @note must update the following saved AND current state variables
-/// - in TLocalEngineDS: fLastRemoteAnchor, (fLastLocalAnchor), fResumeAlertCode, fFirstTimeSync
-///   - for client: fPendingAddMaps
-/// - in TStdLogicDS: fPreviousSyncTime, fCurrentSyncTime
-/// - in TBinfileImplDS: ??? /// @todo document these
-/// - in derived classes: whatever else belongs to dsSavedAdmin and dsCurrentAdmin state
-localstatus TBinfileImplDS::implMakeAdminReady(
-  const char *aDeviceID,    // remote device URI (device ID)
-  const char *aDatabaseID,  // database ID
-  const char *aRemoteDBID  // database ID of remote device
-)
+// load target settings record for this datastore
+localstatus TBinfileImplDS::loadTarget(bool aCreateIfMissing, cAppCharP aRemoteDBID)
 {
-  localstatus sta=LOCERR_OK; // assume ok
-
-  PDEBUGBLOCKDESCCOLL("implMakeAdminReady","Loading target info and pending maps");
-  // - init defaults
-  fLastRemoteAnchor.erase();
-  fPreviousSyncTime=0;
-  fFirstTimeSync=false; // assume not first time
-
-  #if !defined(PRECONFIGURED_SYNCREQUESTS)
-  // for clients without syncrequests in config,
-  // target info must already be present by now (loaded at session's SelectProfile)
-  if (fTargetIndex<0) {
-    PDEBUGENDBLOCK("implMakeAdminReady");
-    return 404; // not found
-  }
-  // we have the target in the fTarget member
-  #else
   uInt32 remotepartyID = static_cast<TBinfileImplClient *>(fSessionP)->fRemotepartyID;
   TBinFile *targetsBinFileP = &(static_cast<TBinfileImplClient *>(fSessionP)->fConfigP->fTargetsBinFile);
   // for server or version with syncrequests in config, we must try to load
@@ -977,19 +1009,66 @@ localstatus TBinfileImplDS::implMakeAdminReady(
         ) {
           // this is the target record for our DB, now get it (mark it busy)
           fTargetIndex=recidx;
-          break; // leave handle locked
+          return LOCERR_OK; // target found
         }
       }
     }
+	  // target not found
+    if (aCreateIfMissing) {
+      // create new target record
+      // - init with defaults
+      fConfigP->initTarget(fTarget,remotepartyID,aRemoteDBID,true); // enabled if created here!
+      // - save new record
+      uInt32 ti;
+      targetsBinFileP->newRecord(ti,&fTarget);
+      fTargetIndex = ti;
+      return LOCERR_OK; // created and loaded now    
+    }
+    return 404; // not found
   }
-  // create new one if none found so far
-  if (fTargetIndex<0) {
-    // create new target record
-    // - init with defaults
-    fConfigP->initTarget(fTarget,remotepartyID,aRemoteDBID,true); // enabled if created here!
-    // - save new record
-    targetsBinFileP->newRecord(fTargetIndex,fTarget);
+  return LOCERR_OK; // already loaded
+} // TBinfileImplDS::loadTarget
+
+
+
+/// sync login (into this database)
+/// @note might be called several times (auth retries at beginning of session)
+/// @note must update the following saved AND current state variables
+/// - in TLocalEngineDS: fLastRemoteAnchor, (fLastLocalAnchor), fResumeAlertCode, fFirstTimeSync
+///   - for client: fPendingAddMaps
+/// - in TStdLogicDS: fPreviousSyncTime, fCurrentSyncTime
+/// - in TBinfileImplDS: ??? /// @todo document these
+/// - in derived classes: whatever else belongs to dsSavedAdmin and dsCurrentAdmin state
+localstatus TBinfileImplDS::implMakeAdminReady(
+  cAppCharP aDeviceID,    // remote device URI (device ID)
+  cAppCharP aDatabaseID,  // database ID
+  cAppCharP aRemoteDBID  // database ID of remote device
+)
+{
+  localstatus sta=LOCERR_OK; // assume ok
+
+  PDEBUGBLOCKDESCCOLL("implMakeAdminReady","Loading target info and pending maps");
+  // - init defaults
+  fLastRemoteAnchor.erase();
+  fPreviousSyncTime=0;
+  fFirstTimeSync=false; // assume not first time
+
+  
+  #if !defined(PRECONFIGURED_SYNCREQUESTS)
+  // when sync params are in binfiles, target must be present by now - make sure it is loaded
+	sta=loadTarget(false); 
+  // target info must already be present by now (loaded at session's SelectProfile)
+  if (sta!=LOCERR_OK || fTargetIndex<0) {
+  	// problem loading target record
+  	sta = sta ? sta : 404;
+	  PDEBUGPRINTFX(DBG_ERROR,("Error %d loading target record",sta));
+    PDEBUGENDBLOCK("implMakeAdminReady");
+    return sta;
   }
+  // we have the target in the fTarget member
+  #else
+  // e.g. for clients without syncrequests in config, target record might not exist here, so we allow creating it
+  sta=loadTarget(true, aRemoteDBID);
   #endif
   // Now fTarget has valid target info
   // - if we don't have any remote anchor stored, this must be a first time sync
@@ -1087,7 +1166,7 @@ localstatus TBinfileImplDS::implMakeAdminReady(
       getBinFilesPath(fname);
     fname += getName();
     fname += PENDINGITEM_DB_SUFFIX;
-    pendingItemFile.setFileInfo(fname.c_str(),PENDINGITEM_DB_VERSION,PENDINGITEM_DB_ID);
+    pendingItemFile.setFileInfo(fname.c_str(),PENDINGITEM_DB_VERSION,PENDINGITEM_DB_ID,0); // no expected record size
     PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_EXOTIC,(
       "opening pending item file: file name='%s'",
       fname.c_str()
@@ -1376,6 +1455,10 @@ localstatus TBinfileImplDS::implGetItem(
             // - update the mod count such that this record will be detected again in the next non-resumed session
             //   (fCurrentModCount marks entries changed in this session, +1 makes sure these will be detected in the NEXT session)
             chglogP->modcount=fCurrentModCount+1;
+            // also update the creation stamp for new added item
+            if(chglogP->modcount_created > fPreviousToRemoteModCount) {
+              chglogP->modcount_created=fCurrentModCount+1;
+            }
             // - mark it "modified by sync" to prevent it being sent during resume
             chglogP->flags |= chgl_modbysync;
           }
@@ -1474,11 +1557,13 @@ localstatus TBinfileImplDS::implGetItem(
             goto error;
           }
         }
-        // added or changed, syncop is replace
-        if( chglogP->flags & chgl_newadd)
-            myitemP->setSyncOp(sop_soft_add);
-        else
-            myitemP->setSyncOp(sop_replace);
+        // detect wheter the item is new added or changed
+        if(chglogP->modcount_created > fPreviousToRemoteModCount) {
+          myitemP->setSyncOp(sop_add);
+        }
+        else {
+          myitemP->setSyncOp(sop_replace);
+        }
         // make sure item has the localid which was used to retrieve it
         ASSIGN_LOCALID_TO_ITEM(*myitemP,chglogP->dbrecordid);
       }
@@ -1802,18 +1887,20 @@ bool TBinfileImplDS::implProcessItem(
     if (logindex<0) {
       // new added item
       ASSIGN_LOCALID_TO_FLD(affectedentryP->dbrecordid,localid);
+      // also record the time this entry was created
+	    affectedentryP->modcount_created=fCurrentModCount;
       // save it
       #ifdef NUMERIC_LOCALIDS
       DEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_EXOTIC,(
-        "new entry %ld : localID=%ld, flags=0x%X, modcount=%ld",
-        fChangeLog.getNumRecords(),
+        "new entry %ld : localID=%ld, flags=0x%X, modcount=modcount_created=%ld",
+        (long)fChangeLog.getNumRecords(),
         affectedentryP->dbrecordid,
         (int)affectedentryP->flags,
-        affectedentryP->modcount
+        (long)affectedentryP->modcount
       ));
       #else
       DEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_EXOTIC,(
-        "new entry %ld : localID='%s', flags=0x%X, modcount=%ld",
+        "new entry %ld : localID='%s', flags=0x%X, modcount=modcount_created=%ld",
         (long)fChangeLog.getNumRecords(),
         affectedentryP->dbrecordid,
         (int)affectedentryP->flags,
@@ -1888,7 +1975,7 @@ void TBinfileImplDS::dsLogSyncResult(void)
     clientCfgP->getBinFilesPath(filepath);
     filepath += LOGFILE_DB_NAME;
     // - open or create
-    logFile.setFileInfo(filepath.c_str(),LOGFILE_DB_VERSION,LOGFILE_DB_ID);
+    logFile.setFileInfo(filepath.c_str(),LOGFILE_DB_VERSION,LOGFILE_DB_ID,sizeof(TLogFileEntry));
     if (logFile.open(0,NULL,NULL)!=BFE_OK) {
       // create new one or overwrite incompatible one
       logFile.create(sizeof(TLogFileEntry),0,NULL,true);
@@ -1997,19 +2084,21 @@ localstatus TBinfileImplDS::SaveAdminData(bool aSessionFinished, bool aSuccessfu
       for (uInt32 si=0; si<fLoadedChangeLogEntries; si++) {
         #ifdef NUMERIC_LOCALIDS
         PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_EXOTIC,(
-          "%ld : localID=%ld, flags=0x%X, modcount=%ld",
-          si,
-          fLoadedChangeLog[si].dbrecordid,
-          (int)fLoadedChangeLog[si].flags,
-          fLoadedChangeLog[si].modcount
-        ));
-        #else
-        PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_EXOTIC,(
-          "%ld : localID='%s', flags=0x%X, modcount=%ld",
+          "%ld : localID=%ld, flags=0x%X, modcount=%ld, modcount_created=%ld",
           (long)si,
           fLoadedChangeLog[si].dbrecordid,
           (int)fLoadedChangeLog[si].flags,
-          (long)fLoadedChangeLog[si].modcount
+          (long)fLoadedChangeLog[si].modcount,
+          (long)fLoadedChangeLog[si].modcount_created
+        ));
+        #else
+        PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_EXOTIC,(
+          "%ld : localID='%s', flags=0x%X, modcount=%ld, modcount_created=%ld",
+          (long)si,
+          fLoadedChangeLog[si].dbrecordid,
+          (int)fLoadedChangeLog[si].flags,
+          (long)fLoadedChangeLog[si].modcount,
+          (long)fLoadedChangeLog[si].modcount_created
         ));
         #endif
       }
@@ -2162,7 +2251,7 @@ localstatus TBinfileImplDS::SaveAdminData(bool aSessionFinished, bool aSuccessfu
       getBinFilesPath(fname);
     fname += getName();
     fname += PENDINGITEM_DB_SUFFIX;
-    pendingItemFile.setFileInfo(fname.c_str(),PENDINGITEM_DB_VERSION,PENDINGITEM_DB_ID);
+    pendingItemFile.setFileInfo(fname.c_str(),PENDINGITEM_DB_VERSION,PENDINGITEM_DB_ID,0);
     PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_EXOTIC,(
       "SaveAdminData: creating pending item file: file name='%s', storing %ld bytes",
       fname.c_str(),

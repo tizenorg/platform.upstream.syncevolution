@@ -629,7 +629,7 @@ LIBSYNTHESIS_CFLAGS = -include $(top_builddir)/config.h -include \
 	$(am__append_4)
 libsynthesis_la_CFLAGS = $(LIBSYNTHESIS_CFLAGS)
 libsynthesis_la_CXXFLAGS = $(LIBSYNTHESIS_CFLAGS)
-libsynthesis_la_LIBADD = $(PCRE_LIBS) $(SQLITE3_LIBS) $(XMLPARSE_LIBS) $(LIBICAL_LIBS) $(LIBECAL_LIBS) libsmltk.la
+libsynthesis_la_LIBADD = $(PCRE_LIBS) $(SQLITE3_LIBS) $(XMLPARSE_LIBS) $(LIBICAL_LIBS) $(LIBECAL_LIBS) libsmltk.la -lz
 
 # versioning:
 # CURRENT - most recent interface version
@@ -642,9 +642,9 @@ libsynthesis_la_LIBADD = $(PCRE_LIBS) $(SQLITE3_LIBS) $(XMLPARSE_LIBS) $(LIBICAL
 # incompatible way, increment CURRENT and reset AGE and REVISION to
 # zero. When fixing something without interface change, increment
 # REVISION.
-ENGINE_CURRENT = 1
+ENGINE_CURRENT = 2
 ENGINE_REVISION = 0
-ENGINE_AGE = 1
+ENGINE_AGE = 2
 libsynthesis_la_LDFLAGS = -version-info $(ENGINE_CURRENT):$(ENGINE_REVISION):$(ENGINE_AGE) \
 	-Wl,--version-script=$(srcdir)/synthesis-linker.map
 
@@ -663,6 +663,7 @@ libsynthesissdk_la_SOURCES = synthesis/enginemodulebridge.h \
 	synthesis/syerror.h synthesis/UI_util.h $(am__append_5) \
 	$(am__append_6)
 libsynthesissdk_la_CPPFLAGS = \
+	-D_GNU_SOURCE=1 \
 	-I$(srcdir)/sysync_SDK/Sources \
 	-I$(srcdir)/Targets/ReleasedProducts/SDK
 

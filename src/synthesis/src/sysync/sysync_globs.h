@@ -224,6 +224,12 @@ typedef TSyError localstatus;
   #endif
   #define PlatFormFatalThrow(x) { exception *eP=new x; ErrDisplay(eP->what()); ErrThrow(999); }
   #define PlatFormFatalReThrow { ErrDisplay("C++ re-throw attempted"); ErrThrow(999); }
+#elif defined(ANDROID)
+  #ifndef PlatFormFatalErr
+    #define PlatFormFatalErr
+  #endif
+  #define PlatFormFatalThrow(x)
+  #define PlatFormFatalReThrow
 #else
   #ifndef PlatFormFatalErr
     #define PlatFormFatalErr { printf("PlatFormFatalErr called"); exit(999); }
@@ -231,6 +237,14 @@ typedef TSyError localstatus;
   #define PlatFormFatalThrow(x) { exception *eP=new x; printf("C++ exception thrown: %s",eP->what()); exit(999); }
   #define PlatFormFatalReThrow { printf("C++ re-throw attempted"); exit(999); }
 #endif
+
+
+#ifdef ANDROID
+  #define DYN_CAST static_cast
+#else
+  #define DYN_CAST dynamic_cast
+#endif
+
 
 // exceptions
 
@@ -247,7 +261,7 @@ typedef TSyError localstatus;
     #else
       #define TARGET_HAS_EXCEPTIONS 0
     #endif
-  #elif defined(WINCE)
+  #elif defined(WINCE) || defined(ANDROID)
     // no exceptions in eVC
     #define TARGET_HAS_EXCEPTIONS 0
   #else
@@ -274,7 +288,7 @@ typedef TSyError localstatus;
 
 
 // checked casts (non-checked when RTTI is not there)
-#if defined(WINCE) || defined(__EPOC_OS__)
+#if defined(WINCE) || defined(__EPOC_OS__) || defined(ANDROID)
   // eVC + symbian has no RTTI, so we rely on having the right type and
   // do a static cast here
   #define GET_CASTED_PTR(dst,ty,src,msg) dst=static_cast<ty *>(src)
@@ -428,7 +442,6 @@ typedef enum {
 typedef enum {
   sop_wants_add,      ///< like add, but is still available for slowsync match
   sop_add,
-  sop_soft_add,        // a client side add
   sop_wants_replace,  ///< like replace, but not yet conflict-checked
   sop_replace,
   sop_reference_only, ///< slowsync resume only: like sop_wants_add/sop_wants_replace, but ONLY for comparing with incoming add/replace from client and avoiding add when matching - NEVER send these to client

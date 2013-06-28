@@ -89,7 +89,7 @@ ENGINE_ENTRY TSyError ReadNextItem     ( CContext ac,     ItemID  aID,        ap
 ENGINE_ENTRY TSyError ReadItem         ( CContext ac,    cItemID  aID,        appCharP *aItemData )         ENTRY_ATTR;
 ENGINE_ENTRY TSyError EndDataRead      ( CContext ac )                                                      ENTRY_ATTR;
 ENGINE_ENTRY TSyError StartDataWrite   ( CContext ac )                                                      ENTRY_ATTR;
-ENGINE_ENTRY TSyError InsertItem       ( CContext ac,  cAppCharP  aItemData,   cItemID  aID )               ENTRY_ATTR;
+ENGINE_ENTRY TSyError InsertItem       ( CContext ac,  cAppCharP  aItemData,    ItemID  aID )               ENTRY_ATTR;
 ENGINE_ENTRY TSyError UpdateItem       ( CContext ac,  cAppCharP  aItemData,   cItemID  aID, ItemID updID ) ENTRY_ATTR;
 ENGINE_ENTRY TSyError MoveItem         ( CContext ac,    cItemID  aID,       cAppCharP           newParID ) ENTRY_ATTR;
 ENGINE_ENTRY TSyError DeleteItem       ( CContext ac,    cItemID  aID )                                     ENTRY_ATTR;
@@ -100,7 +100,7 @@ ENGINE_ENTRY void     DisposeObj       ( CContext ac,      void*  memory )      
 ENGINE_ENTRY TSyError ReadNextItemAsKey( CContext ac,     ItemID  aID,            KeyH  aItemKey,
                                                           sInt32 *aStatus,        bool  aFirst )            ENTRY_ATTR;
 ENGINE_ENTRY TSyError ReadItemAsKey    ( CContext ac,    cItemID  aID,            KeyH  aItemKey )          ENTRY_ATTR;
-ENGINE_ENTRY TSyError InsertItemAsKey  ( CContext ac,       KeyH  aItemKey,    cItemID  aID )               ENTRY_ATTR;
+ENGINE_ENTRY TSyError InsertItemAsKey  ( CContext ac,       KeyH  aItemKey,     ItemID  aID )               ENTRY_ATTR;
 ENGINE_ENTRY TSyError UpdateItemAsKey  ( CContext ac,       KeyH  aItemKey,    cItemID  aID, ItemID updID ) ENTRY_ATTR;
 
 

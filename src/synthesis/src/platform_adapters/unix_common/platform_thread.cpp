@@ -22,6 +22,10 @@
 #include <errno.h>
 #include <signal.h>
 
+#ifdef ANDROID
+#include <unistd.h>
+#endif
+
 namespace sysync {
 
 
