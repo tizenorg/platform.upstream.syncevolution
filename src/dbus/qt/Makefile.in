@@ -74,6 +74,7 @@ host_triplet = @host@
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(srcdir)/syncevolution-qt-dbus.pc.in \
 	$(top_srcdir)/m4-repo/autotroll.mk
+@ENABLE_QT_DBUS_TRUE@am__append_1 = syncevolution-qt-dbus.pc.in
 subdir = src/dbus/qt
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4-repo/autotroll.m4 \
@@ -445,6 +446,7 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
+EXTRA_DIST = configure-sub.in $(am__append_1)
 
 # See autotroll.m4 :)
 @ENABLE_QT_DBUS_TRUE@SUFFIXES = .moc.cpp .moc.cc .moc.cxx .moc.C .h .hh .hpp \
@@ -469,8 +471,6 @@ top_srcdir = @top_srcdir@
 @ENABLE_QT_DBUS_TRUE@	$(BUILT_SOURCES)
 
 @ENABLE_QT_DBUS_TRUE@AM_CPPFLAGS = $(SYNCEVOLUTION_CFLAGS) -I$(top_srcdir)/test $(BACKEND_CPPFLAGS)
-@ENABLE_QT_DBUS_TRUE@EXTRA_DIST = configure-sub.in \
-@ENABLE_QT_DBUS_TRUE@	syncevolution-qt-dbus.pc.in
 @ENABLE_QT_DBUS_TRUE@built_headers = \
 @ENABLE_QT_DBUS_TRUE@  syncevo-server-full.h \
 @ENABLE_QT_DBUS_TRUE@  syncevo-session-full.h \
