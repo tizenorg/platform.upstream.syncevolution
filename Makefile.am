@@ -99,7 +99,7 @@ clean-html:
 # Because backend-related variables need to be substituted in
 # Makefile-gen.am and configure.in we need an explicit rule to redo that work
 # so that "make" rebuilds derived files correctly.
-CONFIG_SUBS = src/backends/addressbook/configure-sub.in src/backends/evolution/configure-sub.in src/backends/file/configure-sub.in src/backends/sqlite/configure-sub.in
+CONFIG_SUBS =  src/backends/addressbook/configure-sub.in src/backends/evolution/configure-sub.in src/backends/file/configure-sub.in src/backends/sqlite/configure-sub.in
 $(srcdir)/configure.in: configure-pre.in configure-post.in $(CONFIG_SUBS)
 	rm -f $@
 	cat $(srcdir)/configure-pre.in >>$@
@@ -110,8 +110,6 @@ $(srcdir)/configure.in: configure-pre.in configure-post.in $(CONFIG_SUBS)
 	    echo "# ^^^^^^^^^^^^^^ $$sub ^^^^^^^^^^^^^^" >>$@; \
 	    echo >>$@; \
 	done
-	echo BACKEND_REGISTRIES = `echo $(srcdir)/src/backends/*/*Register.cpp | sed -e 's;$(srcdir)/;;'` >>$@
-	echo "AC_SUBST(BACKEND_REGISTRIES)" >>$@
 	cat $(srcdir)/configure-post.in >>$@
 
 $(srcdir)/Makefile.am: Makefile-gen.am

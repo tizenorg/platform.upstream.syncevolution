@@ -20,7 +20,7 @@
 #include <config.h>
 
 #include <base/test.h>
-#include <test/ClientTest.h>
+#include <ClientTest.h>
 
 #include <cppunit/extensions/HelperMacros.h>
 #include <exception>
@@ -180,6 +180,8 @@ private:
  * - CLIENT_TEST_EVOLUTION_PREFIX = a common "evolutionsource" prefix for *all*
  *                                  sources; the source name followed by "_[12]"
  *                                  is appended to get unique names
+ * - CLIENT_TEST_EVOLUTION_USER = sets the "evolutionuser" property of all sources
+ * - CLIENT_TEST_EVOLUTION_PASSWORD = sets the "evolutionpassword" property of all sources
  * - CLIENT_TEST_SOURCES = comma separated list of active sources,
  *                         names as selected in their RegisterSyncSourceTest
  *                         instances
@@ -226,6 +228,14 @@ public:
         /* override Evolution database names? */
         const char *evoprefix = getenv("CLIENT_TEST_EVOLUTION_PREFIX");
         m_evoPrefix = evoprefix ? evoprefix :  "SyncEvolution_Test_";
+        const char *evouser = getenv("CLIENT_TEST_EVOLUTION_USER");
+        if (evouser) {
+            m_evoUser = evouser;
+        }
+        const char *evopasswd = getenv("CLIENT_TEST_EVOLUTION_PASSWORD");
+        if (evopasswd) {
+            m_evoPassword = evopasswd;
+        }
 
         /* check sources */
         const char *sourcelist = getenv("CLIENT_TEST_SOURCES");
@@ -268,9 +278,11 @@ public:
                 sc->setSourceType(testconfig.type);
             }
 
-            // always set this property: the name might have changes since last test run
+            // always set these properties: they might have changed since the last run
             string database = getDatabaseName(test->m_configName);
             sc->setDatabaseID(database);
+            sc->setUser(m_evoUser);
+            sc->setPassword(m_evoPassword);
         }
         config.flush();
     }
@@ -378,8 +390,8 @@ private:
     std::auto_ptr<TestEvolution> m_clientB;
     const TestRegistry &m_configs;
 
-    /** prefix to be used for Evolution databases */
-    string m_evoPrefix;
+    /** prefix, username, password to be used for local databases */
+    string m_evoPrefix, m_evoUser, m_evoPassword;
 
     /**
      * The ClientTest framework identifies active configs with an integer.
@@ -407,6 +419,8 @@ private:
 
         // always set this property: the name might have changes since last test run
         nodes.m_configNode->setProperty("evolutionsource", database.c_str());
+        nodes.m_configNode->setProperty("evolutionuser", evClient.m_evoUser.c_str());
+        nodes.m_configNode->setProperty("evolutionpassword", evClient.m_evoPassword.c_str());
 
         EvolutionSyncSourceParams params(name,
                                          nodes,

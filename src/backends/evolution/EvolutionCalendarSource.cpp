@@ -197,6 +197,12 @@ void EvolutionCalendarSource::listAllItems(RevisionMap_t &revisions)
 
 void EvolutionCalendarSource::close()
 {
+    // This long delay is necessary in combination
+    // with Evolution Exchange Connector: when updating
+    // a child event, it seems to take a while until
+    // the change really is effective.
+    sleepSinceModification(5);
+
     m_calendar = NULL;
 }
 
@@ -224,7 +230,7 @@ SyncItem *EvolutionCalendarSource::createItem(const string &luid)
 {
     logItem( luid, "extracting from EV", true );
 
-    ItemID id = ItemID::parseLUID(luid);
+    ItemID id(luid);
     string icalstr = retrieveItemAsString(id);
 
     auto_ptr<SyncItem> item(new SyncItem(luid.c_str()));
@@ -288,8 +294,7 @@ EvolutionCalendarSource::InsertItemResult EvolutionCalendarSource::insertItem(co
     eptr<icalcomponent> icomp(icalcomponent_new_from_string((char *)data.c_str()));
 
     if( !icomp ) {
-        throwError( string( "parsing ical" ) + data,
-                    NULL );
+        throwError(string("failure parsing ical") + data);
     }
 
     GError *gerror = NULL;
@@ -328,7 +333,15 @@ EvolutionCalendarSource::InsertItemResult EvolutionCalendarSource::insertItem(co
     if (!subcomp) {
         throwError("extracting event");
     }
-    
+
+    // Remove LAST-MODIFIED: the Evolution Exchange Connector does not
+    // properly update this property if it is already present in the
+    // incoming data.
+    icalproperty *modprop;
+    while ((modprop = icalcomponent_get_first_property(subcomp, ICAL_LASTMODIFIED_PROPERTY)) != NULL) {
+        icalcomponent_remove_property(subcomp, modprop);
+    }
+
     if (!update) {
         ItemID id = getItemID(subcomp);
         const char *uid = NULL;
@@ -400,18 +413,67 @@ EvolutionCalendarSource::InsertItemResult EvolutionCalendarSource::insertItem(co
     }
 
     if (update || merged || detached) {
-        ItemID id = ItemID::parseLUID(newluid);
+        ItemID id(newluid);
+        bool isParent = id.m_rid.empty();
 
         // ensure that the component has the right UID
         if (update && !id.m_uid.empty()) {
             icalcomponent_set_uid(subcomp, id.m_uid.c_str());
         }
 
-        if (!e_cal_modify_object(m_calendar, subcomp,
-                                 CALOBJ_MOD_THIS,
-                                 &gerror)) {
-            throwError(string("updating item ") + item.getKey(), gerror);
+        if (isParent) {
+            // CALOBJ_MOD_THIS for parent items (UID set, no RECURRENCE-ID)
+            // is not supported by all backends: the Exchange Connector
+            // fails with it. It might be an incorrect usage of the API.
+            // Therefore we have to use CALOBJ_MOD_ALL, but that removes
+            // children.
+            bool hasChildren = false;
+            BOOST_FOREACH(ItemID existingId, m_allLUIDs) {
+                if (existingId.m_uid == id.m_uid &&
+                    existingId.m_rid.size()) {
+                    hasChildren = true;
+                    break;
+                }
+            }
+
+            if (hasChildren) {
+                // Use CALOBJ_MOD_ALL and temporarily remove
+                // the children, then add them again. Otherwise they would
+                // get deleted.
+                ICalComps_t children = removeEvents(id.m_uid, true);
+
+                // Parent is gone, too, and needs to be recreated.
+                const char *uid = NULL;
+                if(!e_cal_create_object(m_calendar, subcomp, (char **)&uid, &gerror)) {
+                    throwError(string("creating updated item ") + item.getKey(), gerror);
+                }
+
+                // Recreate any children removed earlier: when we get here,
+                // the parent exists and we must update it.
+                BOOST_FOREACH(boost::shared_ptr< eptr<icalcomponent> > &icalcomp, children) {
+                    if (!e_cal_modify_object(m_calendar, *icalcomp,
+                                             CALOBJ_MOD_THIS,
+                                             &gerror)) {
+                        throwError(string("recreating item ") + item.getKey(), gerror);
+                    }
+                }
+            } else {
+                // no children, updating is simple
+                if (!e_cal_modify_object(m_calendar, subcomp,
+                                         CALOBJ_MOD_ALL,
+                                         &gerror)) {
+                    throwError(string("updating item ") + item.getKey(), gerror);
+                }
+            }
+        } else {
+            // child event
+            if (!e_cal_modify_object(m_calendar, subcomp,
+                                     CALOBJ_MOD_THIS,
+                                     &gerror)) {
+                throwError(string("updating item ") + item.getKey(), gerror);
+            }
         }
+
         ItemID newid = getItemID(subcomp);
         newluid = newid.getLUID();
         modTime = getItemModTime(newid);
@@ -425,7 +487,7 @@ EvolutionCalendarSource::ICalComps_t EvolutionCalendarSource::removeEvents(const
     ICalComps_t events;
 
     BOOST_FOREACH(const string &luid, m_allLUIDs) {
-        ItemID id = ItemID::parseLUID(luid);
+        ItemID id(luid);
 
         if (id.m_uid == uid) {
             icalcomponent *icomp = retrieveItem(id);
@@ -460,7 +522,7 @@ EvolutionCalendarSource::ICalComps_t EvolutionCalendarSource::removeEvents(const
 void EvolutionCalendarSource::deleteItem(const string &luid)
 {
     GError *gerror = NULL;
-    ItemID id = ItemID::parseLUID(luid);
+    ItemID id(luid);
 
     if (id.m_rid.empty()) {
         /*
@@ -495,19 +557,6 @@ void EvolutionCalendarSource::deleteItem(const string &luid)
         }
     }
     m_allLUIDs.erase(luid);
-}
-
-void EvolutionCalendarSource::flush()
-{
-    // Flushing is not necessary, all changes are directly stored.
-    // However, our change tracking depends on the resolution with which
-    // Evolution stores modification times. Sleeping for a second here
-    // ensures that any future operations on the same date generate
-    // different modification time stamps.
-    time_t start = time(NULL);
-    do {
-        sleep(1);
-    } while (time(NULL) - start <= 0);
 }
 
 void EvolutionCalendarSource::logItem(const string &luid, const string &info, bool debug)
@@ -632,14 +681,14 @@ string EvolutionCalendarSource::ItemID::getLUID(const string &uid, const string 
     return uid + "-rid" + rid;
 }
 
-EvolutionCalendarSource::ItemID EvolutionCalendarSource::ItemID::parseLUID(const string &luid)
+EvolutionCalendarSource::ItemID::ItemID(const string &luid)
 {
     size_t ridoff = luid.rfind("-rid");
     if (ridoff != luid.npos) {
-        return ItemID(luid.substr(0, ridoff),
-                      luid.substr(ridoff + strlen("-rid")));
+        const_cast<string &>(m_uid) = luid.substr(0, ridoff);
+        const_cast<string &>(m_rid) = luid.substr(ridoff + strlen("-rid"));
     } else {
-        return ItemID(luid, "");
+        const_cast<string &>(m_uid) = luid;
     }
 }
 

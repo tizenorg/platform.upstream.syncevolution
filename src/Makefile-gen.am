@@ -84,7 +84,7 @@ syncevolution_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP)
 # The path may be empty!
 FUNAMBOLSRC = @FUNAMBOLSRC@
 FUNAMBOL_SUBDIR = @FUNAMBOL_SUBDIR@
-BUILT_SOURCES = $(FUNAMBOL_SUBDIR)/all
+BUILT_SOURCES = $(FUNAMBOL_SUBDIR)/all $(CLIENT_LIB_TEST_FILES)
 
 @FUNAMBOL_LIB@ : $(FUNAMBOL_SUBDIR)/all
 
@@ -114,17 +114,18 @@ CLIENT_LIB_TEST_FILES = ClientTest.h ClientTest.cpp client-test-main.cpp \
 	testcases/vcard21.vcf \
 	testcases/vcard30.vcf \
 	testcases/ical20.ics \
+	testcases/imemo20.ics \
 	testcases/itodo20.ics
 nodist_client_test_SOURCES = $(CLIENT_LIB_TEST_FILES)
 client_test_CPPFLAGS = -DHAVE_CONFIG_H -DENABLE_INTEGRATION_TESTS -DENABLE_UNIT_TESTS $(AM_CPPFLAGS)
 client_test_CXXFLAGS = `cppunit-config --cflags` $(SYNCEVOLUTION_CXXFLAGS)
 client_test_LDFLAGS = `cppunit-config --libs` `nm $(FUNAMBOL_SUBDIR)/src/.libs/libfunambol.a core/.libs/libsyncevolution.a | grep funambolAutoRegisterRegistry | sed -e 's/.* /-u /'`
-client_test_LDADD = @LIBDBUS@ $(FUNAMBOL_SUBDIR)/src/libfunambol.la $(CORE_LDADD)
+client_test_LDADD = $(FUNAMBOL_SUBDIR)/src/libfunambol.la $(CORE_LDADD)
 # These dependencies are intentionally a bit too broad:
 # they ensure that all files are in place to *run* client-test,
 # but in particular the "all" dependency causes a rebuild
 # even if the actual input files haven't changed.
-client_test_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) all $(CLIENT_LIB_TEST_FILES) synccompare
+client_test_DEPENDENCIES = all $(EXTRA_LTLIBRARIES) $(CORE_DEP) $(CLIENT_LIB_TEST_FILES) synccompare
 
 # copy test files for several reasons:
 # - automake expects them here
@@ -142,9 +143,6 @@ $(filter-out $(LOCAL_TEST_FILES) testcases/%, $(CLIENT_LIB_TEST_FILES)) : % : $(
 	sed -e 's/WCHAR_T/char/g' -e 's/TEXT(/(/g' -e 's/wcslen/strlen/g' -e 's/wcscmp/strcmp/g' $< >$@
 
 $(CLIENT_LIB_TEST_FILES:%=$(FUNAMBOL_SUBDIR)/test/test/%): @FUNAMBOL_DEP@
-
-# extra dependency - don't remember why
-ClientTest.cpp : ClientTest.h
 
 # verbatim files from SyncEvolution
 $(filter testcases/%, $(filter $(LOCAL_TEST_FILES), $(CLIENT_LIB_TEST_FILES))) : % : $(srcdir)/../test/%

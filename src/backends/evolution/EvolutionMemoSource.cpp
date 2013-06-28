@@ -33,7 +33,7 @@ SyncItem *EvolutionMemoSource::createItem(const string &luid)
 {
     logItem( luid, "extracting from EV" );
 
-    ItemID id = ItemID::parseLUID(luid);
+    ItemID id(luid);
     eptr<icalcomponent> comp(retrieveItem(id));
     auto_ptr<SyncItem> item(new SyncItem(luid.c_str()));
 
@@ -170,8 +170,7 @@ EvolutionCalendarSource::InsertItemResult EvolutionMemoSource::insertItem(const 
                                     0));
 
     if( !subcomp ) {
-        throwError( string( "creating vjournal " ) + summary,
-                    NULL );
+        throwError(string("failure creating vjournal " ) + summary);
     }
 
     GError *gerror = NULL;
@@ -198,7 +197,7 @@ EvolutionCalendarSource::InsertItemResult EvolutionMemoSource::insertItem(const 
     }
 
     if (update || merged) {
-        ItemID id = ItemID::parseLUID(newluid);
+        ItemID id(newluid);
 
         // ensure that the component has the right UID
         if (update && !id.m_uid.empty()) {

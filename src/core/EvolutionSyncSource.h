@@ -32,6 +32,8 @@
 #include <stdexcept>
 using namespace std;
 
+#include <time.h>
+
 #ifdef HAVE_EDS
 #include <libedataserver/e-source.h>
 #include <libedataserver/e-source-list.h>
@@ -167,7 +169,7 @@ typedef list<const RegisterSyncSource *> SourceRegistry;
 
 
 #ifdef ENABLE_INTEGRATION_TESTS
-#include <test/ClientTest.h>
+#include <ClientTest.h>
 typedef ClientTest::Config ClientTestConfig;
 #else
 /**
@@ -202,9 +204,19 @@ class ClientTest;
  * - a valid "evolutionsource" property in the config node, starting
  *   with the CLIENT_TEST_EVOLUTION_PREFIX env variable or (if that
  *   wasn't set) the "SyncEvolution_Test_" prefix
+ * - "evolutionuser/password" if CLIENT_TEST_EVOLUTION_USER/PASSWORD
+ *   are set
  *
  * No other properties are set, which implies that currently sync sources
  * which require further parameters cannot be tested.
+ *
+ * @warning There is a potential problem with the registration
+ * mechanism. Both the sync source tests as well as the CPPUnit tests
+ * derived from them are registrered when global class instances are
+ * initialized. If the RegisterTestEvolution instance in
+ * client-test-app.cpp is initialized *before* the sync source tests,
+ * then those won't show up in the test list. Currently the right
+ * order seems to be used, so everything works as expected.
  */
 class RegisterSyncSourceTest
 {
@@ -285,8 +297,7 @@ class TestRegistry : public vector<const RegisterSyncSourceTest *>
  * the case, then the caller has to assume that syncing somehow
  * failed and a full sync is needed the next time.
  *
- * It also adds an Evolution specific interface:
- * - listing backend storages: getSyncBackends()
+ * It also adds Evolution specific interfaces and utility functions.
  */
 class EvolutionSyncSource : public SyncSource, public EvolutionSyncSourceConfig
 {
@@ -303,6 +314,7 @@ class EvolutionSyncSource : public SyncSource, public EvolutionSyncSourceConfig
         m_updatedItems( *this, "updated", SYNC_STATE_UPDATED ),
         m_deletedItems( *this, "deleted", SYNC_STATE_DELETED ),
         m_isModified( false ),
+        m_modTimeStamp(0),
         m_hasFailed( false )
         {
             setConfig(this);
@@ -418,6 +430,34 @@ class EvolutionSyncSource : public SyncSource, public EvolutionSyncSourceConfig
     void handleException();
 
     /**
+     * Ensures that the requested amount of time has passed since
+     * the last modification of the local database.
+     *
+     * This time stamp is automatically updated by addItem(),
+     * updateItem(), deleteItem(). A sync source which overrides
+     * these virtual functions (shouldn't be necessary!) or
+     * does other modifications has to call databaseModified()
+     * explicitly after each modification.
+     *
+     * If the requested delay has already passed, this function
+     * returns immediately. Therefore delays requested by more
+     * than one active sync source don't add up.
+     *
+     * The main usage for this functionality is change tracking
+     * via time stamps. In that case this function should be
+     * called in close().
+     */
+    void sleepSinceModification(int seconds);
+
+    /**
+     * Increments the time stamp of the latest database modification.
+     *
+     * To be called after modifying the local database and
+     * before returning control to the caller.
+     */
+    void databaseModified();
+
+    /**
      * factory function for a EvolutionSyncSource that provides the
      * source type specified in the params.m_nodes.m_configNode
      *
@@ -445,16 +485,15 @@ class EvolutionSyncSource : public SyncSource, public EvolutionSyncSourceConfig
     static EvolutionSyncSource *createTestingSource(const string &name, const string &type, bool error,
                                                     const char *prefix = getenv("CLIENT_TEST_EVOLUTION_PREFIX"));
 
-    //
-    // default implementation of SyncSource iterators
-    //
-    // getFirst/NextItemKey() are only required to return an item
-    // with its key set and nothing else, but this optimization
-    // does not really matter for Evolution, so they just iterate
-    // over all items normally. Strictly speaking they should use
-    // their own position marker, but as they are never called in
-    // parallel that's okay.
-    //
+    /**
+     * @name default implementation of SyncSource iterators
+     *
+     * @todo getFirstItemKey() and getNextItemKey() are marked for removal
+     * and will be replaced by removeAllItems(). Remove the calls when
+     * they are no longer needed. In the meantime implement them with
+     * m_allItems.
+     */
+    /**@{*/
     virtual SyncItem* getFirstItem() throw() { return m_allItems.start(); }
     virtual SyncItem* getNextItem() throw() { return m_allItems.iterate(); }
     virtual SyncItem* getFirstNewItem() throw() { return m_newItems.start(); }
@@ -463,15 +502,22 @@ class EvolutionSyncSource : public SyncSource, public EvolutionSyncSourceConfig
     virtual SyncItem* getNextUpdatedItem() throw() { return m_updatedItems.iterate(); }
     virtual SyncItem* getFirstDeletedItem() throw() { return m_deletedItems.start(); }
     virtual SyncItem* getNextDeletedItem() throw() { return m_deletedItems.iterate(); }
-    virtual SyncItem* getFirstItemKey() throw() { return getFirstItem(); }
-    virtual SyncItem* getNextItemKey() throw() { return getNextItem(); }
+    virtual SyncItem* getFirstItemKey() throw() { return m_allItems.start(); }
+    virtual SyncItem* getNextItemKey() throw() { return m_allItems.iterate(); }
+    /**@}*/
 
+    /**
+     * @name SyncSource methods that are provided by EvolutionSyncSource
+     * and implemented via the corresponding *Throw() calls
+     */
+    /**@{*/
     virtual int beginSync() throw();
     virtual int endSync() throw();
     virtual void setItemStatus(const char *key, int status) throw();
     virtual int addItem(SyncItem& item) throw();
     virtual int updateItem(SyncItem& item) throw();
     virtual int deleteItem(SyncItem& item) throw();
+    /**@}*/
 
     /**
      * The client library invokes this call to delete all local
@@ -504,14 +550,16 @@ class EvolutionSyncSource : public SyncSource, public EvolutionSyncSourceConfig
                                 bool deleteLocal) = 0;
 
     /**
-     * source specific part of endSync/setItemStatus/addItem/updateItem/deleteItem:
+     * @name source specific part of endSync/setItemStatus/addItem/updateItem/deleteItem:
      * throw exception in case of error
      */
+    /**@{*/
     virtual void endSyncThrow() = 0;
     virtual void setItemStatusThrow(const char *key, int status);
     virtual int addItemThrow(SyncItem& item) = 0;
     virtual int updateItemThrow(SyncItem& item) = 0;
     virtual int deleteItemThrow(SyncItem& item) = 0;
+    /**@}*/
 
     /**
      * @name log a one-line info about an item
@@ -549,7 +597,9 @@ class EvolutionSyncSource : public SyncSource, public EvolutionSyncSourceConfig
      * throw an exception after an operation failed and
      * remember that this instance has failed
      *
-     * @param action     a string describing what was attempted
+     * output format: <source name>: <action>: <error string>
+     *
+     * @param action     a string describing the operation or object involved
      * @param gerror     if not NULL: a more detailed description of the failure,
      *                                will be freed
      */
@@ -560,6 +610,19 @@ class EvolutionSyncSource : public SyncSource, public EvolutionSyncSourceConfig
     /**
      * throw an exception after an operation failed and
      * remember that this instance has failed
+     *
+     * output format: <source name>: <action>: <error string>
+     *
+     * @param action   a string describing the operation or object involved
+     * @param error    the errno error code for the failure
+     */
+    void throwError(const string &action, int error);
+
+    /**
+     * throw an exception after an operation failed and
+     * remember that this instance has failed
+     *
+     * output format: <source name>: <failure>
      *
      * @param action     a string describing what was attempted *and* how it failed
      */
@@ -624,6 +687,9 @@ class EvolutionSyncSource : public SyncSource, public EvolutionSyncSourceConfig
                     int (EvolutionSyncSource::*func)(SyncItem& item),
                     SyncItem& item,
                     bool needData) throw();
+
+    /** time stamp of latest database modification, for sleepSinceModification() */
+    time_t m_modTimeStamp;
 
     /** keeps track of failure state */
     bool m_hasFailed;

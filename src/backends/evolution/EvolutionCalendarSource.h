@@ -72,7 +72,6 @@ class EvolutionCalendarSource : public TrackingSyncSource
     virtual InsertItemResult insertItem(const string &luid, const SyncItem &item);
     virtual void setItemStatusThrow(const char *key, int status);
     virtual void deleteItem(const string &luid);
-    virtual void flush();
     virtual void logItem(const string &luid, const string &info, bool debug = false);
     virtual void logItem(const SyncItem &item, const string &info, bool debug = false);
 
@@ -103,12 +102,12 @@ class EvolutionCalendarSource : public TrackingSyncSource
         m_uid(uid ? uid : ""),
             m_rid(rid ? rid : "")
                 {}
+    ItemID(const string &luid);
 
         const string m_uid, m_rid;
 
         string getLUID() const;
         static string getLUID(const string &uid, const string &rid);
-        static ItemID parseLUID(const string &luid);
     };
 
     /**
@@ -196,7 +195,7 @@ class EvolutionCalendarSource : public TrackingSyncSource
      * Relies on m_allLUIDs, but does not update it. The caller must
      * ensure that the calendar remains in a consistent state.
      *
-     * @param returnOnlyChildren    remove whole series, but only return children in list
+     * @param returnOnlyChildren    only return children in list, even if parent is also removed
      */
     ICalComps_t removeEvents(const string &uid, bool returnOnlyChildren);
 };

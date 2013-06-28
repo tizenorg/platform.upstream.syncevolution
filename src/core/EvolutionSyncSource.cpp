@@ -68,6 +68,11 @@ void EvolutionSyncSource::throwError(const string &action, GError *gerror)
 }
 #endif
 
+void EvolutionSyncSource::throwError(const string &action, int error)
+{
+    throwError(action + ": " + strerror(error));
+}
+
 void EvolutionSyncSource::throwError(const string &failure)
 {
     setFailed(true);
@@ -389,6 +394,7 @@ int EvolutionSyncSource::processItem(const char *action,
     } catch (...) {
         handleException();
     }
+    databaseModified();
     return status;
 }
 
@@ -405,6 +411,20 @@ void EvolutionSyncSource::setItemStatusThrow(const char *key, int status)
             setFailed(true);
         }
     }
+}
+
+void EvolutionSyncSource::sleepSinceModification(int seconds)
+{
+    time_t current = time(NULL);
+    while (current - m_modTimeStamp < seconds) {
+        sleep(seconds - (current - m_modTimeStamp));
+        current = time(NULL);
+    }
+}
+
+void EvolutionSyncSource::databaseModified()
+{
+    m_modTimeStamp = time(NULL);
 }
 
 void EvolutionSyncSource::logItemUtil(const string data, const string &mimeType, const string &mimeVersion,
