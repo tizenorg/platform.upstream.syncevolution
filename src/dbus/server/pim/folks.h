@@ -55,6 +55,7 @@ SE_GOBJECT_TYPE(FolksPostalAddress)
 SE_GOBJECT_TYPE(FolksNoteFieldDetails)
 SE_GOBJECT_TYPE(FolksPostalAddressFieldDetails)
 SE_GOBJECT_TYPE(FolksPersona)
+SE_GOBJECT_TYPE(FolksLocation)
 SE_GOBJECT_TYPE(GeeCollection)
 SE_GOBJECT_TYPE(GeeHashSet)
 SE_GLIB_TYPE(GHashTable, g_hash_table)
@@ -229,6 +230,12 @@ class IndividualAggregator
 
     IndividualAggregator(const boost::shared_ptr<LocaleFactory> &locale);
     void init(boost::shared_ptr<IndividualAggregator> &self);
+
+    /**
+     * Called when backend store is prepared. At that point, backends
+     * can be disabled or enabled and loading them can be kicked of.
+     */
+    void storePrepared();
 
     /**
      * Called when all Folks backends are loaded, before the

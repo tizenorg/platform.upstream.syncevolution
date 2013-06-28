@@ -958,7 +958,8 @@ src_dbus_server_libsyncevodbushelper_la_LINK = $(LIBTOOL) $(AM_V_lt) \
 @COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@	$(am__DEPENDENCIES_1)
 @COND_DBUS_TRUE@src_dbus_server_libsyncevodbusserver_la_DEPENDENCIES =  \
 @COND_DBUS_TRUE@	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
-@COND_DBUS_TRUE@	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_2)
+@COND_DBUS_TRUE@	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+@COND_DBUS_TRUE@	$(am__DEPENDENCIES_2)
 am__src_dbus_server_libsyncevodbusserver_la_SOURCES_DIST =  \
 	src/dbus/server/notification-backend-noop.h \
 	src/dbus/server/notification-backend-libnotify.h \
@@ -2726,7 +2727,7 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@src_backends_activesync_syncactivesync_la_LDFLAGS = -no-undefined -module -avoid-version
 @COND_CORE_TRUE@src_backends_activesync_syncactivesync_la_CPPFLAGS = $(SYNCEVOLUTION_CFLAGS) -I$(top_srcdir)/test $(BACKEND_CPPFLAGS)
 @COND_CORE_TRUE@src_backends_activesync_syncactivesync_la_CXXFLAGS = $(EASCLIENT_CFLAGS) $(SYNCEVOLUTION_CXXFLAGS) $(SYNCEVO_WFLAGS) $(LIBICAL_CFLAGS) $(GLIB_CFLAGS) $(GOBJECT_CFLAGS)
-@COND_CORE_TRUE@src_backends_activesync_syncactivesync_la_DEPENDENCIES = $(SYNCEVOLUTION_LIBS) $(EASCLIENT_DEPENDENCIES)
+@COND_CORE_TRUE@src_backends_activesync_syncactivesync_la_DEPENDENCIES = src/syncevo/libsyncevolution.la $(EASCLIENT_DEPENDENCIES)
 @COND_CORE_TRUE@src_backends_addressbook_lib = src/backends/addressbook/syncaddressbook.la
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_addressbook_backenddir = $(BACKENDS_DIRECTORY)
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_addressbook_backend_LTLIBRARIES = $(src_backends_addressbook_lib)
@@ -2740,7 +2741,7 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@src_backends_addressbook_syncaddressbook_la_LDFLAGS = -module -avoid-version
 @COND_CORE_TRUE@src_backends_addressbook_syncaddressbook_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(SYNCEVO_WFLAGS)
 @COND_CORE_TRUE@src_backends_addressbook_syncaddressbook_la_CPPFLAGS = $(SYNCEVOLUTION_CFLAGS) -I$(top_srcdir)/test $(BACKEND_CPPFLAGS)
-@COND_CORE_TRUE@src_backends_addressbook_syncaddressbook_la_DEPENDENCIES = $(SYNCEVOLUTION_LIBS)
+@COND_CORE_TRUE@src_backends_addressbook_syncaddressbook_la_DEPENDENCIES = src/syncevo/libsyncevolution.la
 @COND_CORE_TRUE@src_backends_akonadi_lib = src/backends/akonadi/syncakonadi.la
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_akonadi_backenddir = $(BACKENDS_DIRECTORY)
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_akonadi_backend_LTLIBRARIES = $(src_backends_akonadi_lib)
@@ -2752,7 +2753,7 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@src_backends_akonadi_syncakonadi_la_LDFLAGS = -module -avoid-version
 @COND_CORE_TRUE@src_backends_akonadi_syncakonadi_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(SYNCEVO_WFLAGS)
 @COND_CORE_TRUE@src_backends_akonadi_syncakonadi_la_CPPFLAGS = $(SYNCEVOLUTION_CFLAGS) -I$(top_srcdir)/test $(BACKEND_CPPFLAGS)
-@COND_CORE_TRUE@src_backends_akonadi_syncakonadi_la_DEPENDENCIES = $(SYNCEVOLUTION_LIBS)
+@COND_CORE_TRUE@src_backends_akonadi_syncakonadi_la_DEPENDENCIES = src/syncevo/libsyncevolution.la
 @COND_CORE_TRUE@src_backends_evolution_lib = src/backends/evolution/syncecal.la src/backends/evolution/syncebook.la
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_evolution_backenddir = $(BACKENDS_DIRECTORY)
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_evolution_backend_LTLIBRARIES = $(src_backends_evolution_lib)
@@ -2788,13 +2789,13 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 
 @COND_CORE_TRUE@src_backends_evolution_syncecal_la_LDFLAGS = -module -avoid-version -ldl
 @COND_CORE_TRUE@src_backends_evolution_syncecal_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(SYNCEVO_WFLAGS) $(GLIB_CFLAGS) $(GOBJECT_CFLAGS)
-@COND_CORE_TRUE@src_backends_evolution_syncecal_la_DEPENDENCIES = $(SYNCEVOLUTION_LIBS)
+@COND_CORE_TRUE@src_backends_evolution_syncecal_la_DEPENDENCIES = src/syncevo/libsyncevolution.la
 @COND_CORE_TRUE@src_backends_evolution_syncebook_la_SOURCES = $(src_backends_evolution_syncebook_src)
 @COND_CORE_TRUE@src_backends_evolution_syncebook_la_LIBADD = $(EBOOK_LIBS) $(SYNCEVOLUTION_LIBS) $(GLIB_LIBS) $(GOBJECT_LIBS)
 @COND_CORE_TRUE@src_backends_evolution_syncebook_la_LDFLAGS = -module -avoid-version
 @COND_CORE_TRUE@src_backends_evolution_syncebook_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(SYNCEVO_WFLAGS) $(GLIB_CFLAGS) $(GOBJECT_CFLAGS)
 @COND_CORE_TRUE@src_backends_evolution_syncebook_la_CPPFLAGS = $(src_backends_evolution_cppflags)
-@COND_CORE_TRUE@src_backends_evolution_syncebook_la_DEPENDENCIES = $(SYNCEVOLUTION_LIBS)
+@COND_CORE_TRUE@src_backends_evolution_syncebook_la_DEPENDENCIES = src/syncevo/libsyncevolution.la
 @COND_CORE_TRUE@src_backends_file_lib = src/backends/file/syncfile.la
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_file_backenddir = $(BACKENDS_DIRECTORY)
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_file_backend_LTLIBRARIES = $(src_backends_file_lib)
@@ -2807,7 +2808,7 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@src_backends_file_syncfile_la_LDFLAGS = -module -avoid-version
 @COND_CORE_TRUE@src_backends_file_syncfile_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(SYNCEVO_WFLAGS)
 @COND_CORE_TRUE@src_backends_file_syncfile_la_CPPFLAGS = $(SYNCEVOLUTION_CFLAGS) -I$(top_srcdir)/test $(BACKEND_CPPFLAGS)
-@COND_CORE_TRUE@src_backends_file_syncfile_la_DEPENDENCIES = $(SYNCEVOLUTION_LIBS)
+@COND_CORE_TRUE@src_backends_file_syncfile_la_DEPENDENCIES = src/syncevo/libsyncevolution.la
 @COND_CORE_TRUE@src_backends_gnome_lib = src/backends/gnome/platformgnome.la
 @COND_CORE_TRUE@src_backends_gnome_platformgnome_la_SOURCES =  \
 @COND_CORE_TRUE@	src/backends/gnome/GNOMEPlatform.h \
@@ -2819,7 +2820,7 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@src_backends_gnome_platformgnome_la_LDFLAGS = -module -avoid-version
 @COND_CORE_TRUE@src_backends_gnome_platformgnome_la_CXXFLAGS = $(KEYRING_CFLAGS) $(SYNCEVOLUTION_CFLAGS)
 @COND_CORE_TRUE@src_backends_gnome_platformgnome_la_CPPFLAGS = -I$(top_srcdir)/test $(BACKEND_CPPFLAGS)
-@COND_CORE_TRUE@src_backends_gnome_platformgnome_la_DEPENDENCIES = $(SYNCEVOLUTION_LIBS)
+@COND_CORE_TRUE@src_backends_gnome_platformgnome_la_DEPENDENCIES = src/syncevo/libsyncevolution.la
 @COND_CORE_TRUE@src_backends_kcalextended_lib = src/backends/kcalextended/synckcalextended.la
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_kcalextended_backenddir = $(BACKENDS_DIRECTORY)
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_kcalextended_backend_LTLIBRARIES = $(src_backends_kcalextended_lib)
@@ -2831,7 +2832,7 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@src_backends_kcalextended_synckcalextended_la_LDFLAGS = -module -avoid-version
 @COND_CORE_TRUE@src_backends_kcalextended_synckcalextended_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(KCALEXTENDED_CFLAGS) $(SYNCEVO_WFLAGS)
 @COND_CORE_TRUE@src_backends_kcalextended_synckcalextended_la_CPPFLAGS = $(SYNCEVOLUTION_CFLAGS) -I$(top_srcdir)/test $(BACKEND_CPPFLAGS)
-@COND_CORE_TRUE@src_backends_kcalextended_synckcalextended_la_DEPENDENCIES = $(SYNCEVOLUTION_LIBS)
+@COND_CORE_TRUE@src_backends_kcalextended_synckcalextended_la_DEPENDENCIES = src/syncevo/libsyncevolution.la
 @COND_CORE_TRUE@src_backends_kde_lib = src/backends/kde/platformkde.la
 @COND_CORE_TRUE@src_backends_kde_platformkde_la_SOURCES =  \
 @COND_CORE_TRUE@	src/backends/kde/KDEPlatform.h \
@@ -2843,7 +2844,7 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@src_backends_kde_platformkde_la_LDFLAGS = -module -avoid-version
 @COND_CORE_TRUE@src_backends_kde_platformkde_la_CXXFLAGS = $(KDE_KWALLET_CFLAGS) $(SYNCEVOLUTION_CFLAGS)
 @COND_CORE_TRUE@src_backends_kde_platformkde_la_CPPFLAGS = -I$(top_srcdir)/test $(BACKEND_CPPFLAGS)
-@COND_CORE_TRUE@src_backends_kde_platformkde_la_DEPENDENCIES = $(SYNCEVOLUTION_LIBS)
+@COND_CORE_TRUE@src_backends_kde_platformkde_la_DEPENDENCIES = src/syncevo/libsyncevolution.la
 @COND_CORE_TRUE@src_backends_maemo_lib = src/backends/maemo/syncmaemocal.la
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_maemo_backenddir = $(BACKENDS_DIRECTORY)
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_maemo_backend_LTLIBRARIES = $(src_backends_maemo_lib)
@@ -2856,7 +2857,7 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@src_backends_maemo_syncmaemocal_la_LDFLAGS = -module -avoid-version
 @COND_CORE_TRUE@src_backends_maemo_syncmaemocal_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(SYNCEVO_WFLAGS)
 @COND_CORE_TRUE@src_backends_maemo_syncmaemocal_la_CPPFLAGS = $(SYNCEVOLUTION_CFLAGS) -I$(top_srcdir)/test $(BACKEND_CPPFLAGS)
-@COND_CORE_TRUE@src_backends_maemo_syncmaemocal_la_DEPENDENCIES = $(SYNCEVOLUTION_LIBS)
+@COND_CORE_TRUE@src_backends_maemo_syncmaemocal_la_DEPENDENCIES = src/syncevo/libsyncevolution.la
 @COND_CORE_TRUE@src_backends_pbap_lib = src/backends/pbap/syncpbap.la
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_pbap_backenddir = $(BACKENDS_DIRECTORY)
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_pbap_backend_LTLIBRARIES = $(src_backends_pbap_lib)
@@ -2869,7 +2870,7 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@src_backends_pbap_syncpbap_la_LDFLAGS = -module -avoid-version $(DBUS_LIBS)
 @COND_CORE_TRUE@src_backends_pbap_syncpbap_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(SYNCEVO_WFLAGS) $(DBUS_CFLAGS)
 @COND_CORE_TRUE@src_backends_pbap_syncpbap_la_CPPFLAGS = $(SYNCEVOLUTION_CFLAGS) -I$(gdbus_dir) -I$(top_srcdir)/test $(BACKEND_CPPFLAGS)
-@COND_CORE_TRUE@src_backends_pbap_syncpbap_la_DEPENDENCIES = $(SYNCEVOLUTION_LIBS) $(gdbus_build_dir)/libgdbussyncevo.la
+@COND_CORE_TRUE@src_backends_pbap_syncpbap_la_DEPENDENCIES = src/syncevo/libsyncevolution.la $(gdbus_build_dir)/libgdbussyncevo.la
 @COND_CORE_TRUE@src_backends_qtcontacts_lib = src/backends/qtcontacts/syncqtcontacts.la
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_qtcontacts_backenddir = $(BACKENDS_DIRECTORY)
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_qtcontacts_backend_LTLIBRARIES = $(src_backends_qtcontacts_lib)
@@ -2880,7 +2881,7 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@src_backends_qtcontacts_syncqtcontacts_la_LIBADD = $(QT_CONTACTS_LIBS) $(QT_LIBS) $(SYNCEVOLUTION_LIBS)
 @COND_CORE_TRUE@src_backends_qtcontacts_syncqtcontacts_la_LDFLAGS = -module -avoid-version $(QT_LDFLAGS)
 @COND_CORE_TRUE@src_backends_qtcontacts_syncqtcontacts_la_CPPFLAGS = $(SYNCEVOLUTION_CFLAGS) -I$(top_srcdir)/test $(BACKEND_CPPFLAGS) $(QT_CPPFLAGS)
-@COND_CORE_TRUE@src_backends_qtcontacts_syncqtcontacts_la_DEPENDENCIES = $(SYNCEVOLUTION_LIBS)
+@COND_CORE_TRUE@src_backends_qtcontacts_syncqtcontacts_la_DEPENDENCIES = src/syncevo/libsyncevolution.la
 # Allow Qt to set some compile flags, but not the ones normally set via configure.
 # In particular -W is not compatible with the SyncEvolution header files (we have
 # unused parameters in some inline functions).
@@ -2899,7 +2900,7 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@src_backends_sqlite_syncsqlite_la_LDFLAGS = -module -avoid-version
 @COND_CORE_TRUE@src_backends_sqlite_syncsqlite_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(SYNCEVO_WFLAGS)
 @COND_CORE_TRUE@src_backends_sqlite_syncsqlite_la_CPPFLAGS = $(SYNCEVOLUTION_CFLAGS) -I$(top_srcdir)/test $(BACKEND_CPPFLAGS) -I$(top_srcdir)/src/backends/sqlite
-@COND_CORE_TRUE@src_backends_sqlite_syncsqlite_la_DEPENDENCIES = $(SYNCEVOLUTION_LIBS)
+@COND_CORE_TRUE@src_backends_sqlite_syncsqlite_la_DEPENDENCIES = src/syncevo/libsyncevolution.la
 @COND_CORE_TRUE@src_backends_webdav_lib = src/backends/webdav/syncdav.la
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_webdav_backenddir = $(BACKENDS_DIRECTORY)
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_backends_webdav_backend_LTLIBRARIES = $(src_backends_webdav_lib)
@@ -2920,7 +2921,7 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@src_backends_webdav_syncdav_la_LDFLAGS = -module -avoid-version
 @COND_CORE_TRUE@src_backends_webdav_syncdav_la_CXXFLAGS = $(NEON_CFLAGS) $(SYNCEVO_WFLAGS) $(LIBICAL_CFLAGS)
 @COND_CORE_TRUE@src_backends_webdav_syncdav_la_CPPFLAGS = $(SYNCEVOLUTION_CFLAGS) -I$(top_srcdir)/test $(BACKEND_CPPFLAGS)
-@COND_CORE_TRUE@src_backends_webdav_syncdav_la_DEPENDENCIES = $(SYNCEVOLUTION_LIBS)
+@COND_CORE_TRUE@src_backends_webdav_syncdav_la_DEPENDENCIES = src/syncevo/libsyncevolution.la
 @COND_CORE_TRUE@WEBDAV_SO_CHECK_FILES =  \
 @COND_CORE_TRUE@	$(DESTDIR)/$(bindir)/syncevolution \
 @COND_CORE_TRUE@	$(am__append_40)
@@ -2936,7 +2937,7 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@src_backends_xmlrpc_syncxmlrpc_la_LDFLAGS = -module -avoid-version
 @COND_CORE_TRUE@src_backends_xmlrpc_syncxmlrpc_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS) $(SYNCEVO_WFLAGS)
 @COND_CORE_TRUE@src_backends_xmlrpc_syncxmlrpc_la_CPPFLAGS = $(SYNCEVOLUTION_CFLAGS) -I$(top_srcdir)/test $(BACKEND_CPPFLAGS)
-@COND_CORE_TRUE@src_backends_xmlrpc_syncxmlrpc_la_DEPENDENCIES = $(SYNCEVOLUTION_LIBS)
+@COND_CORE_TRUE@src_backends_xmlrpc_syncxmlrpc_la_DEPENDENCIES = src/syncevo/libsyncevolution.la
 
 # TODO: preferably generate this list instead
 # ./
@@ -3102,7 +3103,7 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_DBUS_TRUE@	$(am__append_64)
 @COND_DBUS_TRUE@src_dbus_server_libsyncevodbusserver_la_LIBADD =  \
 @COND_DBUS_TRUE@	$(LIBNOTIFY_LIBS) $(MLITE_LIBS) $(DBUS_LIBS) \
-@COND_DBUS_TRUE@	$(am__append_65)
+@COND_DBUS_TRUE@	$(PCRECPP_LIBS) $(am__append_65)
 @COND_DBUS_TRUE@src_dbus_server_libsyncevodbusserver_la_CPPFLAGS = -DHAVE_CONFIG_H -DSYNCEVOLUTION_LOCALEDIR=\"${SYNCEVOLUTION_LOCALEDIR}\" -I$(top_srcdir)/src -I$(top_srcdir)/test -I$(top_srcdir) -I$(gdbus_dir) $(BACKEND_CPPFLAGS)
 @COND_DBUS_TRUE@src_dbus_server_libsyncevodbusserver_la_CXXFLAGS =  \
 @COND_DBUS_TRUE@	$(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS) \

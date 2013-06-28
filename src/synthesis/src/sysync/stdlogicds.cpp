@@ -1554,6 +1554,7 @@ localstatus TStdLogicDS::dsBeforeStateChange(TLocalEngineDSState aOldState,TLoca
           } else {
             TSyncItemPContainer::iterator next = pos;
             ++next;
+            delete syncitemP;
             fItems.erase(pos);
             pos = next;
             fLocalItemsDeleted++;

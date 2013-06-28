@@ -151,6 +151,9 @@
 /* Define to 1 if you have the <execinfo.h> header file. */
 #undef HAVE_EXECINFO_H
 
+/* use e_book_client_connect_direct_sync */
+#undef HAVE_E_BOOK_CLIENT_CONNECT_DIRECT_SYNC
+
 /* use e_book_client_new_direct */
 #undef HAVE_E_BOOK_CLIENT_NEW_DIRECT
 

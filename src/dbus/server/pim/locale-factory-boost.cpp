@@ -27,6 +27,7 @@
 #include <libebook/libebook.h>
 
 #include <phonenumbers/phonenumberutil.h>
+#include <phonenumbers/logger.h>
 #include <boost/locale.hpp>
 #include <boost/lexical_cast.hpp>
 
@@ -291,6 +292,7 @@ public:
     PhoneStartsWith(const std::locale &m_locale,
                     const std::string &tel) :
         m_phoneNumberUtil(*i18n::phonenumbers::PhoneNumberUtil::GetInstance()),
+        m_simpleEDSSearch(getenv("SYNCEVOLUTION_PIM_EDS_SUBSTRING") || !e_phone_number_is_supported()),
         m_country(std::use_facet<boost::locale::info>(m_locale).country())
     {
         i18n::phonenumbers::PhoneNumber number;
@@ -336,11 +338,38 @@ public:
 
     virtual std::string getEBookFilter() const
     {
-        // A suffix match with a limited number of digits is most
-        // likely to find the right contacts.
         size_t len = std::min((size_t)4, m_tel.size());
-        EBookQueryCXX query(e_book_query_field_test(E_CONTACT_TEL, E_BOOK_QUERY_ENDS_WITH,
-                                                    m_tel.substr(m_tel.size() - len, len).c_str()),
+        EBookQueryCXX query(m_simpleEDSSearch ?
+                            // A suffix match with a limited number of digits is most
+                            // likely to find the right contacts.
+                            e_book_query_field_test(E_CONTACT_TEL, E_BOOK_QUERY_ENDS_WITH,
+                                                    m_tel.substr(m_tel.size() - len, len).c_str()) :
+                            // We use EQUALS_NATIONAL_PHONE_NUMBER
+                            // instead of EQUALS_PHONE_NUMBER here,
+                            // because it will also match contacts
+                            // were the country code was not set
+                            // explicitly. EQUALS_PHONE_NUMBER would
+                            // do a stricter comparison and not match
+                            // those.
+                            //
+                            // If the contact has a country code set,
+                            // then EQUALS_NATIONAL_PHONE_NUMBER will
+                            // check that and not return a false match
+                            // if the country code is different.
+                            //
+                            // At the moment, we pass the E164
+                            // formatted search term with a country
+                            // code here. The country code is the
+                            // current default one.  We could think
+                            // about passing the original search term
+                            // instead, to allow matches where contact
+                            // and search term have no country code,
+                            // but it is uncertain whether EDS
+                            // currently works that way. It looks like
+                            // it always adds the default country code
+                            // to the search term.
+                            e_book_query_field_test(E_CONTACT_TEL, E_BOOK_QUERY_EQUALS_NATIONAL_PHONE_NUMBER,
+                                                    m_tel.c_str()),
                             false);
         PlainGStr filter(e_book_query_to_string(query.get()));
         return filter.get();
@@ -348,22 +377,67 @@ public:
 
 private:
     const i18n::phonenumbers::PhoneNumberUtil &m_phoneNumberUtil;
+    bool m_simpleEDSSearch;
     std::string m_country;
     std::string m_tel;
+};
+
+class PhoneNumberLogger : public i18n::phonenumbers::Logger
+{
+    const char *getPrefix()
+    {
+        switch (level()) {
+        case i18n::phonenumbers::LOG_FATAL:
+            return "phonenumber fatal";
+            break;
+        case i18n::phonenumbers::LOG_ERROR:
+            return "phonenumber error";
+            break;
+        case i18n::phonenumbers::LOG_WARNING:
+            return "phonenumber warning";
+            break;
+        case i18n::phonenumbers::LOG_INFO:
+            return "phonenumber info";
+            break;
+        case i18n::phonenumbers::LOG_DEBUG:
+            return "phonenumber debug";
+            break;
+        default:
+            return "phonenumber ???";
+            break;
+        }
+    }
+
+public:
+    virtual void WriteMessage(const std::string &msg)
+    {
+        SE_LOG(level() == i18n::phonenumbers::LOG_FATAL ? SyncEvo::Logger::ERROR : SyncEvo::Logger::DEBUG,
+               NULL, getPrefix(), "%s", msg.c_str());
+    }
 };
 
 class LocaleFactoryBoost : public LocaleFactory
 {
     const i18n::phonenumbers::PhoneNumberUtil &m_phoneNumberUtil;
+    bool m_edsSupportsPhoneNumbers;
     std::locale m_locale;
     std::string m_country;
+    std::string m_defaultCountryCode;
+    PhoneNumberLogger m_logger;
 
 public:
     LocaleFactoryBoost() :
         m_phoneNumberUtil(*i18n::phonenumbers::PhoneNumberUtil::GetInstance()),
+        m_edsSupportsPhoneNumbers(e_phone_number_is_supported()),
         m_locale(genLocale()),
-        m_country(std::use_facet<boost::locale::info>(m_locale).country())
-    {}
+        m_country(std::use_facet<boost::locale::info>(m_locale).country()),
+        m_defaultCountryCode(StringPrintf("+%d", m_phoneNumberUtil.GetCountryCodeForRegion(m_country)))
+    {
+        // Redirect output of libphonenumber and make it a bit quieter
+        // than it is by default. We map fatal libphonenumber errors
+        // to ERROR and everything else to DEBUG.
+        i18n::phonenumbers::PhoneNumberUtil::SetLogger(&m_logger);
+    }
 
     static std::locale genLocale()
     {
@@ -445,15 +519,14 @@ public:
             }
         }
 
-        // May be empty (unfiltered). If a limit was given, then
-        // we have to create a filter which matches everything, because
-        // the FullView cannot apply a limit.
-        if (maxResults != -1) {
-            if (!res) {
-                res.reset(new MatchAll());
-            }
-            res->setMaxResults(maxResults);
+        // May be empty (unfiltered). Create a filter which matches
+        // everything, because otherwise we end up using the FullView,
+        // which cannot apply a limit or later switch to a different
+        // search.
+        if (!res) {
+            res.reset(new MatchAll());
         }
+        res->setMaxResults(maxResults);
         return res;
     }
 
@@ -468,8 +541,46 @@ public:
             const gchar *value =
                 reinterpret_cast<const gchar *>(folks_abstract_field_details_get_value(phone));
             if (value) {
+                if (m_edsSupportsPhoneNumbers) {
+                    // TODO: check X-EVOLUTION-E164 (made lowercase by folks!).
+                    // It has the format <local number>,<country code>,
+                    // where <country code> happens to be in quotation marks.
+                    // This ends up being split into individual values which
+                    // are returned in random order by folks (a bug?!).
+                    //
+                    // Example: TEL;X-EVOLUTION-E164=891234,"+49":+49-89-1234
+                    // => value '+49-89-1234', params [ '+49', '891234' ].
+                    //
+                    // We restore the right order by sorting, which puts the
+                    // country code first, and then joining.
+                    GeeCollection *coll = folks_abstract_field_details_get_parameter_values(phone, "x-evolution-e164");
+                    if (coll) {
+                        std::vector<std::string> components;
+                        components.reserve(2);
+                        BOOST_FOREACH (const gchar *component, GeeStringCollection(coll)) {
+                            // Empty component represents an unset
+                            // country code. Replace with the current
+                            // country code to form the full number.
+                            // Note that it is not certain whether we
+                            // get to see the empty component. At the
+                            // moment (EDS 3.7, folks 0.9.1), someone
+                            // swallows it.
+                            components.push_back(component[0] ? component : m_defaultCountryCode);
+                        }
+                        // Only one component? We must still miss the country code.
+                        if (components.size() == 1) {
+                            components.push_back(m_defaultCountryCode);
+                        }
+                        std::sort(components.begin(), components.end());
+                        std::string normal = boost::join(components, "");
+                        precomputed.m_phoneNumbers.push_back(normal);
+                    }
+                    // Either EDS had a normalized value or there is none because
+                    // the value is not a phone number. No need to try parsing again.
+                    continue;
+                }
+
                 i18n::phonenumbers::PhoneNumber number;
-                // TODO
                 i18n::phonenumbers::PhoneNumberUtil::ErrorType error =
                     m_phoneNumberUtil.Parse(value, m_country, &number);
                 if (error == i18n::phonenumbers::PhoneNumberUtil::NO_PARSING_ERROR) {

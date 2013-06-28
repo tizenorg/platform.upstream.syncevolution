@@ -61,6 +61,10 @@ void EDSFView::doStart()
                                     getenv("SYNCEVOLUTION_NO_PIM_EDS_DIRECT") ?
                                     e_book_client_new(source, gerror) :
                                     e_book_client_new_direct(m_registry, source, gerror)
+#elif defined(HAVE_E_BOOK_CLIENT_CONNECT_DIRECT_SYNC)
+                                    getenv("SYNCEVOLUTION_NO_PIM_EDS_DIRECT") ?
+                                    e_book_client_new(source, gerror) :
+                                    E_BOOK_CLIENT(e_book_client_connect_direct_sync(m_registry, source, NULL, gerror))
 #else
                                     e_book_client_new(source, gerror)
 #endif
@@ -111,7 +115,7 @@ void EDSFView::read(gboolean success, GSList *contactslist, const GError *gerror
 
         BOOST_FOREACH (EContact *contact, contacts) {
             EdsfPersonaCXX persona(edsf_persona_new(m_store, contact), false);
-            GeeHashSetCXX personas(gee_hash_set_new(G_TYPE_OBJECT, g_object_ref, g_object_unref, NULL, NULL), false);
+            GeeHashSetCXX personas(gee_hash_set_new(G_TYPE_OBJECT, g_object_ref, g_object_unref, NULL, NULL, NULL, NULL, NULL, NULL), false);
             gee_collection_add(GEE_COLLECTION(personas.get()), persona.get());
             FolksIndividualCXX individual(folks_individual_new(GEE_SET(personas.get())), false);
             m_addedSignal(individual);

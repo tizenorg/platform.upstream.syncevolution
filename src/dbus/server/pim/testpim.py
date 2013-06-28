@@ -41,6 +41,7 @@ import traceback
 import re
 import itertools
 import codecs
+import glib
 
 # Update path so that testdbus.py can be found.
 pimFolder = os.path.realpath(os.path.abspath(os.path.split(inspect.getfile(inspect.currentframe()))[0]))
@@ -50,7 +51,7 @@ testFolder = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect
 if testFolder not in sys.path:
     sys.path.insert(0, testFolder)
 
-from testdbus import DBusUtil, timeout, property, usingValgrind, xdg_root, bus, logging, loop
+from testdbus import DBusUtil, timeout, property, usingValgrind, xdg_root, bus, logging, NullLogging, loop
 import testdbus
 
 @unittest.skip("not a real test")
@@ -69,12 +70,16 @@ class ContactsView(dbus.service.Object, unittest.TestCase):
           # List of encountered errors in ViewAgent, should always be empty.
           self.errors = []
           # Currently known contact data, size matches view.
-          # Entry is a string (just the ID is known) or a dictionary (actual content known).
+          # Entry is a string (just the ID is known),
+          # a tuple (ID + time when reading started), or
+          # a dictionary (actual content known).
           self.contacts = []
           # Change events, as list of ("modified/added/removed", start, count).
           self.events = []
           # Number of times that ViewAgent.Quiescent() was called.
           self.quiescentCount = 0
+
+          self.logging = logging
 
           dbus.service.Object.__init__(self, dbus.SessionBus(), self.path)
           unittest.TestCase.__init__(self)
@@ -95,7 +100,10 @@ class ContactsView(dbus.service.Object, unittest.TestCase):
 
      def getIDs(self, start, count):
           '''Return just the IDs for a range of contacts in the current view.'''
-          return [isinstance(x, dict) and x['id'] or x for x in self.contacts[start:start + count]]
+          return [isinstance(x, dict) and x['id'] or \
+                       isinstance(x, tuple) and x[0] or \
+                       x \
+                       for x in self.contacts[start:start + count]]
 
      def countData(self, start, count):
           '''Number of contacts with data in the given range.'''
@@ -114,7 +122,7 @@ class ContactsView(dbus.service.Object, unittest.TestCase):
           return 0 == self.countData(start, count)
 
      def processEvent(self, message, event):
-          logging.log(message)
+          self.logging.log(message)
           self.events.append(event)
 
      @dbus.service.method(dbus_interface='org._01.pim.contacts.ViewAgent',
@@ -129,11 +137,11 @@ class ContactsView(dbus.service.Object, unittest.TestCase):
                self.assertGreater(count, 0)
                self.assertLessEqual(start + count, len(self.contacts))
                # Overwrite valid data with just the (possibly modified) ID.
-               self.contacts[start:start + count] = ids
-               logging.printf('contacts modified => %s', self.contacts)
+               self.contacts[start:start + count] = [str(x) for x in ids]
+               self.logging.printf('contacts modified => %s', self.contacts)
           except:
                error = traceback.format_exc()
-               logging.printf('contacts modified: error: %s' % error)
+               self.logging.printf('contacts modified: error: %s' % error)
                self.errors.append(error)
 
 
@@ -148,11 +156,11 @@ class ContactsView(dbus.service.Object, unittest.TestCase):
                self.assertGreaterEqual(start, 0)
                self.assertGreater(count, 0)
                self.assertLessEqual(start, len(self.contacts))
-               self.contacts[start:start] = ids
-               logging.printf('contacts added => %s', self.contacts)
+               self.contacts[start:start] = [str(x) for x in ids]
+               self.logging.printf('contacts added => %s', self.contacts)
           except:
                error = traceback.format_exc()
-               logging.printf('contacts added: error: %s' % error)
+               self.logging.printf('contacts added: error: %s' % error)
                self.errors.append(error)
 
      @dbus.service.method(dbus_interface='org._01.pim.contacts.ViewAgent',
@@ -168,10 +176,10 @@ class ContactsView(dbus.service.Object, unittest.TestCase):
                self.assertLessEqual(start + count, len(self.contacts))
                self.assertEqual(self.getIDs(start, count), ids)
                del self.contacts[start:start + count]
-               logging.printf('contacts removed => %s', self.contacts)
+               self.logging.printf('contacts removed => %s', self.contacts)
           except:
                error = traceback.format_exc()
-               logging.printf('contacts removed: error: %s' % error)
+               self.logging.printf('contacts removed: error: %s' % error)
                self.errors.append(error)
 
      @dbus.service.method(dbus_interface='org._01.pim.contacts.ViewAgent',
@@ -183,14 +191,86 @@ class ContactsView(dbus.service.Object, unittest.TestCase):
 
      def read(self, start, count=1):
           '''Read the specified range of contact data.'''
-          def storeContacts(contacts):
+          starttime = time.time()
+          ids = []
+          for index, entry in enumerate(self.contacts[start:start+count]):
+               if isinstance(entry, str):
+                    ids.append(entry)
+                    self.contacts[start + index] = (entry, starttime)
+          # Avoid composing too large requests because they make the
+          # server unresponsive and trigger our Watchdog. Instead chop up
+          # into pieces and ask for more once we get the response.
+          def step(contacts, start):
                for index, contact in contacts:
                     if index >= 0:
                          self.contacts[index] = contact
-          self.view.ReadContacts([x for x in self.contacts[start:start+count] if not isinstance(x, dict)],
-                                 timeout=100000,
-                                 reply_handler=storeContacts,
-                                 error_handler=lambda x: self.errors.append(x))
+               if start < len(ids):
+                    end = min(start + 50, len(ids))
+                    self.view.ReadContacts(ids[start:end],
+                                           timeout=100000,
+                                           reply_handler=lambda contacts: step(contacts, end),
+                                           error_handler=lambda error: self.errors.append(x))
+          step([], 0)
+
+class Watchdog():
+     '''Send D-Bus queries regularly to the daemon and measure response time.'''
+     def __init__(self, test, manager, threshold=0.1, interval=0.2):
+          self.test = test
+          self.manager = manager
+          self.started = None
+          self.results = [] # tuples of start time + duration
+          self.threshold = threshold
+          self.interval = interval
+          self.timeout = None
+
+     def start(self):
+          self.timeout = glib.Timeout(int(self.interval * 1000))
+          self.timeout.set_callback(self._ping)
+          self.timeout.attach(loop.get_context())
+
+     def stop(self):
+          if self.timeout:
+               self.timeout.destroy()
+          self.started = None
+
+     def check(self):
+          '''Assert that all queries were served quickly enough.'''
+          tooslow = [x for x in self.results if x[1] > self.threshold]
+          self.test.assertEqual([], tooslow)
+          if self.started:
+               self.test.assertLess(time.time() - self.started, self.threshold)
+
+     def reset(self):
+          self.results = []
+          self.started = None
+
+     def checkpoint(self, name):
+          self.check()
+          logging.printf('ping results for %s: %s', name, self.results)
+          self.reset()
+
+     def _ping(self):
+          if not self.started:
+               # Run with a long timeout. We want to know how long it
+               # takes to reply, even if it is too long.
+               self.started = time.time()
+               self.manager.GetAllPeers(timeout=1000,
+                                        reply_handler=lambda peers: self._done(self.started, self.results, None),
+                                        error_handler=lambda error: self._done(self.started, self.results, error))
+          return True
+
+     def _done(self, started, results, error):
+          '''Record result. Intentionally uses the results array from the time when the call started,
+          to handle intermittent checkpoints.'''
+          duration = time.time() - started
+          if duration > self.threshold or error:
+               logging.printf('ping failure: duration %fs, error %s', duration, error)
+          if error:
+               results.append((started, duration, error))
+          else:
+               results.append((started, duration))
+          if self.started == started:
+               self.started = None
 
 class TestContacts(DBusUtil, unittest.TestCase):
     """Tests for org._01.pim.contacts API.
@@ -203,6 +283,7 @@ XDG root.
 """
 
     def setUp(self):
+        self.cleanup = []
         self.manager = dbus.Interface(bus.get_object('org._01.pim.contacts',
                                                      '/org/01/pim/contacts'),
                                       'org._01.pim.contacts.Manager')
@@ -229,16 +310,21 @@ XDG root.
 
         # Remove all sources and configs which were created by us
         # before running the test.
-        removed = False;
-        for source in os.listdir(self.sourcedir):
-            if source.startswith(self.managerPrefix + self.uidPrefix):
-                os.unlink(os.path.join(self.sourcedir, source))
-                removed = True
+        removed = False
+        if os.path.exists(self.sourcedir):
+             for source in os.listdir(self.sourcedir):
+                  if source.startswith(self.managerPrefix + self.uidPrefix):
+                       os.unlink(os.path.join(self.sourcedir, source))
+                       removed = True
         if removed:
             # Give EDS time to notice the removal.
             time.sleep(5)
 
-    def setUpView(self, peers=['foo'], withSystemAddressBook=False, search=[]):
+    def tearDown(self):
+         for x in self.cleanup:
+              x()
+
+    def setUpView(self, peers=['foo'], withSystemAddressBook=False, search=[], withLogging=True):
         '''Set up peers and create a view for them.'''
         # Ignore all currently existing EDS databases.
         self.sources = self.currentSources()
@@ -286,6 +372,9 @@ XDG root.
 
         # Start view.
         self.view = ContactsView(self.manager)
+        if not withLogging:
+             self.view.processEvent = lambda message, event: True
+             self.view.logging = NullLogging()
 
         # Optional: search and wait for it to be stable.
         if search != None:
@@ -318,6 +407,20 @@ XDG root.
     def exportCache(self, uid, filename):
         '''dump local cache content into file'''
         self.runCmdline(['--export', filename, '@' + self.managerPrefix + uid, 'local'])
+        contacts = open(filename, 'r').read()
+        # Ignore one empty vcard because the Nokia N97 always sends such a vcard,
+        # despite having deleted everything via SyncML. The ordering of properties
+        # comes from our own vcard profile (UID/PRODID/REV first).
+        contacts = re.sub(r'''BEGIN:VCARD\r?
+VERSION:3.0\r?
+((UID|PRODID|REV):.*\r?
+)*N:;;;;\r?
+FN:\r?
+END:VCARD(\r|\n)*''',
+                          '',
+                          contacts,
+                          1)
+        open(filename, 'w').write(contacts)
 
     def extractLUIDs(self, out):
          '''Extract the LUIDs from syncevolution --import/update output.'''
@@ -333,6 +436,7 @@ XDG root.
             # Allow the phone to add extensions like X-CLASS=private
             # (seen with Nokia N97 mini - FWIW, the phone should have
             # use CLASS=PRIVATE, because it was using vCard 3.0).
+            # Also removes X-EVOLUTION-FILE-AS.
             env['CLIENT_TEST_STRIP_PROPERTIES'] = 'X-[-_a-zA-Z0-9]*'
         sub = subprocess.Popen(['synccompare', expected, real],
                                env=env,
@@ -340,7 +444,11 @@ XDG root.
                                stderr=subprocess.STDOUT)
         stdout, stderr = sub.communicate()
         self.assertEqual(0, sub.returncode,
-                         msg=stdout)
+                         msg="env 'CLIENT_TEST_STRIP_PROPERTIES=%s' synccompare %s %s\n%s" %
+                         (env.get('CLIENT_TEST_STRIP_PROPERTIES', ''),
+                          expected,
+                          real,
+                          stdout))
 
     def configurePhone(self, phone, uid, contacts):
         '''set up SyncML for copying all vCard 3.0 files in 'contacts' to the phone, if phone was set'''
@@ -366,6 +474,16 @@ XDG root.
                               'addressbook'])
 
     def run(self, result):
+        # No errors must be logged. During testRead, libphonenumber used to print
+        #   [ERROR] Number too short to be viable: 8
+        #   [ERROR] The string supplied did not seem to be a phone number.
+        # to stdout until we reduced the log level.
+        #
+        # We check both D-Bus messages (which did not contain that
+        # text, but some other error messages) and the servers stdout.
+        self.runTestDBusCheck = lambda test, log: test.assertNotIn('ERROR', log)
+        self.runTestOutputCheck = self.runTestDBusCheck
+
         # Runtime varies a lot when using valgrind, because
         # of the need to check an additional process. Allow
         # a lot more time when running under valgrind.
@@ -374,7 +492,7 @@ XDG root.
 
     def currentSources(self):
         '''returns current set of EDS sources as set of UIDs, without the .source suffix'''
-        return set([os.path.splitext(x)[0] for x in os.listdir(self.sourcedir)])
+        return set([os.path.splitext(x)[0] for x in (os.path.exists(self.sourcedir) and os.listdir(self.sourcedir) or [])])
 
     @property("snapshot", "simple-sort")
     def testConfig(self):
@@ -393,6 +511,15 @@ XDG root.
         expected.add(self.managerPrefix + uid)
         self.assertEqual(peers, self.manager.GetAllPeers(timeout=self.timeout))
         self.assertEqual(expected, self.currentSources())
+
+        # PIM Manager must not allow overwriting an existing config.
+        # Uses the new name for SetPeer().
+        with self.assertRaisesRegexp(dbus.DBusException,
+                                     'org._01.pim.contacts.Manager.AlreadyExists: uid ' + uid + ' is already in use') as cm:
+             self.manager.CreatePeer(uid,
+                                     peers[uid],
+                                     timeout=self.timeout)
+        self.assertEqual('org._01.pim.contacts.Manager.AlreadyExists', cm.exception.get_dbus_name())
 
         # TODO: work around EDS bug: e_source_remove_sync() quickly after
         # e_source_registry_create_sources_sync() leads to an empty .source file:
@@ -556,8 +683,9 @@ XDG root.
              return result
 
         def listsyncevo(exclude=[]):
+             '''find all files owned by SyncEvolution, excluding the logs for syncing with a real phone'''
              return listall([os.path.join(xdg_root, x) for x in ['config/syncevolution', 'cache/syncevolution']],
-                            exclude)
+                            exclude + ['.*/phone@.*', '.*/peers/phone.*'])
 
         # Remember current list of files and modification time stamp.
         files = listsyncevo()
@@ -588,7 +716,7 @@ XDG root.
         export = os.path.join(xdg_root, 'local.vcf')
         self.exportCache(uid, export)
 
-        # Server item should be the simple one now, as in the client.
+        # Must be empty now.
         self.compareDBs(contacts, export)
 
         # Add a contact.
@@ -596,7 +724,77 @@ XDG root.
 VERSION:3.0
 FN:John Doe
 N:Doe;John
+PHOTO;ENCODING=b;TYPE=JPEG:/9j/4AAQSkZJRgABAQEASABIAAD/4QAWRXhpZgAATU0AKgAA
+ AAgAAAAAAAD//gAXQ3JlYXRlZCB3aXRoIFRoZSBHSU1Q/9sAQwAFAwQEBAMFBAQEBQUFBgcM
+ CAcHBwcPCwsJDBEPEhIRDxERExYcFxMUGhURERghGBodHR8fHxMXIiQiHiQcHh8e/9sAQwEF
+ BQUHBgcOCAgOHhQRFB4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4e
+ Hh4eHh4eHh4e/8AAEQgAFwAkAwEiAAIRAQMRAf/EABkAAQADAQEAAAAAAAAAAAAAAAAGBwgE
+ Bf/EADIQAAECBQMCAwQLAAAAAAAAAAECBAADBQYRBxIhEzEUFSIIFjNBGCRHUVZ3lqXD0+P/
+ xAAUAQEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMR
+ AD8AuX6UehP45/aXv9MTPTLVKxNSvMPcqu+a+XdLxf1SfJ6fU37PioTnOxfbOMc/KIZ7U/2V
+ fmTR/wCaKlu6+blu/Ui72zxWtUmmUOrTaWwkWDT09FPR4K587OVrUfVsIwElPPPAbAjxr2um
+ hWXbDu5rmfeApLPZ4hx0lzNm9aUJ9KAVHKlJHAPf7ozPLqWt9y6Z0EPGmoLNjTq48a1iaybJ
+ YV52yEtCms5KJmAT61JXtJyUdyQTEc1WlMql7N1/oZ6jagVZVFfUyZPpFy5lvWcxU7Z03BUk
+ GZLWJqVhPYLkIIPBEBtSEUyNAsjI1q1m/VP+UICwL/sqlXp7v+aOHsnyGttq218MtKd8+Ru2
+ JXuScoO45Awe2CIi96aKW1cVyubkYVy6rTqz0J8a5t2qqZl0UjAMwYKScfPAJ+cIQHHP0Dth
+ VFaMWt0XwxetnM50Ks2rsxL6ZMnJlJmb5hBBBEiVxjA28dznqo+hdksbQuS3Hs6tVtNzdM1Z
+ /VH5nO3Bl/CJmYHKDynjv3zCEB5rLQNo0bIbydWNWxKljbLQLoWkISOAkBKAABCEID//2Q==
 END:VCARD'''
+
+        # Test all fields that PIM Manager supports in its D-Bus API
+        # when using the file backend, because (in contrast to a phone)
+        # we know that it supports them, too.
+        if not phone:
+             john = r'''BEGIN:VCARD
+VERSION:3.0
+URL:http://john.doe.com
+TITLE:Senior Tester
+ORG:Test Inc.;Testing;test#1
+ROLE:professional test case
+X-EVOLUTION-MANAGER:John Doe Senior
+X-EVOLUTION-ASSISTANT:John Doe Junior
+NICKNAME:user1
+BDAY:2006-01-08
+X-EVOLUTION-ANNIVERSARY:2006-01-09
+X-EVOLUTION-SPOUSE:Joan Doe
+NOTE:This is a test case which uses almost all Evolution fields.
+FN:John Doe
+N:Doe;John;;;
+X-EVOLUTION-FILE-AS:Doe\, John
+CATEGORIES:TEST
+X-EVOLUTION-BLOG-URL:web log
+GEO:30.12;-130.34
+CALURI:calender
+FBURL:free/busy
+X-EVOLUTION-VIDEO-URL:chat
+X-MOZILLA-HTML:TRUE
+ADR;TYPE=WORK:Test Box #2;;Test Drive 2;Test Town;Upper Test County;12346;O
+ ld Testovia
+LABEL;TYPE=WORK:Test Drive 2\nTest Town\, Upper Test County\n12346\nTest Bo
+ x #2\nOld Testovia
+ADR;TYPE=HOME:Test Box #1;;Test Drive 1;Test Village;Lower Test County;1234
+ 5;Testovia
+LABEL;TYPE=HOME:Test Drive 1\nTest Village\, Lower Test County\n12345\nTest
+  Box #1\nTestovia
+ADR:Test Box #3;;Test Drive 3;Test Megacity;Test County;12347;New Testonia
+LABEL;TYPE=OTHER:Test Drive 3\nTest Megacity\, Test County\n12347\nTest Box
+  #3\nNew Testonia
+UID:pas-id-43C0ED3900000001
+EMAIL;TYPE=WORK;X-EVOLUTION-UI-SLOT=1:john.doe@work.com
+EMAIL;TYPE=HOME;X-EVOLUTION-UI-SLOT=2:john.doe@home.priv
+EMAIL;TYPE=OTHER;X-EVOLUTION-UI-SLOT=3:john.doe@other.world
+EMAIL;TYPE=OTHER;X-EVOLUTION-UI-SLOT=4:john.doe@yet.another.world
+TEL;TYPE=work;TYPE=Voice;X-EVOLUTION-UI-SLOT=1:business 1
+TEL;TYPE=homE;TYPE=VOICE;X-EVOLUTION-UI-SLOT=2:home 2
+TEL;TYPE=CELL;X-EVOLUTION-UI-SLOT=3:mobile 3
+TEL;TYPE=WORK;TYPE=FAX;X-EVOLUTION-UI-SLOT=4:businessfax 4
+TEL;TYPE=HOME;TYPE=FAX;X-EVOLUTION-UI-SLOT=5:homefax 5
+TEL;TYPE=PAGER;X-EVOLUTION-UI-SLOT=6:pager 6
+TEL;TYPE=CAR;X-EVOLUTION-UI-SLOT=7:car 7
+TEL;TYPE=PREF;X-EVOLUTION-UI-SLOT=8:primary 8
+END:VCARD
+'''
+
         item = os.path.join(contacts, 'john.vcf')
         output = open(item, "w")
         output.write(john)
@@ -673,6 +871,11 @@ END:VCARD'''
         sources = self.currentSources()
         expected = sources.copy()
         peers = {}
+
+        # Disable the default checking because
+        # we trigger one ERROR message.
+        self.runTestDBusCheck = None
+        self.runTestOutputCheck = None
 
         # dummy peer directory
         contacts = os.path.abspath(os.path.join(xdg_root, 'contacts'))
@@ -1119,7 +1322,7 @@ END:VCARD''']):
         # Insert new contacts.
         #
         # Not all of the vCard properties need to be available via PIM Manager.
-        testcases = ['''BEGIN:VCARD
+        testcases = [r'''BEGIN:VCARD
 VERSION:3.0
 URL:http://john.doe.com
 TITLE:Senior Tester
@@ -1137,7 +1340,8 @@ NOTE:This is a test case which uses almost all Evolution fields.
 FN:John Doe
 N:Doe;John;;;
 X-EVOLUTION-FILE-AS:Doe\, John
-CATEGORIES:TEST
+CATEGORIES:TEST1,TEST2
+GEO:30.12;-130.34
 X-EVOLUTION-BLOG-URL:web log
 CALURI:calender
 FBURL:free/busy
@@ -1227,6 +1431,8 @@ END:VCARD
         if contact.has_key('id'):
              contact['id'] = '<stripped>'
         self.assertEqual({'full-name': 'John Doe',
+                          'groups': ['TEST1', 'TEST2'],
+                          'location': (30.12, -130.34),
                           'nickname': 'user1',
                           'structured-name': {'given': 'John', 'family': 'Doe'},
                           'birthday': (2006, 1, 8),
@@ -1397,12 +1603,43 @@ END:VCARD'''
     def testActive(self):
         '''TestContacts.testActive - reconfigure active address books several times'''
 
+        contactsPerPeer = int(os.environ.get('TESTPIM_TEST_ACTIVE_NUM', 10))
+
         self.assertEqual(['', 'peer-test-dbus-a', 'peer-test-dbus-c'],
                          self.manager.GetActiveAddressBooks(timeout=self.timeout),
                          sortLists=True)
 
+        withLogging = (contactsPerPeer <= 10)
+        checkPerformance = os.environ.get('TESTPIM_TEST_ACTIVE_RESPONSE', None)
+        threshold = 0
+        if checkPerformance:
+             threshold = float(checkPerformance)
+
+        # When starting the search right away and then add more
+        # contact data later, we test the situation where new data
+        # comes in because of a sync.
+        #
+        # When adding data first and then searching, we cover the
+        # startup situation with already populated caches.
+        #
+        # Both are relevant scenarios. The first one stresses folks
+        # more, because SyncEvolution adds contacts one at a time,
+        # which then leads to many D-Bus messages containing a single
+        # "contact added" notification that need to be processed by
+        # folks. Testing this is the default.
+        if os.environ.get('TESTPIM_TEST_ACTIVE_LOAD', False):
+             # Delay starting the PIM Manager until data is ready to be read.
+             # More realistic that way; otherwise folks must process new
+             # contacts one-by-one.
+             search=None
+        else:
+             # Start folks right away.
+             search=''
+
         peers = ['a', 'b', 'c']
-        self.setUpView(peers=peers, withSystemAddressBook=True)
+        self.setUpView(peers=peers, withSystemAddressBook=True,
+                       search=search,
+                       withLogging=withLogging)
         active = [''] + peers
 
         # Check that active databases were adapted and stored permanently.
@@ -1416,7 +1653,6 @@ END:VCARD'''
                       open(os.path.join(xdg_root, "config", "syncevolution", "pim-manager.ini"),
                            "r").readlines())
 
-        contactsPerPeer = int(os.environ.get('TESTPIM_TEST_ACTIVE_NUM', 10))
         for peer in active:
              for index in range(0, contactsPerPeer):
                   item = os.path.join(self.contacts, 'john%d.vcf' % index)
@@ -1435,10 +1671,22 @@ END:VCARD''' % {'peer': peer, 'index': index})
              else:
                   out, err, returncode = self.runCmdline(['--import', self.contacts, 'database=', 'backend=evolution-contacts'])
 
-        # Run until the view has adapted.
+        # Ping server regularly and check that it remains responsive.
+        # Depends on processing all D-Bus replies with minimum
+        # delay, because delays caused by us would lead to false negatives.
+        w = Watchdog(self, self.manager, threshold=threshold)
+        if checkPerformance:
+             w.start()
+             self.cleanup.append(w.stop)
+
+        # Start the view if not done yet and run until the view has adapted.
+        if search == None:
+             self.view.search('')
         self.runUntil('view with contacts',
                       check=lambda: self.assertEqual([], self.view.errors),
-                      until=lambda: len(self.view.contacts) == contactsPerPeer * len(active))
+                      until=lambda: len(self.view.contacts) == contactsPerPeer * len(active),
+                      may_block=checkPerformance)
+        w.checkpoint('full view')
 
         def checkContacts():
              contacts = copy.deepcopy(self.view.contacts)
@@ -1462,39 +1710,55 @@ END:VCARD''' % {'peer': peer, 'index': index})
         self.view.read(0, contactsPerPeer * len(active))
         self.runUntil('contact',
                       check=lambda: self.assertEqual([], self.view.errors),
-                      until=lambda: self.view.haveData(0, contactsPerPeer * len(active)))
+                      until=lambda: self.view.haveData(0, contactsPerPeer * len(active)),
+                      may_block=not withLogging)
         assertHaveContacts()
+        w.checkpoint('contact data')
 
         def haveExpectedView():
+             current = time.time()
+             logNow = withLogging or current - haveExpectedView.last > 1
              if len(self.view.contacts) == contactsPerPeer * len(active):
                   if self.view.haveData(0, contactsPerPeer * len(active)):
-                       expected, contacts = checkContacts()
+                       expected, contacts = checkContacts() # TODO: avoid calling this
                        if expected == contacts:
                             logging.log('got expected data')
                             return True
                        else:
-                            logging.printf('data mismatch, keep waiting; currently have: %s', contacts)
+                            if withLogging:
+                                 logging.printf('data mismatch, keep waiting; currently have: %s', contacts)
+                            elif logNow:
+                                 logging.printf('data mismatch, keep waiting')
                   else:
                        self.view.read(0, len(self.view.contacts))
-                       logging.log('still waiting for all data')
-             else:
+                       if logNow:
+                            logging.log('still waiting for all data')
+             elif logNow:
                   logging.printf('wrong contact count, keep waiting: have %d, want %d',
                                  len(self.view.contacts),
                                  contactsPerPeer * len(active))
+             haveExpectedView.last = current
              return False
+        haveExpectedView.last = time.time()
 
         # Now test all subsets until we are back at 'all active'.
+        current = ['', 'a', 'b', 'c']
         for active in [filter(lambda x: x != None,
                               [s, a, b, c])
                        for s in [None, '']
                        for a in [None, 'a']
                        for b in [None, 'b']
                        for c in [None, 'c']]:
+             logging.printf('changing address books %s -> %s', current, active)
              self.manager.SetActiveAddressBooks([x != '' and 'peer-' + self.uidPrefix + x or x for x in active],
                                                 timeout=self.timeout)
              self.runUntil('contacts %s' % str(active),
                            check=lambda: self.assertEqual([], self.view.errors),
-                           until=haveExpectedView)
+                           until=haveExpectedView,
+                           may_block=not withLogging)
+             w.checkpoint('%s -> %s' % (current, active))
+             current = active
+
 
     @timeout(60)
     @property("ENV", "LC_TYPE=de_DE.UTF-8 LC_ALL=de_DE.UTF-8 LANG=de_DE.UTF-8")
@@ -1502,11 +1766,9 @@ END:VCARD''' % {'peer': peer, 'index': index})
         '''TestContacts.testFilterExisting - check that filtering works when applied to static contacts'''
         self.setUpView()
 
-        # Cannot refine full view.
-        with self.assertRaisesRegexp(dbus.DBusException,
-                                     r'.*: refining the search not supported by this view$'):
-             self.view.view.RefineSearch([['any-contains', 'foo']],
-                                         timeout=self.timeout)
+        # Can refine full view. Doesn't change anything here.
+        self.view.view.RefineSearch([],
+                                    timeout=self.timeout)
 
         # Override default sorting.
         self.assertEqual("last/first", self.manager.GetSortOrder(timeout=self.timeout))
@@ -1584,11 +1846,19 @@ END:VCARD''']):
                       until=lambda: view.haveData(0))
         self.assertEqual(u'Charly', view.contacts[0]['structured-name']['given'])
 
-        # Cannot expand view.
-        with self.assertRaisesRegexp(dbus.DBusException,
-                                     r'.*: New filter is empty. It must be more restrictive than the old filter\.$'):
-             view.view.RefineSearch([],
-                                    timeout=self.timeout)
+        # We can expand the search with ReplaceSearch().
+        view.view.ReplaceSearch([], False,
+                                timeout=self.timeout)
+        self.runUntil('expanded view with three contacts',
+                      check=lambda: self.assertEqual([], self.view.errors),
+                      until=lambda: len(self.view.contacts) == 3)
+        self.view.read(0, 3)
+        self.runUntil('expanded contacts',
+                      check=lambda: self.assertEqual([], self.view.errors),
+                      until=lambda: self.view.haveData(0, 3))
+        self.assertEqual(u'Abraham', self.view.contacts[0]['structured-name']['given'])
+        self.assertEqual(u'Benjamin', self.view.contacts[1]['structured-name']['given'])
+        self.assertEqual(u'Charly', self.view.contacts[2]['structured-name']['given'])
 
         # Find Charly by his FN (case insensitive explicitly).
         view = ContactsView(self.manager)
@@ -1639,14 +1909,15 @@ END:VCARD''']):
         self.assertEqual(u'Benjamin', view.contacts[1]['structured-name']['given'])
 
         # Refine search without actually changing the result.
-        view.quiescentCount = 0
-        view.view.RefineSearch([['any-contains', 'am']],
-                               timeout=self.timeout)
-        self.runUntil('end of search refinement',
-                      check=lambda: self.assertEqual([], view.errors),
-                      until=lambda: view.quiescentCount > 0)
-        self.assertEqual(u'Abraham', view.contacts[0]['structured-name']['given'])
-        self.assertEqual(u'Benjamin', view.contacts[1]['structured-name']['given'])
+        for refine in [True, False]:
+             view.quiescentCount = 0
+             view.view.ReplaceSearch([['any-contains', 'am']], refine,
+                                     timeout=self.timeout)
+             self.runUntil('end of search refinement',
+                           check=lambda: self.assertEqual([], view.errors),
+                           until=lambda: view.quiescentCount > 0)
+             self.assertEqual(u'Abraham', view.contacts[0]['structured-name']['given'])
+             self.assertEqual(u'Benjamin', view.contacts[1]['structured-name']['given'])
 
         # Restrict search to Benjamin. The result is a view
         # which has different indices than the full view.
@@ -2262,6 +2533,20 @@ END:VCARD''']):
                       until=lambda: view.quiescentCount > 0)
         self.assertEqual(0, len(view.contacts))
 
+        # Expand back to view with Benjamin.
+        view.quiescentCount = 0
+        view.view.ReplaceSearch([['any-contains', 'Benjamin']], False,
+                                timeout=self.timeout)
+        self.runUntil('end of search replacement',
+                      check=lambda: self.assertEqual([], view.errors),
+                      until=lambda: view.quiescentCount > 0)
+        self.assertEqual(1, len(view.contacts))
+        view.read(0, 1)
+        self.runUntil('Benjamin',
+                      check=lambda: self.assertEqual([], view.errors),
+                      until=lambda: view.haveData(0))
+        self.assertEqual(u'Benjamin', view.contacts[0]['structured-name']['given'])
+
     @timeout(60)
     @property("ENV", "LC_TYPE=de_DE.UTF-8 LC_ALL=de_DE.UTF-8 LANG=de_DE.UTF-8")
     def testFilterLiveLimit(self):
@@ -2663,6 +2948,8 @@ END:VCARD''']):
         # backend.
         john = {
              'full-name': 'John Doe',
+             'groups': ['Foo', 'Bar'],
+             'location': (30.12, -130.34),
              'structured-name': {
                   'family': 'Doe',
                   'given': 'John',
@@ -2766,6 +3053,8 @@ END:VCARD''']):
              'id': contact.get('id', '<???>'),
 
              'full-name': 'John A. Doe',
+             'groups': ['Foo', 'Bar'],
+             'location': (30.12, -130.34),
              'structured-name': {
                   'family': 'Doe',
                   'given': 'John',
@@ -2967,10 +3256,8 @@ END:VCARD''']):
                   ],
                          self.view.events)
 
-    @timeout(60)
-    @property("ENV", "LC_TYPE=de_DE.UTF-8 LC_ALL=de_DE.UTF-8 LANG=de_DE.UTF-8 SYNCEVOLUTION_PIM_DELAY_FOLKS=5")
-    def testFilterStartupRefine(self):
-        '''TestContacts.testFilterStartupRefine - phone number lookup while folks still loads, with folks finding more contacts'''
+    def doFilterStartupRefine(self, simpleSearch=True):
+        '''TestContacts.testFilterStartupRefine - phone number lookup while folks still loads, with folks finding more contacts (simple search in EDS) or the same contacts (intelligent search)'''
         self.setUpView(search=None)
 
         # Override default sorting.
@@ -3021,12 +3308,19 @@ END:VCARD''']):
         self.runUntil('phone results',
                       check=lambda: self.assertEqual([], self.view.errors),
                       until=lambda: self.view.quiescentCount > 0)
-        self.assertEqual(1, len(self.view.contacts))
-        self.view.read(0, 1)
+        if simpleSearch:
+             self.assertEqual(1, len(self.view.contacts))
+             self.view.read(0, 1)
+        else:
+             self.assertEqual(2, len(self.view.contacts))
+             self.view.read(0, 2)
+
         self.runUntil('phone results',
                       check=lambda: self.assertEqual([], self.view.errors),
-                      until=lambda: self.view.haveData(0, 1))
+                      until=lambda: self.view.haveData(0, simpleSearch and 1 or 2))
         self.assertEqual(u'Abraham', self.view.contacts[0]['structured-name']['given'])
+        if not simpleSearch:
+             self.assertEqual(u'Benjamin', self.view.contacts[1]['structured-name']['given'])
 
         # Wait for final results from folks. Also finds Benjamin.
         self.runUntil('phone results',
@@ -3040,14 +3334,37 @@ END:VCARD''']):
         self.assertEqual(u'Abraham', self.view.contacts[0]['structured-name']['given'])
         self.assertEqual(u'Benjamin', self.view.contacts[1]['structured-name']['given'])
 
-        # One contact added by folks.
-        self.assertEqual([
-                  ('added', 0, 1),
-                  ('quiescent',),
-                  ('added', 1, 1),
-                  ('quiescent',),
-                  ],
-                         self.view.events)
+        if simpleSearch:
+             # One contact added by folks.
+             self.assertEqual([
+                       ('added', 0, 1),
+                       ('quiescent',),
+                       ('added', 1, 1),
+                       ('quiescent',),
+                       ],
+                              self.view.events)
+        else:
+             # Two contacts added initially, not updated by folks.
+             self.assertEqual([
+                       ('added', 0, 2),
+                       ('quiescent',),
+                       ('quiescent',),
+                       ],
+                              self.view.events)
+
+
+    @timeout(60)
+    @property("ENV", "LC_TYPE=de_DE.UTF-8 LC_ALL=de_DE.UTF-8 LANG=de_DE.UTF-8 SYNCEVOLUTION_PIM_DELAY_FOLKS=5 SYNCEVOLUTION_PIM_EDS_SUBSTRING=1")
+    def testFilterStartupRefine(self):
+        '''TestContacts.testFilterStartupRefine - phone number lookup while folks still loads, with folks finding more contacts because we use substring search in EDS'''
+        self.doFilterStartupRefine()
+
+    @timeout(60)
+    @property("ENV", "LC_TYPE=de_DE.UTF-8 LC_ALL=de_DE.UTF-8 LANG=de_DE.UTF-8 SYNCEVOLUTION_PIM_DELAY_FOLKS=5")
+    def testFilterStartupRefineSmart(self):
+        '''TestContacts.testFilterStartupRefine - phone number lookup while folks still loads, with folks finding the same contacts because we use smart search in EDS'''
+        # This test depends on libphonenumber support in EDS!
+        self.doFilterStartupRefine(simpleSearch=False)
 
     @timeout(60)
     @property("ENV", "LC_TYPE=de_DE.UTF-8 LC_ALL=de_DE.UTF-8 LANG=de_DE.UTF-8 SYNCEVOLUTION_PIM_DELAY_FOLKS=5")
@@ -3169,7 +3486,7 @@ END:VCARD''',
 
         # Expect an error, view should have been closed already.
         with self.assertRaisesRegexp(dbus.DBusException,
-                                     "org.freedesktop.DBus.Error.UnknownMethod: No such interface `org._01.pim.contacts.ViewControl' on object at path .*"):
+                                     "org.freedesktop.DBus.Error.UnknownMethod: .*"):
              self.view.close()
 
     @timeout(60)
@@ -3196,7 +3513,12 @@ END:VCARD''',
 if __name__ == '__main__':
     xdg = (os.path.join(os.path.abspath('.'), 'temp-testpim', 'config'),
            os.path.join(os.path.abspath('.'), 'temp-testpim', 'local', 'cache'))
+    error = ''
     if (os.environ.get('XDG_CONFIG_HOME', None), os.environ.get('XDG_DATA_HOME', None)) != xdg:
          # Don't allow user of the script to erase his normal EDS data.
-         sys.exit('testpim.py must be started in a D-Bus session with XDG_CONFIG_HOME=%s XDG_DATA_HOME=%s because it will modify system EDS databases there' % xdg)
+         error = error + 'testpim.py must be started in a D-Bus session with XDG_CONFIG_HOME=%s XDG_DATA_HOME=%s because it will modify system EDS databases there.\n' % xdg
+    if os.environ.get('LANG', '') != 'de_DE.utf-8':
+         error = error + 'EDS daemon must use the same LANG=de_DE.utf-8 as tests to get phone number normalization right.\n'
+    if error:
+         sys.exit(error)
     unittest.main()

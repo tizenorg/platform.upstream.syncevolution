@@ -159,6 +159,7 @@ NOTE:This is a test case which uses almost all Evolution fields.
 N:Doe;John;;;
 X-EVOLUTION-FILE-AS:Doe\, John
 CATEGORIES:TEST
+GEO:30.12;-130.34
 ADR;TYPE=WORK:;;Test Drive 2;Test Town;Upper Test County;12346;O
  ld Testovia
 LABEL;TYPE=WORK:Test Drive 2\nTest Town\, Upper Test County\n12346\nTest Bo

@@ -45,6 +45,8 @@ static const char * const MANAGER_PATH = "/org/01/pim/contacts";
 static const char * const MANAGER_IFACE = "org._01.pim.contacts.Manager";
 static const char * const MANAGER_ERROR_ABORTED = "org._01.pim.contacts.Manager.Aborted";
 static const char * const MANAGER_ERROR_BAD_STATUS = "org._01.pim.contacts.Manager.BadStatus";
+static const char * const MANAGER_ERROR_ALREADY_EXISTS = "org._01.pim.contacts.Manager.AlreadyExists";
+static const char * const MANAGER_ERROR_NOT_FOUND = "org._01.pim.contacts.Manager.NotFound";
 static const char * const AGENT_IFACE = "org._01.pim.contacts.ViewAgent";
 static const char * const CONTROL_IFACE = "org._01.pim.contacts.ViewControl";
 
@@ -76,6 +78,7 @@ Manager::Manager(const boost::shared_ptr<Server> &server) :
     DBusObjectHelper(server->getConnection(),
                      MANAGER_PATH,
                      MANAGER_IFACE),
+    m_mainThread(g_thread_self()),
     m_server(server),
     m_locale(LocaleFactory::createFactory())
 {
@@ -90,6 +93,15 @@ Manager::~Manager()
         m_server->autoTermUnref();
     }
 }
+
+#ifdef PIM_MANAGER_TEST_THREADING
+static gpointer StartManager(gpointer data)
+{
+    Manager *manager = static_cast<Manager *>(data);
+    manager->start();
+    return NULL;
+}
+#endif
 
 void Manager::init()
 {
@@ -122,7 +134,8 @@ void Manager::init()
     add(this, &Manager::search, "Search");
     add(this, &Manager::getActiveAddressBooks, "GetActiveAddressBooks");
     add(this, &Manager::setActiveAddressBooks, "SetActiveAddressBooks");
-    add(this, &Manager::setPeer, "SetPeer");
+    add(this, &Manager::modifyPeer, "SetPeer"); // The original method name, keep it for backwards compatibility.
+    add(this, &Manager::createPeer, "CreatePeer"); // Strict version: uid must be new.
     add(this, &Manager::removePeer, "RemovePeer");
     add(this, &Manager::syncPeer, "SyncPeer");
     add(this, &Manager::stopSync, "StopSync");
@@ -138,6 +151,90 @@ void Manager::init()
     // We don't care about the result.
     GDBusCXX::DBusConnectionPtr(getConnection()).ownNameAsync(MANAGER_SERVICE,
                                                               boost::function<void (bool)>());
+
+#ifdef PIM_MANAGER_TEST_THREADING
+    GThread *thread = g_thread_new("start",
+                                   StartManager,
+                                   this);
+    g_thread_unref(thread);
+#endif
+}
+
+struct TaskForMain
+{
+    GMutex m_mutex;
+    GCond m_cond;
+    bool m_done;
+    boost::function<void ()> m_operation;
+    boost::function<void ()> m_rethrow;
+
+    void runTaskOnIdle()
+    {
+        g_mutex_lock(&m_mutex);
+
+        // Exceptions must be reported back to the original thread.
+        // This is done by serializing them as string, then using the
+        // existing Exception::tryRethrow() to turn that string back
+        // into an instance of the right class.
+        try {
+            m_operation();
+        } catch (...) {
+            std::string explanation;
+            Exception::handle(explanation);
+            m_rethrow = boost::bind(Exception::tryRethrow, explanation, true);
+        }
+
+        // Wake up task.
+        m_done = true;
+        g_cond_signal(&m_cond);
+        g_mutex_unlock(&m_mutex);
+    }
+};
+
+template <class R> void AssignResult(const boost::function<R ()> &operation,
+                                     R &res)
+{
+    res = operation();
+}
+
+template <class R> R Manager::runInMainRes(const boost::function<R ()> &operation)
+{
+    // Prepare task.
+    R res;
+    TaskForMain task;
+    g_mutex_init(&task.m_mutex);
+    g_cond_init(&task.m_cond);
+    task.m_done = false;
+    task.m_operation = boost::bind(&AssignResult<R>, boost::cref(operation), boost::ref(res));
+
+    // Run in main.
+    Timeout timeout;
+    timeout.runOnce(-1, boost::bind(&TaskForMain::runTaskOnIdle, &task));
+    g_main_context_wakeup(NULL);
+    g_mutex_lock(&task.m_mutex);
+    while (!task.m_done) {
+        g_cond_wait(&task.m_cond, &task.m_mutex);
+    }
+    g_mutex_unlock(&task.m_mutex);
+
+    // Rethrow exceptions (optional) and return result.
+    g_cond_clear(&task.m_cond);
+    g_mutex_clear(&task.m_mutex);
+    if (task.m_rethrow) {
+        task.m_rethrow();
+    }
+    return res;
+}
+
+static int Return1(const boost::function<void ()> &operation)
+{
+    operation();
+    return 1;
+}
+
+void Manager::runInMainVoid(const boost::function<void ()> &operation)
+{
+    runInMainRes<int>(boost::bind(Return1, boost::cref(operation)));
 }
 
 void Manager::initFolks()
@@ -177,6 +274,11 @@ boost::shared_ptr<GDBusCXX::DBusObjectHelper> CreateContactManager(const boost::
 
 void Manager::start()
 {
+    if (!isMain()) {
+        runInMainV(&Manager::start);
+        return;
+    }
+
     if (!m_preventingAutoTerm) {
         // Prevent automatic shut down during idle times, because we need
         // to keep our unified address book available.
@@ -188,6 +290,11 @@ void Manager::start()
 
 void Manager::stop()
 {
+    if (!isMain()) {
+        runInMainV(&Manager::stop);
+        return;
+    }
+
     // If there are no active searches, then recreate aggregator.
     // Instead of tracking open views, use the knowledge that an
     // idle server has only two references to the main view:
@@ -208,11 +315,20 @@ void Manager::stop()
 
 bool Manager::isRunning()
 {
+    if (!isMain()) {
+        return runInMainR(&Manager::isRunning);
+    }
+
     return m_folks->isRunning();
 }
 
 void Manager::setSortOrder(const std::string &order)
 {
+    if (!isMain()) {
+        runInMainV(&Manager::setSortOrder, order);
+        return;
+    }
+
     if (order == getSortOrder()) {
         // Nothing to do.
         return;
@@ -224,6 +340,15 @@ void Manager::setSortOrder(const std::string &order)
     m_configNode->writeProperty(MANAGER_CONFIG_SORT_PROPERTY, InitStateString(order, true));
     m_configNode->flush();
     m_sortOrder = order;
+}
+
+std::string Manager::getSortOrder()
+{
+    if (!isMain()) {
+        return runInMainR(&Manager::getSortOrder);
+    }
+
+    return m_sortOrder;
 }
 
 /**
@@ -529,6 +654,7 @@ class ViewResource : public Resource, public GDBusCXX::DBusObjectHelper
         add(this, &ViewResource::readContacts, "ReadContacts");
         add(this, &ViewResource::close, "Close");
         add(this, &ViewResource::refineSearch, "RefineSearch");
+        add(this, &ViewResource::replaceSearch, "ReplaceSearch");
         activate();
 
         // The view might have been started already, for example when
@@ -636,11 +762,13 @@ public:
     /** ViewControl.RefineSearch() */
     void refineSearch(const LocaleFactory::Filter_t &filter)
     {
-        if (filter.empty()) {
-            SE_THROW("New filter is empty. It must be more restrictive than the old filter.");
-        }
+        replaceSearch(filter, true);
+    }
+
+    void replaceSearch(const LocaleFactory::Filter_t &filter, bool refine)
+    {
         boost::shared_ptr<IndividualFilter> individualFilter = m_locale->createFilter(filter);
-        m_view->refineFilter(individualFilter);
+        m_view->replaceFilter(individualFilter, refine);
     }
 };
 unsigned int ViewResource::m_counter;
@@ -651,6 +779,8 @@ void Manager::search(const boost::shared_ptr< GDBusCXX::Result1<GDBusCXX::DBusOb
                      const LocaleFactory::Filter_t &filter,
                      const GDBusCXX::DBusObject_t &agentPath)
 {
+    // TODO: figure out a native, thread-safe API for this.
+
     // Start folks in parallel with asking for an ESourceRegistry.
     start();
 
@@ -706,17 +836,17 @@ void Manager::doSearch(const ESourceRegistryCXX &registry,
     view = m_folks->getMainView();
     bool quiescent = view->isQuiescent();
     std::string ebookFilter;
-    if (!filter.empty()) {
-        boost::shared_ptr<IndividualFilter> individualFilter = m_locale->createFilter(filter);
-        ebookFilter = individualFilter->getEBookFilter();
-        if (quiescent) {
-            // Don't search via EDS directly because the unified
-            // address book is ready.
-            ebookFilter.clear();
-        }
-        view = FilteredView::create(view, individualFilter);
-        view->setName(StringPrintf("filtered view%u", ViewResource::getNextViewNumber()));
+    // Always use a filtered view. That way we can implement ReplaceView or RefineView
+    // without having to switch from a FullView to a FilteredView.
+    boost::shared_ptr<IndividualFilter> individualFilter = m_locale->createFilter(filter);
+    ebookFilter = individualFilter->getEBookFilter();
+    if (quiescent) {
+        // Don't search via EDS directly because the unified
+        // address book is ready.
+        ebookFilter.clear();
     }
+    view = FilteredView::create(view, individualFilter);
+    view->setName(StringPrintf("filtered view%u", ViewResource::getNextViewNumber()));
 
     SE_LOG_DEBUG(NULL, NULL, "preparing %s: EDS search term is '%s', active address books %s",
                  view->getName(),
@@ -856,8 +986,21 @@ static void checkPeerUID(const std::string &uid)
     }
 }
 
+void Manager::createPeer(const boost::shared_ptr<GDBusCXX::Result0> &result,
+                         const std::string &uid, const StringMap &properties)
+{
+    setPeer(result, uid, properties, CREATE_PEER);
+}
+
+void Manager::modifyPeer(const boost::shared_ptr<GDBusCXX::Result0> &result,
+                         const std::string &uid, const StringMap &properties)
+{
+    setPeer(result, uid, properties, SET_PEER);
+}
+
 void Manager::setPeer(const boost::shared_ptr<GDBusCXX::Result0> &result,
-                      const std::string &uid, const StringMap &properties)
+                      const std::string &uid, const StringMap &properties,
+                      ConfigureMode mode)
 {
     checkPeerUID(uid);
     runInSession(StringPrintf("@%s%s",
@@ -865,7 +1008,7 @@ void Manager::setPeer(const boost::shared_ptr<GDBusCXX::Result0> &result,
                               uid.c_str()),
                  Server::SESSION_FLAG_NO_SYNC,
                  result,
-                 boost::bind(&Manager::doSetPeer, this, _1, result, uid, properties));
+                 boost::bind(&Manager::doSetPeer, this, _1, result, uid, properties, mode));
 }
 
 static const char * const PEER_KEY_PROTOCOL = "protocol";
@@ -896,7 +1039,8 @@ static std::string GetEssential(const StringMap &properties, const char *key,
 
 void Manager::doSetPeer(const boost::shared_ptr<Session> &session,
                         const boost::shared_ptr<GDBusCXX::Result0> &result,
-                        const std::string &uid, const StringMap &properties)
+                        const std::string &uid, const StringMap &properties,
+                        ConfigureMode mode)
 {
     // The session is active now, we have exclusive control over the
     // databases and the config. Create or update config.
@@ -939,8 +1083,28 @@ void Manager::doSetPeer(const boost::shared_ptr<Session> &session,
 
     if (protocol == PEER_PBAP_PROTOCOL ||
         protocol == PEER_FILES_PROTOCOL) {
-        // Create or set local config.
+        // Create, modify or set local config.
         boost::shared_ptr<SyncConfig> config(new SyncConfig(MANAGER_LOCAL_CONFIG + context));
+        switch (mode) {
+        case CREATE_PEER:
+            if (config->exists()) {
+                // When creating a config, the uid must not be in use already.
+                result->failed(GDBusCXX::dbus_error(MANAGER_ERROR_ALREADY_EXISTS, StringPrintf("uid %s is already in use", uid.c_str())));
+                return;
+            }
+            break;
+        case MODIFY_PEER:
+            if (!config->exists()) {
+                // Modifying expects the config to exist already.
+                result->failed(GDBusCXX::dbus_error(MANAGER_ERROR_NOT_FOUND, StringPrintf("uid %s is not in use", uid.c_str())));
+                return;
+            }
+            break;
+        case SET_PEER:
+            // May or may not exist, doesn't matter.
+            break;
+        }
+
         config->setDefaults();
         config->prepareConfigForWrite();
         config->setPreventSlowSync(false);

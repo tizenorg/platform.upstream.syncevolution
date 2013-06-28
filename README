@@ -7,8 +7,8 @@ synchronize personal information management data
 ------------------------------------------------
 
 :Manual section: 1
-:Version: 1.3.99.2
-:Date: 2012-12-12
+:Version: 1.3.99.2+20130226+SE+e2647f4+SYSYNC+9b0c01c
+:Date: 2013-02-26
 
 
 SYNOPSIS
@@ -1136,6 +1136,108 @@ backend (select backend, shared)
    support only a subset of the backends; that's why e.g.
    "addressbook" is unambiguous although there are multiple
    address book backends.
+   
+   Currently active::
+   
+    CalDAV
+       calendar events
+    CalDAVTodo
+       tasks
+    CalDAVJournal
+       memos
+    CardDAV
+       contacts
+    Evolution Address Book = Evolution Contacts = addressbook = contacts = evolution-contacts
+       vCard 2.1 = text/x-vcard
+       vCard 3.0 (default) = text/vcard
+       The later is the internal format of Evolution and preferred with
+       servers that support it.
+    Evolution Calendar = calendar = events = evolution-events
+       iCalendar 2.0 (default) = text/calendar
+       vCalendar 1.0 = text/x-vcalendar
+    Evolution Task List = Evolution Tasks = todo = tasks = evolution-tasks
+       iCalendar 2.0 (default) = text/calendar
+       vCalendar 1.0 = text/x-vcalendar
+    Evolution Memos = memo = memos = evolution-memos
+       plain text in UTF-8 (default) = text/plain
+       iCalendar 2.0 = text/calendar
+       vCalendar 1.0 = text/x-vcalendar
+       The later format is not tested because none of the
+       supported SyncML servers accepts it.
+    Files in one directory = file
+       Stores items in one directory as one file per item.
+       The directory is selected via database=[file://]<path>.
+       It will only be created if the prefix is given, otherwise
+       it must exist already.
+       The database format *must* be specified explicitly. It may be
+       different from the sync format, as long as there are
+       conversion rules (for example, vCard 2.1 <-> vCard 3.0). If
+       the sync format is empty, the database format is used.
+       Examples for databaseFormat + syncFormat:
+          text/plain + text/plain
+          text/x-vcard + text/vcard
+          text/calendar
+       Examples for evolutionsource:
+          /home/joe/datadir - directory must exist
+          file:///tmp/scratch - directory is created
+    KDE Address Book = KDE Contacts = addressbook = contacts = kde-contacts
+       vCard 2.1 (default) = text/x-vcard
+       vCard 3.0 = text/vcard
+       The later is the internal format of KDE and preferred with
+       servers that support it. One such server is ScheduleWorld
+       together with the "card3" uri.
+    KDE Calendar = calendar = events = kde-events
+       iCalendar 2.0 (default) = text/calendar
+       vCalendar 1.0 = text/x-calendar
+    KDE Task List = KDE Tasks = todo = tasks = kde-tasks
+       iCalendar 2.0 (default) = text/calendar
+       vCalendar 1.0 = text/x-calendar
+    KDE Memos = memo = memos = kde-memos
+       plain text in UTF-8 (default) = text/plain
+   
+   
+   Currently inactive::
+   
+    ActiveSync Address Book = eas-contacts
+    ActiveSync Events = eas-events
+    ActiveSync Todos = eas-todos
+    ActiveSync Memos = eas-memos
+    mkcal-events = mkcal = KCalExtended = calendar
+       'database' normally is the name of a calendar
+       inside the default calendar storage. If it starts
+       with the 'SyncEvolution_Test_' prefix, it will be
+       created as needed, otherwise it must exist.
+       If it starts with the 'file://' prefix, the default
+       calendar in the specified SQLite storage file will
+       created (if needed) and used.
+    mkcal-todos = todo
+       Same as above.
+    mkcal-notes = memo
+       Same as above.
+    Maemo Calendar = calendar = events = maemo-events
+       iCalendar 2.0 (default) = text/calendar
+       vCalendar 1.0 = text/x-vcalendar
+    Maemo Tasks = todo = tasks = maemo-tasks
+       iCalendar 2.0 (default) = text/calendar
+       vCalendar 1.0 = text/x-vcalendar
+    Maemo Notes = memo = memos = notes = journal = maemo-notes
+       plain text in UTF-8 (default) = text/plain
+       iCalendar 2.0 = text/calendar
+       vCalendar 1.0 = text/x-vcalendar
+    One-way sync using PBAP = pbap
+       Requests phonebook entries using PBAP profile, and thus
+       supporting read-only operations.
+       The BT address is selected via database=obex-bt://<bt-addr>.
+    QtContacts = addressbook = contacts = qt-contacts
+       vCard 3.0 = text/vcard
+       'database' is specified via a QtContacts URI, which
+       consists of qtcontacts:<backend>:<URL encoded parameters>.
+       Examples: 'qtcontacts:tracker:' or 'qtcontacts:eds:source=local:/system'
+    SQLite Address Book = addressbook = contacts = sqlite-contacts
+       vCard 2.1 (default) = text/x-vcard
+    XMLRPC interface = xmlrpc
+       Data exchange is done via an XMLRPC interface on the datastore.
+    Mac OS X or iPhone Address Book = addressbook = contacts = apple-contacts
 
 syncFormat (no default, unshared)
    When there are alternative formats for the same data,

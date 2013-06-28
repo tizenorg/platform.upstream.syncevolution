@@ -260,7 +260,7 @@ void FullView::removeIndividual(FolksIndividual *individual)
 
 void FullView::onIdle()
 {
-    SE_LOG_DEBUG(NULL, NULL, "process is idle");
+    SE_LOG_DEBUG(NULL, NULL, "full view: process is idle");
 
     // Process delayed contact modifications.
     BOOST_FOREACH (const FolksIndividualCXX &individual,
@@ -274,13 +274,14 @@ void FullView::onIdle()
     if (isQuiescent()) {
         m_quiescenceSignal();
     }
-    m_waitForIdle.deactivate();
 }
 
 void FullView::waitForIdle()
 {
     if (!m_waitForIdle) {
-        m_waitForIdle.runOnce(-1, boost::bind(&FullView::onIdle, this));
+        // Run this after all other idle callbacks that we may have added,
+        // like the "fill view on idle" callback in the filtered view.
+        m_waitForIdle.runOnce(boost::bind(&FullView::onIdle, this), Timeout::PRIORITY_LOW);
     }
 }
 
