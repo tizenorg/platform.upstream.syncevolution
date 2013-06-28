@@ -433,7 +433,7 @@ EXTRA_DIST = \
 	Doxyfile
 
 MAINTAINERCLEANFILES = Makefile.in config.h.in config.guess config.sub configure depcomp install-sh ltmain.sh missing mkinstalldirs 
-CLEANFILES = syncevolution.1 README README.html
+CLEANFILES = README.patched.rst syncevolution.1 README README.html
 TEST_README_FILES = $(wildcard $(srcdir)/test/README.*)
 DEV_FILE_PATTERN = $(1)$(2)/etc $(1)$(2)/include $(1)$(2)/lib/*.so $(1)$(2)/lib/*.a $(1)$(2)/lib/*.la $(1)$(2)/lib/*/*.la $(1)$(2)/lib/pkgconfig
 IPHONE_FILENAME = syncevolution-$(VERSION)-iphone.zip
@@ -458,9 +458,6 @@ PKGNAME = syncevolution$(patsubst %,-%,$(BINSUFFIX))
 # This is a list of packages (potentially) provided on estamos.de.
 # The current package conflicts with any of them, but not itself.
 PKGS = $(addprefix syncevolution-evolution-, 2.6 2.8 2.12)
-
-# patch README.rst properties on-the-fly with sed expressions
-PATCH_README = -e "s/^:Version: .*/:Version: $(VERSION)/" -e "s/:Date: .*/:Date: `date +%Y-%m-%d`/"
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
@@ -1204,19 +1201,35 @@ dist-hook:
 @ENABLE_EVOLUTION_COMPATIBILITY_TRUE@		fi; \
 @ENABLE_EVOLUTION_COMPATIBILITY_TRUE@	done
 
+# patch README.rst properties on-the-fly
+README.patched.rst: README.rst src/syncevolution
+	perl -e '$$syncfound=0; $$sourcefound=0; $$res=0;' \
+	                -e 'sub run { $$cmd = shift; $$buffer = `$$cmd`; die if $$?; return $$buffer; }' \
+	                -e 'while (<>) {' \
+	                -e 's/^:Version: .*/:Version: $(VERSION)/;' \
+	                -e 's/:Date: .*/":Date: " . `date +%Y-%m-%d`/e;' \
+	                -e 'if (s;<<insert sync-property>>\n;run("src/syncevolution --daemon=no --sync-property ?");e) { $$syncfound=1; }' \
+	                -e 'if (s;<<insert source-property>>\n;run("src/syncevolution --daemon=no --source-property ?");e) { $$sourcefound=1; }' \
+	                -e 'print;' \
+	                -e '}' \
+	                -e 'die "<<insert sync-property>> not in README.rst?!" unless $$syncfound;' \
+	                -e 'die "<<insert source-property>> not in README.rst?!" unless $$sourcefound;' \
+	                -e 'exit $$res;' \
+	                $< >$@
+
 # produce man pages
-syncevolution.1: README.rst
-	sed $(PATCH_README) $< | $(RST2MAN) --exit-status=3 - >$@
+syncevolution.1: README.patched.rst
+	$(RST2MAN) --exit-status=3 $< >$@
 
 # README is the traditional name in the distribution,
 # continue using it instead of README.rst.
-README: README.rst
-	sed $(PATCH_README) $< >$@
+README: README.patched.rst
+	cp $< $@
 
 # The README.html is also used on syncevolution.org as "Usage" page,
 # therefore we must use <h3> headers and lower to fit into the page.
-README.html: README.rst
-	sed $(PATCH_README) $< | $(RST2HTML) --initial-header-level=3 --exit-status=3 - >$@
+README.html: README.patched.rst
+	$(RST2HTML) --initial-header-level=3 --exit-status=3 $< >$@
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

@@ -1,6 +1,6 @@
 include $(top_srcdir)/m4-repo/autotroll.mk
 
-BACKENDS =  backends/akonadi backends/sqlite backends/evolution backends/addressbook backends/kcalextended backends/buteo backends/file backends/maemo backends/webdav backends/xmlrpc backends/qtcontacts
+BACKENDS =  backends/sqlite backends/akonadi backends/addressbook backends/webdav backends/maemo backends/qtcontacts backends/file backends/evolution backends/kcalextended backends/buteo backends/xmlrpc
 
 # start with building nothing and add more targets below
 SUBDIRS =

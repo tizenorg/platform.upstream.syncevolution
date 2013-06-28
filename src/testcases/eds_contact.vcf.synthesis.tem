@@ -162,7 +162,7 @@ X-EVOLUTION-MANAGER:John Doe Senior
 X-EVOLUTION-ASSISTANT:John Doe Junior
 NICKNAME:user1
 BDAY:2006-01-08
-X-FOOBAR-EXTENSION;X-FOOBAR-PARAMETER=foobar:has to be stored internally by engine and preserved in testExtensions test\; never sent to a peer
+X-FOOBAR-EXTENSION;X-FOOBAR-PARAMETER=foobar:has to be stored internally by engine and preserved in testExtensions test - never sent to a peer
 X-TEST;PARAMETER1=nonquoted;PARAMETER2="quoted because of spaces":Text with\nMultiple\nText lines\nand national chars: äöü
 X-EVOLUTION-ANNIVERSARY:2006-01-09
 X-EVOLUTION-SPOUSE:Joan Doe
@@ -202,8 +202,10 @@ X-AIM;X-EVOLUTION-UI-SLOT=1:AIM JOHN
 X-YAHOO;X-EVOLUTION-UI-SLOT=2:YAHOO JDOE
 X-ICQ;X-EVOLUTION-UI-SLOT=3:ICQ JD
 X-GROUPWISE;X-EVOLUTION-UI-SLOT=4:GROUPWISE DOE
+X-GROUPWISE;X-EVOLUTION-UI-SLOT=5:GROUPWISE DOE 2ND
 X-GADUGADU:GADUGADU DOE
 X-JABBER:JABBER DOE
+X-JABBER:JABBER DOE 2ND
 X-MSN:MSN DOE
 X-SKYPE:SKYPE DOE
 X-SIP:SIP DOE

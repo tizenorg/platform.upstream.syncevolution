@@ -671,7 +671,7 @@ SUFFIXES = .moc.cpp .moc.cc .moc.cxx .moc.C .h .hh .hpp \
            .qrc .qrc.cpp .qrc.cc .qrc.cxx .qrc.C
 
 DISTCLEANFILES = $(BUILT_SOURCES) synccompare
-BACKENDS = backends/akonadi backends/sqlite backends/evolution backends/addressbook backends/kcalextended backends/buteo backends/file backends/maemo backends/webdav backends/xmlrpc backends/qtcontacts
+BACKENDS = backends/sqlite backends/akonadi backends/addressbook backends/webdav backends/maemo backends/qtcontacts backends/file backends/evolution backends/kcalextended backends/buteo backends/xmlrpc
 
 # start with building nothing and add more targets below
 SUBDIRS = $(am__append_1) $(am__append_2) $(am__append_3) \

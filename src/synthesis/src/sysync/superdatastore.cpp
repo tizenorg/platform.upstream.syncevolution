@@ -530,7 +530,7 @@ bool TSuperDataStore::engProcessRemoteItem(
   bool regular=true;
   string datatext;
   #ifdef SYSYNC_SERVER
-  TSyncItem *itemcopyP;
+  TSyncItem *itemcopyP = NULL;
   #endif
 
   // show
@@ -617,42 +617,71 @@ bool TSuperDataStore::engProcessRemoteItem(
       case sop_delete:
       case sop_copy:
         // item has no local ID AND no data, only a remoteID:
-        // we must try to read item from all subdatastores by remoteID until
-        // one is found
+        // we must try to read item or attempt to delete in all subdatastores by remoteID
+        // until found in one of them
+
         // get an empty item of correct type to call logicRetrieveItemByID
         itemcopyP = getLocalReceiveType()->newSyncItem(getRemoteSendType(),this);
         // - only remote ID is relevant, leave everything else empty
         itemcopyP->setRemoteID(syncitemP->getRemoteID());
-        // try to read item from all subdatastores
+        // try to find item in any of the subdatastores
         for (pos=fSubDSLinks.begin();pos!=fSubDSLinks.end();pos++) {
           linkP = &(*pos);
           // always start with 200
           aStatusCommand.setStatusCode(200);
-          // now try to read
-          PDEBUGPRINTFX(DBG_DATA+DBG_DETAILS,(
-            "Trying to read item by remoteID='%s' from subdatastore '%s' to see if it is there",
-            itemcopyP->getRemoteID(),
-            linkP->fDatastoreLinkP->getName()
-          ));
-          regular=linkP->fDatastoreLinkP->logicRetrieveItemByID(*itemcopyP,aStatusCommand);
-          // must be ok AND not 404 (item not found)
-          if (regular && aStatusCommand.getStatusCode()!=404) {
-            PDEBUGPRINTFX(DBG_DATA,(
-              "Item found in subdatastore '%s', deleting it there",
+
+          // item deleted by a failed engProcessRemoteItem()?
+          if (!syncitemP) {
+            // recreate it for next attempt
+            syncitemP = getLocalReceiveType()->newSyncItem(getRemoteSendType(),this);
+            syncitemP->setRemoteID(itemcopyP->getRemoteID());
+            syncitemP->setSyncOp(sop);
+          }
+
+          if (sop!=sop_copy && linkP->fDatastoreLinkP->dsDeleteDetectsItemPresence()) {
+            // attempt to delete, consuming original item on success
+            regular=linkP->fDatastoreLinkP->engProcessRemoteItem(syncitemP,aStatusCommand);
+            // must be ok AND not 404 (item not found)
+            if (regular && aStatusCommand.getStatusCode()!=404) {
+              PDEBUGPRINTFX(DBG_DATA,(
+                "Item found in subdatastore '%s', deleted it there",
+                linkP->fDatastoreLinkP->getName()
+              ));
+
+              // done
+              goto done;
+            } else {
+              // syncitemP was deleted by engProcessRemoteItem() (for
+              // example, in TStdLogicDS::logicProcessRemoteItem()),
+              // so we must remember to recreate it from the copy for
+              // another attempt if there is one
+              syncitemP = NULL;
+            }
+          } else {
+            // try to read first to determine whether the subdatastore contains the item;
+            // necessary because the subdatastore is not able to report a 404 error in
+            // the delete operation when the item does not exist
+            PDEBUGPRINTFX(DBG_DATA+DBG_DETAILS,(
+              "Trying to read item by remoteID='%s' from subdatastore '%s' to see if it is there",
+              itemcopyP->getRemoteID(),
               linkP->fDatastoreLinkP->getName()
             ));
-            // now we can delete or copy, consuming original item
-            regular=linkP->fDatastoreLinkP->engProcessRemoteItem(syncitemP,aStatusCommand);
-            // delete duplicated item as well
-            delete itemcopyP;
-            // done
-            regular=true;
-            goto done;
+            regular=linkP->fDatastoreLinkP->logicRetrieveItemByID(*itemcopyP,aStatusCommand);
+            // must be ok AND not 404 (item not found)
+            if (regular && aStatusCommand.getStatusCode()!=404) {
+              PDEBUGPRINTFX(DBG_DATA,(
+                "Item found in subdatastore '%s', deleting it there",
+                linkP->fDatastoreLinkP->getName()
+              ));
+              // now we can delete or copy, consuming original item
+              regular=linkP->fDatastoreLinkP->engProcessRemoteItem(syncitemP,aStatusCommand);
+              // done
+              regular=true;
+              goto done;
+            }
           }
         }
         // none of the datastores could process this item --> error
-        // - delete duplicated item
-        delete itemcopyP;
         // - make sure delete reports 200 for incomplete-rollback-datastores
         if (aStatusCommand.getStatusCode()==404 && sop!=sop_copy) {
           // not finding an item for delete might be ok for remote...
@@ -722,6 +751,9 @@ nods:
   regular=false;
   goto done;
 done:
+  #ifdef SYSYNC_SERVER
+  delete itemcopyP;
+  #endif
   PDEBUGENDBLOCK("SuperProcessItem");
   return regular;
 } // TSuperDataStore::engProcessRemoteItem

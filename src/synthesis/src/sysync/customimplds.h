@@ -477,6 +477,8 @@ public:
   virtual localstatus apiSaveAdminData(bool aSessionFinished, bool aSuccessful) = 0;
   #endif // BINFILE_ALWAYS_ACTIVE
 
+  /// allow early data access start (if datastore is configured for it)
+  virtual localstatus apiEarlyDataAccessStart(void) { return LOCERR_OK; /* nop if not overridden */ };
   /// read sync set IDs and mod dates.
   /// @param[in] if set, all data fields are needed, so ReadSyncSet MAY
   ///   read items here already. Note that ReadSyncSet MAY read items here

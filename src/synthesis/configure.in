@@ -4,7 +4,7 @@ AC_INIT(src/sysync/engineinterface.cpp)
 AC_CONFIG_MACRO_DIR([m4])
 # four digit upstream version, one additional digit for
 # Linux/SyncEvolution specific extensions:
-AM_INIT_AUTOMAKE(synthesis, 3.4.0.16.4)
+AM_INIT_AUTOMAKE(synthesis, 3.4.0.16.6)
 AM_CONFIG_HEADER(config.h)
 AC_LIBTOOL_DLOPEN
 
@@ -16,8 +16,8 @@ AM_PROG_CC_C_O
 
 # --enable-warning=min/max/fatal/none
 DK_ARG_ENABLE_WARNINGS([SYNTHESIS_WFLAGS],
-                       [-Wall -Wno-unknown-pragmas],
-                       [-Wall -Wno-unknown-pragmas],
+                       [-Wall -Wno-unknown-pragmas -Wno-unused-but-set-variable],
+                       [-Wall -Wno-unknown-pragmas -Wno-unused-but-set-variable],
                        [])
 
 dnl Extract PIC flags from libtool configure for libsynthesissdk.a

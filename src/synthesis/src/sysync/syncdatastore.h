@@ -56,6 +56,8 @@ public:
   virtual uInt16 isDatastore(const char *aDatastoreURI);
   // - returns if specified type is used by this datastore
   bool doesUseType(TSyncItemType *aSyncItemType, TTypeVariantDescriptor *aVariantDescP=NULL);
+  // - true if data store is able to return 404 when asked to delete non-existent item
+  virtual bool dsDeleteDetectsItemPresence() const { return false; }
   // - get common types to send to or receive from another datastore
   TSyncItemType *getTypesForTxTo(TSyncDataStore *aDatastoreP, TSyncItemType **aCorrespondingTypePP=NULL);
   TSyncItemType *getTypesForRxFrom(TSyncDataStore *aDatastoreP, TSyncItemType **aCorrespondingTypePP=NULL);

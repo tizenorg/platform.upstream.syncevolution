@@ -481,7 +481,7 @@ Ret_t getTagString(XltTagID_t tagID, String_t tagString, SmlPcdataExtension_t ex
       return SML_ERR_NOT_ENOUGH_SPACE;
     }
     while (((pTags+i)->id) != TN_UNDEF) {
-      if ((((pTags+i)->id) == tagID)) {
+      if (((pTags+i)->id) == tagID) {
         String_t _tmp = (pTags+i)->xml;
         smlLibStrcpy(tagString, _tmp);
         return SML_ERR_OK;
@@ -581,7 +581,7 @@ Ret_t getExtById(XltTagID_t tagID,  SmlPcdataExtension_t *pExt)
     }
     i = 0;
     while (((pTags+i)->id) != TN_UNDEF) {
-      if ((((pTags+i)->id) == tagID)){
+      if (((pTags+i)->id) == tagID){
             *pExt = ext;
           return SML_ERR_OK;
           }

@@ -1616,6 +1616,16 @@ localstatus TCustomImplDS::implMakeAdminReady(
       if (!TScriptContext::executeTest(true,fScriptContextP,fConfigP->fAdminReadyScript,fConfigP->getDSFuncTableP(),fAgentP))
         sta=510; // script returns false or fails -> DB error
       #endif
+      if (sta==LOCERR_OK) {
+        // successful so far, now allow for early startDataRead to occur if configured on api level
+        sta = apiEarlyDataAccessStart();
+        if (sta==508) {
+          // special case: the database requests a slow sync for internal reasons (like change tracking disabled)
+          // - force slow sync by removing last anchor
+          fLastRemoteAnchor.erase();
+          sta = LOCERR_OK;
+        }
+      }
     } // if apiLoadAdminData successful
   }
   SYSYNC_CATCH(exception &e)

@@ -104,6 +104,7 @@ void TPluginDSConfig::clear(void)
   fDBAPIModule_Admin.erase();
   fDBAPIModule_Data.erase();
   fDataModuleAlsoHandlesAdmin=false;
+  fEarlyStartDataRead = false;
   // - default to use all debug flags set (if debug for plugin is enabled at all)
   fPluginDbgMask_Admin=0xFFFF;
   fPluginDbgMask_Data=0xFFFF;
@@ -126,6 +127,8 @@ bool TPluginDSConfig::localStartElement(const char *aElementName, const char **a
     expectMacroString(fDBAPIModule_Data);
   else if (strucmp(aElementName,"plugin_datastoreadmin")==0)
     expectBool(fDataModuleAlsoHandlesAdmin);
+  else if (strucmp(aElementName,"plugin_earlystartdataread")==0)
+    expectBool(fEarlyStartDataRead);
   else if (strucmp(aElementName,"plugin_params")==0)
     expectChildParsing(fPluginParams_Data);
   else if (strucmp(aElementName,"plugin_debugflags")==0)
@@ -944,15 +947,30 @@ bool TPluginApiDS::dsFilteredFetchesFromDB(bool aFilterChanged)
 
 
 
-// read sync set IDs and mod dates (and rest of data if technically unavoidable or
-// requested by aNeedAll)
-localstatus TPluginApiDS::apiReadSyncSet(bool aNeedAll)
+// can return 508 to force a slow sync. Other errors abort the sync
+localstatus TPluginApiDS::apiEarlyDataAccessStart(void)
 {
-	TSyError dberr=LOCERR_OK;
-  #ifdef SYDEBUG
-  string ts1,ts2;
-  #endif
+  TSyError dberr = LOCERR_OK;
+  if (fPluginDSConfigP->fEarlyStartDataRead) {
+    // prepare
+    dberr = apiPrepareReadSyncSet();
+    if (dberr==LOCERR_OK) {
+      // start the reading phase anyway (to make sure call order is always StartRead/EndRead/StartWrite/EndWrite)
+      dberr = fDBApi_Data.StartDataRead(fPreviousToRemoteSyncIdentifier.c_str(),fPreviousSuspendIdentifier.c_str());
+      if (dberr!=LOCERR_OK) {
+        PDEBUGPRINTFX(DBG_ERROR,("apiEarlyDataAccessStart - DBapi::StartDataRead error: %hd",dberr));
+      }
+    }
+  }
+  return dberr;
+}
 
+
+
+// prepare for reading the sync set
+localstatus TPluginApiDS::apiPrepareReadSyncSet(void)
+{
+  TSyError dberr = LOCERR_OK;
   #ifdef BASED_ON_BINFILE_CLIENT
   if (binfileDSActive()) {
     // we need to create the context for the data plugin here, as loadAdminData is not called in BASED_ON_BINFILE_CLIENT case.
@@ -976,15 +994,34 @@ localstatus TPluginApiDS::apiReadSyncSet(bool aNeedAll)
       }
     }
     else if (dberr==LOCERR_NOTIMP)
-      dberr=LOCERR_OK; // we just don't have a data plugin, that's ok, inherited (SQL) will handle data
-    if (dberr!=LOCERR_OK)
-    	goto endread;
+      dberr=LOCERR_OK; // we just don't have a data plugin, that's ok
   } // binfile active
   #endif // BASED_ON_BINFILE_CLIENT
+  return dberr;
+}
+
+
+
+
+// read sync set IDs and mod dates (and rest of data if technically unavoidable or
+// requested by aNeedAll)
+localstatus TPluginApiDS::apiReadSyncSet(bool aNeedAll)
+{
+  TSyError dberr=LOCERR_OK;
+  #ifdef SYDEBUG
+  string ts1,ts2;
+  #endif
+
+  if (!fPluginDSConfigP->fEarlyStartDataRead) {
+    // normal sequence, start data read is not called before starting to read the sync set
+    dberr = apiPrepareReadSyncSet();
+    if (dberr!=LOCERR_OK)
+      goto endread;
+  }
   #ifndef SDK_ONLY_SUPPORT
   // only handle here if we are in charge - otherwise let ancestor handle it
   if (!fDBApi_Data.Created())
-  	return inherited::apiReadSyncSet(aNeedAll);
+    return inherited::apiReadSyncSet(aNeedAll);
   #endif
 
   // just let plugin know if we want data (if it actually does is the plugin's choice)
@@ -1022,11 +1059,13 @@ localstatus TPluginApiDS::apiReadSyncSet(bool aNeedAll)
     ts2.c_str()
   ));
   #endif
-  // start the reading phase anyway (to make sure call order is always StartRead/EndRead/StartWrite/EndWrite)
-  dberr = fDBApi_Data.StartDataRead(fPreviousToRemoteSyncIdentifier.c_str(),fPreviousSuspendIdentifier.c_str());
-  if (dberr!=LOCERR_OK) {
-  	PDEBUGPRINTFX(DBG_ERROR,("DBapi::StartDataRead fatal error: %hd",dberr));
-    goto endread;
+  if (!fPluginDSConfigP->fEarlyStartDataRead) {
+    // start the reading phase anyway (to make sure call order is always StartRead/EndRead/StartWrite/EndWrite)
+    dberr = fDBApi_Data.StartDataRead(fPreviousToRemoteSyncIdentifier.c_str(),fPreviousSuspendIdentifier.c_str());
+    if (dberr!=LOCERR_OK) {
+      PDEBUGPRINTFX(DBG_ERROR,("DBapi::StartDataRead fatal error: %hd",dberr));
+      goto endread;
+    }
   }
   // we don't need to load the syncset if we are only refreshing from remote
   // but we also must load it if we can't zap without it on slow refresh, or when we can't retrieve items on non-slow refresh

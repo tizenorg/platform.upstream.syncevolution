@@ -8,7 +8,8 @@ EXTRA_DIST =
 # extra files which need to be removed during "make distclean"
 MAINTAINERCLEANFILES = Makefile.in config.guess config.sub configure depcomp install-sh ltmain.sh missing mkinstalldirs
 
-ACLOCAL_AMFLAGS = -I m4
+# required for rebuilding autotools files via make
+ACLOCAL_AMFLAGS = -I m4 -I m4-repo ${ACLOCAL_FLAGS}
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = synthesis.pc synthesis-sdk.pc
