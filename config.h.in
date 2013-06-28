@@ -15,6 +15,10 @@
 /* define if bluez library is available */
 #undef ENABLE_BLUETOOTH
 
+/* overrides the default D-Bus timeout so that synchronous calls never time
+   out */
+#undef ENABLE_DBUS_TIMEOUT_HACK
+
 /* libebook available */
 #undef ENABLE_EBOOK
 
@@ -26,6 +30,9 @@
 
 /* enable integration tests inside the final library */
 #undef ENABLE_INTEGRATION_TESTS
+
+/* KCalExtended available */
+#undef ENABLE_KCALEXTENDED
 
 /* enable libcurl transport */
 #undef ENABLE_LIBCURL
@@ -47,6 +54,9 @@
 
 /* define if openobex library is available */
 #undef ENABLE_OBEX
+
+/* QtContacts available */
+#undef ENABLE_QTCONTACTS
 
 /* sqlite available */
 #undef ENABLE_SQLITE

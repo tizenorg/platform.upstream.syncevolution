@@ -364,6 +364,9 @@ TBinfileImplDS::TBinfileImplDS(
   // no changelog loaded yet (needed here because InternalResetDataStore will test it)
   fLoadedChangeLog=NULL;
   fLoadedChangeLogEntries=0; // just to make sure
+  fPreviousToRemoteModCount=0;
+  fPreviousSuspendModCount=0;
+  fCurrentModCount=0;
   // now do internal reset
   InternalResetDataStore();
   // save config pointer

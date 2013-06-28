@@ -8170,5 +8170,6 @@ AC_SUBST([am__tar])
 AC_SUBST([am__untar])
 ]) # _AM_PROG_TAR
 
+m4_include([m4-repo/autotroll.m4])
 m4_include([m4-repo/ax_boost_base.m4])
 m4_include([m4/intltool.m4])

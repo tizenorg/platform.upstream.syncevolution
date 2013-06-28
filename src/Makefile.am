@@ -1,4 +1,4 @@
-BACKENDS =  backends/addressbook backends/evolution backends/file backends/maemo backends/sqlite backends/xmlrpc
+BACKENDS =  backends/addressbook backends/evolution backends/file backends/kcalextended backends/maemo backends/qtcontacts backends/sqlite backends/xmlrpc
 
 # start with building nothing and add more targets below
 SUBDIRS =
@@ -84,7 +84,7 @@ SYNCEVOLUTION_DEP += $(SYNCSOURCES)
 endif
 EXTRA_DIST = shlibs.local Makefile-gen.am $(service_in_files) $(SYNCEVO_DBUS_SERVER_SCRIPT_IN) $(SYNCEVO_DBUS_SERVER_DESKTOP_IN)
 
-TEMPLATE_FILES = templates/README templates/clients/SyncEvolution.ini templates/clients/phone/nokia/S40/7210c.ini templates/clients/phone/nokia/S60/N85.ini templates/clients/phone/nokia/maemo/n900.ini templates/servers/Funambol.ini templates/servers/ScheduleWorld.ini
+TEMPLATE_FILES = templates/README templates/clients/SyncEvolution.ini templates/clients/phone/nokia.ini templates/clients/phone/sony-ericsson-old.ini templates/clients/phone/sony-ericsson.ini templates/servers/Funambol.ini templates/servers/ScheduleWorld.ini
 templatedir = $(datadir)/syncevolution/
 
 # synccompare is created by replacing its 'import Algorithm::Diff;'
@@ -104,7 +104,7 @@ CORE_SOURCES =
 # When using modules the registration is done inside the
 # module and the register file is unnecessary. However, they
 # still need to be included in "make dist".
-BACKEND_REGISTRIES = backends/addressbook/AddressBookSourceRegister.cpp backends/evolution/EvolutionCalendarSourceRegister.cpp backends/evolution/EvolutionContactSourceRegister.cpp backends/file/FileSyncSourceRegister.cpp backends/maemo/MaemoCalendarSourceRegister.cpp backends/sqlite/SQLiteContactSourceRegister.cpp backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
+BACKEND_REGISTRIES = backends/addressbook/AddressBookSourceRegister.cpp backends/evolution/EvolutionCalendarSourceRegister.cpp backends/evolution/EvolutionContactSourceRegister.cpp backends/file/FileSyncSourceRegister.cpp backends/kcalextended/KCalExtendedSourceRegister.cpp backends/maemo/MaemoCalendarSourceRegister.cpp backends/qtcontacts/QtContactsSourceRegister.cpp backends/sqlite/SQLiteContactSourceRegister.cpp backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
 if ENABLE_MODULES
 EXTRA_DIST += $(BACKEND_REGISTRIES)
 else
@@ -279,10 +279,7 @@ testcase2patch: $(TEST_FILES_GENERATED)
 	done
 
 # copy base test files
-$(filter-out %.tem testcases/templates/%, $(filter testcases/%, $(subst $(srcdir)/../test/,,$(CLIENT_LIB_TEST_FILES)))) : % : $(srcdir)/../test/%
-	mkdir -p ${@D}
-	cp $< $@
-$(filter testcases/templates/%, $(CLIENT_LIB_TEST_FILES)) : testcases/% : $(srcdir)/%
+$(filter-out %.tem, $(filter testcases/%, $(subst $(srcdir)/../test/,,$(CLIENT_LIB_TEST_FILES)))) : % : $(srcdir)/../test/%
 	mkdir -p ${@D}
 	cp $< $@
 

@@ -46,7 +46,8 @@ DIST_COMMON = $(libsyncevolution_include_HEADERS) \
 	$(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(srcdir)/syncevolution.pc.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/m4-repo/ax_boost_base.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/m4-repo/autotroll.m4 \
+	$(top_srcdir)/m4-repo/ax_boost_base.m4 \
 	$(top_srcdir)/m4/intltool.m4 $(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -262,6 +263,8 @@ INTLTOOL_EXTRACT = @INTLTOOL_EXTRACT@
 INTLTOOL_MERGE = @INTLTOOL_MERGE@
 INTLTOOL_PERL = @INTLTOOL_PERL@
 INTLTOOL_UPDATE = @INTLTOOL_UPDATE@
+KCALEXTENDED_CFLAGS = @KCALEXTENDED_CFLAGS@
+KCALEXTENDED_LIBS = @KCALEXTENDED_LIBS@
 KEYRING_2_20_CFLAGS = @KEYRING_2_20_CFLAGS@
 KEYRING_2_20_LIBS = @KEYRING_2_20_LIBS@
 KEYRING_CFLAGS = @KEYRING_CFLAGS@
@@ -286,6 +289,7 @@ MCALB_CFLAGS = @MCALB_CFLAGS@
 MCALB_LIBS = @MCALB_LIBS@
 MKDIR_P = @MKDIR_P@
 MKINSTALLDIRS = @MKINSTALLDIRS@
+MOC = @MOC@
 MODIFY_SYNCCOMPARE = @MODIFY_SYNCCOMPARE@
 MSGFMT = @MSGFMT@
 MSGFMT_OPTS = @MSGFMT_OPTS@
@@ -308,7 +312,20 @@ POFILES = @POFILES@
 POSUB = @POSUB@
 PO_IN_DATADIR_FALSE = @PO_IN_DATADIR_FALSE@
 PO_IN_DATADIR_TRUE = @PO_IN_DATADIR_TRUE@
+QMAKE = @QMAKE@
+QT_CFLAGS = @QT_CFLAGS@
+QT_CONTACTS_LIBS = @QT_CONTACTS_LIBS@
+QT_CPPFLAGS = @QT_CPPFLAGS@
+QT_CXXFLAGS = @QT_CXXFLAGS@
+QT_DEFINES = @QT_DEFINES@
+QT_INCPATH = @QT_INCPATH@
+QT_LDFLAGS = @QT_LDFLAGS@
+QT_LFLAGS = @QT_LFLAGS@
+QT_LIBS = @QT_LIBS@
+QT_PATH = @QT_PATH@
+QT_VERSION_MAJOR = @QT_VERSION_MAJOR@
 RANLIB = @RANLIB@
+RCC = @RCC@
 RST2HTML = @RST2HTML@
 RST2MAN = @RST2MAN@
 SED = @SED@
@@ -339,6 +356,7 @@ SYNTHESIS_SUBDIR = @SYNTHESIS_SUBDIR@
 SYNTHESIS_SUBDIR_INCLUDES = @SYNTHESIS_SUBDIR_INCLUDES@
 TRANSPORT_CFLAGS = @TRANSPORT_CFLAGS@
 TRANSPORT_LIBS = @TRANSPORT_LIBS@
+UIC = @UIC@
 UNIQUE_CFLAGS = @UNIQUE_CFLAGS@
 UNIQUE_LIBS = @UNIQUE_LIBS@
 USE_NLS = @USE_NLS@
@@ -402,6 +420,7 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AM_CPPFLAGS = @BACKEND_CPPFLAGS@ @GLIB_CFLAGS@ -I$(top_srcdir)/test -I$(top_srcdir)/src -DSYNCEVO_BACKEND=\"$(backendsearchdir)\"
 SUBDIRS = configs
+BUILT_SOURCES = CmdlineHelp.c
 MAINTAINERCLEANFILES = Makefile.in
 lib_LTLIBRARIES = libsyncevolution.la
 SYNCEVOLUTION_SOURCES = ConfigTree.h ConfigNode.h ConfigNode.cpp \
@@ -447,10 +466,13 @@ libsyncevolution_include_HEADERS = \
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = syncevolution.pc
 DISTCLEANFILES = syncevolution.pc
-EXTRA_DIST = syncevolution.pc.in installcheck-local.sh
+EXTRA_DIST = syncevolution.pc.in readme2c.pl installcheck-local.sh
 libsyncevolution_la_SOURCES = $(SYNCEVOLUTION_SOURCES)
 nodist_libsyncevolution_la_SOURCES = SyncEvolutionXML.c
-CLEANFILES = SyncEvolutionXML.c
+
+# turn README.rst into a file with plain text strings for
+# "Synopsis" and "Usage"
+CLEANFILES = SyncEvolutionXML.c CmdlineHelp.c
 libsyncevolution_la_LIBADD = @EPACKAGE_LIBS@ @GLIB_LIBS@ $(SYNTHESIS_LIBS) $(TRANSPORT_LIBS) @LIBS@ $(SYNCEVOLUTION_LDADD) $(NSS_LIBS)
 libsyncevolution_la_CXXFLAGS = $(TRANSPORT_CFLAGS) $(SYNCEVOLUTION_CXXFLAGS) $(SYNTHESIS_CFLAGS) $(NSS_CFLAGS)
 libsyncevolution_la_CPPFLAGS = $(AM_CPPFLAGS) \
@@ -464,7 +486,8 @@ libsyncevolution_la_DEPENDENCIES = $(SYNTHESIS_DEP)
 
 # command which embeds its input lines into a C-style string that runs across multiple lines
 TO_C_STRING = sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\(.*\)/"\1\\n"/'
-all: all-recursive
+all: $(BUILT_SOURCES)
+	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
 .SUFFIXES:
 .SUFFIXES: .c .cpp .lo .o .obj
@@ -1040,14 +1063,16 @@ distdir: $(DISTFILES)
 	  fi; \
 	done
 check-am: all-am
-check: check-recursive
+check: $(BUILT_SOURCES)
+	$(MAKE) $(AM_MAKEFLAGS) check-recursive
 all-am: Makefile $(LTLIBRARIES) $(DATA) $(HEADERS)
 installdirs: installdirs-recursive
 installdirs-am:
 	for dir in "$(DESTDIR)$(libdir)" "$(DESTDIR)$(pkgconfigdir)" "$(DESTDIR)$(libsyncevolution_includedir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
-install: install-recursive
+install: $(BUILT_SOURCES)
+	$(MAKE) $(AM_MAKEFLAGS) install-recursive
 install-exec: install-exec-recursive
 install-data: install-data-recursive
 uninstall: uninstall-recursive
@@ -1073,6 +1098,7 @@ distclean-generic:
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
+	-test -z "$(BUILT_SOURCES)" || rm -f $(BUILT_SOURCES)
 	-test -z "$(MAINTAINERCLEANFILES)" || rm -f $(MAINTAINERCLEANFILES)
 clean: clean-recursive
 
@@ -1175,6 +1201,8 @@ GenSyncEvolutionXML:
 	(cd $(srcdir)/configs && cat remoterules/*.xml remoterules/client/*.xml) | $(TO_C_STRING) >>SyncEvolutionXML.c.new
 	echo ";" >>SyncEvolutionXML.c.new
 	if cmp SyncEvolutionXML.c SyncEvolutionXML.c.new >/dev/null; then rm SyncEvolutionXML.c.new; else mv SyncEvolutionXML.c.new SyncEvolutionXML.c; fi
+CmdlineHelp.c: readme2c.pl $(top_srcdir)/README.rst
+	perl $+ >$@
 
 # include boost in distribution
 #dist-hook:

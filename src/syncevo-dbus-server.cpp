@@ -27,6 +27,7 @@
 #include <syncevo/LogRedirect.h>
 #include <syncevo/util.h>
 #include <syncevo/SyncContext.h>
+#include <syncevo/TransportAgent.h>
 #include <syncevo/SoupTransportAgent.h>
 #include <syncevo/SyncSource.h>
 #include <syncevo/SyncML.h>
@@ -173,13 +174,13 @@ static DBusMessage* SyncEvoHandleException(DBusMessage *msg)
     try {
         throw;
     } catch (const dbus_error &ex) {
-        return g_dbus_create_error(msg, ex.dbusName().c_str(), "%s", ex.what());
+        return b_dbus_create_error(msg, ex.dbusName().c_str(), "%s", ex.what());
     } catch (const DBusCXXException &ex) {
-        return g_dbus_create_error(msg, ex.getName().c_str(), "%s", ex.getMessage());
+        return b_dbus_create_error(msg, ex.getName().c_str(), "%s", ex.getMessage());
     } catch (const std::runtime_error &ex) {
-        return g_dbus_create_error(msg, "org.syncevolution.Exception", "%s", ex.what());
+        return b_dbus_create_error(msg, "org.syncevolution.Exception", "%s", ex.what());
     } catch (...) {
-        return g_dbus_create_error(msg, "org.syncevolution.Exception", "unknown");
+        return b_dbus_create_error(msg, "org.syncevolution.Exception", "unknown");
     }
 }
 
@@ -951,12 +952,6 @@ class DBusServer : public DBusObjectHelper,
     typedef std::list< std::pair< boost::shared_ptr<Watch>, boost::shared_ptr<Client> > > Clients_t;
     Clients_t m_clients;
 
-    /* clients that attach the server explicitly
-     * the pair is <client id, attached times>. Each attach has
-     * to be matched with one detach.
-     */
-    std::list<std::pair<Caller_t, int> > m_attachedClients;
-
     /* Event source that regurally pool network manager
      * */
     GLibEvent m_pollConnman;
@@ -1024,12 +1019,35 @@ class DBusServer : public DBusObjectHelper,
      */
     void clientGone(Client *c);
 
+    /** Server.GetCapabilities() */
+    vector<string> getCapabilities();
+
+    /** Server.GetVersions() */
+    StringMap getVersions();
+
     /** Server.Attach() */
     void attachClient(const Caller_t &caller,
                       const boost::shared_ptr<Watch> &watch);
 
     /** Server.Detach() */
     void detachClient(const Caller_t &caller);
+
+    /** Server.DisableNotifications() */
+    void disableNotifications(const Caller_t &caller,
+                              const string &notifications) {
+        setNotifications(false, caller, notifications);
+    }
+
+    /** Server.EnableNotifications() */
+    void enableNotifications(const Caller_t &caller,
+                             const string &notifications) {
+        setNotifications(true, caller, notifications);
+    }
+
+    /** actual implementation of enable and disable */
+    void setNotifications(bool enable,
+                          const Caller_t &caller,
+                          const string &notifications);
 
     /** Server.Connect() */
     void connect(const Caller_t &caller,
@@ -1043,7 +1061,16 @@ class DBusServer : public DBusObjectHelper,
     void startSession(const Caller_t &caller,
                       const boost::shared_ptr<Watch> &watch,
                       const std::string &server,
-                      DBusObject_t &object);
+                      DBusObject_t &object) {
+        startSessionWithFlags(caller, watch, server, std::vector<std::string>(), object);
+    }
+
+    /** Server.StartSessionWithFlags() */
+    void startSessionWithFlags(const Caller_t &caller,
+                               const boost::shared_ptr<Watch> &watch,
+                               const std::string &server,
+                               const std::vector<std::string> &flags,
+                               DBusObject_t &object);
 
     /** Server.GetConfig() */
     void getConfig(const std::string &config_name,
@@ -1112,12 +1139,6 @@ class DBusServer : public DBusObjectHelper,
     /** remove InfoReq from hash map */
     void removeInfoReq(const InfoReq &req);
 
-    /*
-     * Decrease refs for a client. If allRefs, it tries to remove all refs from 'Attach()'
-     * for the client. Otherwise, decrease one ref for the client.
-     */
-    void detachClientRefs(const Caller_t &caller, bool allRefs);
-
     /** Server.SessionChanged */
     EmitSignal2<const DBusObject_t &,
                 bool> sessionChanged;
@@ -1132,6 +1153,12 @@ class DBusServer : public DBusObjectHelper,
      * input for the templates, is changed
      */
     EmitSignal0 templatesChanged;
+
+    /**
+     * Server.ConfigChanged, triggered each time a session ends
+     * which modified its configuration
+     */
+    EmitSignal0 configChanged;
 
     /** Server.InfoRequest */
     EmitSignal6<const std::string &,
@@ -1268,6 +1295,11 @@ public:
     AutoSyncManager &getAutoSyncManager() { return m_autoSync; }
 
     /**
+     * false if any client requested suppression of notifications
+     */
+    bool notificationsEnabled();
+
+    /**
      * implement virtual method from LogStdout.
      * Not only print the message in the console
      * but also send them as signals to clients
@@ -1291,10 +1323,18 @@ class Client
     typedef std::list< boost::shared_ptr<Resource> > Resources_t;
     Resources_t m_resources;
 
+    /** counts how often a client has called Attach() without Detach() */
+    int m_attachCount;
+
+    /** current client setting for notifications (see HAS_NOTIFY) */
+    bool m_notificationsEnabled;
+
 public:
     const Caller_t m_ID;
 
     Client(const Caller_t &ID) :
+        m_attachCount(0),
+        m_notificationsEnabled(true),
         m_ID(ID)
     {}
 
@@ -1302,7 +1342,13 @@ public:
     {
         SE_LOG_DEBUG(NULL, NULL, "D-Bus client %s is destructing", m_ID.c_str());
     }
-        
+
+    void increaseAttachCount() { ++m_attachCount; }
+    void decreaseAttachCount() { --m_attachCount; }
+    int getAttachCount() const { return m_attachCount; }
+
+    void setNotificationsEnabled(bool enabled) { m_notificationsEnabled = enabled; }
+    bool getNotificationsEnabled() const { return m_notificationsEnabled; }
 
     /**
      * Attach a specific resource to this client. As long as the
@@ -1451,6 +1497,11 @@ public:
     bool savePassword(const string &passwordName, 
                       const string &password, 
                       const ConfigPasswordKey &key);
+
+    /**
+     * Read stdin via InfoRequest/Response.
+     */
+    void readStdin(string &content);
 };
 
 /**
@@ -1660,6 +1711,7 @@ class Session : public DBusObjectHelper,
                 private boost::noncopyable
 {
     DBusServer &m_server;
+    std::vector<std::string> m_flags;
     const std::string m_sessionID;
     std::string m_peerDeviceID;
 
@@ -1680,7 +1732,10 @@ class Session : public DBusObjectHelper,
     /** whether dbus clients set temporary configs */
     bool m_tempConfig;
 
-    /** whether dbus clients update or clear configs, not include temporary set */
+    /**
+     * whether the dbus clients updated, removed or cleared configs,
+     * ignoring temporary configuration changes
+     */
     bool m_setConfig;
 
     /**
@@ -1816,7 +1871,8 @@ public:
     Session(DBusServer &server,
             const std::string &peerDeviceID,
             const std::string &config_name,
-            const std::string &session);
+            const std::string &session,
+            const std::vector<std::string> &flags = std::vector<std::string>());
     ~Session();
 
     enum {
@@ -1885,6 +1941,12 @@ public:
     string askPassword(const string &passwordName, 
                        const string &descr, 
                        const ConfigPasswordKey &key);
+
+    /** Session.GetFlags() */
+    std::vector<std::string> getFlags() { return m_flags; }
+
+    /** Session.GetConfigName() */
+    std::string getNormalConfigName() { return SyncConfig::normalizeConfigString(m_configName); }
 
     /** Session.SetConfig() */
     void setConfig(bool update, bool temporary,
@@ -2035,6 +2097,8 @@ public:
         // before closing the session
         redirectPtr->flush();
     }
+
+    bool configWasModified() { return m_cmdline.configWasModified(); }
 };
 
 /**
@@ -2711,6 +2775,10 @@ bool DBusUserInterface::savePassword(const string &passwordName,
 #endif
 }
 
+void DBusUserInterface::readStdin(string &content)
+{
+    throwError("reading stdin in D-Bus server not supported, use --daemon=no in command line");
+}
 
 /***************** DBusSync implementation **********************/
 
@@ -2872,6 +2940,7 @@ void Session::setConfig(bool update, bool temporary,
         boost::shared_ptr<SyncConfig> syncConfig(new SyncConfig(getConfigName()));
         if(syncConfig.get()) {
             syncConfig->remove();
+            m_setConfig = true;
         }
         return;
     }
@@ -3097,13 +3166,15 @@ string Session::syncStatusToString(SyncStatus state)
 Session::Session(DBusServer &server,
                  const std::string &peerDeviceID,
                  const std::string &config_name,
-                 const std::string &session) :
+                 const std::string &session,
+                 const std::vector<std::string> &flags) :
     DBusObjectHelper(server.getConnection(),
                      std::string("/org/syncevolution/Session/") + session,
                      "org.syncevolution.Session",
                      boost::bind(&DBusServer::autoTermCallback, &server)),
     ReadOperations(config_name, server),
     m_server(server),
+    m_flags(flags),
     m_sessionID(session),
     m_peerDeviceID(peerDeviceID),
     m_serverMode(false),
@@ -3129,6 +3200,8 @@ Session::Session(DBusServer &server,
     emitProgress(*this, "ProgressChanged")
 {
     add(this, &Session::detach, "Detach");
+    add(this, &Session::getFlags, "GetFlags");
+    add(this, &Session::getNormalConfigName, "GetConfigName");
     add(static_cast<ReadOperations *>(this), &ReadOperations::getConfigs, "GetConfigs");
     add(static_cast<ReadOperations *>(this), &ReadOperations::getConfig, "GetConfig");
     add(this, &Session::setConfig, "SetConfig");
@@ -3154,6 +3227,11 @@ Session::~Session()
         m_server.getAutoSyncManager().update(m_configName);
     }
     m_server.dequeue(this);
+
+    // now tell other clients about config change?
+    if (m_setConfig) {
+        m_server.configChanged();
+    }
 }
     
 
@@ -3350,6 +3428,8 @@ void Session::run()
                         m_error = status;
                     }
                 }
+                m_setConfig = m_cmdline->configWasModified();
+                break;
             default:
                 break;
             };
@@ -4482,7 +4562,7 @@ ConnmanClient::ConnmanClient(DBusServer &server):
     m_propertyChanged(*this, "PropertyChanged")
 {
     const char *connmanTest = getenv ("DBUS_TEST_CONNMAN");
-    m_connmanConn = g_dbus_setup_bus (connmanTest ? DBUS_BUS_SESSION: DBUS_BUS_SYSTEM, NULL, true, NULL);
+    m_connmanConn = b_dbus_setup_bus (connmanTest ? DBUS_BUS_SESSION: DBUS_BUS_SYSTEM, NULL, true, NULL);
     if (m_connmanConn){
         typedef std::map <std::string, boost::variant <std::vector <std::string> > > PropDict;
         DBusClientCall1<PropDict>  getProp(*this,"GetProperties");
@@ -4579,12 +4659,11 @@ void DBusServer::clientGone(Client *c)
         if (it->second.get() == c) {
             SE_LOG_DEBUG(NULL, NULL, "D-Bus client %s has disconnected",
                          c->m_ID.c_str());
+            autoTermUnref(it->second->getAttachCount());
             m_clients.erase(it);
             return;
         }
     }
-    // remove the client if it attaches the dbus server
-    detachClientRefs(c->m_ID, true);
     SE_LOG_DEBUG(NULL, NULL, "unknown client has disconnected?!");
 }
 
@@ -4600,50 +4679,72 @@ std::string DBusServer::getNextSession()
     return StringPrintf("%u%u", rand(), m_lastSession);
 }
 
+vector<string> DBusServer::getCapabilities()
+{
+    // Note that this is tested by test-dbus.py in
+    // TestDBusServer.testCapabilities, update the test when adding
+    // capabilities.
+    vector<string> capabilities;
+
+    capabilities.push_back("ConfigChanged");
+    capabilities.push_back("GetConfigName");
+    capabilities.push_back("Notifications");
+    capabilities.push_back("Version");
+    capabilities.push_back("SessionFlags");
+    return capabilities;
+}
+
+StringMap DBusServer::getVersions()
+{
+    StringMap versions;
+
+    versions["version"] = VERSION;
+    versions["system"] = EDSAbiWrapperInfo();
+    versions["backends"] = SyncSource::backendsInfo();
+    return versions;
+}
+
 void DBusServer::attachClient(const Caller_t &caller,
                               const boost::shared_ptr<Watch> &watch)
 {
     boost::shared_ptr<Client> client = addClient(getConnection(),
                                                  caller,
                                                  watch);
-    std::list<std::pair<Caller_t, int> >::iterator it;
-    for(it = m_attachedClients.begin(); it != m_attachedClients.end(); ++it) {
-        if (it->first == caller) {
-            break;
-        }
-    }
     autoTermRef();
-    // if not attach before, then create it
-    if(it == m_attachedClients.end()) {
-        m_attachedClients.push_back(std::pair<Caller_t, int>(caller, 1));
-        watch->setCallback(boost::bind(&DBusServer::clientGone, this, client.get()));
-    } else {
-        it->second++;
-    }
+    client->increaseAttachCount();
 }
 
 void DBusServer::detachClient(const Caller_t &caller)
 {
-    detachClientRefs(caller, false);
+    boost::shared_ptr<Client> client = findClient(caller);
+    if (client) {
+        autoTermUnref();
+        client->decreaseAttachCount();
+    }
 }
 
-void DBusServer::detachClientRefs(const Caller_t &caller, bool allRefs)
+void DBusServer::setNotifications(bool enabled,
+                                  const Caller_t &caller,
+                                  const string & /* notifications */)
 {
-    std::list<std::pair<Caller_t, int> >::iterator it;
-    for(it = m_attachedClients.begin(); it != m_attachedClients.end(); ++it) {
-        if (it->first == caller) {
-            if(allRefs) {
-                autoTermUnref(it->second);
-                m_attachedClients.erase(it);
-            } else if(--it->second == 0) {
-                autoTermUnref();
-                m_attachedClients.erase(it);
-            } else {
-                autoTermUnref();
-            }
-            break;
+    boost::shared_ptr<Client> client = findClient(caller);
+    if (client && client->getAttachCount()) {
+        client->setNotificationsEnabled(enabled);
+    } else {
+        SE_THROW("client not attached, not allowed to change notifications");
+    }
+}
+
+bool DBusServer::notificationsEnabled()
+{
+    for(Clients_t::iterator it = m_clients.begin();
+        it != m_clients.end();
+        ++it) {
+        if (!it->second->getNotificationsEnabled()) {
+            return false;
         }
     }
+    return true;
 }
 
 void DBusServer::connect(const Caller_t &caller,
@@ -4678,10 +4779,11 @@ void DBusServer::connect(const Caller_t &caller,
     object = c->getPath();
 }
 
-void DBusServer::startSession(const Caller_t &caller,
-                              const boost::shared_ptr<Watch> &watch,
-                              const std::string &server,
-                              DBusObject_t &object)
+void DBusServer::startSessionWithFlags(const Caller_t &caller,
+                                       const boost::shared_ptr<Watch> &watch,
+                                       const std::string &server,
+                                       const std::vector<std::string> &flags,
+                                       DBusObject_t &object)
 {
     boost::shared_ptr<Client> client = addClient(getConnection(),
                                                  caller,
@@ -4690,7 +4792,8 @@ void DBusServer::startSession(const Caller_t &caller,
     boost::shared_ptr<Session> session(new Session(*this,
                                                    "is this a client or server session?",
                                                    server,
-                                                   new_session));
+                                                   new_session,
+                                                   flags));
     client->attach(session);
     session->activate();
     enqueue(session);
@@ -4731,6 +4834,7 @@ DBusServer::DBusServer(GMainLoop *loop, const DBusConnectionPtr &conn, int durat
     sessionChanged(*this, "SessionChanged"),
     presence(*this, "Presence"),
     templatesChanged(*this, "TemplatesChanged"),
+    configChanged(*this, "ConfigChanged"),
     infoRequest(*this, "InfoRequest"),
     logOutput(*this, "LogOutput"),
     m_presence(*this),
@@ -4742,10 +4846,15 @@ DBusServer::DBusServer(GMainLoop *loop, const DBusConnectionPtr &conn, int durat
     struct timeval tv;
     gettimeofday(&tv, NULL);
     srand(tv.tv_usec);
+    add(this, &DBusServer::getCapabilities, "GetCapabilities");
+    add(this, &DBusServer::getVersions, "GetVersions");
     add(this, &DBusServer::attachClient, "Attach");
     add(this, &DBusServer::detachClient, "Detach");
+    add(this, &DBusServer::enableNotifications, "EnableNotifications");
+    add(this, &DBusServer::disableNotifications, "DisableNotifications");
     add(this, &DBusServer::connect, "Connect");
     add(this, &DBusServer::startSession, "StartSession");
+    add(this, &DBusServer::startSessionWithFlags, "StartSessionWithFlags");
     add(this, &DBusServer::getConfigs, "GetConfigs");
     add(this, &DBusServer::getConfig, "GetConfig");
     add(this, &DBusServer::getReports, "GetReports");
@@ -4756,6 +4865,7 @@ DBusServer::DBusServer(GMainLoop *loop, const DBusConnectionPtr &conn, int durat
     add(this, &DBusServer::infoResponse, "InfoResponse");
     add(sessionChanged);
     add(templatesChanged);
+    add(configChanged);
     add(presence);
     add(infoRequest);
     add(logOutput);
@@ -4770,7 +4880,6 @@ DBusServer::~DBusServer()
     m_syncSession.reset();
     m_workQueue.clear();
     m_clients.clear();
-    m_attachedClients.clear();
     LoggerBase::popLogger();
 }
 
@@ -5289,7 +5398,7 @@ BluezManager::BluezManager(DBusServer &server) :
     m_server(server),
     m_adapterChanged(*this, "DefaultAdapterChanged")
 {
-    m_bluezConn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, true, NULL);
+    m_bluezConn = b_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, true, NULL);
     if(m_bluezConn) {
         m_done = false;
         DBusClientCall1<DBusObject_t> getAdapter(*this, "DefaultAdapter");
@@ -5665,10 +5774,12 @@ void AutoSyncManager::syncSuccessStart()
     m_syncSuccessStart = true;
     SE_LOG_INFO(NULL, NULL,"Automatic sync for '%s' has been successfully started.\n", m_activeTask->m_peer.c_str());
 #ifdef HAS_NOTIFY
-    string summary = StringPrintf(_("%s is syncing"), m_activeTask->m_peer.c_str());
-    string body = StringPrintf(_("We have just started to sync your computer with the %s sync service."), m_activeTask->m_peer.c_str());
-    //TODO: set config information for 'sync-ui'
-    m_notify.send(summary.c_str(), body.c_str());
+    if (m_server.notificationsEnabled()) {
+        string summary = StringPrintf(_("%s is syncing"), m_activeTask->m_peer.c_str());
+        string body = StringPrintf(_("We have just started to sync your computer with the %s sync service."), m_activeTask->m_peer.c_str());
+        //TODO: set config information for 'sync-ui'
+        m_notify.send(summary.c_str(), body.c_str());
+    }
 #endif
 }
 
@@ -5676,21 +5787,23 @@ void AutoSyncManager::syncDone(SyncMLStatus status)
 {
     SE_LOG_INFO(NULL, NULL,"Automatic sync for '%s' has been done.\n", m_activeTask->m_peer.c_str());
 #ifdef HAS_NOTIFY
-    // send a notification to notification server
-    string summary, body;
-    if(m_syncSuccessStart && status == STATUS_OK) {
-        // if sync is successfully started and done
-        summary = StringPrintf(_("%s sync complete"), m_activeTask->m_peer.c_str());
-        body = StringPrintf(_("We have just finished syncing your computer with the %s sync service."), m_activeTask->m_peer.c_str());
-        //TODO: set config information for 'sync-ui'
-        m_notify.send(summary.c_str(), body.c_str());
-    } else if(m_syncSuccessStart || (!m_syncSuccessStart && status == STATUS_FATAL)) {
-        //if sync is successfully started and has errors, or not started successful with a fatal problem
-        summary = StringPrintf(_("Sync problem."));
-        body = StringPrintf(_("Sorry, there's a problem with your sync that you need to attend to."));
-        //TODO: set config information for 'sync-ui'
-        m_notify.send(summary.c_str(), body.c_str());
-    } 
+    if (m_server.notificationsEnabled()) {
+        // send a notification to notification server
+        string summary, body;
+        if(m_syncSuccessStart && status == STATUS_OK) {
+            // if sync is successfully started and done
+            summary = StringPrintf(_("%s sync complete"), m_activeTask->m_peer.c_str());
+            body = StringPrintf(_("We have just finished syncing your computer with the %s sync service."), m_activeTask->m_peer.c_str());
+            //TODO: set config information for 'sync-ui'
+            m_notify.send(summary.c_str(), body.c_str());
+        } else if(m_syncSuccessStart || (!m_syncSuccessStart && status == STATUS_FATAL)) {
+            //if sync is successfully started and has errors, or not started successful with a fatal problem
+            summary = StringPrintf(_("Sync problem."));
+            body = StringPrintf(_("Sorry, there's a problem with your sync that you need to attend to."));
+            //TODO: set config information for 'sync-ui'
+            m_notify.send(summary.c_str(), body.c_str());
+        }
+    }
 #endif
     m_session.reset();
     m_activeTask.reset();
@@ -5864,12 +5977,12 @@ int main(int argc, char **argv)
         LoggerBase::instance().setLevel(LoggerBase::INFO);
 
         DBusErrorCXX err;
-        DBusConnectionPtr conn = g_dbus_setup_bus(DBUS_BUS_SESSION,
+        DBusConnectionPtr conn = b_dbus_setup_bus(DBUS_BUS_SESSION,
                                                   "org.syncevolution",
                                                   true,
                                                   &err);
         if (!conn) {
-            err.throwFailure("g_dbus_setup_bus()", " failed - server already running?");
+            err.throwFailure("b_dbus_setup_bus()", " failed - server already running?");
         }
 
         DBusServer server(loop, conn, duration);

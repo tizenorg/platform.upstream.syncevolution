@@ -43,7 +43,8 @@ DIST_COMMON = README $(am__configure_deps) $(am__dist_doc_DATA_DIST) \
 	ChangeLog INSTALL NEWS config.guess config.sub depcomp \
 	install-sh ltmain.sh missing mkinstalldirs
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/m4-repo/ax_boost_base.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/m4-repo/autotroll.m4 \
+	$(top_srcdir)/m4-repo/ax_boost_base.m4 \
 	$(top_srcdir)/m4/intltool.m4 $(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -181,6 +182,8 @@ INTLTOOL_EXTRACT = @INTLTOOL_EXTRACT@
 INTLTOOL_MERGE = @INTLTOOL_MERGE@
 INTLTOOL_PERL = @INTLTOOL_PERL@
 INTLTOOL_UPDATE = @INTLTOOL_UPDATE@
+KCALEXTENDED_CFLAGS = @KCALEXTENDED_CFLAGS@
+KCALEXTENDED_LIBS = @KCALEXTENDED_LIBS@
 KEYRING_2_20_CFLAGS = @KEYRING_2_20_CFLAGS@
 KEYRING_2_20_LIBS = @KEYRING_2_20_LIBS@
 KEYRING_CFLAGS = @KEYRING_CFLAGS@
@@ -205,6 +208,7 @@ MCALB_CFLAGS = @MCALB_CFLAGS@
 MCALB_LIBS = @MCALB_LIBS@
 MKDIR_P = @MKDIR_P@
 MKINSTALLDIRS = @MKINSTALLDIRS@
+MOC = @MOC@
 MODIFY_SYNCCOMPARE = @MODIFY_SYNCCOMPARE@
 MSGFMT = @MSGFMT@
 MSGFMT_OPTS = @MSGFMT_OPTS@
@@ -227,7 +231,20 @@ POFILES = @POFILES@
 POSUB = @POSUB@
 PO_IN_DATADIR_FALSE = @PO_IN_DATADIR_FALSE@
 PO_IN_DATADIR_TRUE = @PO_IN_DATADIR_TRUE@
+QMAKE = @QMAKE@
+QT_CFLAGS = @QT_CFLAGS@
+QT_CONTACTS_LIBS = @QT_CONTACTS_LIBS@
+QT_CPPFLAGS = @QT_CPPFLAGS@
+QT_CXXFLAGS = @QT_CXXFLAGS@
+QT_DEFINES = @QT_DEFINES@
+QT_INCPATH = @QT_INCPATH@
+QT_LDFLAGS = @QT_LDFLAGS@
+QT_LFLAGS = @QT_LFLAGS@
+QT_LIBS = @QT_LIBS@
+QT_PATH = @QT_PATH@
+QT_VERSION_MAJOR = @QT_VERSION_MAJOR@
 RANLIB = @RANLIB@
+RCC = @RCC@
 RST2HTML = @RST2HTML@
 RST2MAN = @RST2MAN@
 SED = @SED@
@@ -253,6 +270,7 @@ SYNTHESIS_SUBDIR = @SYNTHESIS_SUBDIR@
 SYNTHESIS_SUBDIR_INCLUDES = @SYNTHESIS_SUBDIR_INCLUDES@
 TRANSPORT_CFLAGS = @TRANSPORT_CFLAGS@
 TRANSPORT_LIBS = @TRANSPORT_LIBS@
+UIC = @UIC@
 UNIQUE_CFLAGS = @UNIQUE_CFLAGS@
 UNIQUE_LIBS = @UNIQUE_LIBS@
 USE_NLS = @USE_NLS@
@@ -358,7 +376,7 @@ PKGS = $(addprefix syncevolution-evolution-, 2.6 2.8 2.12)
 # Because backend-related variables need to be substituted in
 # Makefile-gen.am and configure.in we need an explicit rule to redo that work
 # so that "make" rebuilds derived files correctly.
-CONFIG_SUBS = src/backends/addressbook/configure-sub.in src/backends/evolution/configure-sub.in src/backends/file/configure-sub.in src/backends/maemo/configure-sub.in src/backends/sqlite/configure-sub.in src/backends/xmlrpc/configure-sub.in
+CONFIG_SUBS = src/backends/addressbook/configure-sub.in src/backends/evolution/configure-sub.in src/backends/file/configure-sub.in src/backends/kcalextended/configure-sub.in src/backends/maemo/configure-sub.in src/backends/qtcontacts/configure-sub.in src/backends/sqlite/configure-sub.in src/backends/xmlrpc/configure-sub.in
 
 # patch README.rst properties on-the-fly with sed expressions
 PATCH_README = -e "s/^:Version: .*/:Version: $(VERSION)/" -e "s/:Date: .*/:Date: `date +%Y-%m-%d`/"

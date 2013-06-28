@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <errno.h>
 
+#include <fstream>
 #include <iostream>
 #include <iomanip>
 #include <sstream>
@@ -40,11 +41,15 @@ using namespace std;
 
 #include <boost/shared_ptr.hpp>
 #include <boost/algorithm/string/join.hpp>
+#include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/foreach.hpp>
-
+#include <fstream>
 #include <syncevo/declarations.h>
 SE_BEGIN_CXX
+
+// synopsis and options char strings
+#include "CmdlineHelp.c"
 
 Cmdline::Cmdline(int argc, const char * const * argv, ostream &out, ostream &err) :
     m_argc(argc),
@@ -82,6 +87,12 @@ bool Cmdline::parse(vector<string> &parsed)
     if (m_argc) {
         parsed.push_back(m_argv[0]);
     }
+    m_delimiter = "\n\n";
+
+    // All command line options which ask for a specific operation,
+    // like --restore, --print-config, ... Used to detect conflicting
+    // operations.
+    vector<string> operations;
 
     int opt = 1;
     bool ok;
@@ -140,21 +151,28 @@ bool Cmdline::parse(vector<string> &parsed)
         } else if(boost::iequals(m_argv[opt], "--print-servers") ||
                   boost::iequals(m_argv[opt], "--print-peers") ||
                   boost::iequals(m_argv[opt], "--print-configs")) {
+            operations.push_back(m_argv[opt]);
             m_printServers = true;
         } else if(boost::iequals(m_argv[opt], "--print-config") ||
                   boost::iequals(m_argv[opt], "-p")) {
+            operations.push_back(m_argv[opt]);
             m_printConfig = true;
         } else if(boost::iequals(m_argv[opt], "--print-sessions")) {
+            operations.push_back(m_argv[opt]);
             m_printSessions = true;
         } else if(boost::iequals(m_argv[opt], "--configure") ||
                   boost::iequals(m_argv[opt], "-c")) {
+            operations.push_back(m_argv[opt]);
             m_configure = true;
         } else if(boost::iequals(m_argv[opt], "--remove")) {
+            operations.push_back(m_argv[opt]);
             m_remove = true;
         } else if(boost::iequals(m_argv[opt], "--run") ||
                   boost::iequals(m_argv[opt], "-r")) {
+            operations.push_back(m_argv[opt]);
             m_run = true;
         } else if(boost::iequals(m_argv[opt], "--restore")) {
+            operations.push_back(m_argv[opt]);
             opt++;
             if (opt >= m_argc) {
                 usage(true, string("missing parameter for ") + cmdOpt(m_argv[opt - 1]));
@@ -175,12 +193,51 @@ bool Cmdline::parse(vector<string> &parsed)
             m_before = true;
         } else if(boost::iequals(m_argv[opt], "--after")) {
             m_after = true;
+        } else if (boost::iequals(m_argv[opt], "--print-items")) {
+            operations.push_back(m_argv[opt]);
+            m_printItems = m_accessItems = true;
+        } else if ((boost::iequals(m_argv[opt], "--export") && (m_export = true)) ||
+                   (boost::iequals(m_argv[opt], "--import") && (m_import = true)) ||
+                   (boost::iequals(m_argv[opt], "--update") && (m_update = true))) {
+            operations.push_back(m_argv[opt]);
+            m_accessItems = true;
+            opt++;
+            if (opt >= m_argc || !m_argv[opt][0]) {
+                usage(true, string("missing parameter for ") + cmdOpt(m_argv[opt - 1]));
+                return false;
+            }
+            m_itemPath = m_argv[opt];
+            if (m_itemPath != "-") {
+                string dir, file;
+                splitPath(m_itemPath, dir, file);
+                if (dir.empty()) {
+                    dir = ".";
+                }
+                if (!relToAbs(dir)) {
+                    SyncContext::throwError(dir, errno);
+                }
+                m_itemPath = dir + "/" + file;
+            }
+            parsed.push_back(m_itemPath);
+        } else if (boost::iequals(m_argv[opt], "--delimiter")) {
+            opt++;
+            if (opt >= m_argc) {
+                usage(true, string("missing parameter for ") + cmdOpt(m_argv[opt - 1]));
+                return false;
+            }
+            m_delimiter = m_argv[opt];
+            parsed.push_back(m_delimiter);
+        } else if (boost::iequals(m_argv[opt], "--delete-items")) {
+            operations.push_back(m_argv[opt]);
+            m_deleteItems = m_accessItems = true;
         } else if(boost::iequals(m_argv[opt], "--dry-run")) {
             m_dryrun = true;
         } else if(boost::iequals(m_argv[opt], "--migrate")) {
+            operations.push_back(m_argv[opt]);
             m_migrate = true;
         } else if(boost::iequals(m_argv[opt], "--status") ||
                   boost::iequals(m_argv[opt], "-t")) {
+            operations.push_back(m_argv[opt]);
             m_status = true;
         } else if(boost::iequals(m_argv[opt], "--quiet") ||
                   boost::iequals(m_argv[opt], "-q")) {
@@ -189,6 +246,7 @@ bool Cmdline::parse(vector<string> &parsed)
                   boost::iequals(m_argv[opt], "-h")) {
             m_usage = true;
         } else if(boost::iequals(m_argv[opt], "--version")) {
+            operations.push_back(m_argv[opt]);
             m_version = true;
         } else if (parseBool(opt, "--keyring", "-k", true, m_keyring, ok)) {
             if (!ok) {
@@ -200,6 +258,7 @@ bool Cmdline::parse(vector<string> &parsed)
             }
         } else if(boost::iequals(m_argv[opt], "--monitor")||
                 boost::iequals(m_argv[opt], "-m")) {
+            operations.push_back(m_argv[opt]);
             m_monitor = true;
         } else {
             usage(false, string(m_argv[opt]) + ": unknown parameter");
@@ -212,7 +271,35 @@ bool Cmdline::parse(vector<string> &parsed)
         m_server = m_argv[opt++];
         while (opt < m_argc) {
             parsed.push_back(m_argv[opt]);
-            m_sources.insert(m_argv[opt++]);
+            if (m_sources.empty() ||
+                !m_accessItems) {
+                m_sources.insert(m_argv[opt++]);
+            } else {
+                // first additional parameter was source, rest are luids
+                m_luids.push_back(CmdlineLUID::toLUID(m_argv[opt++]));
+            }
+        }
+    }
+
+    // check whether we have conflicting operations requested by user
+    if (operations.size() > 1) {
+        usage(false, boost::join(operations, " ") + ": mutually exclusive operations");
+        return false;
+    }
+
+    // common sanity checking for item listing/import/export/update
+    if (m_accessItems) {
+        if (m_server.empty()) {
+            usage(false, operations[0] + ": needs configuration name");
+            return false;
+        }
+        if (m_sources.size() == 0) {
+            usage(false, operations[0] + ": needs source name");
+            return false;
+        }
+        if ((m_import || m_update) && m_dryrun) {
+            usage(false, operations[0] + ": --dry-run not supported");
+            return false;
         }
     }
 
@@ -259,31 +346,23 @@ bool Cmdline::parseBool(int opt, const char *longName, const char *shortName,
 
 bool Cmdline::isSync()
 {
-    //make sure command line arguments really try to run sync
-    if(m_usage || m_version) {
+    // make sure command line arguments really try to run sync
+    if (m_usage || m_version ||
+        m_printServers || boost::trim_copy(m_server) == "?" ||
+        m_printTemplates || m_dontrun ||
+        m_argc == 1 || (m_useDaemon.wasSet() && m_argc == 2) ||
+        m_printConfig || m_remove ||
+        (m_server == "" && m_argc > 1) ||
+        m_configure || m_migrate ||
+        m_status || m_printSessions ||
+        !m_restore.empty() ||
+        m_accessItems ||
+        m_dryrun ||
+        (!m_run && (m_syncProps.size() || m_sourceProps.size()))) {
         return false;
-    } else if(m_printServers || boost::trim_copy(m_server) == "?")  {
-        return false;
-    } else if(m_printTemplates || m_dontrun) {
-        return false;
-    } else if(m_argc == 1 || (m_useDaemon.wasSet() && m_argc == 2)) {
-        return false;
-    } else if(m_printConfig || m_remove) {
-        return false;
-    } else if (m_server == "" && m_argc > 1) {
-        return false;
-    } else if(m_configure || m_migrate) {
-        return false;
-    } else if(m_status || m_printSessions) {
-        return false;
-    } else if(!m_restore.empty()) {
-        return false;
-    } else if(m_dryrun) {
-        return false;
-    } else if(!m_run && (m_syncProps.size() || m_sourceProps.size())) {
-        return false;
+    } else {
+        return true;
     }
-    return true;
 }
 
 bool Cmdline::dontRun() const
@@ -493,6 +572,12 @@ bool Cmdline::run() {
                     // template is the peer name
                     configTemplate = m_server;
                     SyncConfig::splitConfigString(SyncConfig::normalizeConfigString(configTemplate), peer, context);
+                    if (peer.empty()) {
+                        // configuring a context, template doesn't matter =>
+                        // use default "SyncEvolution" template
+                        configTemplate =
+                            peer = "SyncEvolution";
+                    }
                 } else {
                     // Template is specified explicitly. It must not contain a context,
                     // because the context comes from the config name.
@@ -617,6 +702,7 @@ bool Cmdline::run() {
         to->preFlush(*to);
 
         // done, now write it
+        m_configModified = true;
         to->flush();
 
         // also copy .synthesis dir?
@@ -646,8 +732,235 @@ bool Cmdline::run() {
                 SyncContext::throwError(string("no such configuration: ") + m_server);
             }
             config->remove();
+            m_configModified = true;
             return true;
         }
+    } else if (m_accessItems) {
+        // need access to specific source
+        boost::shared_ptr<SyncContext> context;
+        context.reset(createSyncClient());
+        context->setOutput(&m_out);
+
+        // apply filters
+        context->setConfigFilter(true, "", m_syncProps);
+        context->setConfigFilter(false, "", m_sourceProps);
+
+        string sourceName = *m_sources.begin();
+        SyncSourceNodes sourceNodes = context->getSyncSourceNodesNoTracking(sourceName);
+        SyncSourceParams params(sourceName, sourceNodes);
+        cxxptr<SyncSource> source(SyncSource::createSource(params, true));
+
+        sysync::TSyError err;
+#define CHECK_ERROR(_op) if (err) { SE_THROW_EXCEPTION_STATUS(StatusException, string(source->getName()) + ": " + (_op), SyncMLStatus(err)); }
+
+        source->open();
+        const SyncSource::Operations &ops = source->getOperations();
+        if (m_printItems) {
+            SyncSourceLogging *logging = dynamic_cast<SyncSourceLogging *>(source.get());
+            if (!ops.m_startDataRead ||
+                !ops.m_readNextItem) {
+                source->throwError("reading items not supported");
+            }
+            err = ops.m_startDataRead("", "");
+            CHECK_ERROR("reading items");
+            list<string> luids;
+            readLUIDs(source, luids);
+            BOOST_FOREACH(string &luid, luids) {
+                string description;
+                if (logging) {
+                    description = logging->getDescription(luid);
+                    if (!description.empty()) {
+                        description.insert(0, ": ");
+                    }
+                }
+                m_out << CmdlineLUID::fromLUID(luid) << description << std::endl;
+            }
+        } else if (m_deleteItems) {
+            if (!ops.m_deleteItem) {
+                source->throwError("deleting items not supported");
+            }
+            err = ops.m_startDataRead("", "");
+            CHECK_ERROR("reading items");
+            if (ops.m_endDataRead) {
+                err = ops.m_endDataRead();
+                CHECK_ERROR("stop reading items");
+            }
+            if (ops.m_startDataWrite) {
+                err = ops.m_startDataWrite();
+                CHECK_ERROR("writing items");
+            }
+            BOOST_FOREACH(const string &luid, m_luids) {
+                sysync::ItemIDType id;
+                id.item = (char *)luid.c_str();
+                err = ops.m_deleteItem(&id);
+                CHECK_ERROR("deleting item");
+            }
+            char *token;
+            err = ops.m_endDataWrite(true, &token);
+            if (token) {
+                free(token);
+            }
+            CHECK_ERROR("stop writing items");
+        } else {
+            SyncSourceRaw *raw = dynamic_cast<SyncSourceRaw *>(source.get());
+            if (!raw) {
+                source->throwError("reading/writing items directly not supported");
+            }
+            if (m_import || m_update) {
+                err = ops.m_startDataRead("", "");
+                CHECK_ERROR("reading items");
+                if (ops.m_endDataRead) {
+                    err = ops.m_endDataRead();
+                    CHECK_ERROR("stop reading items");
+                }
+                if (ops.m_startDataWrite) {
+                    err = ops.m_startDataWrite();
+                    CHECK_ERROR("writing items");
+                }
+
+                cxxptr<ifstream> inFile;
+                if (m_itemPath =="-" ||
+                    !isDir(m_itemPath)) {
+                    string content;
+                    string luid;
+                    if (m_itemPath == "-") {
+                        context->readStdin(content);
+                    } else if (!ReadFile(m_itemPath, content)) {
+                        SyncContext::throwError(m_itemPath, errno);
+                    }
+                    if (m_delimiter == "none") {
+                        if (m_update) {
+                            if (m_luids.size() != 1) {
+                                SyncContext::throwError("need exactly one LUID parameter");
+                            } else {
+                                luid = *m_luids.begin();
+                            }
+                        }
+                        m_out << "#0: "
+                              << insertItem(raw, luid, content).getEncoded()
+                              << endl;
+                    } else {
+                        typedef boost::split_iterator<string::iterator> string_split_iterator;
+                        int count = 0;
+                        // when updating, check number of luids in advance
+                        if (m_update) {
+                            unsigned long total = 0;
+                            for (string_split_iterator it =
+                                     boost::make_split_iterator(content,
+                                                                boost::first_finder(m_delimiter, boost::is_iequal()));
+                                 it != string_split_iterator();
+                                 ++it) {
+                                total++;
+                            }
+                            if (total != m_luids.size()) {
+                                SyncContext::throwError(StringPrintf("%lu items != %lu luids, must match => aborting",
+                                                                     total, (unsigned long)m_luids.size()));
+                            }
+                        }
+                        list<string>::const_iterator luidit = m_luids.begin();
+                        for (string_split_iterator it =
+                                 boost::make_split_iterator(content,
+                                                            boost::first_finder(m_delimiter, boost::is_iequal()));
+                             it != string_split_iterator();
+                             ++it) {
+                            m_out << "#" << count << ": ";
+                            string luid;
+                            if (m_update) {
+                                if (luidit == m_luids.end()) {
+                                    // was checked above
+                                    SyncContext::throwError("internal error, not enough luids");
+                                }
+                                luid = *luidit;
+                                ++luidit;
+                            }
+                            m_out << insertItem(raw,
+                                                luid,
+                                                string(it->begin(), it->end())).getEncoded()
+                                  << endl;
+                            count++;
+                        }
+                    }
+                } else {
+                    ReadDir dir(m_itemPath);
+                    int count = 0;
+                    BOOST_FOREACH(const string &entry, dir) {
+                        string content;
+                        string path = m_itemPath + "/" + entry;
+                        m_out << count << ": " << entry << ": ";
+                        if (!ReadFile(path, content)) {
+                            SyncContext::throwError(path, errno);
+                        }
+                        m_out << insertItem(raw, "", content).getEncoded() << endl;
+                    }
+                }
+                char *token = NULL;
+                err = ops.m_endDataWrite(true, &token);
+                if (token) {
+                    free(token);
+                }
+                CHECK_ERROR("stop writing items");
+            } else if (m_export) {
+                err = ops.m_startDataRead("", "");
+                CHECK_ERROR("reading items");
+
+                ostream *out = NULL;
+                cxxptr<ofstream> outFile;
+                if (m_itemPath == "-") {
+                    out = &m_out;
+                } else if(!isDir(m_itemPath)) {
+                    outFile.set(new ofstream(m_itemPath.c_str()));
+                    out = outFile;
+                }
+                if (m_luids.empty()) {
+                    readLUIDs(source, m_luids);
+                }
+                bool haveItem = false;     // have written one item
+                bool haveNewline = false;  // that item had a newline at the end
+                try {
+                    BOOST_FOREACH(const string &luid, m_luids) {
+                        string item;
+                        raw->readItemRaw(luid, item);
+                        if (!out) {
+                            // write into directory
+                            string fullPath = m_itemPath + "/" + luid;
+                            ofstream file((m_itemPath + "/" + luid).c_str());
+                            file << item;
+                            file.close();
+                            if (file.bad()) {
+                                SyncContext::throwError(fullPath, errno);
+                            }
+                        } else {
+                            if (haveItem) {
+                                if (m_delimiter.size() > 1 &&
+                                    haveNewline &&
+                                    m_delimiter[0] == '\n') {
+                                    // already wrote initial newline, skip it
+                                    *out << m_delimiter.substr(1);
+                                } else {
+                                    *out << m_delimiter;
+                                }
+                            }
+                            *out << item;
+                            haveNewline = !item.empty() && item[item.size() - 1] == '\n';
+                            haveItem = true;
+                        }
+                    }
+                } catch (...) {
+                    // ensure that we start following output on new line
+                    if (m_itemPath == "-" && haveItem && !haveNewline) {
+                        m_out << endl;
+                    }
+                    throw;
+                }
+                if (outFile) {
+                    outFile->close();
+                    if (outFile->bad()) {
+                        SyncContext::throwError(m_itemPath, errno);
+                    }
+                }
+            }
+        }
+        source->close();
     } else {
         std::set<std::string> unmatchedSources;
         boost::shared_ptr<SyncContext> context;
@@ -769,6 +1082,28 @@ bool Cmdline::run() {
     }
 
     return true;
+}
+
+void Cmdline::readLUIDs(SyncSource *source, list<string> &luids)
+{
+    const SyncSource::Operations &ops = source->getOperations();
+    sysync::ItemIDType id;
+    sysync::sInt32 status;
+    sysync::TSyError err = ops.m_readNextItem(&id, &status, true);
+    CHECK_ERROR("next item");
+    while (status != sysync::ReadNextItem_EOF) {
+        luids.push_back(id.item);
+        err = ops.m_readNextItem(&id, &status, false);
+        CHECK_ERROR("next item");
+    }
+}
+
+CmdlineLUID Cmdline::insertItem(SyncSourceRaw *source, const string &luid, const string &data)
+{
+    SyncSourceRaw::InsertItemResult res = source->insertItemRaw(luid, data);
+    CmdlineLUID cluid;
+    cluid.setLUID(res.m_luid);
+    return cluid;
 }
 
 string Cmdline::cmdOpt(const char *opt, const char *param)
@@ -1073,175 +1408,11 @@ void Cmdline::usage(bool full, const string &error, const string &param)
 {
     ostream &out(error.empty() ? m_out : m_err);
 
-    out << "Show available sources:" << endl;
-    out << "  " << m_argv[0] << endl;
-    out << "Show information about configuration(s) and sync sessions:" << endl;
-    out << "  " << m_argv[0] << " --print-servers|--print-configs|--print-peers" << endl;
-    out << "  " << m_argv[0] << " --print-config [--quiet] <config> [main|<source ...]" << endl;
-    out << "  " << m_argv[0] << " --print-sessions [--quiet] <config>" << endl;
-    out << "Show information about SyncEvolution:" << endl;
-    out << "  " << m_argv[0] << " --help|-h" << endl;
-    out << "  " << m_argv[0] << " --version" << endl;
-    out << "Run a synchronization:" << endl;
-    out << "  " << m_argv[0] << " <config> [<source> ...]" << endl;
-    out << "  " << m_argv[0] << " --run <options for run> <config> [<source> ...]" << endl;
-    out << "Restore data from the automatic backups:" << endl;
-    out << "  " << m_argv[0] << " --restore <session directory> --before|--after [--dry-run] <config> <source> ..." << endl;
-    out << "Remove a configuration:" << endl;
-    out << "  " << m_argv[0] << " --remove <config>" << endl;
-    out << "Modify configuration:" << endl;
-    out << "  " << m_argv[0] << " --configure <options for configuration> <config> [<source> ...]" << endl;
-    out << "  " << m_argv[0] << " --migrate <config>" << endl;
+    out << synopsis;
     if (full) {
         out << endl <<
             "Options:" << endl <<
-            "--sync|-s <mode>" << endl <<
-            "--sync|-s ?" << endl <<
-            "  Temporarily synchronize the active sources in that mode. Useful" << endl <<
-            "  for a \"refresh-from-server\" or \"refresh-from-client\" sync which" << endl <<
-            "  clears all data at one end and copies all items from the other." << endl <<
-            "" << endl <<
-            "--print-servers|--print-configs|--print-peers" << endl <<
-            "  Prints the names of all configured peers to stdout." << endl <<
-            "" << endl <<
-            "--print-config|-p" << endl <<
-            "  Prints the complete configuration for the selected peer" << endl <<
-            "  to stdout, including up-to-date comments for all properties. The" << endl <<
-            "  format is the normal .ini format with source configurations in" << endl <<
-            "  different sections introduced with [<source>] lines. Can be combined" << endl <<
-            "  with --sync-property and --source-property to modify the configuration" << endl <<
-            "  on-the-fly. When one or more sources are listed after the <config>" << endl <<
-            "  name on the command line, then only the configs of those sources are" << endl <<
-            "  printed. Using --quiet suppresses the comments for each property." << endl <<
-            "  When setting a --template, then the reference configuration for" << endl <<
-            "  that peer is printed instead of an existing configuration." << endl <<
-            "" << endl <<
-            "--print-sessions" << endl <<
-            "  Prints a list of all previous log directories. Unless --quiet is used, each" << endl <<
-            "  file name is followed by the original sync report." << endl <<
-            "" << endl <<
-            "--configure|-c" << endl <<
-            "  Modify the configuration files for the selected peer. If no such" << endl <<
-            "  configuration exists, then a new one is created using one of the" << endl <<
-            "  template configurations (see --template option). When creating" << endl <<
-            "  a new configuration only the active sources will be set to active" << endl <<
-            "  in the new configuration, i.e. \"syncevolution -c scheduleworld addressbook\"" << endl <<
-            "  followed by \"syncevolution scheduleworld\" will only synchronize the" << endl <<
-            "  address book. The other sources are created in a disabled state." << endl <<
-            "  When modifying an existing configuration and sources are specified," << endl <<
-            "  then the source properties of only those sources are modified." << endl <<
-            "" << endl <<
-            "--migrate" << endl <<
-            "  In older SyncEvolution releases a different layout of configuration files" << endl <<
-            "  was used. Using --migrate will automatically migrate to the new" << endl <<
-            "  layout and rename the <config> into <config>.old to prevent accidental use" << endl <<
-            "  of the old configuration. WARNING: old SyncEvolution releases cannot" << endl <<
-            "  use the new configuration!" << endl <<
-            "" << endl <<
-            "  The switch can also be used to migrate a configuration in the current" << endl <<
-            "  configuration directory: this preserves all property values, discards" << endl <<
-            "  obsolete properties and sets all comments exactly as if the configuration" << endl <<
-            "  had been created from scratch. WARNING: custom comments in the" << endl <<
-            "  configuration are not preserved." << endl <<
-            "" << endl <<
-            "--restore" << endl <<
-            "  Restores the data of the selected sources to the state from before or after the" << endl <<
-            "  selected synchronization. The synchronization is selected via its log directory" << endl <<
-            "  (see --print-sessions). Other directories can also be given as long as" << endl <<
-            "  they contain database dumps in the format created by SyncEvolution." << endl <<
-            "  The output includes information about the changes made during the" << endl <<
-            "  restore, both in terms of item changes and content changes (which is" << endl <<
-            "  not always the same, see manual for details). This output can be suppressed" << endl <<
-            "  with --quiet." << endl <<
-            "  In combination with --dry-run, the changes to local data are only simulated." << endl <<
-            "  This can be used to check that --restore will not remove valuable information." << endl <<
-            "" << endl <<
-            "--remove" << endl <<
-            "  Deletes the configuration. If the <config> refers to a specific" << endl <<
-            "  peer, only that peer's configuration is removed. If it refers to" << endl <<
-            "  a context, that context and all peers inside it are removed." << endl <<
-            "  Note that there is no confirmation question. Neither local data" << endl <<
-            "  referenced by the configuration nor the content of log dirs are" << endl <<
-            "  deleted." << endl <<
-            "" << endl <<
-            "--sync-property|-y <property>=<value>" << endl <<
-            "--sync-property|-y ?" << endl <<
-            "--sync-property|-y <property>=?" << endl <<
-            "  Overrides a source-independent configuration property for the" << endl <<
-            "  current synchronization run or permanently when --configure is used" << endl <<
-            "  to update the configuration. Can be used multiple times.  Specifying" << endl <<
-            "  an unused property will trigger an error message." << endl <<
-            "" << endl <<
-            "  When using the configuration layout introduced with 1.0, some of the" << endl <<
-            "  sync properties are shared between peers, for example the directory" << endl <<
-            "  where sessions are logged. Permanently changing such a shared" << endl <<
-            "  property for one peer will automatically update the property for all" << endl <<
-            "  other peers in the same context because the property is stored in a" << endl <<
-            "  shared config file." << endl <<
-            "" << endl <<
-            "--source-property|-z <property>=<value>" << endl <<
-            "--source-property|-z ?" << endl <<
-            "--source-property|-z <property>=?" << endl <<
-            "  Same as --sync-property, but applies to the configuration of all active" << endl <<
-            "  sources. \"--sync <mode>\" is a shortcut for \"--source-property sync=<mode>\"." << endl <<
-            "" << endl <<
-            "--template|-l <peer name>|default|?|?<device>" << endl <<
-            "  Can be used to select from one of the built-in default configurations" << endl <<
-            "  for known SyncML peers. Defaults to the <config> name, so --template" << endl <<
-            "  only has to be specified when creating multiple different configurations" << endl <<
-            "  for the same peer, or when using a template that is named differently" << endl <<
-            "  than the peer. \"default\" is an alias for \"scheduleworld\" and can be" << endl <<
-            "  used as the starting point for servers which do not have a built-in" << endl <<
-            "  template." << endl <<
-            "" << endl <<
-            "  Each template contains a pseudo-random device ID. Therefore setting the" << endl <<
-            "  \"deviceId\" sync property is only necessary when manually recreating a" << endl <<
-            "  configuration or when a more descriptive name is desired." << endl <<
-            "" << endl <<
-            "  The available templates for different known SyncML servers are listed when" << endl <<
-            "  using a single question mark instead of template name. When using the" << endl <<
-            "  ?<device> format, a fuzzy search for a template that might be" << endl <<
-            "  suitable for talking to such a device is done. The matching works best" << endl <<
-            "  when using <device> = <Manufacturer>_<Model>. If you don't know the" << endl <<
-            "  manufacturer, you can just keep it as empty. The output in this mode" << endl <<
-            "  gives the template name followed by a short description and a rating how well" << endl <<
-            "  the template matches the device (higher is better)." << endl <<
-            "" << endl <<
-            "--status|-t" << endl <<
-            "  The changes made to local data since the last synchronization are" << endl <<
-            "  shown without starting a new one. This can be used to see in advance" << endl <<
-            "  whether the local data needs to be synchronized with the peer." << endl <<
-            "" << endl <<
-            "  When used without configuration name, it shows the status of the background" << endl <<
-            "  sync daemon or an error if no such daemon exists." << endl <<
-            "" << endl <<
-            "--quiet|-q" << endl <<
-            "  Suppresses most of the normal output during a synchronization. The" << endl <<
-            "  log file still contains all the information." << endl <<
-            "" << endl <<
-            "--keyring|-k[=yes/no/...]" << endl <<
-            "  Save or retrieve passwords from the GNOME keyring when modifying the" << endl <<
-            "  configuration or running a synchronization. Note that using this option" << endl <<
-            "  applies to *all* passwords in a configuration, so setting a single" << endl <<
-            "  password as follows moves the other passwords into the keyring, if" << endl <<
-            "  they were not stored there already:" << endl <<
-            "     --keyring --configure --sync-property proxyPassword=foo" << endl <<
-            "" << endl <<
-            "  When passwords were stored in the keyring, their value is set to '-'" << endl <<
-            "  in the configuration. This means that when running a synchronization" << endl <<
-            "  without the --keyring argument, the password has to be entered" << endl <<
-            "  interactively. The --print-config output always shows '-' instead of" << endl <<
-            "  retrieving the password from the keyring." << endl <<
-            "" << endl <<
-            "--daemon[=yes/no/...]" << endl <<
-            "  Run operations in cooperation with the background sync daemon;" << endl <<
-            "  enabled by default if it is installed." << endl <<
-            "" << endl <<
-            "--help|-h" << endl <<
-            "  Prints usage information." << endl <<
-            "" << endl <<
-            "--version" << endl <<
-            "  Prints the SyncEvolution version." << endl;
+            options;
     }
 
     if (error != "") {
@@ -1325,6 +1496,13 @@ static string lastLine(const string &buffer)
 
 // true if <word> =
 static bool isPropAssignment(const string &buffer) {
+    // ignore these comments (occur in type description)
+    if (boost::starts_with(buffer, "KCalExtended = ") ||
+        boost::starts_with(buffer, "mkcal = ") ||
+        boost::starts_with(buffer, "QtContacts = ")) {
+        return false;
+    }
+                                
     size_t start = 0;
     while (start < buffer.size() &&
            !isspace(buffer[start])) {
@@ -2179,7 +2357,7 @@ protected:
         TestCmdline help("--sync", " ?", NULL);
         help.doit();
         CPPUNIT_ASSERT_EQUAL_DIFF("--sync\n"
-                                  "   requests a certain synchronization mode:\n"
+                                  "   Requests a certain synchronization mode when initiating a sync:\n"
                                   "     two-way             = only send/receive changes since last sync\n"
                                   "     slow                = exchange all items\n"
                                   "     refresh-from-client = discard all remote items and replace with\n"
@@ -2188,7 +2366,13 @@ protected:
                                   "                           the items on the server\n"
                                   "     one-way-from-client = transmit changes from client\n"
                                   "     one-way-from-server = transmit changes from server\n"
-                                  "     none (or disabled)  = synchronization disabled\n",
+                                  "     disabled (or none)  = synchronization disabled\n"
+                                  "   When accepting a sync session in a SyncML server (HTTP server), only\n"
+                                  "   sources with sync != disabled are made available to the client,\n"
+                                  "   which chooses the final sync mode based on its own configuration.\n"
+                                  "   When accepting a sync session in a SyncML client (local sync with\n"
+                                  "   the server contacting SyncEvolution on a device), the sync mode\n"
+                                  "   specified in the client is typically overriden by the server.\n",
                                   help.m_out.str());
         CPPUNIT_ASSERT_EQUAL_DIFF("", help.m_err.str());
 

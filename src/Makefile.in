@@ -71,7 +71,8 @@ DIST_COMMON = $(am__nobase_dist_doc_DATA_DIST) \
 	$(am__nobase_dist_template_DATA_DIST) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/m4-repo/ax_boost_base.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/m4-repo/autotroll.m4 \
+	$(top_srcdir)/m4-repo/ax_boost_base.m4 \
 	$(top_srcdir)/m4/intltool.m4 $(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -109,14 +110,18 @@ am__client_test_SOURCES_DIST = client-test-app.cpp \
 	backends/evolution/EvolutionCalendarSourceRegister.cpp \
 	backends/evolution/EvolutionContactSourceRegister.cpp \
 	backends/file/FileSyncSourceRegister.cpp \
+	backends/kcalextended/KCalExtendedSourceRegister.cpp \
 	backends/maemo/MaemoCalendarSourceRegister.cpp \
+	backends/qtcontacts/QtContactsSourceRegister.cpp \
 	backends/sqlite/SQLiteContactSourceRegister.cpp \
 	backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
 am__objects_1 = client_test-AddressBookSourceRegister.$(OBJEXT) \
 	client_test-EvolutionCalendarSourceRegister.$(OBJEXT) \
 	client_test-EvolutionContactSourceRegister.$(OBJEXT) \
 	client_test-FileSyncSourceRegister.$(OBJEXT) \
+	client_test-KCalExtendedSourceRegister.$(OBJEXT) \
 	client_test-MaemoCalendarSourceRegister.$(OBJEXT) \
+	client_test-QtContactsSourceRegister.$(OBJEXT) \
 	client_test-SQLiteContactSourceRegister.$(OBJEXT) \
 	client_test-XMLRPCSyncSourceRegister.$(OBJEXT)
 @ENABLE_MODULES_FALSE@am__objects_2 = $(am__objects_1)
@@ -140,7 +145,9 @@ am__syncevo_dbus_server_SOURCES_DIST = syncevo-dbus-server.cpp \
 	backends/evolution/EvolutionCalendarSourceRegister.cpp \
 	backends/evolution/EvolutionContactSourceRegister.cpp \
 	backends/file/FileSyncSourceRegister.cpp \
+	backends/kcalextended/KCalExtendedSourceRegister.cpp \
 	backends/maemo/MaemoCalendarSourceRegister.cpp \
+	backends/qtcontacts/QtContactsSourceRegister.cpp \
 	backends/sqlite/SQLiteContactSourceRegister.cpp \
 	backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
 am__objects_7 =  \
@@ -148,7 +155,9 @@ am__objects_7 =  \
 	syncevo_dbus_server-EvolutionCalendarSourceRegister.$(OBJEXT) \
 	syncevo_dbus_server-EvolutionContactSourceRegister.$(OBJEXT) \
 	syncevo_dbus_server-FileSyncSourceRegister.$(OBJEXT) \
+	syncevo_dbus_server-KCalExtendedSourceRegister.$(OBJEXT) \
 	syncevo_dbus_server-MaemoCalendarSourceRegister.$(OBJEXT) \
+	syncevo_dbus_server-QtContactsSourceRegister.$(OBJEXT) \
 	syncevo_dbus_server-SQLiteContactSourceRegister.$(OBJEXT) \
 	syncevo_dbus_server-XMLRPCSyncSourceRegister.$(OBJEXT)
 @ENABLE_MODULES_FALSE@am__objects_8 = $(am__objects_7)
@@ -168,14 +177,18 @@ am__syncevolution_SOURCES_DIST = syncevolution.cpp CmdlineSyncClient.h \
 	backends/evolution/EvolutionCalendarSourceRegister.cpp \
 	backends/evolution/EvolutionContactSourceRegister.cpp \
 	backends/file/FileSyncSourceRegister.cpp \
+	backends/kcalextended/KCalExtendedSourceRegister.cpp \
 	backends/maemo/MaemoCalendarSourceRegister.cpp \
+	backends/qtcontacts/QtContactsSourceRegister.cpp \
 	backends/sqlite/SQLiteContactSourceRegister.cpp \
 	backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
 am__objects_10 = syncevolution-AddressBookSourceRegister.$(OBJEXT) \
 	syncevolution-EvolutionCalendarSourceRegister.$(OBJEXT) \
 	syncevolution-EvolutionContactSourceRegister.$(OBJEXT) \
 	syncevolution-FileSyncSourceRegister.$(OBJEXT) \
+	syncevolution-KCalExtendedSourceRegister.$(OBJEXT) \
 	syncevolution-MaemoCalendarSourceRegister.$(OBJEXT) \
+	syncevolution-QtContactsSourceRegister.$(OBJEXT) \
 	syncevolution-SQLiteContactSourceRegister.$(OBJEXT) \
 	syncevolution-XMLRPCSyncSourceRegister.$(OBJEXT)
 @ENABLE_MODULES_FALSE@am__objects_11 = $(am__objects_10)
@@ -247,9 +260,9 @@ am__nobase_dist_doc_DATA_DIST = testcases/lcs/file1.txt \
 nobase_dist_docDATA_INSTALL = $(install_sh_DATA)
 am__nobase_dist_template_DATA_DIST = templates/README \
 	templates/clients/SyncEvolution.ini \
-	templates/clients/phone/nokia/S40/7210c.ini \
-	templates/clients/phone/nokia/S60/N85.ini \
-	templates/clients/phone/nokia/maemo/n900.ini \
+	templates/clients/phone/nokia.ini \
+	templates/clients/phone/sony-ericsson-old.ini \
+	templates/clients/phone/sony-ericsson.ini \
 	templates/servers/Funambol.ini \
 	templates/servers/ScheduleWorld.ini
 nobase_dist_templateDATA_INSTALL = $(install_sh_DATA)
@@ -352,6 +365,8 @@ INTLTOOL_EXTRACT = @INTLTOOL_EXTRACT@
 INTLTOOL_MERGE = @INTLTOOL_MERGE@
 INTLTOOL_PERL = @INTLTOOL_PERL@
 INTLTOOL_UPDATE = @INTLTOOL_UPDATE@
+KCALEXTENDED_CFLAGS = @KCALEXTENDED_CFLAGS@
+KCALEXTENDED_LIBS = @KCALEXTENDED_LIBS@
 KEYRING_2_20_CFLAGS = @KEYRING_2_20_CFLAGS@
 KEYRING_2_20_LIBS = @KEYRING_2_20_LIBS@
 KEYRING_CFLAGS = @KEYRING_CFLAGS@
@@ -376,6 +391,7 @@ MCALB_CFLAGS = @MCALB_CFLAGS@
 MCALB_LIBS = @MCALB_LIBS@
 MKDIR_P = @MKDIR_P@
 MKINSTALLDIRS = @MKINSTALLDIRS@
+MOC = @MOC@
 MODIFY_SYNCCOMPARE = @MODIFY_SYNCCOMPARE@
 MSGFMT = @MSGFMT@
 MSGFMT_OPTS = @MSGFMT_OPTS@
@@ -398,7 +414,20 @@ POFILES = @POFILES@
 POSUB = @POSUB@
 PO_IN_DATADIR_FALSE = @PO_IN_DATADIR_FALSE@
 PO_IN_DATADIR_TRUE = @PO_IN_DATADIR_TRUE@
+QMAKE = @QMAKE@
+QT_CFLAGS = @QT_CFLAGS@
+QT_CONTACTS_LIBS = @QT_CONTACTS_LIBS@
+QT_CPPFLAGS = @QT_CPPFLAGS@
+QT_CXXFLAGS = @QT_CXXFLAGS@
+QT_DEFINES = @QT_DEFINES@
+QT_INCPATH = @QT_INCPATH@
+QT_LDFLAGS = @QT_LDFLAGS@
+QT_LFLAGS = @QT_LFLAGS@
+QT_LIBS = @QT_LIBS@
+QT_PATH = @QT_PATH@
+QT_VERSION_MAJOR = @QT_VERSION_MAJOR@
 RANLIB = @RANLIB@
+RCC = @RCC@
 RST2HTML = @RST2HTML@
 RST2MAN = @RST2MAN@
 SED = @SED@
@@ -424,6 +453,7 @@ SYNTHESIS_SUBDIR = @SYNTHESIS_SUBDIR@
 SYNTHESIS_SUBDIR_INCLUDES = @SYNTHESIS_SUBDIR_INCLUDES@
 TRANSPORT_CFLAGS = @TRANSPORT_CFLAGS@
 TRANSPORT_LIBS = @TRANSPORT_LIBS@
+UIC = @UIC@
 UNIQUE_CFLAGS = @UNIQUE_CFLAGS@
 UNIQUE_LIBS = @UNIQUE_LIBS@
 USE_NLS = @USE_NLS@
@@ -485,7 +515,7 @@ sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-BACKENDS = backends/addressbook backends/evolution backends/file backends/maemo backends/sqlite backends/xmlrpc
+BACKENDS = backends/addressbook backends/evolution backends/file backends/kcalextended backends/maemo backends/qtcontacts backends/sqlite backends/xmlrpc
 
 # start with building nothing and add more targets below
 SUBDIRS = $(am__append_1) $(am__append_2) $(am__append_3) \
@@ -515,7 +545,7 @@ SYNCEVOLUTION_DEP = $(am__append_14)
 EXTRA_DIST = shlibs.local Makefile-gen.am $(service_in_files) \
 	$(SYNCEVO_DBUS_SERVER_SCRIPT_IN) \
 	$(SYNCEVO_DBUS_SERVER_DESKTOP_IN) $(am__append_15)
-TEMPLATE_FILES = templates/README templates/clients/SyncEvolution.ini templates/clients/phone/nokia/S40/7210c.ini templates/clients/phone/nokia/S60/N85.ini templates/clients/phone/nokia/maemo/n900.ini templates/servers/Funambol.ini templates/servers/ScheduleWorld.ini
+TEMPLATE_FILES = templates/README templates/clients/SyncEvolution.ini templates/clients/phone/nokia.ini templates/clients/phone/sony-ericsson-old.ini templates/clients/phone/sony-ericsson.ini templates/servers/Funambol.ini templates/servers/ScheduleWorld.ini
 templatedir = $(datadir)/syncevolution/
 CORE_SOURCES = $(am__append_16)
 
@@ -528,7 +558,7 @@ CORE_SOURCES = $(am__append_16)
 # When using modules the registration is done inside the
 # module and the register file is unnecessary. However, they
 # still need to be included in "make dist".
-BACKEND_REGISTRIES = backends/addressbook/AddressBookSourceRegister.cpp backends/evolution/EvolutionCalendarSourceRegister.cpp backends/evolution/EvolutionContactSourceRegister.cpp backends/file/FileSyncSourceRegister.cpp backends/maemo/MaemoCalendarSourceRegister.cpp backends/sqlite/SQLiteContactSourceRegister.cpp backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
+BACKEND_REGISTRIES = backends/addressbook/AddressBookSourceRegister.cpp backends/evolution/EvolutionCalendarSourceRegister.cpp backends/evolution/EvolutionContactSourceRegister.cpp backends/file/FileSyncSourceRegister.cpp backends/kcalextended/KCalExtendedSourceRegister.cpp backends/maemo/MaemoCalendarSourceRegister.cpp backends/qtcontacts/QtContactsSourceRegister.cpp backends/sqlite/SQLiteContactSourceRegister.cpp backends/xmlrpc/XMLRPCSyncSourceRegister.cpp
 CORE_CXXFLAGS = $(SYNTHESIS_CFLAGS)
 CORE_LDADD = $(SYNCEVOLUTION_LDADD) syncevo/libsyncevolution.la $(GLIB_LIBS) $(GTHREAD_LIBS) $(GOBJECT_LIBS) $(LIBS)
 CORE_DEP = $(SYNCEVOLUTION_DEP) syncevo/libsyncevolution.la $(SYNTHESIS_DEP)
@@ -785,7 +815,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-EvolutionCalendarSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-EvolutionContactSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-FileSyncSourceRegister.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-KCalExtendedSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-MaemoCalendarSourceRegister.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-QtContactsSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-SQLiteContactSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-XMLRPCSyncSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/client_test-client-test-app.Po@am__quote@
@@ -795,7 +827,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-EvolutionCalendarSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-EvolutionContactSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-FileSyncSourceRegister.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-KCalExtendedSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-MaemoCalendarSourceRegister.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-QtContactsSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-SQLiteContactSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-XMLRPCSyncSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevo_dbus_server-syncevo-dbus-server.Po@am__quote@
@@ -805,7 +839,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-EvolutionCalendarSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-EvolutionContactSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-FileSyncSourceRegister.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-KCalExtendedSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-MaemoCalendarSourceRegister.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-QtContactsSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-SQLiteContactSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-XMLRPCSyncSourceRegister.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncevolution-syncevolution.Po@am__quote@
@@ -958,6 +994,20 @@ client_test-FileSyncSourceRegister.obj: backends/file/FileSyncSourceRegister.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-FileSyncSourceRegister.obj `if test -f 'backends/file/FileSyncSourceRegister.cpp'; then $(CYGPATH_W) 'backends/file/FileSyncSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/file/FileSyncSourceRegister.cpp'; fi`
 
+client_test-KCalExtendedSourceRegister.o: backends/kcalextended/KCalExtendedSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-KCalExtendedSourceRegister.o -MD -MP -MF $(DEPDIR)/client_test-KCalExtendedSourceRegister.Tpo -c -o client_test-KCalExtendedSourceRegister.o `test -f 'backends/kcalextended/KCalExtendedSourceRegister.cpp' || echo '$(srcdir)/'`backends/kcalextended/KCalExtendedSourceRegister.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/client_test-KCalExtendedSourceRegister.Tpo $(DEPDIR)/client_test-KCalExtendedSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/kcalextended/KCalExtendedSourceRegister.cpp' object='client_test-KCalExtendedSourceRegister.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-KCalExtendedSourceRegister.o `test -f 'backends/kcalextended/KCalExtendedSourceRegister.cpp' || echo '$(srcdir)/'`backends/kcalextended/KCalExtendedSourceRegister.cpp
+
+client_test-KCalExtendedSourceRegister.obj: backends/kcalextended/KCalExtendedSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-KCalExtendedSourceRegister.obj -MD -MP -MF $(DEPDIR)/client_test-KCalExtendedSourceRegister.Tpo -c -o client_test-KCalExtendedSourceRegister.obj `if test -f 'backends/kcalextended/KCalExtendedSourceRegister.cpp'; then $(CYGPATH_W) 'backends/kcalextended/KCalExtendedSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/kcalextended/KCalExtendedSourceRegister.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/client_test-KCalExtendedSourceRegister.Tpo $(DEPDIR)/client_test-KCalExtendedSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/kcalextended/KCalExtendedSourceRegister.cpp' object='client_test-KCalExtendedSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-KCalExtendedSourceRegister.obj `if test -f 'backends/kcalextended/KCalExtendedSourceRegister.cpp'; then $(CYGPATH_W) 'backends/kcalextended/KCalExtendedSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/kcalextended/KCalExtendedSourceRegister.cpp'; fi`
+
 client_test-MaemoCalendarSourceRegister.o: backends/maemo/MaemoCalendarSourceRegister.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-MaemoCalendarSourceRegister.o -MD -MP -MF $(DEPDIR)/client_test-MaemoCalendarSourceRegister.Tpo -c -o client_test-MaemoCalendarSourceRegister.o `test -f 'backends/maemo/MaemoCalendarSourceRegister.cpp' || echo '$(srcdir)/'`backends/maemo/MaemoCalendarSourceRegister.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/client_test-MaemoCalendarSourceRegister.Tpo $(DEPDIR)/client_test-MaemoCalendarSourceRegister.Po
@@ -971,6 +1021,20 @@ client_test-MaemoCalendarSourceRegister.obj: backends/maemo/MaemoCalendarSourceR
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/maemo/MaemoCalendarSourceRegister.cpp' object='client_test-MaemoCalendarSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-MaemoCalendarSourceRegister.obj `if test -f 'backends/maemo/MaemoCalendarSourceRegister.cpp'; then $(CYGPATH_W) 'backends/maemo/MaemoCalendarSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/maemo/MaemoCalendarSourceRegister.cpp'; fi`
+
+client_test-QtContactsSourceRegister.o: backends/qtcontacts/QtContactsSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-QtContactsSourceRegister.o -MD -MP -MF $(DEPDIR)/client_test-QtContactsSourceRegister.Tpo -c -o client_test-QtContactsSourceRegister.o `test -f 'backends/qtcontacts/QtContactsSourceRegister.cpp' || echo '$(srcdir)/'`backends/qtcontacts/QtContactsSourceRegister.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/client_test-QtContactsSourceRegister.Tpo $(DEPDIR)/client_test-QtContactsSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/qtcontacts/QtContactsSourceRegister.cpp' object='client_test-QtContactsSourceRegister.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-QtContactsSourceRegister.o `test -f 'backends/qtcontacts/QtContactsSourceRegister.cpp' || echo '$(srcdir)/'`backends/qtcontacts/QtContactsSourceRegister.cpp
+
+client_test-QtContactsSourceRegister.obj: backends/qtcontacts/QtContactsSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-QtContactsSourceRegister.obj -MD -MP -MF $(DEPDIR)/client_test-QtContactsSourceRegister.Tpo -c -o client_test-QtContactsSourceRegister.obj `if test -f 'backends/qtcontacts/QtContactsSourceRegister.cpp'; then $(CYGPATH_W) 'backends/qtcontacts/QtContactsSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/qtcontacts/QtContactsSourceRegister.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/client_test-QtContactsSourceRegister.Tpo $(DEPDIR)/client_test-QtContactsSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/qtcontacts/QtContactsSourceRegister.cpp' object='client_test-QtContactsSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -c -o client_test-QtContactsSourceRegister.obj `if test -f 'backends/qtcontacts/QtContactsSourceRegister.cpp'; then $(CYGPATH_W) 'backends/qtcontacts/QtContactsSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/qtcontacts/QtContactsSourceRegister.cpp'; fi`
 
 client_test-SQLiteContactSourceRegister.o: backends/sqlite/SQLiteContactSourceRegister.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(client_test_CPPFLAGS) $(CPPFLAGS) $(client_test_CXXFLAGS) $(CXXFLAGS) -MT client_test-SQLiteContactSourceRegister.o -MD -MP -MF $(DEPDIR)/client_test-SQLiteContactSourceRegister.Tpo -c -o client_test-SQLiteContactSourceRegister.o `test -f 'backends/sqlite/SQLiteContactSourceRegister.cpp' || echo '$(srcdir)/'`backends/sqlite/SQLiteContactSourceRegister.cpp
@@ -1084,6 +1148,20 @@ syncevo_dbus_server-FileSyncSourceRegister.obj: backends/file/FileSyncSourceRegi
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-FileSyncSourceRegister.obj `if test -f 'backends/file/FileSyncSourceRegister.cpp'; then $(CYGPATH_W) 'backends/file/FileSyncSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/file/FileSyncSourceRegister.cpp'; fi`
 
+syncevo_dbus_server-KCalExtendedSourceRegister.o: backends/kcalextended/KCalExtendedSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-KCalExtendedSourceRegister.o -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-KCalExtendedSourceRegister.Tpo -c -o syncevo_dbus_server-KCalExtendedSourceRegister.o `test -f 'backends/kcalextended/KCalExtendedSourceRegister.cpp' || echo '$(srcdir)/'`backends/kcalextended/KCalExtendedSourceRegister.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-KCalExtendedSourceRegister.Tpo $(DEPDIR)/syncevo_dbus_server-KCalExtendedSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/kcalextended/KCalExtendedSourceRegister.cpp' object='syncevo_dbus_server-KCalExtendedSourceRegister.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-KCalExtendedSourceRegister.o `test -f 'backends/kcalextended/KCalExtendedSourceRegister.cpp' || echo '$(srcdir)/'`backends/kcalextended/KCalExtendedSourceRegister.cpp
+
+syncevo_dbus_server-KCalExtendedSourceRegister.obj: backends/kcalextended/KCalExtendedSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-KCalExtendedSourceRegister.obj -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-KCalExtendedSourceRegister.Tpo -c -o syncevo_dbus_server-KCalExtendedSourceRegister.obj `if test -f 'backends/kcalextended/KCalExtendedSourceRegister.cpp'; then $(CYGPATH_W) 'backends/kcalextended/KCalExtendedSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/kcalextended/KCalExtendedSourceRegister.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-KCalExtendedSourceRegister.Tpo $(DEPDIR)/syncevo_dbus_server-KCalExtendedSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/kcalextended/KCalExtendedSourceRegister.cpp' object='syncevo_dbus_server-KCalExtendedSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-KCalExtendedSourceRegister.obj `if test -f 'backends/kcalextended/KCalExtendedSourceRegister.cpp'; then $(CYGPATH_W) 'backends/kcalextended/KCalExtendedSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/kcalextended/KCalExtendedSourceRegister.cpp'; fi`
+
 syncevo_dbus_server-MaemoCalendarSourceRegister.o: backends/maemo/MaemoCalendarSourceRegister.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-MaemoCalendarSourceRegister.o -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-MaemoCalendarSourceRegister.Tpo -c -o syncevo_dbus_server-MaemoCalendarSourceRegister.o `test -f 'backends/maemo/MaemoCalendarSourceRegister.cpp' || echo '$(srcdir)/'`backends/maemo/MaemoCalendarSourceRegister.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-MaemoCalendarSourceRegister.Tpo $(DEPDIR)/syncevo_dbus_server-MaemoCalendarSourceRegister.Po
@@ -1097,6 +1175,20 @@ syncevo_dbus_server-MaemoCalendarSourceRegister.obj: backends/maemo/MaemoCalenda
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/maemo/MaemoCalendarSourceRegister.cpp' object='syncevo_dbus_server-MaemoCalendarSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-MaemoCalendarSourceRegister.obj `if test -f 'backends/maemo/MaemoCalendarSourceRegister.cpp'; then $(CYGPATH_W) 'backends/maemo/MaemoCalendarSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/maemo/MaemoCalendarSourceRegister.cpp'; fi`
+
+syncevo_dbus_server-QtContactsSourceRegister.o: backends/qtcontacts/QtContactsSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-QtContactsSourceRegister.o -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-QtContactsSourceRegister.Tpo -c -o syncevo_dbus_server-QtContactsSourceRegister.o `test -f 'backends/qtcontacts/QtContactsSourceRegister.cpp' || echo '$(srcdir)/'`backends/qtcontacts/QtContactsSourceRegister.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-QtContactsSourceRegister.Tpo $(DEPDIR)/syncevo_dbus_server-QtContactsSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/qtcontacts/QtContactsSourceRegister.cpp' object='syncevo_dbus_server-QtContactsSourceRegister.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-QtContactsSourceRegister.o `test -f 'backends/qtcontacts/QtContactsSourceRegister.cpp' || echo '$(srcdir)/'`backends/qtcontacts/QtContactsSourceRegister.cpp
+
+syncevo_dbus_server-QtContactsSourceRegister.obj: backends/qtcontacts/QtContactsSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-QtContactsSourceRegister.obj -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-QtContactsSourceRegister.Tpo -c -o syncevo_dbus_server-QtContactsSourceRegister.obj `if test -f 'backends/qtcontacts/QtContactsSourceRegister.cpp'; then $(CYGPATH_W) 'backends/qtcontacts/QtContactsSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/qtcontacts/QtContactsSourceRegister.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevo_dbus_server-QtContactsSourceRegister.Tpo $(DEPDIR)/syncevo_dbus_server-QtContactsSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/qtcontacts/QtContactsSourceRegister.cpp' object='syncevo_dbus_server-QtContactsSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -c -o syncevo_dbus_server-QtContactsSourceRegister.obj `if test -f 'backends/qtcontacts/QtContactsSourceRegister.cpp'; then $(CYGPATH_W) 'backends/qtcontacts/QtContactsSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/qtcontacts/QtContactsSourceRegister.cpp'; fi`
 
 syncevo_dbus_server-SQLiteContactSourceRegister.o: backends/sqlite/SQLiteContactSourceRegister.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(syncevo_dbus_server_CPPFLAGS) $(CPPFLAGS) $(syncevo_dbus_server_CXXFLAGS) $(CXXFLAGS) -MT syncevo_dbus_server-SQLiteContactSourceRegister.o -MD -MP -MF $(DEPDIR)/syncevo_dbus_server-SQLiteContactSourceRegister.Tpo -c -o syncevo_dbus_server-SQLiteContactSourceRegister.o `test -f 'backends/sqlite/SQLiteContactSourceRegister.cpp' || echo '$(srcdir)/'`backends/sqlite/SQLiteContactSourceRegister.cpp
@@ -1224,6 +1316,20 @@ syncevolution-FileSyncSourceRegister.obj: backends/file/FileSyncSourceRegister.c
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -c -o syncevolution-FileSyncSourceRegister.obj `if test -f 'backends/file/FileSyncSourceRegister.cpp'; then $(CYGPATH_W) 'backends/file/FileSyncSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/file/FileSyncSourceRegister.cpp'; fi`
 
+syncevolution-KCalExtendedSourceRegister.o: backends/kcalextended/KCalExtendedSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -MT syncevolution-KCalExtendedSourceRegister.o -MD -MP -MF $(DEPDIR)/syncevolution-KCalExtendedSourceRegister.Tpo -c -o syncevolution-KCalExtendedSourceRegister.o `test -f 'backends/kcalextended/KCalExtendedSourceRegister.cpp' || echo '$(srcdir)/'`backends/kcalextended/KCalExtendedSourceRegister.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevolution-KCalExtendedSourceRegister.Tpo $(DEPDIR)/syncevolution-KCalExtendedSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/kcalextended/KCalExtendedSourceRegister.cpp' object='syncevolution-KCalExtendedSourceRegister.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -c -o syncevolution-KCalExtendedSourceRegister.o `test -f 'backends/kcalextended/KCalExtendedSourceRegister.cpp' || echo '$(srcdir)/'`backends/kcalextended/KCalExtendedSourceRegister.cpp
+
+syncevolution-KCalExtendedSourceRegister.obj: backends/kcalextended/KCalExtendedSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -MT syncevolution-KCalExtendedSourceRegister.obj -MD -MP -MF $(DEPDIR)/syncevolution-KCalExtendedSourceRegister.Tpo -c -o syncevolution-KCalExtendedSourceRegister.obj `if test -f 'backends/kcalextended/KCalExtendedSourceRegister.cpp'; then $(CYGPATH_W) 'backends/kcalextended/KCalExtendedSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/kcalextended/KCalExtendedSourceRegister.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevolution-KCalExtendedSourceRegister.Tpo $(DEPDIR)/syncevolution-KCalExtendedSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/kcalextended/KCalExtendedSourceRegister.cpp' object='syncevolution-KCalExtendedSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -c -o syncevolution-KCalExtendedSourceRegister.obj `if test -f 'backends/kcalextended/KCalExtendedSourceRegister.cpp'; then $(CYGPATH_W) 'backends/kcalextended/KCalExtendedSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/kcalextended/KCalExtendedSourceRegister.cpp'; fi`
+
 syncevolution-MaemoCalendarSourceRegister.o: backends/maemo/MaemoCalendarSourceRegister.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -MT syncevolution-MaemoCalendarSourceRegister.o -MD -MP -MF $(DEPDIR)/syncevolution-MaemoCalendarSourceRegister.Tpo -c -o syncevolution-MaemoCalendarSourceRegister.o `test -f 'backends/maemo/MaemoCalendarSourceRegister.cpp' || echo '$(srcdir)/'`backends/maemo/MaemoCalendarSourceRegister.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevolution-MaemoCalendarSourceRegister.Tpo $(DEPDIR)/syncevolution-MaemoCalendarSourceRegister.Po
@@ -1237,6 +1343,20 @@ syncevolution-MaemoCalendarSourceRegister.obj: backends/maemo/MaemoCalendarSourc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/maemo/MaemoCalendarSourceRegister.cpp' object='syncevolution-MaemoCalendarSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -c -o syncevolution-MaemoCalendarSourceRegister.obj `if test -f 'backends/maemo/MaemoCalendarSourceRegister.cpp'; then $(CYGPATH_W) 'backends/maemo/MaemoCalendarSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/maemo/MaemoCalendarSourceRegister.cpp'; fi`
+
+syncevolution-QtContactsSourceRegister.o: backends/qtcontacts/QtContactsSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -MT syncevolution-QtContactsSourceRegister.o -MD -MP -MF $(DEPDIR)/syncevolution-QtContactsSourceRegister.Tpo -c -o syncevolution-QtContactsSourceRegister.o `test -f 'backends/qtcontacts/QtContactsSourceRegister.cpp' || echo '$(srcdir)/'`backends/qtcontacts/QtContactsSourceRegister.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevolution-QtContactsSourceRegister.Tpo $(DEPDIR)/syncevolution-QtContactsSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/qtcontacts/QtContactsSourceRegister.cpp' object='syncevolution-QtContactsSourceRegister.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -c -o syncevolution-QtContactsSourceRegister.o `test -f 'backends/qtcontacts/QtContactsSourceRegister.cpp' || echo '$(srcdir)/'`backends/qtcontacts/QtContactsSourceRegister.cpp
+
+syncevolution-QtContactsSourceRegister.obj: backends/qtcontacts/QtContactsSourceRegister.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -MT syncevolution-QtContactsSourceRegister.obj -MD -MP -MF $(DEPDIR)/syncevolution-QtContactsSourceRegister.Tpo -c -o syncevolution-QtContactsSourceRegister.obj `if test -f 'backends/qtcontacts/QtContactsSourceRegister.cpp'; then $(CYGPATH_W) 'backends/qtcontacts/QtContactsSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/qtcontacts/QtContactsSourceRegister.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/syncevolution-QtContactsSourceRegister.Tpo $(DEPDIR)/syncevolution-QtContactsSourceRegister.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backends/qtcontacts/QtContactsSourceRegister.cpp' object='syncevolution-QtContactsSourceRegister.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -c -o syncevolution-QtContactsSourceRegister.obj `if test -f 'backends/qtcontacts/QtContactsSourceRegister.cpp'; then $(CYGPATH_W) 'backends/qtcontacts/QtContactsSourceRegister.cpp'; else $(CYGPATH_W) '$(srcdir)/backends/qtcontacts/QtContactsSourceRegister.cpp'; fi`
 
 syncevolution-SQLiteContactSourceRegister.o: backends/sqlite/SQLiteContactSourceRegister.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(syncevolution_CXXFLAGS) $(CXXFLAGS) -MT syncevolution-SQLiteContactSourceRegister.o -MD -MP -MF $(DEPDIR)/syncevolution-SQLiteContactSourceRegister.Tpo -c -o syncevolution-SQLiteContactSourceRegister.o `test -f 'backends/sqlite/SQLiteContactSourceRegister.cpp' || echo '$(srcdir)/'`backends/sqlite/SQLiteContactSourceRegister.cpp
@@ -1839,10 +1959,7 @@ testcase2patch: $(TEST_FILES_GENERATED)
 	done
 
 # copy base test files
-$(filter-out %.tem testcases/templates/%, $(filter testcases/%, $(subst $(srcdir)/../test/,,$(CLIENT_LIB_TEST_FILES)))) : % : $(srcdir)/../test/%
-	mkdir -p ${@D}
-	cp $< $@
-$(filter testcases/templates/%, $(CLIENT_LIB_TEST_FILES)) : testcases/% : $(srcdir)/%
+$(filter-out %.tem, $(filter testcases/%, $(subst $(srcdir)/../test/,,$(CLIENT_LIB_TEST_FILES)))) : % : $(srcdir)/../test/%
 	mkdir -p ${@D}
 	cp $< $@
 

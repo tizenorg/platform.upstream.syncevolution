@@ -179,7 +179,7 @@ clean-html:
 # Because backend-related variables need to be substituted in
 # Makefile-gen.am and configure.in we need an explicit rule to redo that work
 # so that "make" rebuilds derived files correctly.
-CONFIG_SUBS =  src/backends/addressbook/configure-sub.in src/backends/evolution/configure-sub.in src/backends/file/configure-sub.in src/backends/maemo/configure-sub.in src/backends/sqlite/configure-sub.in src/backends/xmlrpc/configure-sub.in
+CONFIG_SUBS =  src/backends/addressbook/configure-sub.in src/backends/evolution/configure-sub.in src/backends/file/configure-sub.in src/backends/kcalextended/configure-sub.in src/backends/maemo/configure-sub.in src/backends/qtcontacts/configure-sub.in src/backends/sqlite/configure-sub.in src/backends/xmlrpc/configure-sub.in
 $(srcdir)/configure.in: configure-pre.in configure-post.in $(CONFIG_SUBS)
 	rm -f $@
 	cat $(srcdir)/configure-pre.in >>$@
