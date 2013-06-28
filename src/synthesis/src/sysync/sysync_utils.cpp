@@ -549,7 +549,7 @@ const char *appendRFC2047AsUTF8(
 )
 {
   const char *p,*q,*r,*w;
-  char c;
+  char c = 0;
   const char *eot = aRFC2047+aSize;
 
   p=aRFC2047;
@@ -2831,7 +2831,10 @@ void generateNonce(string &aNonce, const char *aDevStaticString, sInt32 aSession
   // - done
   md5::Final (digest, &context);
   // - make string of first 48 bit of MD5: 48 bits, use 6 bits per char = 8 chars
-  uInt64 dig48 = *((uInt32 *)(digest));
+  uInt64 dig48 = ((uInt32)digest[0] << 0) |
+    ((uInt32)digest[1] << 8) |
+    ((uInt32)digest[2] << 16) |
+    ((uInt32)digest[3] << 24);
   aNonce.erase();
   for (sInt16 k=0; k<8; k++) {
     aNonce+=((dig48 & 0x03F) + 0x21);

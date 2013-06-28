@@ -135,7 +135,9 @@ GMSGFMT = @GMSGFMT@
 GREP = @GREP@
 GTK_BUILDER_CONV = @GTK_BUILDER_CONV@
 GUI_CFLAGS = @GUI_CFLAGS@
+GUI_DESKTOP_FILES = @GUI_DESKTOP_FILES@
 GUI_LIBS = @GUI_LIBS@
+GUI_PROGRAMS = @GUI_PROGRAMS@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -257,7 +259,7 @@ sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-ACLOCAL_AMFLAGS = -I m4
+ACLOCAL_AMFLAGS = -I m4 -I m4-repo
 SUBDIRS = src po test
 EXTRA_DIST = \
 	HACKING \
@@ -273,6 +275,7 @@ EXTRA_DIST = \
 MAINTAINERCLEANFILES = Makefile.in config.h.in config.guess config.sub configure depcomp install-sh ltmain.sh missing mkinstalldirs 
 CLEANFILES = 
 TEST_README_FILES = $(wildcard $(srcdir)/test/README.*)
+DEV_FILE_PATTERN = $(1)/usr/etc $(1)/usr/include $(1)/usr/lib/*.so $(1)/usr/lib/*.a $(1)/usr/lib/*.la $(1)/usr/lib/*/*.la $(1)/usr/lib/pkgconfig
 IPHONE_FILENAME = syncevolution-$(VERSION)-iphone.zip
 TYPE_deb = -D
 TYPE_rpm = -R
@@ -758,7 +761,7 @@ uninstall-am:
 @COND_DBUS_TRUE@	@ [ "$(prefix)" == "/usr" ] || (echo "please reconfigure with --prefix=/usr"; exit 1 )
 @COND_DBUS_TRUE@	rm -rf $(distdir)
 @COND_DBUS_TRUE@	$(MAKE) DESTDIR=`pwd`/$(distdir) install
-@COND_DBUS_TRUE@	rm -rf $(distdir)/usr/etc
+@COND_DBUS_TRUE@	rm -rf $(call DEV_FILE_PATTERN, $(distdir))
 @COND_DBUS_TRUE@	mkdir -p $(distdir)/usr/share/doc/syncevolution
 @COND_DBUS_TRUE@	cp $(srcdir)/INSTALL-tar-gz $(distdir)/INSTALL
 @COND_DBUS_TRUE@	cp $(srcdir)/README $(srcdir)/NEWS $(srcdir)/COPYING $(TEST_README_FILES) $(distdir)/usr/share/doc/syncevolution
@@ -770,6 +773,7 @@ uninstall-am:
 @COND_DBUS_FALSE@	@ [ "$(BINSUFFIX)" ] || (echo "please invoke with e.g. 'make distbin BINSUFFIX=debian-3.1'"; exit 1 ) 
 @COND_DBUS_FALSE@	rm -rf $(distdir)
 @COND_DBUS_FALSE@	$(MAKE) prefix=`pwd`/$(distdir) install
+@COND_DBUS_FALSE@	rm -rf $(call DEV_FILE_PATTERN, $(distdir))
 @COND_DBUS_FALSE@	cp $(srcdir)/README $(srcdir)/NEWS $(srcdir)/COPYING $(TEST_README_FILES) $(distdir)
 @COND_DBUS_FALSE@	tar zcf $(distdir)-$(BINSUFFIX).tar.gz $(distdir)
 @COND_DBUS_FALSE@	rm -rf $(distdir)
@@ -820,13 +824,13 @@ deb rpm : dist/$(distdir) dist/debian/control doc-pak description-pak
 		--pkgaltsource='http://www.estamos.de/projects/SyncML/' \
 		--pkggroup='gnome' \
 		--docdir=":$$docdir" cp -r `pwd`/$</usr/* /usr
+	if [ $@ == "rpm" ]; then cp /usr/src/rpm/RPMS/*/${PKGNAME}-${VERSION}-2.*.rpm .; fi
 
 .PHONY: dist/$(distdir) clean_dist
 dist/$(distdir): all
 	rm -rf $@
 	$(MAKE) install DESTDIR=`pwd`/$@
-	rm -rf $@/usr/etc $@/usr/include
-	find $@ -name *.la -o -name *.so -delete
+	rm -rf $(call DEV_FILE_PATTERN, $@)
 clean-local: clean_dist
 clean_dist:
 	rm -rf dist doc-pak description-pak

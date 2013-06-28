@@ -926,6 +926,13 @@ void EvolutionSyncClient::displaySourceProgress(sysync::TProgressEventEnum type,
         source.setItemStat(EvolutionSyncSource::ITEM_LOCAL,
                            EvolutionSyncSource::ITEM_REMOVED,
                            EvolutionSyncSource::ITEM_TOTAL,
+                           // Synthesis engine doesn't count locally
+                           // deleted items during
+                           // refresh-from-server. That's a matter of
+                           // taste. In SyncEvolution we'd like these
+                           // items to show up, so add it here.
+                           source.getFinalSyncMode() == SYNC_REFRESH_FROM_SERVER ? 
+                           source.getNumDeleted() :
                            extra3);
         break;
     case sysync::PEV_DSSTATS_R:
@@ -1251,7 +1258,7 @@ void EvolutionSyncClient::getConfigXML(string &xml, string &configname)
             "    <logformat>html</logformat>\n"
             "    <folding>auto</folding>\n"
             "    <timestamp>yes</timestamp>\n"
-            "    <timestampall>no</timestampall>\n"
+            "    <timestampall>yes</timestampall>\n"
             "    <timedsessionlognames>no</timedsessionlognames>\n"
             "    <subthreadmode>suppress</subthreadmode>\n"
             "    <logsessionstoglobal>yes</logsessionstoglobal>\n"

@@ -1652,6 +1652,8 @@ void SyncTests::addTests() {
                     ADD_TEST(SyncTests, testDelete);
                     ADD_TEST(SyncTests, testAddUpdate);
                     ADD_TEST(SyncTests, testManyItems);
+                    ADD_TEST(SyncTests, testSlowSyncSemantic);
+                    ADD_TEST(SyncTests, testComplexRefreshFromServerSemantic);
 
                     if (config.updateItem) {
                         ADD_TEST(SyncTests, testUpdate);
@@ -2635,6 +2637,71 @@ void SyncTests::testManyItems() {
     compareDatabases();
 }
 
+/**
+ * - get client A, server, client B in sync with one item
+ * - force slow sync in A: must not duplicate items, but may update it locally
+ * - refresh client B (in case that the item was updated)
+ * - delete item in B and server via two-way sync
+ * - refresh-from-server in B to check that item is gone
+ * - two-way in A: must delete the item
+ */
+void SyncTests::testSlowSyncSemantic()
+{
+    // set up one item everywhere
+    doCopy();
+
+    // slow in A
+    doSync("slow",
+           SyncOptions(SYNC_SLOW,
+                       CheckSyncReport(0,-1,0, -1,-1,0, true, SYNC_SLOW)));
+
+    // refresh B, delete item
+    accessClientB->doSync("refresh",
+                          SyncOptions(SYNC_TWO_WAY,
+                                      CheckSyncReport(0,-1,0, 0,0,0, true, SYNC_TWO_WAY)));
+    BOOST_FOREACH(source_array_t::value_type &source_pair, accessClientB->sources)  {
+        source_pair.second->deleteAll(source_pair.second->createSourceA);
+    }
+    accessClientB->doSync("delete",
+                          SyncOptions(SYNC_TWO_WAY,
+                                      CheckSyncReport(0,0,0, 0,0,1, true, SYNC_TWO_WAY)));
+    accessClientB->doSync("check",
+                          SyncOptions(SYNC_REFRESH_FROM_SERVER,
+                                      CheckSyncReport(0,0,0, 0,0,0, true, SYNC_REFRESH_FROM_SERVER)));
+
+    // now the item should also be deleted on A
+    doSync("delete",
+           SyncOptions(SYNC_TWO_WAY,
+                       CheckSyncReport(0,0,1, 0,0,0, true, SYNC_TWO_WAY)));
+}
+
+/**
+ * check that refresh-from-server works correctly:
+ * - create the same item on A, server, B via testCopy()
+ * - refresh B (one item deleted, one created)
+ * - delete item on A and server
+ * - refresh B (one item deleted)
+ */
+void SyncTests::testComplexRefreshFromServerSemantic()
+{
+    testCopy();
+
+    // check refresh with one item on server
+    accessClientB->doSync("refresh-one",
+                          SyncOptions(SYNC_REFRESH_FROM_SERVER,
+                                      CheckSyncReport(1,0,1, 0,0,0, true, SYNC_REFRESH_FROM_SERVER)));
+
+    // delete that item via A, check again
+    BOOST_FOREACH(source_array_t::value_type &source_pair, sources)  {
+        source_pair.second->deleteAll(source_pair.second->createSourceA);
+    }
+    doSync("delete-item",
+           SyncOptions(SYNC_TWO_WAY,
+                       CheckSyncReport(0,0,0, 0,0,1, true, SYNC_TWO_WAY)));
+    accessClientB->doSync("refresh-none",
+                          SyncOptions(SYNC_REFRESH_FROM_SERVER,
+                                      CheckSyncReport(0,0,1, 0,0,0, true, SYNC_REFRESH_FROM_SERVER)));
+}
 
 /**
  * implements testMaxMsg(), testLargeObject(), testLargeObjectEncoded()
@@ -3300,6 +3367,13 @@ bool ClientTest::compare(ClientTest &client, const char *fileA, const char *file
     setenv("CLIENT_TEST_RIGHT_NAME", fileB, 1);
     setenv("CLIENT_TEST_REMOVED", "only in left file", 1);
     setenv("CLIENT_TEST_ADDED", "only in right file", 1);
+    const char* compareLog = getenv("CLIENT_TEST_COMPARE_LOG");
+    if(compareLog && strlen(compareLog))
+    {
+       string tmpfile = "____compare.log";
+       cmdstr =string("bash -c 'set -o pipefail;") + cmdstr;
+       cmdstr += " 2>&1|tee " +tmpfile+"'";
+    }
     bool success = system(cmdstr.c_str()) == 0;
     if (!success) {
         printf("failed: env CLIENT_TEST_SERVER=%s PATH=.:$PATH synccompare %s %s\n",
@@ -3354,6 +3428,7 @@ void ClientTest::getTestData(const char *type, Config &config)
 
     if (!strcmp(type, "vcard30")) {
         config.sourceName = "vcard30";
+        config.sourceNameServerTemplate = "addressbook";
         config.uri = "card3"; // ScheduleWorld
         config.type = "text/vcard";
         config.insertItem =
@@ -3420,6 +3495,7 @@ void ClientTest::getTestData(const char *type, Config &config)
         config.testcases = "testcases/vcard30.vcf";
     } else if (!strcmp(type, "vcard21")) {
         config.sourceName = "vcard21";
+        config.sourceNameServerTemplate = "addressbook";
         config.uri = "card"; // Funambol
         config.type = "text/x-vcard";
         config.insertItem =
@@ -3482,6 +3558,7 @@ void ClientTest::getTestData(const char *type, Config &config)
         config.testcases = "testcases/vcard21.vcf";
     } else if(!strcmp(type, "ical20")) {
         config.sourceName = "ical20";
+        config.sourceNameServerTemplate = "calendar";
         config.uri = "cal2"; // ScheduleWorld
         config.type = "text/x-vcalendar";
         config.insertItem =
@@ -3618,6 +3695,7 @@ void ClientTest::getTestData(const char *type, Config &config)
         config.testcases = "testcases/ical20.ics";
     } if(!strcmp(type, "vcal10")) {
         config.sourceName = "vcal10";
+        config.sourceNameServerTemplate = "calendar";
         config.uri = "cal"; // Funambol 3.0
         config.type = "text/x-vcalendar";
         config.insertItem =
@@ -3675,6 +3753,7 @@ void ClientTest::getTestData(const char *type, Config &config)
         config.testcases = "testcases/vcal10.ics";
     } else if(!strcmp(type, "itodo20")) {
         config.sourceName = "itodo20";
+        config.sourceNameServerTemplate = "todo";
         config.uri = "task2"; // ScheduleWorld
         config.type = "text/x-vcalendar";
         config.insertItem =
@@ -3754,6 +3833,7 @@ void ClientTest::getTestData(const char *type, Config &config)
         // the test data in that format, see EvolutionMemoSource
         // for an example.
         config.uri = "note"; // ScheduleWorld
+        config.sourceNameServerTemplate = "memo";
         config.type = "memo";
         config.itemType = "text/calendar";
         config.insertItem =

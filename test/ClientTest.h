@@ -308,6 +308,13 @@ class ClientTest {
         const char *uri;
 
         /**
+         * A corresponding source name in the default server template,
+         * this is used to copy corresponding uri set in the server template
+         * instead of the uri field above (which is the same for all servers).
+         */
+        const char *sourceNameServerTemplate;
+
+        /**
          * A member function of a subclass which is called to create a
          * sync source referencing the data. This is used in tests of
          * the SyncSource API itself as well as in tests which need to
@@ -782,8 +789,9 @@ public:
 
 protected:
     /** list with all local test classes for manipulating the sources and their index in the client */
-    std::vector< std::pair<int, LocalTests *> > sources;
-    typedef std::vector< std::pair<int, LocalTests *> >::iterator source_it;
+    typedef std::vector< std::pair<int, LocalTests *> > source_array_t;
+    source_array_t sources;
+    typedef source_array_t::iterator source_it;
 
     /**
      * Stack of log file prefixes which are to be appended to the base name,
@@ -906,6 +914,8 @@ protected:
     }
 
     virtual void testManyItems();
+    virtual void testSlowSyncSemantic();
+    virtual void testComplexRefreshFromServerSemantic();
 
     virtual void doInterruptResume(int changes,
                   boost::shared_ptr<TransportWrapper> wrapper); 

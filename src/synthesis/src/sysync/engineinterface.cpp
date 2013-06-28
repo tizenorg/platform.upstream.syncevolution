@@ -486,20 +486,26 @@ TSyError TSettingsKeyImpl::SetValueByID(
       tempInt = *((sInt64 *)aBuffer);
     intConv:
       // convert integer into native type
-      bP = &tempInt; // re-use as temp buffer
+      union {
+        sInt64 buffer64;
+        sInt32 buffer32;
+        sInt16 buffer16;
+        sInt8  buffer8;
+      } buffer;
+      bP = &buffer;
       switch (valType) {
         case VALTYPE_INT8:
-          siz=1; *((sInt8 *)bP) = tempInt;
+          siz=1; buffer.buffer8 = tempInt;
           break;
         case VALTYPE_INT16:
-          siz=2; *((sInt16 *)bP) = tempInt;
+          siz=2; buffer.buffer16 = tempInt;
           break;
         case VALTYPE_INT32:
-          siz=4; *((sInt32 *)bP) = tempInt;
+          siz=4; buffer.buffer32 = tempInt;
           break;
         case VALTYPE_INT64:
         case VALTYPE_TIME64: // native timestamp
-          siz=8; *((sInt64 *)bP) = tempInt;
+          siz=8; buffer.buffer64 = tempInt;
           break;
         default:
           // other types (like text) cannot set as integer

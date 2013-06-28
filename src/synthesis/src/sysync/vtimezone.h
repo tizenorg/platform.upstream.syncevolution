@@ -75,13 +75,13 @@ bool ContextToTzDaylight( timecontext_t  aContext,
  *  Get the string between "BEGIN:<value>\n" and "END:<value>\n"
  *  Default: First occurance
  */
-string VStr( string aStr, string value, sInt32 aNth= 1 );
+string VStr( const string &aStr, const string &value, sInt32 aNth= 1 );
 
 
 /*! <aStr> parsing:
  *  Get the value between "<key>:" and "\n"
  */
-string VValue( string aStr, string key );
+string VValue( const string &aStr, const string &key );
 
 
 /*! Get the hour/minute string of <bias> */

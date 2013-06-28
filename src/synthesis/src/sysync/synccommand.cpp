@@ -807,7 +807,7 @@ bool TSyncCommand::analyze(TPackageStates aPackageState)
 bool TSyncCommand::execute(void)
 {
   TStatusCommand *statusCmdP=NULL;
-  bool queueforlater;
+  bool queueforlater = false;
 
   if (fSyncElementP)
   SYSYNC_TRY {

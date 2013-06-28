@@ -292,18 +292,91 @@ static bool GetTZInfo( cAppCharP     aText,
 
 
 /*! Create a property string */
-static string Property( string propertyName, string value ) {
+static string Property( const string &propertyName, const string &value ) {
   return propertyName + ":" + value + "\n";
 } // Property
 
+/*! Find a Property inside another string. If the property string ends
+  in \n, then that character matches arbitrary line endings (\r, \n,
+  end of string).  If the property does not end in \n, a normal string
+  search is done. */
+static string::size_type FindProperty( const string &aText, const string &aProperty, string::size_type aOffset = 0 ) {
+  if (!aProperty.empty() && aProperty[aProperty.size()-1] == '\n') {
+    // ignore trailing \n, check for either \r or \n in aText instead
+    string::size_type offset = aOffset;
+    string::size_type textlen = aProperty.size() - 1;
+    while (true) {
+      string::size_type hit = aText.find(aProperty.c_str(), offset, textlen);
+      if (hit == string::npos)
+        return string::npos;
+
+      // prefix match, now must check for line end
+      if (hit + textlen >= aText.size()) {
+        // end of string is okay
+        return hit;
+      }
+
+      char eol = aText[hit + textlen];
+      switch (eol) {
+      case '\r':
+      case '\n':
+        // found it
+        return hit;
+      }
+      // keep searching
+      offset = hit + 1;
+    }
+  } else {
+    // normal string search
+    return aText.find(aProperty, aOffset);
+  }
+} // FindProperty
+
+/*! Find last instance of Property inside another string. If the
+  property string ends in \n, then that character matches arbitrary
+  line endings (\r, \n, end of string).  If the property does not end
+  in \n, a normal string search is done. */
+static string::size_type RfindProperty( const string &aText, const string &aProperty, string::size_type aOffset = string::npos ) {
+  if (!aProperty.empty() && aProperty[aProperty.size()-1] == '\n') {
+    // ignore trailing \n, check for either \r or \n in aText instead
+    string::size_type offset = aOffset;
+    string::size_type textlen = aProperty.size() - 1;
+    while (true) {
+      string::size_type hit = aText.rfind(aProperty.c_str(), offset, textlen);
+      if (hit == string::npos)
+        return string::npos;
+
+      // prefix match, now must check for line end
+      if (hit + textlen >= aText.size()) {
+        // end of string is okay
+        return hit;
+      }
+
+      char eol = aText[hit + textlen];
+      switch (eol) {
+      case '\r':
+      case '\n':
+        // found it
+        return hit;
+      }
+      // keep searching, if possible
+      if (hit == 0)
+        return string::npos;
+      offset = hit - 1;
+    }
+  } else {
+    // normal reversed string search
+    return aText.rfind(aProperty, aOffset);
+  }
+} // RfindProperty
 
 /*! Check, if "BEGIN:value" is available only once */
 static int PMulti( string &aText, string value )
 {
   string             p= Property( VTZ_BEGIN, value );
-  string::size_type
-      n= aText.find( p,   0 ); if (n==string::npos) return 0;
-      n= aText.find( p, n+1 ); if (n==string::npos) return 1;
+  string::size_type n;
+  n= FindProperty( aText, p ); if (n==string::npos) return 0;
+  n= FindProperty( aText, p, n+1 ); if (n==string::npos) return 1;
   /* else */                                        return 2;
 } // PMulti
 
@@ -797,41 +870,42 @@ bool ContextToTzDaylight( timecontext_t  aContext,
 
 
 // -----------------------------------------------------------------------------------------
-// Get sequence between <bv> and <ev>
-static string PeeledStr( string aStr, string bv, string ev, sInt32 aNth )
+// Get sequence between <bv> and <ev>. If these strings end in \n, then that character
+// matches arbitrary line endings (in other words, \n, \r, end of string).
+static string PeeledStr( const string &aStr, const string &bv, const string &ev, sInt32 aNth )
 {
   string::size_type bp= 0;
 
   if (aNth==-1) {
-    bp= aStr.rfind( bv, aStr.length() ); if (bp==string::npos) return "";
+    bp= RfindProperty( aStr, bv ); if (bp==string::npos) return "";
   }
   else {
     sInt32 i= 1;
     
     while (true) {
-      bp= aStr.find( bv, bp ); if (bp==string::npos) return "";
+      bp= FindProperty( aStr, bv, bp ); if (bp==string::npos) return "";
       if (i>=aNth) break;
       i++; bp++;
     } // while
   } // if
   
 //string::size_type bp= aStr.find( bv, 0 ); if (bp==string::npos) return "";
-  string::size_type ep= aStr.find( ev,bp ); if (ep==string::npos) return "";
+  string::size_type ep= FindProperty( aStr, ev, bp ); if (ep==string::npos) return "";
 
   string::size_type bpl= bp + bv.length();
   return aStr.substr( bpl, ep - bpl );
 } // PeeledStr
 
 
-// Get the string between "BEGIN:<value>\n" and "END:<value>\n"
-string  VStr( string aStr, string value, sInt32 aNth ) {
+// Get the string between "BEGIN:<value>[line end]" and "END:<value>[line end]"
+string  VStr( const string &aStr, const string &value, sInt32 aNth ) {
   return PeeledStr( aStr, Property( VTZ_BEGIN, value ),
                           Property( VTZ_END,   value ), aNth );
 } // VStr
 
 
 // Get the value string between "<field>:" and "\r?\n"
-string VValue( string aStr, string key ) {
+string VValue( const string &aStr, const string &key ) {
   string res = PeeledStr( aStr, key + ":", "\n", 1 );
 
   // strip optional trailing \r
