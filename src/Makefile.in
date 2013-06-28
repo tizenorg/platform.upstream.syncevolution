@@ -329,7 +329,7 @@ RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	installcheck-recursive installdirs-recursive pdf-recursive \
 	ps-recursive uninstall-recursive
 am__nobase_dist_doc_DATA_DIST = testcases/lcs/file1.txt \
-	testcases/lcs/file2.txt \
+	testcases/lcs/file2.txt testcases/local.png \
 	testcases/templates/clients/SyncEvolution.ini \
 	testcases/templates/clients/phone/nokia/S40/7210c.ini \
 	testcases/google_event.ics testcases/yahoo_contact.vcf \
@@ -669,7 +669,7 @@ SUFFIXES = .moc.cpp .moc.cc .moc.cxx .moc.C .h .hh .hpp \
            .qrc .qrc.cpp .qrc.cc .qrc.cxx .qrc.C
 
 DISTCLEANFILES = $(BUILT_SOURCES) synccompare
-BACKENDS = backends/webdav backends/addressbook backends/sqlite backends/maemo backends/evolution backends/akonadi backends/kcalextended backends/file backends/buteo backends/qtcontacts backends/xmlrpc
+BACKENDS = backends/akonadi backends/sqlite backends/evolution backends/addressbook backends/kcalextended backends/buteo backends/file backends/maemo backends/webdav backends/xmlrpc backends/qtcontacts
 
 # start with building nothing and add more targets below
 SUBDIRS = $(am__append_1) $(am__append_2) $(am__append_3) \
@@ -772,7 +772,7 @@ nodist_client_test_SOURCES = ../test/test.cpp $(am__append_18) \
 # applying a patch ($(srcdir)/test/testcases/eds_event.ics.funambol.tem.patch).
 # add files created via patches
 CLIENT_LIB_TEST_FILES = testcases/lcs/file1.txt \
-	testcases/lcs/file2.txt \
+	testcases/lcs/file2.txt testcases/local.png \
 	testcases/templates/clients/SyncEvolution.ini \
 	testcases/templates/clients/phone/nokia/S40/7210c.ini \
 	testcases/google_event.ics testcases/yahoo_contact.vcf \

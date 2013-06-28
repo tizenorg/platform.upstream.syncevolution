@@ -1,6 +1,6 @@
 include $(top_srcdir)/m4-repo/autotroll.mk
 
-BACKENDS =  backends/webdav backends/addressbook backends/sqlite backends/maemo backends/evolution backends/akonadi backends/kcalextended backends/file backends/buteo backends/qtcontacts backends/xmlrpc
+BACKENDS =  backends/akonadi backends/sqlite backends/evolution backends/addressbook backends/kcalextended backends/buteo backends/file backends/maemo backends/webdav backends/xmlrpc backends/qtcontacts
 
 # start with building nothing and add more targets below
 SUBDIRS =
@@ -234,6 +234,7 @@ endif
 CLIENT_LIB_TEST_FILES = \
 	testcases/lcs/file1.txt \
 	testcases/lcs/file2.txt \
+        testcases/local.png \
 	testcases/templates/clients/SyncEvolution.ini \
 	testcases/templates/clients/phone/nokia/S40/7210c.ini \
 	testcases/google_event.ics \

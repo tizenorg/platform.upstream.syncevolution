@@ -698,7 +698,7 @@ SML_API Ret_t smlEndEvaluation(InstanceID_t id, MemSize_t *freemem)
     return SML_ERR_WRONG_USAGE;
 
   rc = xltEndEvaluation(id, (XltEncoderPtr_t)(pInstanceInfo->encoderState), freemem);
-  return SML_ERR_OK;
+  return rc;
 }
 
 #endif

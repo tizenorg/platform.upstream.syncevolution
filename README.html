@@ -5,7 +5,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="Docutils 0.6: http://docutils.sourceforge.net/" />
 <title>SyncEvolution</title>
-<meta name="date" content="2011-07-17" />
+<meta name="date" content="2011-08-17" />
 <style type="text/css">
 
 /*
@@ -315,9 +315,9 @@ ul.auto-toc {
 <tr class="field"><th class="docinfo-name">Manual section:</th><td class="field-body">1</td>
 </tr>
 <tr><th class="docinfo-name">Version:</th>
-<td>1.1.99.5b</td></tr>
+<td>1.1.99.6</td></tr>
 <tr><th class="docinfo-name">Date:</th>
-<td>2011-07-17</td></tr>
+<td>2011-08-17</td></tr>
 </tbody>
 </table>
 <div class="section" id="synopsis">
@@ -908,12 +908,15 @@ source in the target config.  The <tt class="docutils literal">sync</tt> propert
 defines the direction of the data flow. It can be set temporarily when
 starting a synchronzation with the sync config.</p>
 <blockquote>
-<strong>Warning:</strong> in local sync, the sync config side acts as
+<p><strong>Warning:</strong> in local sync, the sync config side acts as
 server. Therefore the <tt class="docutils literal"><span class="pre">from-server</span></tt> variants
 (<tt class="docutils literal"><span class="pre">one-way-from-server</span></tt>, <tt class="docutils literal"><span class="pre">refresh-from-server</span></tt>) transfer data
 from the sync config into the target config. The <tt class="docutils literal"><span class="pre">from-client</span></tt>
 variants transfer in the other direction, even if the target config
-happens to access data on a remote server.</blockquote>
+happens to access data on a remote server.</p>
+<p><strong>Warning:</strong> because the client in the local sync starts the sync,
+<tt class="docutils literal">preventSlowSync=0</tt> must be set in the target config to have an effect.</p>
+</blockquote>
 </div>
 <div class="section" id="caldav-and-carddav">
 <h3>CalDAV and CardDAV</h3>
@@ -958,6 +961,7 @@ syncevolution --configure \
 # configure sync config
 syncevolution --configure \
               --template SyncEvolution_Client \
+              syncURL=local://&#64;webdav \
               username= \
               password= \
               webdav \

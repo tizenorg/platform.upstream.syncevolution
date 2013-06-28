@@ -22,7 +22,7 @@ $(srcdir)/Makefile.am: $(srcdir)/Makefile.am.in $(srcdir)/gen-makefile-am.sh
 # zero. When fixing something without interface change, increment
 # REVISION.
 ENGINE_CURRENT = 5
-ENGINE_REVISION = 0
+ENGINE_REVISION = 1
 ENGINE_AGE = 5
 
 CLEANFILES =
@@ -77,7 +77,7 @@ libsynthesis_la_CFLAGS = \
 	$(LIBICAL_CFLAGS) \
 	$(LIBECAL_CFLAGS)
 libsynthesis_la_CXXFLAGS = $(libsynthesis_la_CFLAGS)
-libsynthesis_la_LIBADD = $(PCRE_LIBS) $(SQLITE3_LIBS) $(XMLPARSE_LIBS) $(LIBICAL_LIBS) $(LIBECAL_LIBS) libsmltk.la -lz
+libsynthesis_la_LIBADD = $(PCRE_LIBS) $(SQLITE3_LIBS) $(XMLPARSE_LIBS) $(LIBICAL_LIBS) $(LIBECAL_LIBS) libsmltk.la -lz -ldl
 libsynthesis_la_LDFLAGS = -version-info $(ENGINE_CURRENT):$(ENGINE_REVISION):$(ENGINE_AGE) \
 	-Wl,--version-script=$(srcdir)/synthesis-linker.map
 libsynthesis_la_DEPENDENCIES = $(srcdir)/synthesis-linker.map libsmltk.la

@@ -668,6 +668,9 @@ starting a synchronzation with the sync config.
   variants transfer in the other direction, even if the target config
   happens to access data on a remote server.
 
+  **Warning:** because the client in the local sync starts the sync,
+  ``preventSlowSync=0`` must be set in the target config to have an effect.
+
 
 CalDAV and CardDAV
 ==================
@@ -717,6 +720,7 @@ replace ``webdav`` with ``google-calendar`` resp. ``yahoo`` and remove the
    # configure sync config
    syncevolution --configure \
                  --template SyncEvolution_Client \
+                 syncURL=local://@webdav \
                  username= \
                  password= \
                  webdav \

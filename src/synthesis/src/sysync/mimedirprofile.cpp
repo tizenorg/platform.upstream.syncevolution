@@ -23,6 +23,7 @@
 
 #include "syncagent.h"
 
+#include <ctype.h>
 
 using namespace sysync;
 
@@ -174,6 +175,8 @@ bool TMIMEProfileConfig::getConvMode(cAppCharP aText, sInt16 &aConvMode)
       aConvMode = CONVMODE_MULTIMIX;
     else if (strucmp(aText,"blob_b64",n)==0)
       aConvMode = CONVMODE_BLOB_B64;
+    else if (strucmp(aText,"blob_auto",n)==0)
+      aConvMode = CONVMODE_BLOB_AUTO;
     else if (strucmp(aText,"mailto",n)==0)
       aConvMode = CONVMODE_MAILTO;
     else if (strucmp(aText,"valuetype",n)==0)
@@ -2259,7 +2262,8 @@ sInt16 TMimeDirProfileHandler::generateValue(
           maxSiz = 0; // no size restriction
         bool noTruncate=aItem.getTargetItemType()->getFieldOptions(fid)->notruncate;
         // check for BLOB values
-        if ((aConvDefP->convmode & CONVMODE_MASK)==CONVMODE_BLOB_B64) {
+        sInt16 convmode = aConvDefP->convmode & CONVMODE_MASK;
+        if (convmode==CONVMODE_BLOB_B64 || convmode==CONVMODE_BLOB_AUTO) {
           // no value lists, escaping, enums. Simply set value and encoding
           TItemField *fldP = aItem.getArrayField(fid,aRepOffset,true); // existing array elements only
           if (!fldP) return GENVALUE_EXHAUSTED; // no leaf field - must be exhausted array (fldP==NULL is not possible here for non-arrays)
@@ -2274,8 +2278,24 @@ sInt16 TMimeDirProfileHandler::generateValue(
           }
           // append to existing string
           fldP->appendToString(outval,maxSiz);
-          // force B64 encoding
-          aEncoding=enc_base64;
+          if (convmode==CONVMODE_BLOB_AUTO) {
+            // auto mode: use  B64 encoding only if non-printable or
+            // non-ASCII characters are in the value
+            size_t len = outval.size();
+            for (size_t i = 0; i < len; i++) {
+              char c = outval[i];
+              if (!isascii(c) || !isprint(c)) {
+                aEncoding=enc_base64;
+                break;
+              }
+            }
+          }
+          else {
+            // blob mode: always use B64
+            aEncoding=enc_base64;
+          }
+          // only ASCII in value: either because it contains only
+          // those to start with or because they will be encoded
           aNonASCII=false;
         }
         else {
@@ -3647,7 +3667,10 @@ bool TMimeDirProfileHandler::parseValue(
     // find out if value exists (available in source and target)
     if (isFieldAvailable(aItem,fid)) {
       // parse only if field available in both source and target
-      if ((aConvDefP->convmode & CONVMODE_MASK)==CONVMODE_BLOB_B64) {
+      if (
+        (aConvDefP->convmode & CONVMODE_MASK)==CONVMODE_BLOB_B64 ||
+        (aConvDefP->convmode & CONVMODE_MASK)==CONVMODE_BLOB_AUTO
+      ) {
         // move 1:1 into field
         // - get pointer to leaf field
         TItemField *fldP = aItem.getArrayField(fid,aRepOffset);

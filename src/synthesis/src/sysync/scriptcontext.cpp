@@ -27,6 +27,7 @@
   #include "pcre.h" // for RegEx functions
 #endif
 
+#include <stdio.h>
 
 // script debug messages
 #ifdef SYDEBUG
@@ -868,6 +869,55 @@ public:
     // return result code
     aTermP->setAsInteger(exitcode);
   }; // func_Shellexecute
+
+  // string READ(string file)
+  // reads the file and returns its content or UNASSIGNED in case of failure;
+  // errors are logged
+  static void func_Read(TItemField *&aTermP, TScriptContext *aFuncContextP)
+  {
+    // get params
+    string file;
+    aFuncContextP->getLocalVar(0)->getAsString(file);
+
+    // execute now
+    string content;
+    FILE *in;
+    in = fopen(file.c_str(), "rb");
+    if (in) {
+      long size = fseek(in, 0, SEEK_END);
+      if (size >= 0) {
+        // managed to obtain size, use it to pre-allocate result
+        content.reserve(size);
+        fseek(in, 0, SEEK_SET);
+      } else {
+        // ignore seek error, might not be a plain file
+        clearerr(in);
+      }
+
+      if (!ferror(in)) {
+        char buf[8192];
+        size_t read;
+        while ((read = fread(buf, 1, sizeof(buf), in)) > 0) {
+          content.append(buf, read);
+        }
+      }
+    }
+
+    if (in && !ferror(in)) {
+      // return content as string
+      aTermP->setAsString(content);
+    } else {
+        PLOGDEBUGPRINTFX(aFuncContextP->getDbgLogger(),
+                       DBG_ERROR,(
+                                  "IO error in READ(\"%s\"): %s ",
+                                  file.c_str(),
+                                  strerror(errno)));
+    }
+
+    if (in) {
+      fclose(in);
+    }
+  } // func_Read
 
 
   // string REMOTERULENAME()
@@ -2220,6 +2270,7 @@ const TBuiltInFuncDef BuiltInFuncDefs[] = {
   { "REQUESTMAXTIME", TBuiltinStdFuncs::func_RequestMaxTime, fty_none, 1, param_oneInteger },
   { "REQUESTMINTIME", TBuiltinStdFuncs::func_RequestMinTime, fty_none, 1, param_oneInteger },
   { "SHELLEXECUTE", TBuiltinStdFuncs::func_Shellexecute, fty_integer, 3, param_Shellexecute },
+  { "READ",  TBuiltinStdFuncs::func_Read, fty_string, 1, param_oneString },
   { "SESSIONVAR", TBuiltinStdFuncs::func_SessionVar, fty_none, 1, param_oneString },
   { "SETSESSIONVAR", TBuiltinStdFuncs::func_SetSessionVar, fty_none, 2, param_SetSessionVar },
   { "ABORTSESSION", TBuiltinStdFuncs::func_AbortSession, fty_none, 1, param_oneInteger },
@@ -2464,6 +2515,7 @@ void TScriptContext::Tokenize(TSyncAppBase *aAppBaseP, cAppCharP aScriptName, sI
     text = itext.c_str();
   }
   // actual tokenisation
+  cAppCharP textstart = text;
   SYSYNC_TRY {
     // process text
     while (*text) {
@@ -2540,7 +2592,7 @@ void TScriptContext::Tokenize(TSyncAppBase *aAppBaseP, cAppCharP aScriptName, sI
         else if (StrToEnum(ItemFieldTypeNames,numFieldTypes,enu,p,il)) {
           // check if declaration and if allowed
           if (aNoDeclarations && lasttoken!=TK_OPEN_PARANTHESIS)
-            SYSYNC_THROW(TTokenizeException(aScriptName, "no local variable declarations allowed in this script",aScriptText,text-aScriptText,line));
+            SYSYNC_THROW(TTokenizeException(aScriptName, "no local variable declarations allowed in this script",textstart,text-textstart,line));
           // code type into token
           aTScript+=TK_TYPEDEF; // token
           aTScript+=1; // length of additional data
@@ -2616,7 +2668,7 @@ void TScriptContext::Tokenize(TSyncAppBase *aAppBaseP, cAppCharP aScriptName, sI
           else if (strucmp(p,"WINNING",il)==0) objidx=OBJ_TARGET;
           else if (strucmp(p,"TARGET",il)==0) objidx=OBJ_TARGET;
           else
-            SYSYNC_THROW(TTokenizeException(aScriptName,"unknown object name",aScriptText,text-aScriptText,line));
+            SYSYNC_THROW(TTokenizeException(aScriptName,"unknown object name",textstart,text-textstart,line));
           text++; // skip object qualifier
           aTScript+=TK_OBJECT; // token
           aTScript+=1; // length of additional data
@@ -2641,13 +2693,13 @@ void TScriptContext::Tokenize(TSyncAppBase *aAppBaseP, cAppCharP aScriptName, sI
             p=text;
             while (isidentchar(*text)) text++;
             if (text==p)
-              SYSYNC_THROW(TTokenizeException(aScriptName,"missing macro name after $",aScriptText,text-aScriptText,line));
+              SYSYNC_THROW(TTokenizeException(aScriptName,"missing macro name after $",textstart,text-textstart,line));
             itm.assign(p,text-p);
             // see if we have such a macro
             TScriptConfig *cfgP = aAppBaseP->getRootConfig()->fScriptConfigP;
             TStringToStringMap::iterator pos = cfgP->fScriptMacros.find(itm);
             if (pos==cfgP->fScriptMacros.end())
-              SYSYNC_THROW(TTokenizeException(aScriptName,"unknown macro",aScriptText,p-1-aScriptText,line));
+              SYSYNC_THROW(TTokenizeException(aScriptName,"unknown macro",textstart,p-1-textstart,line));
             TMacroArgsArray macroArgs;
             // check for macro arguments
             if (*text=='(') {
@@ -2772,7 +2824,7 @@ void TScriptContext::Tokenize(TSyncAppBase *aAppBaseP, cAppCharP aScriptName, sI
             else token=TK_BITWISEOR; // |
             break;
           default:
-            SYSYNC_THROW(TTokenizeException(aScriptName,"Syntax Error",aScriptText,text-aScriptText,line));
+            SYSYNC_THROW(TTokenizeException(aScriptName,"Syntax Error",textstart,text-textstart,line));
         }
       }
       // add token if simple token found

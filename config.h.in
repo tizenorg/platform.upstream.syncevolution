@@ -221,6 +221,9 @@
 /* Define to 1 if you need the dbus_watch_get_unix_fd() function. */
 #undef NEED_DBUS_WATCH_GET_UNIX_FD
 
+/* dynamically open libneon */
+#undef NEON_COMPATIBILITY
+
 /* Name of package */
 #undef PACKAGE
 

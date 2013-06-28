@@ -49,6 +49,7 @@ namespace sysync {
 #define CONVMODE_VALUETYPE 14 // automatic VALUE parameter e.g. for timestamp fields that contain a date-only value (VALUE=DATE) or duration (VALUE=DURATION)
 #define CONVMODE_MULTIMIX 15 // special mode for mapping enums to bits (like CONVMODE_BITMAP), but mixed from multiple fields and with option to store as-is (special enum "value" syntax needed)
 #define CONVMODE_FULLVALUETYPE 16 // explicit VALUE parameter, does not assume a default
+#define CONVMODE_BLOB_AUTO 17 // like CONVMODE_BLOB_B64, but if data consists of printable ASCII-chars only, no B64 encoding is used
 
 // derived type modes start here
 #define CONVMODE_MIME_DERIVATES 20
