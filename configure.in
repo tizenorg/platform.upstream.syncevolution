@@ -1,7 +1,7 @@
-dnl Process this file with autoconf to produce a configure script.
+dnl Invoke autogen.sh to produce a configure script.
 
 AC_INIT(src/syncevolution.cpp)
-AM_INIT_AUTOMAKE(syncevolution, 0.8-beta1)
+AM_INIT_AUTOMAKE(syncevolution, 0.8-beta2)
 AM_CONFIG_HEADER(config.h)
 AC_LIBTOOL_DLOPEN
 
@@ -11,15 +11,25 @@ DEVICE_TYPE=desktop
 # command used to configure client library, including options
 CLIENT_CONFIGURE=$PWD/src/client-api/build/autotools/configure
 
+AC_ARG_WITH(funambol,
+            AS_HELP_STRING([--with-funambol=<base directory>],
+                           [specifies location of Funambol client library]),
+            [FUNAMBOL="$withval"])
+
 AC_ARG_WITH(sync4j,
-            AS_HELP_STRING([--with-sync4j=<base directory>],
-                           [specifies location of Sync4j client library]),
-            [SYNC4J="$withval"])
+            AS_HELP_STRING([--with-funambol=<base directory>],
+                           [alias for --with-funambol]),
+            [FUNAMBOL="$withval"])
+
+AC_ARG_WITH(funambol-src,
+            AS_HELP_STRING([--with-funambol-src=<base directory>],
+                           [specifies location of the Funambol '3x/client-api/native' source code]),
+            [FUNAMBOLSRC="$withval"])
 
 AC_ARG_WITH(sync4j-src,
             AS_HELP_STRING([--with-sync4j-src=<base directory>],
-                           [specifies location of the Sync4j '3x/client-api/native' source code]),
-            [SYNC4JSRC="$withval"])
+                           [alias for --with-funambol-src]),
+            [FUNAMBOLSRC="$withval"])
 
 AC_ARG_ENABLE(shared,
               AS_HELP_STRING([--enable-shared],
@@ -94,16 +104,16 @@ AC_SUBST(CORE_LDADD_DEP)
 
 # preserve src/client-api by default
 CLEAN_CLIENT_SRC=
-SYNC4J_LIB=$PWD/src/client-api.build/src/libsync4j.la
+FUNAMBOL_LIB=$PWD/src/client-api.build/src/libfunambol.la
 
 AC_SUBST(CLEAN_CLIENT_SRC)
 
-if test ! "$SYNC4J"; then
-    if test "$SYNC4JSRC"; then
+if test ! "$FUNAMBOL"; then
+    if test "$FUNAMBOLSRC"; then
         # make a copy of the sources, remove it during maintainer-clean and distclean
         CLEAN_CLIENT_SRC=client-api
 
-        AC_MSG_NOTICE( [updating the content of src/client-api from $SYNC4JSRC] )
+        AC_MSG_NOTICE( [updating the content of src/client-api from $FUNAMBOLSRC] )
         mkdir -p src/client-api
         if cp --help 2>/dev/null | grep >/dev/null -e "--update"; then
             # GNU cp
@@ -112,10 +122,10 @@ if test ! "$SYNC4J"; then
             cp_opts="-r"
         fi
 
-        if cp $cp_opts $SYNC4JSRC/* src/client-api; then
+        if cp $cp_opts $FUNAMBOLSRC/* src/client-api; then
             ( cd src/client-api/build/autotools && ( test -f configure || sh autogen.sh ) )
         else
-            AC_MSG_ERROR( [copying $SYNC4JSRC into src/client-api failed] )
+            AC_MSG_ERROR( [copying $FUNAMBOLSRC into src/client-api failed] )
         fi
         find src/client-api/build/autotools/win* -name output | xargs rm -rf
         find src/client-api/build/autotools/include/* src/client-api/build/autotools/src/* -type d | xargs rm -rf
@@ -137,35 +147,105 @@ if test ! "$SYNC4J"; then
 
         # use local copy of the sources, with dependencies
         # to trigger building the client library
-        SYNC4J_SUBDIR=$PWD/src/client-api.build
-        SYNC4J_DEP=$PWD/src/client-api.build/src/libsync4j.la
+        FUNAMBOL_SUBDIR=$PWD/src/client-api.build
+        FUNAMBOL_DEP=$PWD/src/client-api.build/src/libfunambol.la
 
-        SYNC4J_CFLAGS="-I$SYNC4J_SUBDIR/include/posix -I$SYNC4J_SUBDIR/include/common -I$SYNC4J_SUBDIR/include -I$SYNC4J_SUBDIR/test"
-        SYNC4J_LIBS="-L$SYNC4J_SUBDIR/src -lsync4j"
+        FUNAMBOL_CFLAGS="-I$FUNAMBOL_SUBDIR/include/posix -I$FUNAMBOL_SUBDIR/include/common -I$FUNAMBOL_SUBDIR/include -I$FUNAMBOL_SUBDIR/test"
+        FUNAMBOL_LIBS="-L$FUNAMBOL_SUBDIR/src -lfunambol"
 
         AC_MSG_NOTICE( [configuring the client library] )
-        if (set -x; mkdir -p $SYNC4J_SUBDIR && cd $SYNC4J_SUBDIR && $CLIENT_CONFIGURE --build=$build_alias --host=$host_alias --target=$target_alias --disable-shared); then true; else
+        # Passing some specific configure arguments to the client library's
+        # configure makes sense (e.g., --enable-unit-tests) or is
+        # required (--disable-dependency-tracking when compiling for
+        # multiple architectures on Mac OS X).
+        cxx_lib_args=`for i in --disable-dependency-tracking --enable-unit-tests; do
+           if echo $ac_configure_args | grep -e $i >/dev/null; then
+              echo $i;
+           fi;
+          done`
+        if test "$enable_shared" == "yes"; then
+            # Okay, this is a shortcut: strictly speaking we would have
+            # to check with autoconf for the right flags...
+            FUNAMBOL_LIB_SHARED_FLAGS="-DPIC -fPIC"
+        fi
+        if (set -x; mkdir -p $FUNAMBOL_SUBDIR && cd $FUNAMBOL_SUBDIR && $CLIENT_CONFIGURE --build=$build_alias --host=$host_alias --target=$target_alias --disable-shared CFLAGS="$CFLAGS $FUNAMBOL_LIB_SHARED_FLAGS" CXXFLAGS="$CXXFLAGS $FUNAMBOL_LIB_SHARED_FLAGS" $cxx_lib_args); then true; else
             AC_MSG_ERROR( [configuring client library failed] )
         fi
     else
-        AC_MSG_ERROR( [either --with-sync4j or --with-sync4j-src have to be used] )
+        AC_MSG_ERROR( [either --with-funambol or --with-funambol-src have to be used] )
     fi
 else
-    if test -f $SYNC4J/include/sync4j/common/spds/SyncItem.h; then
-        SYNC4J_CFLAGS="-I$SYNC4J/include/sync4j/posix -I$SYNC4J/include/sync4j/common -I$SYNC4J/include/sync4j"
-        SYNC4J_LIBS="-L$SYNC4J/lib -lsync4j"
+    if test -f $FUNAMBOL/include/funambol/common/spds/SyncItem.h; then
+        FUNAMBOL_CFLAGS="-I$FUNAMBOL/include/funambol/posix -I$FUNAMBOL/include/funambol/common -I$FUNAMBOL/include/funambol"
+        FUNAMBOL_LIBS="-L$FUNAMBOL/lib -lfunambol"
     else
-        AC_MSG_ERROR( [$SYNC4J does seem to be valid (e.g. include/sync4j/spds/common/SyncItem.h is missing)] )
+        AC_MSG_ERROR( [$FUNAMBOL does seem to be valid (e.g. include/funambol/spds/common/SyncItem.h is missing)] )
     fi
 fi
 
-AC_SUBST(SYNC4J_CFLAGS)
-AC_SUBST(SYNC4J_LIBS)
-AC_SUBST(SYNC4J)
-AC_SUBST(SYNC4J_SUBDIR)
-AC_SUBST(SYNC4J_DEP)
-AC_SUBST(SYNC4J_LIB)
-AC_SUBST(SYNC4JSRC)
+AC_SUBST(FUNAMBOL_CFLAGS)
+AC_SUBST(FUNAMBOL_LIBS)
+AC_SUBST(FUNAMBOL)
+AC_SUBST(FUNAMBOL_SUBDIR)
+AC_SUBST(FUNAMBOL_DEP)
+AC_SUBST(FUNAMBOL_LIB)
+AC_SUBST(FUNAMBOLSRC)
+
+dnl select backends
+BACKENDS=""
+
+# AC_ARG_ENABLE_BACKEND(BACKEND, DIR, HELP-STRING, [ACTION-IF-GIVEN],
+#                       [ACTION-IF-NOT-GIVEN])
+#
+# Same as AC_ARG_ENABLE(), but also tells configure that the
+# backend exists.
+#
+# BACKEND = name of modules built in that dir as .la files without the
+#           obligatory sync prefix, e.g. "ebook"
+# DIR = name of the directory inside src/backends, e.g., "evolution"
+AC_DEFUN([AC_ARG_ENABLE_BACKEND],
+[
+        AC_ARG_ENABLE($1, $3, $4, $5)
+        BACKENDS="$BACKENDS $1"
+        BACKEND_DEFINES="$BACKEND_DEFINES ENABLE_`echo $1 | tr a-z A-Z`"
+        for source in $2; do
+            SYNCSOURCES="$SYNCSOURCES backends/$2/sync$1.la"
+        done
+])
+AC_SUBST(SYNCSOURCES)
+AC_SUBST(BACKEND_DEFINES)
+
+dnl src/backends/*/configure-sub.in and configure-post.in follow
+# vvvvvvvvvvvvvv /home/patrick/projects/SyncEvolution/trunk/src/backends/addressbook/configure-sub.in vvvvvvvvvvvvvv
+dnl -*- mode: Autoconf; -*-
+dnl Invoke autogen.sh to produce a configure script.
+
+dnl hard-coded settings for Mac OS X AddressBook
+ADDRESSBOOK_CFLAGS=
+
+ADDRESSBOOK_LIBS="-framework AddressBook -framework CoreFoundation"
+AC_SUBST(ADDRESSBOOK_CFLAGS)
+AC_SUBST(ADDRESSBOOK_LIBS)
+BACKEND_CPPFLAGS="$BACKEND_CPPFLAGS $ADDRESSBOOK_CFLAGS"
+
+AC_ARG_ENABLE_BACKEND(addressbook, addressbook,
+                      AS_HELP_STRING([--enable-addressbook], [enable access to Mac OS X address book (default off)]),
+		      [enable_addressbook="$enableval"], [enable_addressbook="no"])
+
+if test "$enable_addressbook" = "yes"; then
+        AC_DEFINE(ENABLE_ADDRESSBOOK, 1, [addressbook available])
+        DEVICE_TYPE=MacOS_X
+        enable_any="yes"
+else
+        ADDRESSBOOK_LIBS=
+fi
+
+AC_CONFIG_FILES(src/backends/addressbook/Makefile)
+# ^^^^^^^^^^^^^^ /home/patrick/projects/SyncEvolution/trunk/src/backends/addressbook/configure-sub.in ^^^^^^^^^^^^^^
+
+# vvvvvvvvvvvvvv /home/patrick/projects/SyncEvolution/trunk/src/backends/evolution/configure-sub.in vvvvvvvvvvvvvv
+dnl -*- mode: Autoconf; -*-
+dnl Invoke autogen.sh to produce a configure script.
 
 pkg_emodules_10="libedataserver-1.0"
 pkg_emodules_11="libedataserver-1.1"
@@ -176,8 +256,6 @@ pkg_ebook_12="libebook-1.2"
 pkg_ecal_10="libecal-1.0"
 pkg_ecal_11="libecal-1.1"
 pkg_ecal_12="libecal-1.2"
-
-export PKG_CONFIG_PATH=${PKG_CONFIG_PATH}:/usr/lib/pkgconfig:$prefix/lib/pkgconfig:/usr/local/lib/pkgconfig
 
 anymissing="
 Please install the development packages of Evolution and/or
@@ -201,6 +279,7 @@ if test "x${EDSFOUND}" = "xno"; then
 fi
 AC_SUBST(EPACKAGE_CFLAGS)
 AC_SUBST(EPACKAGE_LIBS)
+BACKEND_CPPFLAGS="$BACKEND_CPPFLAGS $EPACKAGE_CFLAGS"
 
 dnl check for Evolution calendar packages
 PKG_CHECK_MODULES(ECAL, [$pkg_ecal_12], ECALFOUND=yes, [ECALFOUND=no])
@@ -212,6 +291,7 @@ if test "x${ECALFOUND}" = "xno"; then
 fi
 AC_SUBST(ECAL_CFLAGS)
 AC_SUBST(ECAL_LIBS)
+BACKEND_CPPFLAGS="$BACKEND_CPPFLAGS $ECAL_CFLAGS"
 
 dnl check for Evolution contact packages
 PKG_CHECK_MODULES(EBOOK, [$pkg_ebook_12], EBOOKFOUND=yes, [EBOOKFOUND=no])
@@ -223,37 +303,20 @@ if test "x${EBOOKFOUND}" = "xno"; then
 fi
 AC_SUBST(EBOOK_CFLAGS)
 AC_SUBST(EBOOK_LIBS)
+BACKEND_CPPFLAGS="$BACKEND_CPPFLAGS $EBOOK_CFLAGS"
 
-
-dnl check for sqlite
-PKG_CHECK_MODULES(SQLITE, sqlite3, SQLITEFOUND=yes, [SQLITEFOUND=no])
-AC_SUBST(SQLITE_CFLAGS)
-AC_SUBST(SQLITE_LIBS)
-
-dnl hard-coded settings for Mac OS X AddressBook
-ADDRESSBOOK_CFLAGS=
-
-ADDRESSBOOK_LIBS="-framework AddressBook -framework CoreFoundation"
-AC_SUBST(ADDRESSBOOK_CFLAGS)
-AC_SUBST(ADDRESSBOOK_LIBS)
-
-dnl select backends
-AC_ARG_ENABLE(ebook, AS_HELP_STRING([--disable-ebook], [disable access to addressbooks (default on if available)]),
-                     [enable_ebook="$enableval"], [enable_ebook=$EBOOKFOUND])
-AC_ARG_ENABLE(ecal, AS_HELP_STRING([--disable-ecal], [disable access to calendars and tasks (default on if available)]),
-                     [enable_ecal="$enableval"], [enable_ecal=$ECALFOUND])
-AC_ARG_ENABLE(sqlite, AS_HELP_STRING([--enable-sqlite], [enable access to PIM data stored in SQLite files (experimental, default off)]),
-		      [enable_sqlite="$enableval"], [enable_sqlite="no"])
-AC_ARG_ENABLE(addressbook, AS_HELP_STRING([--enable-addressbook], [enable access to Mac OS X address book (default off)]),
-		      [enable_addressbook="$enableval"], [enable_addressbook="no"])
+AC_ARG_ENABLE_BACKEND(ebook, evolution,
+                      AS_HELP_STRING([--disable-ebook], [disable access to Evolution addressbooks (default on if available)]),
+                      [enable_ebook="$enableval"], [enable_ebook=$EBOOKFOUND])
+AC_ARG_ENABLE_BACKEND(ecal, evolution,
+                      AS_HELP_STRING([--disable-ecal], [disable access to Evolution calendars and tasks (default on if available)]),
+                      [enable_ecal="$enableval"], [enable_ecal=$ECALFOUND])
 
 enable_evo="no"
-enable_any="no"
 if test "$enable_ebook" = "yes"; then
         test "x${EBOOKFOUND}" == "xyes" || AC_MSG_ERROR([--enable-ebook requires pkg-config information for libebook, which was not found])
         AC_DEFINE(ENABLE_EBOOK, 1, [libebook available])
         enable_evo="yes"
-        enable_any="yes"
 fi
 
 AM_CONDITIONAL([ENABLE_ECAL], [test "$enable_ecal" == "yes"])
@@ -261,26 +324,9 @@ if test "$enable_ecal" = "yes"; then
         test "x${ECALFOUND}" == "xyes" || AC_MSG_ERROR([--enable-ecal requires pkg-config information for libecal, which was not found"])
         AC_DEFINE(ENABLE_ECAL, 1, [libecal available])
         enable_evo="yes"
-        enable_any="yes"
 fi
 
-if test "$enable_sqlite" = "yes"; then
-        test "x${SQLITEFOUND}" == "xyes" || AC_MSG_ERROR([--enable-sqlite requires pkg-config information for sqlite3, which was not found])
-        AC_DEFINE(ENABLE_SQLITE, 1, [sqlite available])
-        enable_any="yes"
-fi
-
-if test "$enable_addressbook" = "yes"; then
-        AC_DEFINE(ENABLE_ADDRESSBOOK, 1, [addressbook available])
-        DEVICE_TYPE=MacOS_X
-        enable_any="yes"
-else
-        ADDRESSBOOK_LIBS=
-fi
-
-if test "$enable_any" = "no"; then
-        AC_MSG_ERROR([no backend enabled - refusing to continue: $anymissing])
-fi
+need_glib="yes"
 
 if test "$enable_evo" = "yes"; then
         if test "$EDSFOUND" = "yes"; then
@@ -291,6 +337,94 @@ if test "$enable_evo" = "yes"; then
 else
         EPACKAGE_CFLAGS=
         EPACKAGE_LIBS=
+fi
+AC_CONFIG_FILES(src/backends/evolution/Makefile)
+# ^^^^^^^^^^^^^^ /home/patrick/projects/SyncEvolution/trunk/src/backends/evolution/configure-sub.in ^^^^^^^^^^^^^^
+
+# vvvvvvvvvvvvvv /home/patrick/projects/SyncEvolution/trunk/src/backends/file/configure-sub.in vvvvvvvvvvvvvv
+dnl -*- mode: Autoconf; -*-
+dnl Invoke autogen.sh to produce a configure script.
+
+dnl Checks for required libraris can go here; none required for simple files.
+dnl
+dnl This is from the sqlite backend:
+dnl PKG_CHECK_MODULES(SQLITE, sqlite3, SQLITEFOUND=yes, [SQLITEFOUND=no])
+dnl AC_SUBST(SQLITE_CFLAGS)
+dnl AC_SUBST(SQLITE_LIBS)
+
+FILE_CFLAGS=
+FILE_LIBS=
+AC_SUBST(FILE_CFLAGS)
+AC_SUBST(FILE_LIBS)
+
+dnl If additional compile flags are necessary to include the header
+dnl files of the backend, then add them here.
+BACKEND_CPPFLAGS="$BACKEND_CPPFLAGS $FILE_CFLAGS"
+
+dnl name of backend library (there could be more than one per directory),
+dnl name of the directory,
+dnl help string,
+dnl --enable/disable chosen explicitly
+dnl default, may depend on availability of prerequisites in more complex backends
+AC_ARG_ENABLE_BACKEND(file,
+                      file,
+                      AS_HELP_STRING([--disable-file],
+                                     [disable file-based backend which stores items in separate files in a fixed directory (default on)]),
+		      [enable_file="$enableval"],
+                      [enable_file="yes"]
+                      )
+
+if test "$enable_file" = "yes"; then
+        dnl It's good to check the prerequisites here, in case --enable-file was used.
+        dnl test "x${SQLITEFOUND}" == "xyes" || AC_MSG_ERROR([--enable-sqlite requires pkg-config information for sqlite3, which was not found])
+        AC_DEFINE(ENABLE_FILE, 1, [file available])
+fi
+AC_CONFIG_FILES(src/backends/file/Makefile)
+# ^^^^^^^^^^^^^^ /home/patrick/projects/SyncEvolution/trunk/src/backends/file/configure-sub.in ^^^^^^^^^^^^^^
+
+# vvvvvvvvvvvvvv /home/patrick/projects/SyncEvolution/trunk/src/backends/sqlite/configure-sub.in vvvvvvvvvvvvvv
+dnl -*- mode: Autoconf; -*-
+dnl Invoke autogen.sh to produce a configure script.
+
+dnl check for sqlite
+PKG_CHECK_MODULES(SQLITE, sqlite3, SQLITEFOUND=yes, [SQLITEFOUND=no])
+AC_SUBST(SQLITE_CFLAGS)
+AC_SUBST(SQLITE_LIBS)
+BACKEND_CPPFLAGS="$BACKEND_CPPFLAGS $SQLITE_CFLAGS"
+
+AC_ARG_ENABLE_BACKEND(sqlite, sqlite,
+                      AS_HELP_STRING([--enable-sqlite], [enable access to PIM data stored in SQLite files (experimental, default off)]),
+		      [enable_sqlite="$enableval"], [enable_sqlite="no"])
+
+if test "$enable_sqlite" = "yes"; then
+        test "x${SQLITEFOUND}" == "xyes" || AC_MSG_ERROR([--enable-sqlite requires pkg-config information for sqlite3, which was not found])
+        AC_DEFINE(ENABLE_SQLITE, 1, [sqlite available])
+fi      
+
+AC_CONFIG_FILES(src/backends/sqlite/Makefile)
+# ^^^^^^^^^^^^^^ /home/patrick/projects/SyncEvolution/trunk/src/backends/sqlite/configure-sub.in ^^^^^^^^^^^^^^
+
+BACKEND_REGISTRIES = src/backends/addressbook/AddressBookSourceRegister.cpp /home/patrick/projects/SyncEvolution/trunk/src/backends/evolution/EvolutionCalendarSourceRegister.cpp /home/patrick/projects/SyncEvolution/trunk/src/backends/evolution/EvolutionContactSourceRegister.cpp /home/patrick/projects/SyncEvolution/trunk/src/backends/file/FileSyncSourceRegister.cpp /home/patrick/projects/SyncEvolution/trunk/src/backends/sqlite/SQLiteContactSourceRegister.cpp
+AC_SUBST(BACKEND_REGISTRIES)
+dnl -*- mode: Autoconf; -*-
+dnl Invoke autogen.sh to produce a configure script.
+dnl configure-pre.in and src/backends/*/configure-sub.in and configure-post.in come before this part
+
+AC_SUBST(BACKEND_CPPFLAGS)
+
+enable_any="no"
+backend_is_enabled () {
+    eval echo \${enable_${1}}
+}
+for backend in $BACKENDS; do
+    if test `backend_is_enabled $backend` == "yes"; then
+       enable_any="yes"
+       SYNCEVOLUTION_MODULES="$SYNCEVOLUTION_MODULES src/backends/sync${backend}.la"
+    fi
+done
+
+if test "$enable_any" = "no"; then
+        AC_MSG_ERROR([no backend enabled - refusing to continue: $anymissing])
 fi
 
 dnl check for glib - calling g_type_init() is expected on Maemo
@@ -306,16 +440,9 @@ AC_PROG_CXX
 AC_PROG_LIBTOOL
 AC_PROG_MAKE_SET
 
-if test "$enable_sqlite" == "yes"; then
-        SYNCEVOLUTION_MODULES="$SYNCEVOLUTION_MODULES syncsqlite.la"
-fi
-if test "$enable_addressbook" == "yes"; then
-        SYNCEVOLUTION_MODULES="$SYNCEVOLUTION_MODULES syncaddressbook.la"
-fi
-
-dnl glib initialization is done only for libebook and libecal, not needed
-dnl otherwise even if found
-if test "$enable_ebook" != "yes" && test "$enable_ecal" != "yes"; then
+dnl glib initialization is done only if requested by some configure-sub.in,
+dnl for not needed otherwise even if found
+if test "$need_glib" != "yes"; then
         GLIB_CFLAGS=
         GLIB_LIBS=
 else
@@ -327,10 +454,7 @@ fi
 dnl figure out whether we link all code statically or as modules
 AM_CONDITIONAL([ENABLE_MODULES], [test "$enable_shared" == "yes"])
 if test "$enable_shared" == "yes"; then
-        SYNCEVOLUTION_LDADD="-Wl,-export-dynamic -rpath '\$(pkglibdir)'"
         AC_DEFINE(ENABLE_MODULES, 1, [enable dynamically opening sync source backends])
-else
-        SYNCEVOLUTION_LDADD="\$(EXTRA_LTLIBRARIES)"
 fi
 AC_SUBST(SYNCEVOLUTION_LDADD)
 
@@ -355,8 +479,13 @@ AC_DEFINE_UNQUOTED(DEVICE_TYPE, "$DEVICE_TYPE", "SyncML DevInf DevType")
 
 AC_CHECK_HEADERS(stdarg.h valgrind/valgrind.h execinfo.h)
 
-AC_OUTPUT([
-Makefile
-src/Makefile
-test/Makefile
-])
+echo
+echo CONFIGURATION SUMMARY
+for backend in $BACKENDS; do
+    eval echo $backend: \${enable_${backend}}
+done
+echo
+
+AC_CONFIG_FILES(Makefile src/Makefile src/core/Makefile test/Makefile)
+AC_OUTPUT
+

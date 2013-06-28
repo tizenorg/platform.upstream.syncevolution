@@ -1,0 +1,186 @@
+BACKENDS = @BACKENDS@
+SUBDIRS = core $(BACKENDS)
+
+AM_CPPFLAGS = $(SUBDIRS:%=-I$(srcdir)/%) @BACKEND_CPPFLAGS@ @FUNAMBOL_CFLAGS@
+
+# applies to sources in SyncEvolution repository, but not
+# the Funambol C++ client library
+SYNCEVOLUTION_CXXFLAGS = @SYNCEVOLUTION_CXXFLAGS@
+
+bin_PROGRAMS = syncevolution
+bin_SCRIPTS = synccompare
+SYNCSOURCES = @SYNCSOURCES@
+# The Funambol libs should be inherited via libsyncevolution.la, but
+# somehow that didn't work when enabling shared objects (probably
+# because only a static libfunambol.a is built, which relies on
+# tricks like adding -fPIC manually).
+SYNCEVOLUTION_LDADD = @SYNCEVOLUTION_LDADD@ @FUNAMBOL_LIBS@ 
+SYNCEVOLUTION_DEP =
+if ENABLE_MODULES
+else
+SYNCEVOLUTION_LDADD += $(SYNCSOURCES)
+SYNCEVOLUTION_DEP += $(SYNCSOURCES)
+endif
+EXTRA_PROGRAMS = client-test
+EXTRA_DIST = shlibs.local Makefile-gen.am
+check_PROGRAMS = @CPPUNIT_TESTS@
+TESTS = @CPPUNIT_TESTS@
+
+DISTCLEANFILES = synccompare
+MAINTAINERCLEANFILES = Makefile.in
+CLEANFILES = libstdc++.a client-test $(CLIENT_LIB_TEST_FILES)
+
+# synccompare is created by replacing its 'import Algorithm::Diff;'
+# with a simplified copy of Diff.pm.
+#
+# If there is a copy of synccompare.pl in the SyncEvolution test directory,
+# then it is used instead of the one from the client library.
+vpath %.pl $(srcdir)/../test $(FUNAMBOL_SUBDIR)/test/test
+vpath %.pm $(srcdir)/../test $(FUNAMBOL_SUBDIR)/test/test/Algorithm
+synccompare : Diff.pm synccompare.pl
+	perl -e '$$diff = shift; open(DIFF, "<$$diff"); ($$_) = split(/__END__/, join("", <DIFF>)); s/\*import.*//m; s/require +Exporter;//; s/^#.*\n//mg; s/ +#.*\n//mg; $$diff = $$_;' -e 'while(<>) {' @MODIFY_SYNCCOMPARE@ -e 's/use +Algorithm::Diff;/"# embedded version of Algorithm::Diff follows, copyright by the original authors\n" . $$diff . "# end of embedded Algorithm::Diff\n"/e; print;}' $+ >$@
+	chmod u+x $@
+
+CORE_SOURCES =
+
+# The files which register backends have to be compiled into
+# "client-test" and "syncevolution" in order to pull in the
+# code from the libs which implement the backends.
+#
+# Unit testing also goes there.
+#
+# When using modules the registration is done inside the
+# module and the register file is unnecessary. However, they
+# still need to be included in "make dist".
+BACKEND_REGISTRIES = @BACKEND_REGISTRIES@
+if ENABLE_MODULES
+EXTRA_DIST += $(BACKEND_REGISTRIES)
+else
+CORE_SOURCES += $(BACKEND_REGISTRIES)
+endif
+
+CORE_LDADD = $(SYNCEVOLUTION_LDADD) core/libsyncevolution.la @GLIB_LIBS@ @LIBS@
+CORE_DEP = $(SYNCEVOLUTION_DEP) core/libsyncevolution.la @FUNAMBOL_DEP@
+
+# put link to static c++ library into current directory, needed if compiling with --enable-static-c++
+libstdc++.a :
+	path=`$(CXX) $(CORE_LDADD) $(LD_FLAGS) -print-file-name=libstdc++.a` && ln -s $$path .
+
+syncevolution_SOURCES = \
+	syncevolution.cpp \
+	$(CORE_SOURCES)
+
+# SYNCEVOLUTION_LDADD will be replaced with libsyncebook.la/libsyncecal.la/libsyncsqlite.la
+# if linking statically against them, empty otherwise;
+# either way this does not lead to a dependency on those libs - done explicitly
+syncevolution_LDADD = $(CORE_LDADD)
+syncevolution_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS)
+syncevolution_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP)
+
+# FUNAMBOL_SUBDIR specifies the directory where we compile
+# the client library by invoking make there.
+# Installing its source is done explicitly.
+#
+# The path may be empty!
+FUNAMBOLSRC = @FUNAMBOLSRC@
+FUNAMBOL_SUBDIR = @FUNAMBOL_SUBDIR@
+BUILT_SOURCES = $(FUNAMBOL_SUBDIR)/all
+
+@FUNAMBOL_LIB@ : $(FUNAMBOL_SUBDIR)/all
+
+# include client library in distribution
+dist-hook:
+	[ ! "$(FUNAMBOL_SUBDIR)" ] || cp -r client-api $(distdir)
+	find $(distdir) -name .libs -o -name "*~" -o -name ".*" -o -name "*.o" -o -name "*.lo" -o -name CVS -o -name autom4te.cache | xargs rm -rf
+
+clean-local: testclean
+	rm -rf testcases
+	[ ! -d "$(FUNAMBOL_SUBDIR)" ] || (cd $(FUNAMBOL_SUBDIR) && $(MAKE) clean)
+
+# files created during testing
+testclean:
+	rm -f *.test.vcf *.log *.tests *.diff *.dat
+
+distclean-local:
+	rm -rf $(FUNAMBOL_SUBDIR)
+	rm -rf @CLEAN_CLIENT_SRC@ # "client-api", only set when it was created by configure
+
+# With --disable-shared autotools links against libfunambol.a which does not
+# pull any of the test suites into the test binary, so they would not be
+# executed. The workaround is to explicitly set them as undefined on the
+# link line.
+client_test_SOURCES = client-test-app.cpp $(CORE_SOURCES)
+CLIENT_LIB_TEST_FILES = ClientTest.h ClientTest.cpp client-test-main.cpp \
+	testcases/vcard21.vcf \
+	testcases/vcard30.vcf \
+	testcases/ical20.ics \
+	testcases/itodo20.ics
+nodist_client_test_SOURCES = $(CLIENT_LIB_TEST_FILES)
+client_test_CPPFLAGS = -DHAVE_CONFIG_H -DENABLE_INTEGRATION_TESTS -DENABLE_UNIT_TESTS $(AM_CPPFLAGS)
+client_test_CXXFLAGS = `cppunit-config --cflags` $(SYNCEVOLUTION_CXXFLAGS)
+client_test_LDFLAGS = `cppunit-config --libs` `nm $(FUNAMBOL_SUBDIR)/src/.libs/libfunambol.a core/.libs/libsyncevolution.a | grep funambolAutoRegisterRegistry | sed -e 's/.* /-u /'`
+client_test_LDADD = @LIBDBUS@ $(FUNAMBOL_SUBDIR)/src/libfunambol.la $(CORE_LDADD)
+# These dependencies are intentionally a bit too broad:
+# they ensure that all files are in place to *run* client-test,
+# but in particular the "all" dependency causes a rebuild
+# even if the actual input files haven't changed.
+client_test_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) all $(CLIENT_LIB_TEST_FILES) synccompare
+
+# copy test files for several reasons:
+# - automake expects them here
+# - wchar needs to be removed from distribution to avoid need for defines
+# - a file in SyncEvolution's test directory is preferred if it exists
+
+LOCAL_TEST_FILES=$(subst $(srcdir)/../test/,,$(wildcard $(srcdir)/../test/* $(srcdir)/../test/testcases/*))
+
+# sources from SyncEvolution
+$(filter-out testcases/%, $(filter $(LOCAL_TEST_FILES), $(CLIENT_LIB_TEST_FILES))) : % : $(srcdir)/../test/%
+	sed -e 's/WCHAR_T/char/g' -e 's/TEXT(/(/g' -e 's/wcslen/strlen/g' -e 's/wcscmp/strcmp/g' $< >$@
+
+# sources from compiled client library
+$(filter-out $(LOCAL_TEST_FILES) testcases/%, $(CLIENT_LIB_TEST_FILES)) : % : $(FUNAMBOL_SUBDIR)/test/test/%
+	sed -e 's/WCHAR_T/char/g' -e 's/TEXT(/(/g' -e 's/wcslen/strlen/g' -e 's/wcscmp/strcmp/g' $< >$@
+
+$(CLIENT_LIB_TEST_FILES:%=$(FUNAMBOL_SUBDIR)/test/test/%): @FUNAMBOL_DEP@
+
+# extra dependency - don't remember why
+ClientTest.cpp : ClientTest.h
+
+# verbatim files from SyncEvolution
+$(filter testcases/%, $(filter $(LOCAL_TEST_FILES), $(CLIENT_LIB_TEST_FILES))) : % : $(srcdir)/../test/%
+	mkdir -p testcases
+	cp $< $@
+
+
+$(filter testcases/%, $(filter-out $(LOCAL_TEST_FILES), $(CLIENT_LIB_TEST_FILES))) : % : $(FUNAMBOL_SUBDIR)/test/test/%
+	mkdir -p testcases
+	cp $< $@
+
+# rule to satisfy automatic dependencies on header files
+$(FUNAMBOL_SUBDIR)/%.h :
+	[ ! "$(FUNAMBOL_SUBDIR)" ] || ( cd $(FUNAMBOL_SUBDIR)/include && $(MAKE) all )
+
+# default rule for building in $(FUNAMBOL_SUBDIR)
+$(FUNAMBOL_SUBDIR)/% :
+	[ ! "$(FUNAMBOL_SUBDIR)" ] || ( cd ${@D} && $(MAKE) ${@F} )
+
+# compare the local copy of the C++ client library against
+# the files where it was copied from
+client-api-diff :
+	diff -r -c -x CVS -x config.guess -x config.sub -x depcomp -x install-sh -x ltmain.sh -x missing -x aclocal.m4 -x configure -x '.#*' -x '*~' -x '*.in' -x autom4te.cache $(FUNAMBOLSRC) client-api
+
+# special target for testing with valgrind
+valgrind : test
+	valgrind --leak-check=yes --suppressions=valgrind.supp ./test
+
+# Because backend-related variables need to be substituted in
+# Makefile-gen.am we need an explicit rule to redo that work
+# so that "make" rebuilds derived files correctly.
+$(srcdir)/Makefile.am: Makefile-gen.am
+	sed -e 's;[@]BACKEND_REGISTRIES[@];$(BACKEND_REGISTRIES);' \
+	    -e 's;[@]BACKENDS[@];$(BACKENDS);' \
+	    $< >$@
+
+# old-style name for test program(s)
+.PHONY: test
+test: client-test

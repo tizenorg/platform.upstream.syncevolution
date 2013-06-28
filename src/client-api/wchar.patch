@@ -1,0 +1,144 @@
+? Funambol-developers
+? Funambol-developers@lists.sourceforge.net
+? posixadapter.patch
+? sync-source-config.patch
+? wchar.patch
+? .patches/abstract-config.patch
+? .patches/abstract-config.txt
+? .patches/log-levels.patch
+? .patches/log-levels.txt
+? .patches/logging-singleton.patch
+? .patches/logging-singleton.txt
+? .patches/message-logging-in-transport.patch
+? .patches/message-logging-in-transport.txt
+? .patches/posix-logging-prefix.patch
+? .patches/posix-logging-prefix.txt
+? .patches/simple-abstract-config.patch
+? .patches/simple-abstract-config.txt
+? .patches/use-abstract-config.patch
+? .patches/use-abstract-config.txt
+? .patches/zyb-syncml-attr.patch
+? .patches/zyb-testing.patch
+? build/autotools/aclocal.m4
+? build/autotools/config.h.in
+Index: build/autotools/src/Makefile.am
+===================================================================
+RCS file: /cvsroot/sync4j/3x/client-api/native/build/autotools/src/Makefile.am,v
+retrieving revision 1.22
+diff -c -r1.22 Makefile.am
+*** build/autotools/src/Makefile.am	19 May 2008 21:55:42 -0000	1.22
+--- build/autotools/src/Makefile.am	24 Jun 2008 17:01:02 -0000
+***************
+*** 245,248 ****
+  
+  vpath %.c   $(srcdir)/../../../src/c++/common/base
+  
+! AM_CPPFLAGS = -I$(srcdir)/../../../src/include/posix -I$(srcdir)/../../../src/include/common
+--- 245,248 ----
+  
+  vpath %.c   $(srcdir)/../../../src/c++/common/base
+  
+! AM_CPPFLAGS = -DFUNAMBOL_LIBRARY_CODE -I$(srcdir)/../../../src/include/posix -I$(srcdir)/../../../src/include/common
+Index: src/include/common/base/fscapi.h
+===================================================================
+RCS file: /cvsroot/sync4j/3x/client-api/native/src/include/common/base/fscapi.h,v
+retrieving revision 1.21
+diff -c -r1.21 fscapi.h
+*** src/include/common/base/fscapi.h	19 May 2008 21:53:59 -0000	1.21
+--- src/include/common/base/fscapi.h	24 Jun 2008 17:01:08 -0000
+***************
+*** 78,84 ****
+      #endif
+      
+      #ifdef POSIX
+!         #include "base/posixadapter.h"
+      #elif SYMBIAN
+          #include "base/symbianadapter.h"
+      #elif defined(_WIN32_WCE) || defined(WIN32)
+--- 78,88 ----
+      #endif
+      
+      #ifdef POSIX
+!         #ifdef FUNAMBOL_LIBRARY_CODE
+!         # include "base/posixadapter.h"
+!         #else
+!         # include "posix/base/posixadapter.h"
+!         #endif
+      #elif SYMBIAN
+          #include "base/symbianadapter.h"
+      #elif defined(_WIN32_WCE) || defined(WIN32)
+Index: src/include/posix/base/posixadapter.h
+===================================================================
+RCS file: /cvsroot/sync4j/3x/client-api/native/src/include/posix/base/posixadapter.h,v
+retrieving revision 1.27
+diff -c -r1.27 posixadapter.h
+*** src/include/posix/base/posixadapter.h	16 Apr 2008 11:11:17 -0000	1.27
+--- src/include/posix/base/posixadapter.h	24 Jun 2008 17:01:10 -0000
+***************
+*** 61,75 ****
+  // on standard header files. Include its header file first.
+  #include <base/test.h>
+  
+  // Cygwin version of gcc does have these builtin
+  #ifndef __CYGWIN__
+  # define __declspec(x)
+  # define __cdecl
+! #endif
+  
+  // Enable the fix for encoding when building for posix
+  #define VOCL_ENCODING_FIX
+! 
+  
+  #ifdef USE_WCHAR
+  
+--- 61,76 ----
+  // on standard header files. Include its header file first.
+  #include <base/test.h>
+  
++ #ifdef FUNAMBOL_LIBRARY_CODE
+  // Cygwin version of gcc does have these builtin
+  #ifndef __CYGWIN__
+  # define __declspec(x)
+  # define __cdecl
+! #endif // FUNAMBOL_LIBRARY_CODE
+  
+  // Enable the fix for encoding when building for posix
+  #define VOCL_ENCODING_FIX
+! #endif
+  
+  #ifdef USE_WCHAR
+  
+***************
+*** 131,136 ****
+--- 132,138 ----
+  
+  #else
+  
++ #ifdef FUNAMBOL_LIBRARY_CODE
+  /* map WCHAR and its functions back to standard functions */
+  #       undef WCHAR
+  #       define WCHAR char
+***************
+*** 171,176 ****
+--- 173,180 ----
+  #       define _wcsicmp strcasecmp
+  #       define _stricmp strcasecmp
+  
++ #endif // FUNAMBOL_LIBRARY_CODE
++ 
+  #endif
+  
+  /* some of the code compares NULL against integers, which
+***************
+*** 178,185 ****
+--- 182,191 ----
+  #undef NULL
+  #define NULL 0
+  
++ #ifdef FUNAMBOL_LIBRARY_CODE
+  #define min(x,y) ( (x) < (y) ? (x) : (y) )
+  #define max(x,y) ( (x) > (y) ? (x) : (y) )
++ #endif // FUNAMBOL_LIBRARY_CODE
+  
+  /** @endcond */
+  #endif

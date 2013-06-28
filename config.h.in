@@ -12,6 +12,9 @@
 /* libecal available */
 #undef ENABLE_ECAL
 
+/* file available */
+#undef ENABLE_FILE
+
 /* enable unit tests outside of the library's source code */
 #undef ENABLE_INTEGRATION_TESTS
 

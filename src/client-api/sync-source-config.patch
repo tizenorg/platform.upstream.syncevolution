@@ -1,0 +1,190 @@
+diff -r -c -x CVS -x config.guess -x config.sub -x depcomp -x install-sh -x ltmain.sh -x missing -x aclocal.m4 -x configure -x '.#*' -x '*~' -x '*.in' -x autom4te.cache /home/patrick/projects/native client-api
+Only in /home/patrick/projects/native: .patches
+diff -r -c -x CVS -x config.guess -x config.sub -x depcomp -x install-sh -x ltmain.sh -x missing -x aclocal.m4 -x configure -x '.#*' -x '*~' -x '*.in' -x autom4te.cache /home/patrick/projects/native/src/c++/common/client/FileSyncSource.cpp client-api/src/c++/common/client/FileSyncSource.cpp
+*** /home/patrick/projects/native/src/c++/common/client/FileSyncSource.cpp	2008-02-14 20:45:45.000000000 +0100
+--- client-api/src/c++/common/client/FileSyncSource.cpp	2008-03-01 22:18:10.000000000 +0100
+***************
+*** 41,47 ****
+  #include "client/FileSyncSource.h"
+  
+  
+! FileSyncSource::FileSyncSource(const WCHAR* name, SyncSourceConfig* sc) : SyncSource(name, sc) {
+      dir  = NULL;
+      fileNode = NULL;
+  
+--- 41,47 ----
+  #include "client/FileSyncSource.h"
+  
+  
+! FileSyncSource::FileSyncSource(const WCHAR* name, AbstractSyncSourceConfig* sc) : SyncSource(name, sc) {
+      dir  = NULL;
+      fileNode = NULL;
+  
+diff -r -c -x CVS -x config.guess -x config.sub -x depcomp -x install-sh -x ltmain.sh -x missing -x aclocal.m4 -x configure -x '.#*' -x '*~' -x '*.in' -x autom4te.cache /home/patrick/projects/native/src/c++/common/client/RawFileSyncSource.cpp client-api/src/c++/common/client/RawFileSyncSource.cpp
+*** /home/patrick/projects/native/src/c++/common/client/RawFileSyncSource.cpp	2008-02-14 20:45:45.000000000 +0100
+--- client-api/src/c++/common/client/RawFileSyncSource.cpp	2008-03-01 22:19:35.000000000 +0100
+***************
+*** 41,47 ****
+  #include "client/RawFileSyncSource.h"
+  
+  
+! RawFileSyncSource::RawFileSyncSource(const WCHAR* name, SyncSourceConfig* sc) : FileSyncSource(name, sc) {
+  }
+  
+  int RawFileSyncSource::addItem(SyncItem& item) {
+--- 41,47 ----
+  #include "client/RawFileSyncSource.h"
+  
+  
+! RawFileSyncSource::RawFileSyncSource(const WCHAR* name, AbstractSyncSourceConfig* sc) : FileSyncSource(name, sc) {
+  }
+  
+  int RawFileSyncSource::addItem(SyncItem& item) {
+diff -r -c -x CVS -x config.guess -x config.sub -x depcomp -x install-sh -x ltmain.sh -x missing -x aclocal.m4 -x configure -x '.#*' -x '*~' -x '*.in' -x autom4te.cache /home/patrick/projects/native/src/c++/common/spds/SyncSource.cpp client-api/src/c++/common/spds/SyncSource.cpp
+*** /home/patrick/projects/native/src/c++/common/spds/SyncSource.cpp	2007-11-28 16:01:35.000000000 +0100
+--- client-api/src/c++/common/spds/SyncSource.cpp	2008-03-01 22:17:08.000000000 +0100
+***************
+*** 38,47 ****
+  #include "base/Log.h"
+  #include "client/SyncClient.h"
+  #include "spds/spdsutils.h"
+  
+  static SyncSourceConfig defaultConfig;
+  
+! SyncSource::SyncSource(const WCHAR* sourceName, SyncSourceConfig *sc) :
+      config(sc ? *sc : defaultConfig)
+  {
+      name   = NULL;
+--- 38,48 ----
+  #include "base/Log.h"
+  #include "client/SyncClient.h"
+  #include "spds/spdsutils.h"
++ #include "spds/SyncSourceConfig.h"
+  
+  static SyncSourceConfig defaultConfig;
+  
+! SyncSource::SyncSource(const WCHAR* sourceName, AbstractSyncSourceConfig *sc) :
+      config(sc ? *sc : defaultConfig)
+  {
+      name   = NULL;
+diff -r -c -x CVS -x config.guess -x config.sub -x depcomp -x install-sh -x ltmain.sh -x missing -x aclocal.m4 -x configure -x '.#*' -x '*~' -x '*.in' -x autom4te.cache /home/patrick/projects/native/src/include/common/client/FileSyncSource.h client-api/src/include/common/client/FileSyncSource.h
+*** /home/patrick/projects/native/src/include/common/client/FileSyncSource.h	2008-02-11 18:13:55.000000000 +0100
+--- client-api/src/include/common/client/FileSyncSource.h	2008-03-01 22:18:22.000000000 +0100
+***************
+*** 86,92 ****
+      int addedItem(SyncItem& item, const WCHAR* key);
+  
+  public:
+!     FileSyncSource(const WCHAR* name, SyncSourceConfig* sc);
+      virtual ~FileSyncSource();
+  
+      /**
+--- 86,92 ----
+      int addedItem(SyncItem& item, const WCHAR* key);
+  
+  public:
+!     FileSyncSource(const WCHAR* name, AbstractSyncSourceConfig* sc);
+      virtual ~FileSyncSource();
+  
+      /**
+diff -r -c -x CVS -x config.guess -x config.sub -x depcomp -x install-sh -x ltmain.sh -x missing -x aclocal.m4 -x configure -x '.#*' -x '*~' -x '*.in' -x autom4te.cache /home/patrick/projects/native/src/include/common/client/RawFileSyncSource.h client-api/src/include/common/client/RawFileSyncSource.h
+*** /home/patrick/projects/native/src/include/common/client/RawFileSyncSource.h	2007-11-28 16:01:39.000000000 +0100
+--- client-api/src/include/common/client/RawFileSyncSource.h	2008-03-01 22:18:35.000000000 +0100
+***************
+*** 53,59 ****
+   */
+  class RawFileSyncSource : public FileSyncSource {
+    public:
+!     RawFileSyncSource(const WCHAR* name, SyncSourceConfig* sc);
+  
+      int addItem(SyncItem& item);
+      int updateItem(SyncItem& item);
+--- 53,59 ----
+   */
+  class RawFileSyncSource : public FileSyncSource {
+    public:
+!     RawFileSyncSource(const WCHAR* name, AbstractSyncSourceConfig* sc);
+  
+      int addItem(SyncItem& item);
+      int updateItem(SyncItem& item);
+diff -r -c -x CVS -x config.guess -x config.sub -x depcomp -x install-sh -x ltmain.sh -x missing -x aclocal.m4 -x configure -x '.#*' -x '*~' -x '*.in' -x autom4te.cache /home/patrick/projects/native/src/include/common/spds/SyncSource.h client-api/src/include/common/spds/SyncSource.h
+*** /home/patrick/projects/native/src/include/common/spds/SyncSource.h	2007-11-28 16:01:35.000000000 +0100
+--- client-api/src/include/common/spds/SyncSource.h	2008-03-01 22:16:15.000000000 +0100
+***************
+*** 46,52 ****
+  #include "spds/constants.h"
+  #include "spds/SyncItem.h"
+  #include "spds/SyncStatus.h"
+! #include "spds/SyncSourceConfig.h"
+  #include "spds/SyncSourceReport.h"
+  
+  /**
+--- 46,52 ----
+  #include "spds/constants.h"
+  #include "spds/SyncItem.h"
+  #include "spds/SyncStatus.h"
+! #include "spds/AbstractSyncSourceConfig.h"
+  #include "spds/SyncSourceReport.h"
+  
+  /**
+***************
+*** 70,76 ****
+      SourceFilter* filter;
+  
+  protected:
+!     SyncSourceConfig& config;
+      SyncSourceReport* report;
+  
+      /**
+--- 70,76 ----
+      SourceFilter* filter;
+  
+  protected:
+!     AbstractSyncSourceConfig& config;
+      SyncSourceReport* report;
+  
+      /**
+***************
+*** 93,99 ****
+       *               instance to avoid crashes, but modifying that config
+       *               will not make much sense.
+       */
+!     SyncSource(const WCHAR* name, SyncSourceConfig* sc);
+  
+      // Destructor
+      virtual ~SyncSource();
+--- 93,99 ----
+       *               instance to avoid crashes, but modifying that config
+       *               will not make much sense.
+       */
+!     SyncSource(const WCHAR* name, AbstractSyncSourceConfig* sc);
+  
+      // Destructor
+      virtual ~SyncSource();
+***************
+*** 125,135 ****
+       *********************************************************/
+  
+      /** read-only access to configuration */
+!     const SyncSourceConfig& getConfig() const {
+          return config;
+      }
+      /** read-write access to configuration */
+!     SyncSourceConfig& getConfig() {
+          return config;
+      }
+  
+--- 125,135 ----
+       *********************************************************/
+  
+      /** read-only access to configuration */
+!     const AbstractSyncSourceConfig& getConfig() const {
+          return config;
+      }
+      /** read-write access to configuration */
+!     AbstractSyncSourceConfig& getConfig() {
+          return config;
+      }
+  
+Only in /home/patrick/projects/native: src.old
+Only in /home/patrick/projects/native/test: synccompare.pl.orig

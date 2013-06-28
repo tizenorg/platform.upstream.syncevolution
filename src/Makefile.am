@@ -1,4 +1,7 @@
-INCLUDES = @EPACKAGE_CFLAGS@ @EBOOK_CFLAGS@ @ECAL_CFLAGS@ @GLIB_CFLAGS@ @SYNC4J_CFLAGS@ @SQLITE_CFLAGS@ @ADDRESSBOOK_CFLAGS@
+BACKENDS = backends/addressbook backends/evolution backends/file backends/sqlite
+SUBDIRS = core $(BACKENDS)
+
+AM_CPPFLAGS = $(SUBDIRS:%=-I$(srcdir)/%) @BACKEND_CPPFLAGS@ @FUNAMBOL_CFLAGS@
 
 # applies to sources in SyncEvolution repository, but not
 # the Funambol C++ client library
@@ -6,132 +9,58 @@ SYNCEVOLUTION_CXXFLAGS = @SYNCEVOLUTION_CXXFLAGS@
 
 bin_PROGRAMS = syncevolution
 bin_SCRIPTS = synccompare
-SYNCSOURCES = syncecal.la syncebook.la syncsqlite.la syncaddressbook.la
-MOSTLYCLEANFILES = $(SYNCSOURCES)
+SYNCSOURCES = @SYNCSOURCES@
+# The Funambol libs should be inherited via libsyncevolution.la, but
+# somehow that didn't work when enabling shared objects (probably
+# because only a static libfunambol.a is built, which relies on
+# tricks like adding -fPIC manually).
+SYNCEVOLUTION_LDADD = @SYNCEVOLUTION_LDADD@ @FUNAMBOL_LIBS@ 
+SYNCEVOLUTION_DEP =
 if ENABLE_MODULES
-pkglib_LTLIBRARIES = $(SYNCSOURCES)
 else
-EXTRA_LTLIBRARIES = $(SYNCSOURCES)
+SYNCEVOLUTION_LDADD += $(SYNCSOURCES)
+SYNCEVOLUTION_DEP += $(SYNCSOURCES)
 endif
-SYNCEVOLUTION_LDADD = @SYNCEVOLUTION_LDADD@
 EXTRA_PROGRAMS = client-test
+EXTRA_DIST = shlibs.local Makefile-gen.am
 check_PROGRAMS = @CPPUNIT_TESTS@
 TESTS = @CPPUNIT_TESTS@
 
 DISTCLEANFILES = synccompare
 MAINTAINERCLEANFILES = Makefile.in
-CLEANFILES = libstdc++.a
+CLEANFILES = libstdc++.a client-test $(CLIENT_LIB_TEST_FILES)
 
 # synccompare is created by replacing its 'import Algorithm::Diff;'
 # with a simplified copy of Diff.pm.
 #
 # If there is a copy of synccompare.pl in the SyncEvolution test directory,
 # then it is used instead of the one from the client library.
-vpath %.pl $(srcdir)/../test $(SYNC4J_SUBDIR)/test/test
-vpath %.pm $(srcdir)/../test $(SYNC4J_SUBDIR)/test/test/Algorithm
+vpath %.pl $(srcdir)/../test $(FUNAMBOL_SUBDIR)/test/test
+vpath %.pm $(srcdir)/../test $(FUNAMBOL_SUBDIR)/test/test/Algorithm
 synccompare : Diff.pm synccompare.pl
 	perl -e '$$diff = shift; open(DIFF, "<$$diff"); ($$_) = split(/__END__/, join("", <DIFF>)); s/\*import.*//m; s/require +Exporter;//; s/^#.*\n//mg; s/ +#.*\n//mg; $$diff = $$_;' -e 'while(<>) {' @MODIFY_SYNCCOMPARE@ -e 's/use +Algorithm::Diff;/"# embedded version of Algorithm::Diff follows, copyright by the original authors\n" . $$diff . "# end of embedded Algorithm::Diff\n"/e; print;}' $+ >$@
 	chmod u+x $@
 
-VOCL_SOURCES = \
-	vocl/VObject.h \
-	vocl/VProperty.h \
-	vocl/VConverter.h \
-	vocl/posixadapter.h \
-	\
-	vocl/VObject.cpp \
-	vocl/VProperty.cpp \
-	vocl/VConverter.cpp
+CORE_SOURCES =
 
-CORE_SOURCES  = \
-	ConfigTree.h \
-	ConfigNode.h \
-	VolatileConfigNode.h \
-	VolatileConfigTree.h \
-        EvolutionSmartPtr.h \
-	\
-	SyncEvolutionUtil.cpp \
-	SyncEvolutionUtil.h \
-        \
-	SyncEvolutionCmdline.cpp \
-        SyncEvolutionCmdline.h \
-	\
-        EvolutionSyncSource.h \
-        EvolutionSyncSource.cpp \
-	\
-        EvolutionSyncClient.h \
-	EvolutionSyncClient.cpp \
-	\
-	SyncEvolutionConfig.h \
-	SyncEvolutionConfig.cpp \
-	\
-	FilterConfigNode.h \
-	FilterConfigNode.cpp \
-	\
-	SafeConfigNode.h \
-	SafeConfigNode.cpp \
-	\
-	PrefixConfigNode.h \
-	PrefixConfigNode.cpp \
-	\
-	FileConfigNode.h \
-	FileConfigNode.cpp \
-	\
-	FileConfigTree.h \
-	FileConfigTree.cpp \
-	\
-	TrackingSyncSource.h \
-	TrackingSyncSource.cpp \
-	\
-	$(VOCL_SOURCES)
-
-SYNCECAL_SOURCES = \
-        EvolutionCalendarSource.h \
-        EvolutionMemoSource.h \
-	EvolutionCalendarSource.cpp \
-	EvolutionMemoSource.cpp
+# The files which register backends have to be compiled into
+# "client-test" and "syncevolution" in order to pull in the
+# code from the libs which implement the backends.
+#
+# Unit testing also goes there.
+#
+# When using modules the registration is done inside the
+# module and the register file is unnecessary. However, they
+# still need to be included in "make dist".
+BACKEND_REGISTRIES = backends/addressbook/AddressBookSourceRegister.cpp backends/evolution/EvolutionCalendarSourceRegister.cpp backends/evolution/EvolutionContactSourceRegister.cpp backends/file/FileSyncSourceRegister.cpp backends/sqlite/SQLiteContactSourceRegister.cpp
 if ENABLE_MODULES
+EXTRA_DIST += $(BACKEND_REGISTRIES)
 else
-CORE_SOURCES += EvolutionCalendarSourceRegister.cpp
+CORE_SOURCES += $(BACKEND_REGISTRIES)
 endif
 
-if ENABLE_ECAL
-SYNCECAL_SOURCES += \
-	libical/icalstrdup.c \
-	libical/icalstrdup.h \
-	e-cal-check-timezones.c \
-	e-cal-check-timezones.h
-endif
-
-SYNCEBOOK_SOURCES = \
-        EvolutionContactSource.h \
-	EvolutionContactSource.cpp
-if ENABLE_MODULES
-else
-CORE_SOURCES += EvolutionContactSourceRegister.cpp
-endif
-
-SYNCSQLITE_SOURCES = \
-	SQLiteUtil.h \
-	SQLiteUtil.cpp \
-	SQLiteContactSource.h \
-	SQLiteContactSource.cpp
-if ENABLE_MODULES
-else
-CORE_SOURCES += SQLiteContactSourceRegister.cpp
-endif
-
-SYNCADDRESSBOOK_SOURCES = \
-	AddressBookSource.h \
-	AddressBookConstants.cpp \
-	AddressBookSource.cpp
-if ENABLE_MODULES
-else
-CORE_SOURCES += AddressBookSourceRegister.cpp
-endif
-
-CORE_LDADD = @EPACKAGE_LIBS@ @GLIB_LIBS@ @SYNC4J_LIBS@ @ADDRESSBOOK_LIBS@ @LIBS@
-CORE_DEP = @SYNC4J_DEP@
+CORE_LDADD = $(SYNCEVOLUTION_LDADD) core/libsyncevolution.la @GLIB_LIBS@ @LIBS@
+CORE_DEP = $(SYNCEVOLUTION_DEP) core/libsyncevolution.la @FUNAMBOL_DEP@
 
 # put link to static c++ library into current directory, needed if compiling with --enable-static-c++
 libstdc++.a :
@@ -144,136 +73,114 @@ syncevolution_SOURCES = \
 # SYNCEVOLUTION_LDADD will be replaced with libsyncebook.la/libsyncecal.la/libsyncsqlite.la
 # if linking statically against them, empty otherwise;
 # either way this does not lead to a dependency on those libs - done explicitly
-#
-# LIBDBUS might be replaced with path to patched libdbus-1.a (required for
-# DBUS_DEFAULT_TIMEOUT hack on Maemo).
-syncevolution_LDADD = $(SYNCEVOLUTION_LDADD) @LIBDBUS@ $(CORE_LDADD)
+syncevolution_LDADD = $(CORE_LDADD)
 syncevolution_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS)
 syncevolution_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP)
 
-syncecal_la_SOURCES = $(SYNCECAL_SOURCES)
-syncecal_la_LIBADD = @ECAL_LIBS@
-# _GNU_SOURCE and -ldl for libical.c + dlsym():
-syncecal_la_CPPFLAGS = -D_GNU_SOURCE \
-	-De_cal_check_timezones=syncevolution_check_timezones \
-	-De_cal_tzlookup_ecal=syncevolution_tzlookup_ecal \
-	-De_cal_tzlookup_icomp=syncevolution_tzlookup_icomp \
-	-De_cal_match_tzid=syncevolution_match_tzid
-syncecal_la_LDFLAGS = -module -rpath '$(pkglibdir)' -ldl
-syncecal_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS)
-
-syncebook_la_SOURCES = $(SYNCEBOOK_SOURCES)
-syncebook_la_LIBADD = @EBOOK_LIBS@
-syncebook_la_LDFLAGS = -module -rpath '$(pkglibdir)'
-syncebook_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS)
-
-syncsqlite_la_SOURCES = $(SYNCSQLITE_SOURCES)
-syncsqlite_la_LIBADD = @SQLITE_LIBS@
-syncsqlite_la_LDFLAGS = -module -rpath '$(pkglibdir)'
-syncsqlite_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS)
-
-syncaddressbook_la_SOURCES = $(SYNCADDRESSBOOK_SOURCES)
-syncaddressbook_la_LIBADD = @ADDRESSBOOK_LIBS@
-syncaddressbook_la_LDFLAGS = -module -rpath '$(pkglibdir)'
-syncaddressbook_la_CXXFLAGS = $(SYNCEVOLUTION_CXXFLAGS)
-
-EXTRA_PROGRAMS += vcardconverter
-vcardconverter_SOURCES = \
-        vocl/vcardconverter.cpp \
-	$(VOCL_SOURCES)
-vcardconverter_LDADD = $(CORE_LDADD)
-
-
-# SYNC4J_SUBDIR specifies the directory where we compile
+# FUNAMBOL_SUBDIR specifies the directory where we compile
 # the client library by invoking make there.
 # Installing its source is done explicitly.
 #
 # The path may be empty!
-SYNC4JSRC = @SYNC4JSRC@
-SYNC4J_SUBDIR = @SYNC4J_SUBDIR@
-BUILT_SOURCES = $(SYNC4J_SUBDIR)/all
+FUNAMBOLSRC = @FUNAMBOLSRC@
+FUNAMBOL_SUBDIR = @FUNAMBOL_SUBDIR@
+BUILT_SOURCES = $(FUNAMBOL_SUBDIR)/all
 
-@SYNC4J_LIB@ : $(SYNC4J_SUBDIR)/all
+@FUNAMBOL_LIB@ : $(FUNAMBOL_SUBDIR)/all
 
-# include client library and boost in distribution
+# include client library in distribution
 dist-hook:
-	cp -r $(srcdir)/boost $(distdir)
-	[ ! "$(SYNC4J_SUBDIR)" ] || cp -r client-api $(distdir)
+	[ ! "$(FUNAMBOL_SUBDIR)" ] || cp -r client-api $(distdir)
 	find $(distdir) -name .libs -o -name "*~" -o -name ".*" -o -name "*.o" -o -name "*.lo" -o -name CVS -o -name autom4te.cache | xargs rm -rf
 
 clean-local: testclean
-	[ ! -d "$(SYNC4J_SUBDIR)" ] || (cd $(SYNC4J_SUBDIR) && $(MAKE) clean)
+	rm -rf testcases
+	[ ! -d "$(FUNAMBOL_SUBDIR)" ] || (cd $(FUNAMBOL_SUBDIR) && $(MAKE) clean)
 
 # files created during testing
 testclean:
 	rm -f *.test.vcf *.log *.tests *.diff *.dat
 
 distclean-local:
-	rm -rf $(SYNC4J_SUBDIR)
+	rm -rf $(FUNAMBOL_SUBDIR)
 	rm -rf @CLEAN_CLIENT_SRC@ # "client-api", only set when it was created by configure
 
-# With --disable-shared autotools links against libsync4j.a which does not
+# With --disable-shared autotools links against libfunambol.a which does not
 # pull any of the test suites into the test binary, so they would not be
 # executed. The workaround is to explicitly set them as undefined on the
 # link line.
 client_test_SOURCES = client-test-app.cpp $(CORE_SOURCES)
-CLIENT_LIB_TEST_FILES = ClientTest.h ClientTest.cpp client-test-main.cpp
+CLIENT_LIB_TEST_FILES = ClientTest.h ClientTest.cpp client-test-main.cpp \
+	testcases/vcard21.vcf \
+	testcases/vcard30.vcf \
+	testcases/ical20.ics \
+	testcases/itodo20.ics
 nodist_client_test_SOURCES = $(CLIENT_LIB_TEST_FILES)
-client_test_CPPFLAGS = -DHAVE_CONFIG_H -DENABLE_INTEGRATION_TESTS
+client_test_CPPFLAGS = -DHAVE_CONFIG_H -DENABLE_INTEGRATION_TESTS -DENABLE_UNIT_TESTS $(AM_CPPFLAGS)
 client_test_CXXFLAGS = `cppunit-config --cflags` $(SYNCEVOLUTION_CXXFLAGS)
-client_test_LDFLAGS = `cppunit-config --libs` `nm $(SYNC4J_SUBDIR)/src/.libs/libsync4j.a | grep funambolAutoRegisterRegistry | sed -e 's/.* /-u /'`
-client_test_LDADD = $(SYNCEVOLUTION_LDADD) @LIBDBUS@ $(SYNC4J_SUBDIR)/src/libsync4j.la $(CORE_LDADD)
-client_test_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP)
+client_test_LDFLAGS = `cppunit-config --libs` `nm $(FUNAMBOL_SUBDIR)/src/.libs/libfunambol.a core/.libs/libsyncevolution.a | grep funambolAutoRegisterRegistry | sed -e 's/.* /-u /'`
+client_test_LDADD = @LIBDBUS@ $(FUNAMBOL_SUBDIR)/src/libfunambol.la $(CORE_LDADD)
+# These dependencies are intentionally a bit too broad:
+# they ensure that all files are in place to *run* client-test,
+# but in particular the "all" dependency causes a rebuild
+# even if the actual input files haven't changed.
+client_test_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) all $(CLIENT_LIB_TEST_FILES) synccompare
 
 # copy test files for several reasons:
 # - automake expects them here
 # - wchar needs to be removed from distribution to avoid need for defines
-# - a locally modified file with suffix ".modified" can take precedence over
-#   the upstream version
+# - a file in SyncEvolution's test directory is preferred if it exists
 
-LOCAL_TEST_FILES=$(notdir $(wildcard $(srcdir)/../test/*))
+LOCAL_TEST_FILES=$(subst $(srcdir)/../test/,,$(wildcard $(srcdir)/../test/* $(srcdir)/../test/testcases/*))
 
 # sources from SyncEvolution
-$(filter $(LOCAL_TEST_FILES), $(CLIENT_LIB_TEST_FILES)) : % : $(srcdir)/../test/%
+$(filter-out testcases/%, $(filter $(LOCAL_TEST_FILES), $(CLIENT_LIB_TEST_FILES))) : % : $(srcdir)/../test/%
 	sed -e 's/WCHAR_T/char/g' -e 's/TEXT(/(/g' -e 's/wcslen/strlen/g' -e 's/wcscmp/strcmp/g' $< >$@
 
 # sources from compiled client library
-$(filter-out $(LOCAL_TEST_FILES), $(CLIENT_LIB_TEST_FILES)) : % : $(SYNC4J_SUBDIR)/test/test/%
+$(filter-out $(LOCAL_TEST_FILES) testcases/%, $(CLIENT_LIB_TEST_FILES)) : % : $(FUNAMBOL_SUBDIR)/test/test/%
 	sed -e 's/WCHAR_T/char/g' -e 's/TEXT(/(/g' -e 's/wcslen/strlen/g' -e 's/wcscmp/strcmp/g' $< >$@
 
-$(CLIENT_LIB_TEST_FILES:%=$(SYNC4J_SUBDIR)/test/test/%): @SYNC4J_DEP@
+$(CLIENT_LIB_TEST_FILES:%=$(FUNAMBOL_SUBDIR)/test/test/%): @FUNAMBOL_DEP@
 
 # extra dependency - don't remember why
 ClientTest.cpp : ClientTest.h
 
 # verbatim files from SyncEvolution
-$(filter $(LOCAL_TEST_FILES), testcases) : % : $(srcdir)/../test/%
-	rm -rf $@
-	cp -r $< $@
+$(filter testcases/%, $(filter $(LOCAL_TEST_FILES), $(CLIENT_LIB_TEST_FILES))) : % : $(srcdir)/../test/%
+	mkdir -p testcases
+	cp $< $@
 
-# verbatim files from client library:
-# - SQLiteContactSource does not support all fields: filter those out
-$(filter-out $(LOCAL_TEST_FILES), testcases) : % : $(SYNC4J_SUBDIR)/test/test/%
-	rm -rf $@
-	cp -r $< $@
-	perl -e '$$_ = join("", <>); s/^(ADR|TEL|EMAIL|PHOTO).*?(?=^\S)//msg; print;' testcases/vcard21.vcf >testcases/vcard21_sqlite.vcf
 
-test : client-test testcases synccompare
-.PHONY : test
+$(filter testcases/%, $(filter-out $(LOCAL_TEST_FILES), $(CLIENT_LIB_TEST_FILES))) : % : $(FUNAMBOL_SUBDIR)/test/test/%
+	mkdir -p testcases
+	cp $< $@
 
 # rule to satisfy automatic dependencies on header files
-$(SYNC4J_SUBDIR)/%.h :
-	[ ! "$(SYNC4J_SUBDIR)" ] || ( cd $(SYNC4J_SUBDIR)/include && $(MAKE) all )
+$(FUNAMBOL_SUBDIR)/%.h :
+	[ ! "$(FUNAMBOL_SUBDIR)" ] || ( cd $(FUNAMBOL_SUBDIR)/include && $(MAKE) all )
 
-# default rule for building in $(SYNC4J_SUBDIR)
-$(SYNC4J_SUBDIR)/% :
-	[ ! "$(SYNC4J_SUBDIR)" ] || ( cd ${@D} && $(MAKE) ${@F} )
+# default rule for building in $(FUNAMBOL_SUBDIR)
+$(FUNAMBOL_SUBDIR)/% :
+	[ ! "$(FUNAMBOL_SUBDIR)" ] || ( cd ${@D} && $(MAKE) ${@F} )
 
 # compare the local copy of the C++ client library against
 # the files where it was copied from
 client-api-diff :
-	diff -r -c -x CVS -x config.guess -x config.sub -x depcomp -x install-sh -x ltmain.sh -x missing -x aclocal.m4 -x configure -x '.#*' -x '*~' -x '*.in' -x autom4te.cache $(SYNC4JSRC) client-api
+	diff -r -c -x CVS -x config.guess -x config.sub -x depcomp -x install-sh -x ltmain.sh -x missing -x aclocal.m4 -x configure -x '.#*' -x '*~' -x '*.in' -x autom4te.cache $(FUNAMBOLSRC) client-api
 
 # special target for testing with valgrind
 valgrind : test
 	valgrind --leak-check=yes --suppressions=valgrind.supp ./test
+
+# Because backend-related variables need to be substituted in
+# Makefile-gen.am we need an explicit rule to redo that work
+# so that "make" rebuilds derived files correctly.
+$(srcdir)/Makefile.am: Makefile-gen.am
+	sed -e 's;[@]BACKEND_REGISTRIES[@];$(BACKEND_REGISTRIES);' \
+	    -e 's;[@]BACKENDS[@];$(BACKENDS);' \
+	    $< >$@
+
+# old-style name for test program(s)
+.PHONY: test
+test: client-test

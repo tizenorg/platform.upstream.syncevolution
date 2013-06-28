@@ -456,7 +456,7 @@ int SyncManager::prepareSync(SyncSource** s) {
             goto finally;
         }
 
-        LOG.debug(MSG_INITIALIZATATION_MESSAGE);
+        LOG.debug("%s", MSG_INITIALIZATATION_MESSAGE);
 
         currentState = STATE_PKG1_SENDING;
 
@@ -558,7 +558,7 @@ int SyncManager::prepareSync(SyncSource** s) {
 
             if (ret == -1 || ret == 404 || ret == 415) {
                 setErrorF(ret, "AlertStatus from server %d", ret);
-                LOG.error(getLastErrorMsg());
+                LOG.error("%s", getLastErrorMsg());
                 setSourceStateAndError(count, SOURCE_ERROR, ret, getLastErrorMsg());
             }
         }
@@ -690,7 +690,7 @@ int SyncManager::prepareSync(SyncSource** s) {
                     if (statusCode) {
                         status = syncMLBuilder.prepareCmdStatus(*cmd, statusCode);
                         if (status) {
-		                    // Fire Sync Status Event: status from client
+                            // Fire Sync Status Event: status from client
                             fireSyncStatusEvent(status->getCmd(), status->getStatusCode(), NULL, NULL, NULL , CLIENT_STATUS);
 
                             commands.add(*status);
@@ -756,7 +756,7 @@ int SyncManager::prepareSync(SyncSource** s) {
                 ret = syncMLProcessor.processServerAlert(*sources[count], syncml);
                 if (isErrorStatus(ret)) {
                     setErrorF(ret, "AlertStatus from server %d", ret);
-                    LOG.error(getLastErrorMsg());
+                    LOG.error("%s", getLastErrorMsg());
                     setSourceStateAndError(count, SOURCE_ERROR, ret, getLastErrorMsg());
                 }
                 fireSyncSourceEvent(sources[count]->getConfig().getURI(),
@@ -916,7 +916,7 @@ bool SyncManager::checkForServerChanges(SyncML* syncml, ArrayList &statusList)
 
             ArrayList* items = sync->getCommands();
             Status* status = syncMLBuilder.prepareSyncStatus(*sources[count], sync);
-			statusList.add(*status);
+            statusList.add(*status);
             deleteStatus(&status);
 
             ArrayList* previousStatus = new ArrayList();
@@ -1436,7 +1436,7 @@ int SyncManager::sync() {
             msg    = syncMLBuilder.prepareMsg(syncml);
 
             deleteSyncML(&syncml);
-			commands.clear();
+            commands.clear();
 
             if (msg == NULL) {
                 ret = getLastErrorCode();
@@ -1477,7 +1477,7 @@ int SyncManager::sync() {
                 //lastErrorCode = ret;
                 //sprintf(lastErrorMsg, "Server Failure: server returned error code %i", ret);
                 setErrorF(ret, "Server Failure: server returned error code %i", ret);
-                LOG.error(getLastErrorMsg());
+                LOG.error("%s", getLastErrorMsg());
                 goto finally;
 
             }
@@ -1545,7 +1545,7 @@ int SyncManager::sync() {
     //
     if ( !isFinalfromServer && isAtLeastOneSourceCorrect ) {
         status = syncMLBuilder.prepareSyncHdrStatus(NULL, 200);
-	commands.add(*status);
+        commands.add(*status);
         deleteStatus(&status);
         for (count = 0; count < sourcesNumber; count ++) {
             if(!sources[count]->getReport()->checkState()) {
@@ -1593,7 +1593,7 @@ int SyncManager::sync() {
             //lastErrorCode = ret;
             //sprintf(lastErrorMsg, "Server Failure: server returned error code %i", ret);
             setErrorF(ret, "Server Failure: server returned error code %i", ret);
-            LOG.error(getLastErrorMsg());
+            LOG.error("%s", getLastErrorMsg());
             goto finally;
         }
         ret = 0;
@@ -1653,7 +1653,7 @@ int SyncManager::sync() {
                     //lastErrorCode = ret;
                     //sprintf(lastErrorMsg, "Server Failure: server returned error code %i", ret);
                     setErrorF(ret, "Server Failure: server returned error code %i", ret);
-                    LOG.error(getLastErrorMsg());
+                    LOG.error("%s", getLastErrorMsg());
                     goto finally;
                 }
                 ret = 0;
@@ -1787,7 +1787,7 @@ int SyncManager::endSync() {
             //lastErrorCode = ret;
             //sprintf(lastErrorMsg, "Server Failure: server returned error code %i", ret);
             setErrorF(ret,  "Server Failure: server returned error code %i", ret);
-            LOG.error(getLastErrorMsg());
+            LOG.error("%s", getLastErrorMsg());
             goto finally;
         }
         ret = 0;
@@ -1951,7 +1951,7 @@ int SyncManager::assignSources(SyncSource** srclist) {
             //lastErrorCode = ERR_SOURCE_DEFINITION_NOT_FOUND;
             //sprintf(lastErrorMsg, ERRMSG_SOURCE_DEFINITION_NOT_FOUND, name);
             setErrorF(ERR_SOURCE_DEFINITION_NOT_FOUND, ERRMSG_SOURCE_DEFINITION_NOT_FOUND, name);
-            LOG.debug(getLastErrorMsg());
+            LOG.debug("%s", getLastErrorMsg());
 
             setSourceStateAndError(i, SOURCE_ERROR,
                                    ERR_SOURCE_DEFINITION_NOT_FOUND, getLastErrorMsg());
@@ -2002,13 +2002,21 @@ Status *SyncManager::processSyncItem(Item* item, const CommandInfo &cmdInfo, Syn
     const char* itemName;
     Status *status = 0;
 
-    Source* s = item->getSource();
-    if (s) {
-        itemName = s->getLocURI();
+    // During an "Add" we want the source URI, otherwise
+    // ("Delete", "Update") the target URI.
+    Target* t = item->getTarget();
+    if (t && strcmp(cmdInfo.commandName, ADD)) {
+        itemName = t->getLocURI();
     }
     else {
-        Target* t = item->getTarget();
-        itemName = t->getLocURI();
+        Source* s = item->getSource();
+        itemName = s->getLocURI();
+    }
+
+    if (!itemName) {
+        // invalid command: no URI
+        status = syncMLBuilder.prepareItemStatus(cmdInfo.commandName, "", cmdInfo.cmdRef, 412);
+        return status;
     }
 
     // Fill item -------------------------------------------------

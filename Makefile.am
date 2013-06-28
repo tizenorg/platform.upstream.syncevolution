@@ -2,9 +2,9 @@
 
 SUBDIRS = src test
 
-EXTRA_DIST = HACKING
+EXTRA_DIST = HACKING description configure-pre.in configure-post.in autogen.sh Makefile-gen.am Doxyfile
 MAINTAINERCLEANFILES = Makefile.in config.h.in config.guess config.sub configure depcomp install-sh ltmain.sh missing mkinstalldirs
-DISTCHECK_CONFIGURE_FLAGS = --with-sync4j=@SYNC4J@
+DISTCHECK_CONFIGURE_FLAGS = --with-sync4j=@FUNAMBOL@
 
 # binary distribution
 distbin : README all
@@ -47,7 +47,7 @@ PKGNAME=syncevolution$(patsubst %,-%,$(BINSUFFIX))
 
 # This is a list of packages (potentially) provided on estamos.de.
 # The current package conflicts with any of them, but not itself.
-PKGS = $(addprefix syncevolution-evolution-, 2.0 2.2 2.4 2.6 2.8 2.10 2.12 2.14 2.16)
+PKGS = $(addprefix syncevolution-evolution-, 2.0 2.2 2.4 2.6 2.8 2.10 2.12 2.14 2.16 2.20 2.22 2.24 2.26 2.28)
 
 # When calling checkinstall we cannot install into /tmp
 # because any file created there will be excluded: that makes
@@ -79,3 +79,41 @@ doc-pak : README NEWS COPYING
 
 description-pak : description
 	cp $< $@
+
+# Build "html" inside the build dir, using source files
+# from the SyncEvolution source directory and (if built)
+# the installed client-api.build directory.
+.PHONY: doc clean-html
+doc:
+	rm -rf html
+	export VERSION="SyncEvolution $(VERSION)"; \
+	export OUTPUT_DIRECTORY="`pwd`"; \
+	export PREDEFINED="@BACKEND_DEFINES@ ENABLE_UNIT_TESTS ENABLE_INTEGRATION_TESTS"; \
+	export CLIENT_LIBRARY="@FUNAMBOL_SUBDIR@/test @FUNAMBOL_SUBDIR@/include "; \
+	export STRIP_FROM_PATH="$(srcdir) `dirname @FUNAMBOL_SUBDIR@`"; \
+	cd $(srcdir); doxygen
+clean-local: clean-html
+clean-html:
+	rm -rf html
+
+# Because backend-related variables need to be substituted in
+# Makefile-gen.am and configure.in we need an explicit rule to redo that work
+# so that "make" rebuilds derived files correctly.
+CONFIG_SUBS = src/backends/addressbook/configure-sub.in src/backends/evolution/configure-sub.in src/backends/file/configure-sub.in src/backends/sqlite/configure-sub.in
+$(srcdir)/configure.in: configure-pre.in configure-post.in $(CONFIG_SUBS)
+	rm -f $@
+	cat $(srcdir)/configure-pre.in >>$@
+	for sub in $(srcdir)/src/backends/*/configure-sub.in; do \
+	    echo "# vvvvvvvvvvvvvv $$sub vvvvvvvvvvvvvv" >>$@; \
+	    cat $$sub >>$@; \
+	    echo "AC_CONFIG_FILES(`echo $$sub | sed -e 's;^$(srcdir)/;;' -e s/configure-sub.in/Makefile/`)" >>$@; \
+	    echo "# ^^^^^^^^^^^^^^ $$sub ^^^^^^^^^^^^^^" >>$@; \
+	    echo >>$@; \
+	done
+	echo BACKEND_REGISTRIES = `echo $(srcdir)/src/backends/*/*Register.cpp | sed -e 's;$(srcdir)/;;'` >>$@
+	echo "AC_SUBST(BACKEND_REGISTRIES)" >>$@
+	cat $(srcdir)/configure-post.in >>$@
+
+$(srcdir)/Makefile.am: Makefile-gen.am
+	sed -e 's;[@]CONFIG_SUBS[@];$(CONFIG_SUBS);' \
+	    $< >$@

@@ -33,12 +33,30 @@
  * the words "Powered by Funambol".
  */
 
+
+#include "base/fscapi.h"
+
+#if FUN_TRANSPORT_AGENT == FUN_MAC_TRANSPORT_AGENT
+
+#include <CoreFoundation/CoreFoundation.h>
+
+#if defined(FUN_IPHONE)
+#include <SystemConfiguration/SystemConfiguration.h>
+#include <SystemConfiguration/SCNetworkReachability.h>
+#if TARGET_IPHONE_SIMULATOR
+#include <CoreServices/CoreServices.h>
+#else
+#include <CFNetwork/CFNetwork.h>
+#endif
+#else
+#include <CoreServices/CoreServices.h>
+#endif
+
 #include "http/MacTransportAgent.h"
 #include "http/constants.h"
 
 #include "base/util/utils.h"
 #include "base/util/StringBuffer.h"
-#import <SystemConfiguration/SystemConfiguration.h>
 
 
 USE_NAMESPACE
@@ -76,17 +94,22 @@ char* MacTransportAgent::sendMessage(const char* msg){
         setError(ERR_NETWORK_INIT, "MacTransportAgent::sendMessage error: NULL message.");
         return NULL;
     }
-    
-    
+   
+    bool gotflags = true;
+    bool isReachable = true;
+    bool noConnectionRequired = true; 
+
+#if defined(FUN_IPHONE)    
     SCNetworkReachabilityFlags        flags;
     SCNetworkReachabilityRef scnReachRef = SCNetworkReachabilityCreateWithName(kCFAllocatorDefault, url.host);
     
-    bool gotflags = SCNetworkReachabilityGetFlags(scnReachRef, &flags);
-    bool isReachable = flags & kSCNetworkReachabilityFlagsReachable;
-    bool noConnectionRequired = !(flags & kSCNetworkReachabilityFlagsConnectionRequired);
+    gotflags = SCNetworkReachabilityGetFlags(scnReachRef, &flags);
+    isReachable = flags & kSCNetworkReachabilityFlagsReachable;
+    noConnectionRequired = !(flags & kSCNetworkReachabilityFlagsConnectionRequired);
     if ((flags & kSCNetworkReachabilityFlagsIsWWAN)) {
         noConnectionRequired = true;
     }
+#endif
     
 
     if ( gotflags && isReachable && noConnectionRequired ){
@@ -180,35 +203,35 @@ char* MacTransportAgent::sendMessage(const char* msg){
             }
             case -1: {                    // no connection (TODO: implement retry)
                 setErrorF(ERR_SERVER_ERROR, "Network error in server receiving data. ");
-                LOG.error(getLastErrorMsg());
+                LOG.error("%s", getLastErrorMsg());
                 
                 break;
             }
             case 400: {                    // 400 bad request error. TODO: retry to send the message
                 setErrorF(ERR_SERVER_ERROR, "HTTP server error: %d. Server failure.", statusCode);
-                LOG.debug(getLastErrorMsg());
+                LOG.debug("%s", getLastErrorMsg());
                 
                 break;
             }
             case 500: {     // 500 -> out code 2052
                 setErrorF(ERR_SERVER_ERROR, "HTTP server error: %d. Server failure.", statusCode);
-                LOG.debug(getLastErrorMsg());
+                LOG.debug("%s", getLastErrorMsg());
                 break;
             }
             case 404: {         // 404 -> out code 2060
                 setErrorF(ERR_HTTP_NOT_FOUND, "HTTP request error: resource not found (status %d)", statusCode);
-                LOG.debug(getLastErrorMsg());
+                LOG.debug("%s", getLastErrorMsg());
                 break;
             }
             case 408: {   // 408 -> out code 2061
                 setErrorF(ERR_HTTP_REQUEST_TIMEOUT, "HTTP request error: server timed out waiting for request (status %d)", statusCode);
-                LOG.debug(getLastErrorMsg());
+                LOG.debug("%s", getLastErrorMsg());
                 break;
             }
                 
             default: {
                 setErrorF(statusCode, "HTTP request error: status received = %d", statusCode);
-                LOG.error(getLastErrorMsg());
+                LOG.error("%s", getLastErrorMsg());
             }
         }
         
@@ -225,9 +248,11 @@ char* MacTransportAgent::sendMessage(const char* msg){
         return ret;
     }else{
         setErrorF(ERR_CONNECT, "Network error: the attempt to connect to the server failed -> exit");
-        LOG.debug(getLastErrorMsg());
+        LOG.debug("%s", getLastErrorMsg());
         
         return NULL;
     }
 }
+
+#endif
 
