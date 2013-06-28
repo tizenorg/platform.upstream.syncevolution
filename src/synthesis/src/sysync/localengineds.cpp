@@ -3807,13 +3807,12 @@ SmlDevInfSyncCapPtr_t TLocalEngineDS::newDevInfSyncCap(uInt32 aSyncCapMask)
   //
   if (!IS_SERVER ||
       fSessionP->receivedSyncModeExtensions()) {
+    bool extended=false;
     if (canRestart()) {
       synctypeP=newPCDataString("390001");
       addPCDataToList(synctypeP,&(synccapP->synctype));
+      extended=true;
     }
-    synctypeP=newPCDataString("390002");
-    addPCDataToList(synctypeP,&(synccapP->synctype));
-
     // Finally add non-standard synccaps that are outside of the
     // engine's control.
     set<string> modes;
@@ -3822,6 +3821,22 @@ SmlDevInfSyncCapPtr_t TLocalEngineDS::newDevInfSyncCap(uInt32 aSyncCapMask)
          it != modes.end();
          ++it) {
       synctypeP=newPCDataString(*it);
+      addPCDataToList(synctypeP,&(synccapP->synctype));
+      extended=true;
+    }
+
+    // Add fake mode to signal peer that we support extensions.
+    // Otherwise a server won't send them, to avoid breaking
+    // client's (like Nokia phones) which don't.
+    //
+    // Don't send the fake mode unnecessarily (= when some other
+    // non-standard modes where already added), because Funambol seems
+    // to have a hard-coded limit of 9 entries in the <SyncCap> and
+    // complains with a 513 internal server error (when using WBXML)
+    // or a 'Expected "CTCap" end tag, found "CTType" end tag' (when
+    // using XML).
+    if (!extended) {
+      synctypeP=newPCDataString("390002");
       addPCDataToList(synctypeP,&(synccapP->synctype));
     }
   }
