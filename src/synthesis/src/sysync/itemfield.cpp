@@ -286,7 +286,7 @@ TItemField *TArrayField::getArrayField(sInt16 aArrIdx, bool aExistingOnly)
     fldP = fArray[aArrIdx];
     if (fldP==NULL) {
       // but element does not exist yet, create field for it
-      fldP=newItemField(fLeafFieldType,false);
+      fldP=newItemField(fLeafFieldType,NULL,false);
       fArray[aArrIdx]=fldP;
     }
   }
@@ -301,7 +301,7 @@ TItemField *TArrayField::getArrayField(sInt16 aArrIdx, bool aExistingOnly)
       fArray.push_back(NULL);
     }
     // actually create last field only
-    fldP=newItemField(fLeafFieldType,false);
+    fldP=newItemField(fLeafFieldType,NULL,false);
     fArray[aArrIdx]=fldP;
   }
   // return field

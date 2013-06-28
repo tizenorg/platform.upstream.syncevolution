@@ -5,7 +5,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="Docutils 0.6: http://docutils.sourceforge.net/" />
 <title>SyncEvolution</title>
-<meta name="date" content="2010-09-30" />
+<meta name="date" content="2010-10-26" />
 <style type="text/css">
 
 /*
@@ -315,9 +315,9 @@ ul.auto-toc {
 <tr class="field"><th class="docinfo-name">Manual section:</th><td class="field-body">1</td>
 </tr>
 <tr><th class="docinfo-name">Version:</th>
-<td>1.0.99.7</td></tr>
+<td>1.1</td></tr>
 <tr><th class="docinfo-name">Date:</th>
-<td>2010-09-30</td></tr>
+<td>2010-10-26</td></tr>
 </tbody>
 </table>
 <div class="section" id="synopsis">
@@ -352,7 +352,7 @@ syncevolution --remove|--migrate &lt;options&gt; &lt;config&gt;</dd>
 <dd>syncevolution --update &lt;dir&gt; &lt;config&gt; &lt;source&gt;
 syncevolution [--delimiter &lt;string&gt;|none] --update &lt;file&gt;|- &lt;config&gt; &lt;source&gt; &lt;luid&gt; ...</dd>
 <dt>Remove item(s):</dt>
-<dd>syncevolution --delete-items &lt;config&gt; &lt;source&gt; &lt;luid&gt; ...</dd>
+<dd>syncevolution --delete-items &lt;config&gt; &lt;source&gt; (&lt;luid&gt; ... | *)</dd>
 </dl>
 </div>
 <div class="section" id="description">
@@ -526,13 +526,14 @@ syncevolution [--delimiter &lt;string&gt;] --export &lt;dir&gt;|&lt;file&gt;|- &
 syncevolution [--delimiter &lt;string&gt;|none] --import &lt;dir&gt;|&lt;file&gt;|- &lt;config&gt; &lt;source&gt;
 syncevolution --update &lt;dir&gt; &lt;config&gt; &lt;source&gt;
 syncevolution [--delimiter &lt;string&gt;|none] --update &lt;file&gt;|- &lt;config&gt; &lt;source&gt; &lt;luid&gt; ...
-syncevolution --delete-items &lt;config&gt; &lt;source&gt; &lt;luid&gt; ...
+syncevolution --delete-items &lt;config&gt; &lt;source&gt; (&lt;luid&gt; ... | *)
 </pre>
 <p>Restore depends on the specific format of the automatic backups
 created by SyncEvolution. Arbitrary access to item data is provided
 with additional options. &lt;luid&gt; here is the unique local identifier
 assigned to each item in the source, transformed so that it contains
-only alphanumeric characters, dash and underscore.</p>
+only alphanumeric characters, dash and underscore. A star * in
+--delete-items selects all items for deletion.</p>
 <p>&lt;config&gt; and &lt;source&gt; must be given, but they do not have to refer to
 existing configurations. In that case, the desired backend and must be
 give via &quot;--source-property type=&lt;backend&gt;&quot;, like this:</p>
@@ -643,7 +644,8 @@ output is produced. Trying to remove an item which does not exist
 typically leads to an ERROR message, but is not reflected in a
 non-zero result of the command line invocation itself because the
 situation is not reported as an error by backends (removal of
-non-existent items is not an error in SyncML).</dd>
+non-existent items is not an error in SyncML). Use a star * instead
+or in addition to listing individual luids to delete all items.</dd>
 <dt>--sync-property|-y &lt;property&gt;=&lt;value&gt;|&lt;property&gt;=?|?</dt>
 <dd><p class="first">Overrides a source-independent configuration property for the
 current synchronization run or permanently when --configure is used
