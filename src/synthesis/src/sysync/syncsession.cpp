@@ -3622,8 +3622,14 @@ localstatus TSyncSession::initSync(
 
   // search for local datastore first
   string cgiOptions;
-  // - search for datastore and obtain possible CGI
-  fLocalSyncDatastoreP = findLocalDataStoreByURI(SessionRelativeURI(aLocalDatastoreURI),&cgiOptions);
+  // - search for datastore and obtain possible CGI;
+  //   fallback to remote datastore URI is for Sony Ericsson C510,
+  //   which sends an empty target (= local) URI (also needs
+  //   to be done in Alert handling)
+  fLocalSyncDatastoreP = findLocalDataStoreByURI(SessionRelativeURI((!aLocalDatastoreURI ||
+                                                                     !aLocalDatastoreURI[0]) ?
+                                                                    aRemoteDatastoreURI :
+                                                                    aLocalDatastoreURI),&cgiOptions);
   if (!fLocalSyncDatastoreP) {
     // no such local datastore
     return 404;
@@ -4790,7 +4796,7 @@ TSmlCommand *TSyncSession::processAlertItem(
     case 204:
     case 205:
     // Sync resume alert
-    case 225:
+    case 225: {
       // Synchronisation initialisation alerts
       // - test if context is ok
       if (fIncomingState!=psta_init && fIncomingState!=psta_initsync) {
@@ -4804,8 +4810,14 @@ TSmlCommand *TSyncSession::processAlertItem(
         return NULL; // no alert sent back
       }
       // find requested database by URI
+      const char *target = smlSrcTargLocURIToCharP(aItemP->target);
+      if (!target || !target[0]) {
+        // same fallback for Sony Ericsson C510 as in
+        // TSyncSession::initSync()
+        target = smlSrcTargLocURIToCharP(aItemP->source);
+      }
       datastoreP = findLocalDataStoreByURI(
-        smlSrcTargLocURIToCharP(aItemP->target), // target as sent from remote
+        target, // target as sent from remote
         &optionsCGI, // options, if any
         &identifyingTargetURI // identifying part of URI (CGI removed)
       );
@@ -4850,6 +4862,7 @@ TSmlCommand *TSyncSession::processAlertItem(
         aStatusCommand.addItem(itemP); // add it to status
       }
       break;
+    }
     case 224 :
       // Suspend alert
       SuspendSession(514);

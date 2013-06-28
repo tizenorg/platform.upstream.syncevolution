@@ -108,6 +108,8 @@ XMLPARSE_CFLAGS_BUILTIN = -I$(srcdir)/Targets/ReleasedProducts/clientEngine_auto
 endif
 
 libsynthesissdk_la_LDFLAGS = -static
+libsynthesissdk_la_CFLAGS = $(PIC_CXXFLAGS)
+libsynthesissdk_la_CXXFLAGS = $(PIC_CXXFLAGS)
 libsynthesissdk_la_SOURCES = synthesis/SDK_support.h synthesis/SDK_util.h synthesis/UI_util.h synthesis/admindata.h synthesis/blobs.h synthesis/dataconversion.h synthesis/dbitem.h synthesis/engine_defs.h synthesis/enginemodulebase.h synthesis/enginemodulebridge.h synthesis/generic_types.h synthesis/lineartime.h synthesis/prefix_file.h synthesis/san.h synthesis/stringutil.h synthesis/syerror.h synthesis/sync_dbapi.h synthesis/sync_dbapidef.h synthesis/sync_declarations.h synthesis/sync_include.h synthesis/sync_uiapi.h synthesis/syncexception.h synthesis/sysync_b64.h synthesis/sysync_md5.h synthesis/sysync_utils.h synthesis/timeutil.h
 if COND_STATIC
 libsynthesissdk_la_SOURCES += sysync_SDK/Sources/UI_util.cpp sysync_SDK/Sources/enginemodulebridge.cpp sysync_SDK/Sources/san.cpp sysync_SDK/Sources/timeutil.cpp
@@ -128,6 +130,8 @@ libsynthesissdk_la_CPPFLAGS = \
 	-I$(srcdir)/syncml_tk/src/sml/mgr/inc/ 
 
 libsynthesisstubs_la_LDFLAGS = -static
+libsynthesisstubs_la_CFLAGS = $(libsynthesissdk_la_CXXFLAGS)
+libsynthesisstubs_la_CXXFLAGS = $(libsynthesissdk_la_CXXFLAGS)
 libsynthesisstubs_la_SOURCES = sysync_SDK/Sources/enginestubs.c
 libsynthesisstubs_la_CPPFLAGS = $(libsynthesissdk_la_CPPFLAGS)
 

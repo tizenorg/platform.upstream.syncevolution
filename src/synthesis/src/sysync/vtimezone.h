@@ -30,8 +30,6 @@ class TDebugLogger;
 
 bool VTIMEZONEtoTZEntry( const char*    aText, // VTIMEZONE string to be parsed
                          tz_entry      &t,
-                         string        &aStdName,
-                         string        &aDstName,
                          TDebugLogger*  aLogP);
 
 /*! Convert VTIMEZONE string into internal context value */

@@ -60,6 +60,7 @@
 #include "liblock.h"
 #include "wsm.h"
 #include "mgr.h"
+#include <xltenc.h>
 
 
 
@@ -1099,9 +1100,9 @@ static Ret_t freeInstanceInfo(InstanceInfoPtr_t pInfo) {
       smlLibFree(pInfo->workspaceState);
     #endif
     if (pInfo->encoderState)
-      smlLibFree(pInfo->encoderState);
+      xltEncReset((XltEncoderPtr_t)pInfo->encoderState);
     if (pInfo->decoderState)
-      smlLibFree(pInfo->decoderState);
+      xltDecReset((XltDecoderPtr_t)pInfo->decoderState);
     if (pInfo->callbacks)
       smlLibFree(pInfo->callbacks);
 

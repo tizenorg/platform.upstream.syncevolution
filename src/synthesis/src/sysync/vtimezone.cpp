@@ -470,8 +470,6 @@ static void MultipleSeq( string aText, int &s, int &d )
 
 bool VTIMEZONEtoTZEntry( const char*    aText, // VTIMEZONE string to be parsed
                          tz_entry      &t,
-                         string        &aStdName,
-                         string        &aDstName,
                          TDebugLogger*  aLogP)
 {
   short dBias; // the full bias for DST
@@ -482,12 +480,14 @@ bool VTIMEZONEtoTZEntry( const char*    aText, // VTIMEZONE string to be parsed
                                  t.dynYear= "CUR";
                                  t.biasDST= 0;
                                  t.bias   = 0;
-  if (!GetTZInfo( aText,VTZ_STD, t.std, t.bias, aStdName, -1, aLogP )) {
+                                 t.stdName =
+                                   t.dstName = "";
+  if (!GetTZInfo( aText,VTZ_STD, t.std, t.bias, t.stdName, -1, aLogP )) {
     success = false;
   }
   // default value if not found (which is treated as success by GetTZInfo)
   dBias= t.bias;
-  if (!GetTZInfo( aText,VTZ_DST, t.dst,  dBias, aDstName, -1, aLogP )) {
+  if (!GetTZInfo( aText,VTZ_DST, t.dst,  dBias, t.dstName, -1, aLogP )) {
     // unknown failure, better restore default
     dBias= t.bias;
     success = false;
@@ -513,24 +513,18 @@ bool VTIMEZONEtoInternal( const char*    aText, // VTIMEZONE string to be parsed
   aContext= tctx_tz_unknown;
 
   tz_entry      t;
-  string        stdName,
-                dstName,
-                lName;
+  string        lName;
   timecontext_t lContext;
 
-  if (!VTIMEZONEtoTZEntry( aText, t, stdName, dstName, aLogP )) {
+  if (!VTIMEZONEtoTZEntry( aText, t, aLogP )) {
     PLOGDEBUGPRINTFX(aLogP, DBG_PARSE+DBG_ERROR, ("parsing VTIMEZONE failed:\n%s", aText));
   }
+  // Telling the caller about the original TZID is necessary because this
+  // code might match that TZID against an existing definition with a different
+  // TZID. Previously it was also necessary when importing the VTIMEZONE, because
+  // the original TZID was overwritten. Now imported definitions retain the
+  // original TZID in t.name.
   if (aTzidP) *aTzidP = t.name; // return the original TZID as found, needed to match with TZID occurences in rest of vCalendar
-
-  bool sC= !(stdName=="");
-  bool dC= !(dstName=="");
-
-  string tName = t.name;
-  if  (sC || dC) tName = ""; // TZID will be replaced in case of unknown
-  if  (sC)       tName+= stdName;
-  if  (sC && dC) tName+= "/";
-  if        (dC) tName+= dstName;
 
   bool ok = true;
   bool okM= true;
@@ -568,19 +562,19 @@ bool VTIMEZONEtoInternal( const char*    aText, // VTIMEZONE string to be parsed
   // redundant here, but there is no other way to
   // add the entry
   string new_name;
-  t.name = tName;
+
   if (!ok) ok= FoundTZ( t, new_name, aContext, g, true );
 
   if  (ok && t.std.wMonth!=0 &&
              t.dst.wMonth!=0) {
     tz_entry std;
-    std.name = stdName;
+    std.name = t.stdName;
     std.ident= "s"; // standard
     std.bias = t.bias;
     FoundTZ( std, lName,lContext, g, true );
 
     tz_entry dst;
-    dst.name = dstName;
+    dst.name = t.dstName;
     dst.ident= "d"; // daylight saving
     dst.bias = t.bias + t.biasDST;
     FoundTZ( dst, lName,lContext, g, true );
@@ -914,17 +908,42 @@ bool ContextToTzDaylight( timecontext_t  aContext,
 
       timecontext_t                           cc= TCTX_UNKNOWN;
       while (FoundTZ( tCopy, s, cc, g, false, cc )) {
-        if (s.find( "/",0 )!=string::npos) { // search for a time zone with slash in it
+        // search for a time zone with slash in it (which is
+        // interpreted as separator between dstName and stdName) *or*
+        // one which has dstName and stdName set explicitly;
+        // prefer explicit names over splitting name
+        tz_entry zone;
+        if (GetTZ( cc, zone, g, -1 ) &&
+            !zone.stdName.empty() &&
+            !zone.dstName.empty()) {
+          s = zone.stdName + ";" + zone.dstName;
+          found= true; break;
+        } else if (s.find( "/",0 )!=string::npos) {
+          // Assumption here is that s contains exactly one slash,
+          // otherwise s is not valid for stdName;dstName in vCalendar
+          // 1.0.
+          StringSubst( s, "/", ";" );
           found= true; break;
         } // if
       } // while
 
       if (!found) {
-        s = t.name; // create a <x>;<x> string
+        string stdName;
+        if (t.stdName.empty()) {
+          stdName = t.name;
+        } else {
+          stdName = t.stdName;
+        }
+        s = stdName; // create a <x>;<x> string
         s+= ";";
-        s+= t.name;
+        s+= stdName;
       } // if
-    } // if
+    } else if (!t.stdName.empty() && !t.dstName.empty()) {
+      // use explicit zone names instead of splitting s
+      s = t.stdName + ";" + t.dstName;
+    } else {
+      StringSubst( s, "/", ";" );
+    }
 
     if (!dDone) dt= DST_Switch( t, t.bias, year, true  ); // get the switch time/date for DST
     if (!sDone) st= DST_Switch( t, t.bias, year, false ); // get the switch time/date for STD
@@ -951,7 +970,7 @@ bool ContextToTzDaylight( timecontext_t  aContext,
   string                 stdStr;
   TimestampToISO8601Str( stdStr, st, TCTX_UTC );
 
-  StringSubst                         ( s, "/", ";" );
+  // s must be of the format stdName;dstName here, for example CET;CEST or PST;PDT
   aText+= dstStr + ";" + stdStr + ";" + s;
 
   return true;

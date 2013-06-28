@@ -29,7 +29,8 @@ using namespace sysync;
 
 // equality mode names
 const char * const sysync::compareRelevanceNames[numEQmodes] = {
-  "never",    // irrelevant, only for fields with really unimportant data (such as REV)
+  "never",    // irrelevant, only for fields with really unimportant data (such as REV) - note that this also prevents inclusion in CRC change detection
+  "scripted", // relevant, but actual comparison is done in a script - standard compare loop must not check it
   "conflict", // for conflict, all fields that have user data should use at least this
   "slowsync", // for slow sync, all fields that must match for identifying records in slow sync
   "always",   // always relevant, fields that must always match (first-time sync match set)

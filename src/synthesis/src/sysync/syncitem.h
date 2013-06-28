@@ -32,15 +32,17 @@ namespace sysync {
 // equality relevance / mode
 typedef enum {    // RELEVANCE                        COMPARE MODE
   eqm_none,       // not relevant at all (*)          compares ALL fields, even not-relevant ones
+  eqm_scripted,   // relevant, handled in script      n/a
   eqm_conflict,   // relevant for conflicts only      compares all somehow relevant fields for conflict comparison
   eqm_slowsync,   // relevant for slow sync           compares only fields relevant for slow sync
   eqm_always,     // always relevant (e.g firsttime)  compares only always-relevant fields (first time slowsync)
-  eqm_nocompare   // n/a                              prevent equality test in compareWith totally
+  eqm_nocompare,  // n/a                              prevent equality test in compareWith totally
+  numEQmodes
 } TEqualityMode;
 // (*) Note: eqm_none fields will be silently merged in mergeWith(), that is, if no other
 //     fields are merged, mergeWith will report "nothing merged" even if eqm_none field might
 //     be modified
-const short numEQmodes  = eqm_nocompare-eqm_none+1;
+//     Fields with eqm_none will also not be included in CRC calculations for detecting changes.
 
 extern const char * const compareRelevanceNames[numEQmodes];
 

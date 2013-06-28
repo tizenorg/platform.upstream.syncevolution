@@ -703,7 +703,7 @@ sInt16 TMultiFieldItemType::compareItems(
   // just do standard compare
   return aFirstItem.standardCompareWith(aSecondItem,aEqMode,aDebugShow);
   #else
-  // if no script use standard merging
+  // if no script use standard comparison
   sInt16 cmpres;
   string &script = static_cast<TMultiFieldTypeConfig *>(fTypeConfigP)->fCompareScript;
   if (script.empty())

@@ -2288,8 +2288,15 @@ localstatus TPluginApiDS::apiLoadAdminData(
     switch (mapEntry.entrytype) {
       #ifdef SYSYNC_SERVER
       case mapentry_tempidmap:
-      	if (IS_SERVER)
-	        fTempGUIDMap[mapEntry.remoteid]=mapEntry.localid; // tempGUIDs are accessed by remoteID=tempID
+      	if (IS_SERVER) {
+          PDEBUGPRINTFX(DBG_DATA,(
+            "fTempGUIDMap: restore mapping from %s to %s",
+            mapEntry.remoteid.c_str(),
+            mapEntry.localid.c_str()
+          ));
+          
+          fTempGUIDMap[mapEntry.remoteid]=mapEntry.localid; // tempGUIDs are accessed by remoteID=tempID
+        }
         break;
       #endif
       #ifdef SYSYNC_CLIENT

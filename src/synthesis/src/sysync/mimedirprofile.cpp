@@ -1395,6 +1395,7 @@ bool TMimeDirProfileHandler::fieldToMIMEString(
     case CONVMODE_AUTOENDDATE:
     case CONVMODE_AUTODATE: // show date-only as date in iCal 2.0 (mimo_standard), but always as timestamp for vCal 1.0 (mimo_old)
       if (fMimeDirMode==mimo_standard) goto timestamp; // use autodate if MIME-DIR format is not vCal 1.0 style
+      // for vCal 1.0 style, always renders as timestamp (as date-only values are not allowed there)
     case CONVMODE_TIMESTAMP: // always show as timestamp
       // get explictly as timestamp (even if field or field contents is date)
       autodate = false; // do not show as date, even if it is a date-only
@@ -1711,7 +1712,16 @@ bool TMimeDirProfileHandler::fieldToMIMEString(
       lineartime_t tzend = until;
       // A RRULE with no end extends at least into current time (for tz range update, see below)
       if (until==noLinearTime) {
+        // no end, but we still need a range to generate time zones for
       	tzend = getSession()->getSystemNowAs(TCTX_UTC);
+      }
+      else {
+        // Treat RR_END similar to CONVMODE_AUTODATE, i.e. prevent rendering a date-only value in mimo_old (which i not correct according to the standard)
+        if (TCTX_IS_DATEONLY(untilcontext) && fMimeDirMode==mimo_old) {
+          // there are no date-only recurrence ends in vCalendar 1.0
+          until = lineartime2dateonlyTime(until)+secondToLinearTimeFactor*SecsPerHour*24-1 ; // make time part 23:5:59.999 of this day
+          untilcontext &= ~TCTX_DATEONLY;
+        }
       }
       // Now do the conversion
       bool ok;

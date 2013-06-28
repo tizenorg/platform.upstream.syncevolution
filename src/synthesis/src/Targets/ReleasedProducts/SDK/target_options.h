@@ -19,7 +19,7 @@
 
 
 /* - find out target platform */
-#ifdef __MACH__
+#if defined (__MACH__) && defined(__APPLE__)
   #define MACOSX
 #else
   #if defined __MWERKS__ || defined _MSC_VER

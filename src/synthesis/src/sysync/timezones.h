@@ -66,7 +66,19 @@ typedef struct tChangeStruct {
 
 class tz_entry {
         public:
-          std::string name;          /**< name, same as TZID in VTIMEZONE, e.g. CET/CEST or /softwarestudio.org/Tzfile/Europe/Berlin */
+          std::string name;          /**< name, same as TZID in
+                                        VTIMEZONE, e.g. CET/CEST or
+                                        /softwarestudio.org/Tzfile/Europe/Berlin;
+                                        see also dst/stdName */
+          std::string stdName;       /**< optional standard time name, e.g. CEST; must be
+                                        set if "name" is not a concatenation of
+                                        standard and daylight name (CET/CEST);
+                                        the vCalendar 1.0 code relies on that */
+          std::string dstName;       /**< used instead of splitting
+                                        "name" if (and only if)
+                                        stdName is set; may be empty
+                                        in zones without daylight
+                                        saving */
           std::string location;      /**< location string as used in Olson TZID, e.g. Europe/Berlin */
           short       bias;          /**< minutes difference to UTC (west negative, east positive */
           short       biasDST;       /**< minutes difference to bias (not UTC!) */

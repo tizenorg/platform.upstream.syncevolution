@@ -191,12 +191,9 @@ void finalizeSystemZoneDefinitions(GZones* aGZones)
       continue;
     PLOGDEBUGPUTSX(aGZones->getDbgLogger, DBG_PARSE+DBG_EXOTIC, vtimezone);
     tz_entry t;
-    string dstName, stdName;
     if (VTIMEZONEtoTZEntry(
     	vtimezone,
       t,
-      stdName,
-      dstName,
       #ifdef SYDEBUG
         aGZones->getDbgLogger
       #endif
@@ -212,6 +209,11 @@ void finalizeSystemZoneDefinitions(GZones* aGZones)
           (off = t.name.find('/', 1)) != t.name.npos &&
           (off = t.name.find('/', off + 1)) != t.name.npos) {
         t.location = t.name.substr(off + 1);
+        // also use that simplified location as TZID (shorter,
+        // some (broken) storages like the N900 calendar can only
+        // handle such shortened TZIDs while correct storages
+        // should be able to handle both)
+        t.name = t.location;
       }
       aGZones->tzP.push_back(t);
     }

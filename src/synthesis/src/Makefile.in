@@ -327,13 +327,15 @@ am__libsynthesissdk_la_SOURCES_DIST = synthesis/SDK_support.h \
 am_libsynthesissdk_la_OBJECTS = $(am__objects_2) $(am__objects_3)
 libsynthesissdk_la_OBJECTS = $(am_libsynthesissdk_la_OBJECTS)
 libsynthesissdk_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
-	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
-	$(CXXFLAGS) $(libsynthesissdk_la_LDFLAGS) $(LDFLAGS) -o $@
+	$(LIBTOOLFLAGS) --mode=link $(CXXLD) \
+	$(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) \
+	$(libsynthesissdk_la_LDFLAGS) $(LDFLAGS) -o $@
 libsynthesisstubs_la_LIBADD =
 am_libsynthesisstubs_la_OBJECTS = libsynthesisstubs_la-enginestubs.lo
 libsynthesisstubs_la_OBJECTS = $(am_libsynthesisstubs_la_OBJECTS)
 libsynthesisstubs_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
-	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(libsynthesisstubs_la_CFLAGS) $(CFLAGS) \
 	$(libsynthesisstubs_la_LDFLAGS) $(LDFLAGS) -o $@
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/../../depcomp
@@ -426,6 +428,7 @@ PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PCRE_CFLAGS = @PCRE_CFLAGS@
 PCRE_LIBS = @PCRE_LIBS@
+PIC_CXXFLAGS = @PIC_CXXFLAGS@
 PKG_CONFIG = @PKG_CONFIG@
 RANLIB = @RANLIB@
 SED = @SED@
@@ -581,6 +584,8 @@ libsynthesis_la_DEPENDENCIES = $(srcdir)/synthesis-linker.map libsmltk.la
 @COND_XMLPARSE_TRUE@	expat/xmltok/xmltok_impl.h
 
 libsynthesissdk_la_LDFLAGS = -static
+libsynthesissdk_la_CFLAGS = $(PIC_CXXFLAGS)
+libsynthesissdk_la_CXXFLAGS = $(PIC_CXXFLAGS)
 libsynthesissdk_la_SOURCES = synthesis/SDK_support.h \
 	synthesis/SDK_util.h synthesis/UI_util.h synthesis/admindata.h \
 	synthesis/blobs.h synthesis/dataconversion.h \
@@ -608,6 +613,8 @@ libsynthesissdk_la_CPPFLAGS = \
 	-I$(srcdir)/syncml_tk/src/sml/mgr/inc/ 
 
 libsynthesisstubs_la_LDFLAGS = -static
+libsynthesisstubs_la_CFLAGS = $(libsynthesissdk_la_CXXFLAGS)
+libsynthesisstubs_la_CXXFLAGS = $(libsynthesissdk_la_CXXFLAGS)
 libsynthesisstubs_la_SOURCES = sysync_SDK/Sources/enginestubs.c
 libsynthesisstubs_la_CPPFLAGS = $(libsynthesissdk_la_CPPFLAGS)
 
@@ -1079,18 +1086,18 @@ libsynthesis_la-xmltok.lo: expat/xmltok/xmltok.c
 @am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CFLAGS) $(CFLAGS) -c -o libsynthesis_la-xmltok.lo `test -f 'expat/xmltok/xmltok.c' || echo '$(srcdir)/'`expat/xmltok/xmltok.c
 
 libsynthesissdk_la-SDK_util.lo: sysync_SDK/Sources/SDK_util.c
-@am__fastdepCC_TRUE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libsynthesissdk_la-SDK_util.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-SDK_util.Tpo -c -o libsynthesissdk_la-SDK_util.lo `test -f 'sysync_SDK/Sources/SDK_util.c' || echo '$(srcdir)/'`sysync_SDK/Sources/SDK_util.c
+@am__fastdepCC_TRUE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CFLAGS) $(CFLAGS) -MT libsynthesissdk_la-SDK_util.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-SDK_util.Tpo -c -o libsynthesissdk_la-SDK_util.lo `test -f 'sysync_SDK/Sources/SDK_util.c' || echo '$(srcdir)/'`sysync_SDK/Sources/SDK_util.c
 @am__fastdepCC_TRUE@	mv -f $(DEPDIR)/libsynthesissdk_la-SDK_util.Tpo $(DEPDIR)/libsynthesissdk_la-SDK_util.Plo
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='sysync_SDK/Sources/SDK_util.c' object='libsynthesissdk_la-SDK_util.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libsynthesissdk_la-SDK_util.lo `test -f 'sysync_SDK/Sources/SDK_util.c' || echo '$(srcdir)/'`sysync_SDK/Sources/SDK_util.c
+@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CFLAGS) $(CFLAGS) -c -o libsynthesissdk_la-SDK_util.lo `test -f 'sysync_SDK/Sources/SDK_util.c' || echo '$(srcdir)/'`sysync_SDK/Sources/SDK_util.c
 
 libsynthesisstubs_la-enginestubs.lo: sysync_SDK/Sources/enginestubs.c
-@am__fastdepCC_TRUE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesisstubs_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libsynthesisstubs_la-enginestubs.lo -MD -MP -MF $(DEPDIR)/libsynthesisstubs_la-enginestubs.Tpo -c -o libsynthesisstubs_la-enginestubs.lo `test -f 'sysync_SDK/Sources/enginestubs.c' || echo '$(srcdir)/'`sysync_SDK/Sources/enginestubs.c
+@am__fastdepCC_TRUE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesisstubs_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesisstubs_la_CFLAGS) $(CFLAGS) -MT libsynthesisstubs_la-enginestubs.lo -MD -MP -MF $(DEPDIR)/libsynthesisstubs_la-enginestubs.Tpo -c -o libsynthesisstubs_la-enginestubs.lo `test -f 'sysync_SDK/Sources/enginestubs.c' || echo '$(srcdir)/'`sysync_SDK/Sources/enginestubs.c
 @am__fastdepCC_TRUE@	mv -f $(DEPDIR)/libsynthesisstubs_la-enginestubs.Tpo $(DEPDIR)/libsynthesisstubs_la-enginestubs.Plo
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='sysync_SDK/Sources/enginestubs.c' object='libsynthesisstubs_la-enginestubs.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesisstubs_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libsynthesisstubs_la-enginestubs.lo `test -f 'sysync_SDK/Sources/enginestubs.c' || echo '$(srcdir)/'`sysync_SDK/Sources/enginestubs.c
+@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesisstubs_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesisstubs_la_CFLAGS) $(CFLAGS) -c -o libsynthesisstubs_la-enginestubs.lo `test -f 'sysync_SDK/Sources/enginestubs.c' || echo '$(srcdir)/'`sysync_SDK/Sources/enginestubs.c
 
 .cpp.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -1639,95 +1646,95 @@ libsynthesis_la-sysync_utils.lo: sysync_SDK/Sources/sysync_utils.cpp
 @am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesis_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesis_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesis_la-sysync_utils.lo `test -f 'sysync_SDK/Sources/sysync_utils.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/sysync_utils.cpp
 
 libsynthesissdk_la-UI_util.lo: sysync_SDK/Sources/UI_util.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-UI_util.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-UI_util.Tpo -c -o libsynthesissdk_la-UI_util.lo `test -f 'sysync_SDK/Sources/UI_util.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/UI_util.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-UI_util.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-UI_util.Tpo -c -o libsynthesissdk_la-UI_util.lo `test -f 'sysync_SDK/Sources/UI_util.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/UI_util.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesissdk_la-UI_util.Tpo $(DEPDIR)/libsynthesissdk_la-UI_util.Plo
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/Sources/UI_util.cpp' object='libsynthesissdk_la-UI_util.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-UI_util.lo `test -f 'sysync_SDK/Sources/UI_util.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/UI_util.cpp
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-UI_util.lo `test -f 'sysync_SDK/Sources/UI_util.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/UI_util.cpp
 
 libsynthesissdk_la-enginemodulebridge.lo: sysync_SDK/Sources/enginemodulebridge.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-enginemodulebridge.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-enginemodulebridge.Tpo -c -o libsynthesissdk_la-enginemodulebridge.lo `test -f 'sysync_SDK/Sources/enginemodulebridge.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/enginemodulebridge.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-enginemodulebridge.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-enginemodulebridge.Tpo -c -o libsynthesissdk_la-enginemodulebridge.lo `test -f 'sysync_SDK/Sources/enginemodulebridge.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/enginemodulebridge.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesissdk_la-enginemodulebridge.Tpo $(DEPDIR)/libsynthesissdk_la-enginemodulebridge.Plo
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/Sources/enginemodulebridge.cpp' object='libsynthesissdk_la-enginemodulebridge.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-enginemodulebridge.lo `test -f 'sysync_SDK/Sources/enginemodulebridge.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/enginemodulebridge.cpp
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-enginemodulebridge.lo `test -f 'sysync_SDK/Sources/enginemodulebridge.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/enginemodulebridge.cpp
 
 libsynthesissdk_la-san.lo: sysync_SDK/Sources/san.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-san.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-san.Tpo -c -o libsynthesissdk_la-san.lo `test -f 'sysync_SDK/Sources/san.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/san.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-san.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-san.Tpo -c -o libsynthesissdk_la-san.lo `test -f 'sysync_SDK/Sources/san.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/san.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesissdk_la-san.Tpo $(DEPDIR)/libsynthesissdk_la-san.Plo
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/Sources/san.cpp' object='libsynthesissdk_la-san.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-san.lo `test -f 'sysync_SDK/Sources/san.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/san.cpp
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-san.lo `test -f 'sysync_SDK/Sources/san.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/san.cpp
 
 libsynthesissdk_la-timeutil.lo: sysync_SDK/Sources/timeutil.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-timeutil.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-timeutil.Tpo -c -o libsynthesissdk_la-timeutil.lo `test -f 'sysync_SDK/Sources/timeutil.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/timeutil.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-timeutil.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-timeutil.Tpo -c -o libsynthesissdk_la-timeutil.lo `test -f 'sysync_SDK/Sources/timeutil.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/timeutil.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesissdk_la-timeutil.Tpo $(DEPDIR)/libsynthesissdk_la-timeutil.Plo
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/Sources/timeutil.cpp' object='libsynthesissdk_la-timeutil.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-timeutil.lo `test -f 'sysync_SDK/Sources/timeutil.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/timeutil.cpp
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-timeutil.lo `test -f 'sysync_SDK/Sources/timeutil.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/timeutil.cpp
 
 libsynthesissdk_la-SDK_support.lo: sysync_SDK/Sources/SDK_support.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-SDK_support.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-SDK_support.Tpo -c -o libsynthesissdk_la-SDK_support.lo `test -f 'sysync_SDK/Sources/SDK_support.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/SDK_support.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-SDK_support.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-SDK_support.Tpo -c -o libsynthesissdk_la-SDK_support.lo `test -f 'sysync_SDK/Sources/SDK_support.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/SDK_support.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesissdk_la-SDK_support.Tpo $(DEPDIR)/libsynthesissdk_la-SDK_support.Plo
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/Sources/SDK_support.cpp' object='libsynthesissdk_la-SDK_support.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-SDK_support.lo `test -f 'sysync_SDK/Sources/SDK_support.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/SDK_support.cpp
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-SDK_support.lo `test -f 'sysync_SDK/Sources/SDK_support.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/SDK_support.cpp
 
 libsynthesissdk_la-blobs.lo: sysync_SDK/Sources/blobs.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-blobs.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-blobs.Tpo -c -o libsynthesissdk_la-blobs.lo `test -f 'sysync_SDK/Sources/blobs.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/blobs.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-blobs.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-blobs.Tpo -c -o libsynthesissdk_la-blobs.lo `test -f 'sysync_SDK/Sources/blobs.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/blobs.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesissdk_la-blobs.Tpo $(DEPDIR)/libsynthesissdk_la-blobs.Plo
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/Sources/blobs.cpp' object='libsynthesissdk_la-blobs.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-blobs.lo `test -f 'sysync_SDK/Sources/blobs.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/blobs.cpp
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-blobs.lo `test -f 'sysync_SDK/Sources/blobs.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/blobs.cpp
 
 libsynthesissdk_la-enginemodulebase.lo: sysync_SDK/Sources/enginemodulebase.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-enginemodulebase.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-enginemodulebase.Tpo -c -o libsynthesissdk_la-enginemodulebase.lo `test -f 'sysync_SDK/Sources/enginemodulebase.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/enginemodulebase.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-enginemodulebase.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-enginemodulebase.Tpo -c -o libsynthesissdk_la-enginemodulebase.lo `test -f 'sysync_SDK/Sources/enginemodulebase.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/enginemodulebase.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesissdk_la-enginemodulebase.Tpo $(DEPDIR)/libsynthesissdk_la-enginemodulebase.Plo
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/Sources/enginemodulebase.cpp' object='libsynthesissdk_la-enginemodulebase.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-enginemodulebase.lo `test -f 'sysync_SDK/Sources/enginemodulebase.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/enginemodulebase.cpp
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-enginemodulebase.lo `test -f 'sysync_SDK/Sources/enginemodulebase.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/enginemodulebase.cpp
 
 libsynthesissdk_la-lineartime.lo: sysync_SDK/Sources/lineartime.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-lineartime.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-lineartime.Tpo -c -o libsynthesissdk_la-lineartime.lo `test -f 'sysync_SDK/Sources/lineartime.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/lineartime.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-lineartime.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-lineartime.Tpo -c -o libsynthesissdk_la-lineartime.lo `test -f 'sysync_SDK/Sources/lineartime.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/lineartime.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesissdk_la-lineartime.Tpo $(DEPDIR)/libsynthesissdk_la-lineartime.Plo
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/Sources/lineartime.cpp' object='libsynthesissdk_la-lineartime.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-lineartime.lo `test -f 'sysync_SDK/Sources/lineartime.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/lineartime.cpp
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-lineartime.lo `test -f 'sysync_SDK/Sources/lineartime.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/lineartime.cpp
 
 libsynthesissdk_la-stringutil.lo: sysync_SDK/Sources/stringutil.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-stringutil.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-stringutil.Tpo -c -o libsynthesissdk_la-stringutil.lo `test -f 'sysync_SDK/Sources/stringutil.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/stringutil.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-stringutil.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-stringutil.Tpo -c -o libsynthesissdk_la-stringutil.lo `test -f 'sysync_SDK/Sources/stringutil.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/stringutil.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesissdk_la-stringutil.Tpo $(DEPDIR)/libsynthesissdk_la-stringutil.Plo
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/Sources/stringutil.cpp' object='libsynthesissdk_la-stringutil.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-stringutil.lo `test -f 'sysync_SDK/Sources/stringutil.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/stringutil.cpp
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-stringutil.lo `test -f 'sysync_SDK/Sources/stringutil.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/stringutil.cpp
 
 libsynthesissdk_la-syncexception.lo: sysync_SDK/Sources/syncexception.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-syncexception.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-syncexception.Tpo -c -o libsynthesissdk_la-syncexception.lo `test -f 'sysync_SDK/Sources/syncexception.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/syncexception.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-syncexception.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-syncexception.Tpo -c -o libsynthesissdk_la-syncexception.lo `test -f 'sysync_SDK/Sources/syncexception.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/syncexception.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesissdk_la-syncexception.Tpo $(DEPDIR)/libsynthesissdk_la-syncexception.Plo
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/Sources/syncexception.cpp' object='libsynthesissdk_la-syncexception.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-syncexception.lo `test -f 'sysync_SDK/Sources/syncexception.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/syncexception.cpp
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-syncexception.lo `test -f 'sysync_SDK/Sources/syncexception.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/syncexception.cpp
 
 libsynthesissdk_la-sysync_b64.lo: sysync_SDK/Sources/sysync_b64.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-sysync_b64.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-sysync_b64.Tpo -c -o libsynthesissdk_la-sysync_b64.lo `test -f 'sysync_SDK/Sources/sysync_b64.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/sysync_b64.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-sysync_b64.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-sysync_b64.Tpo -c -o libsynthesissdk_la-sysync_b64.lo `test -f 'sysync_SDK/Sources/sysync_b64.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/sysync_b64.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesissdk_la-sysync_b64.Tpo $(DEPDIR)/libsynthesissdk_la-sysync_b64.Plo
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/Sources/sysync_b64.cpp' object='libsynthesissdk_la-sysync_b64.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-sysync_b64.lo `test -f 'sysync_SDK/Sources/sysync_b64.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/sysync_b64.cpp
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-sysync_b64.lo `test -f 'sysync_SDK/Sources/sysync_b64.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/sysync_b64.cpp
 
 libsynthesissdk_la-sysync_md5.lo: sysync_SDK/Sources/sysync_md5.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-sysync_md5.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-sysync_md5.Tpo -c -o libsynthesissdk_la-sysync_md5.lo `test -f 'sysync_SDK/Sources/sysync_md5.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/sysync_md5.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-sysync_md5.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-sysync_md5.Tpo -c -o libsynthesissdk_la-sysync_md5.lo `test -f 'sysync_SDK/Sources/sysync_md5.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/sysync_md5.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesissdk_la-sysync_md5.Tpo $(DEPDIR)/libsynthesissdk_la-sysync_md5.Plo
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/Sources/sysync_md5.cpp' object='libsynthesissdk_la-sysync_md5.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-sysync_md5.lo `test -f 'sysync_SDK/Sources/sysync_md5.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/sysync_md5.cpp
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-sysync_md5.lo `test -f 'sysync_SDK/Sources/sysync_md5.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/sysync_md5.cpp
 
 libsynthesissdk_la-sysync_utils.lo: sysync_SDK/Sources/sysync_utils.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-sysync_utils.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-sysync_utils.Tpo -c -o libsynthesissdk_la-sysync_utils.lo `test -f 'sysync_SDK/Sources/sysync_utils.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/sysync_utils.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) -MT libsynthesissdk_la-sysync_utils.lo -MD -MP -MF $(DEPDIR)/libsynthesissdk_la-sysync_utils.Tpo -c -o libsynthesissdk_la-sysync_utils.lo `test -f 'sysync_SDK/Sources/sysync_utils.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/sysync_utils.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/libsynthesissdk_la-sysync_utils.Tpo $(DEPDIR)/libsynthesissdk_la-sysync_utils.Plo
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sysync_SDK/Sources/sysync_utils.cpp' object='libsynthesissdk_la-sysync_utils.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-sysync_utils.lo `test -f 'sysync_SDK/Sources/sysync_utils.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/sysync_utils.cpp
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsynthesissdk_la_CPPFLAGS) $(CPPFLAGS) $(libsynthesissdk_la_CXXFLAGS) $(CXXFLAGS) -c -o libsynthesissdk_la-sysync_utils.lo `test -f 'sysync_SDK/Sources/sysync_utils.cpp' || echo '$(srcdir)/'`sysync_SDK/Sources/sysync_utils.cpp
 
 mostlyclean-libtool:
 	-rm -f *.lo
