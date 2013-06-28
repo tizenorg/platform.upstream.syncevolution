@@ -2423,7 +2423,7 @@ bool TSyncAgent::EndRequest(bool &aHasData, string &aRespURI, uInt32 aReqBytes)
         (long)t,
         (long)fRequestMinTime-t
       ));
-      CONSOLEPRINTF(("  ...delaying response by %ld seconds because requestmintime is set to %ld",fRequestMinTime,fRequestMinTime-t));
+      CONSOLEPRINTF(("  ...delaying response by %ld seconds because requestmintime is set to %ld",(long)fRequestMinTime,(long)(fRequestMinTime-t)));
       sleepLineartime((lineartime_t)(fRequestMinTime-t)*secondToLinearTimeFactor);
     }
   }
@@ -3912,6 +3912,36 @@ static TSyError writeRestartSync(
 } // writeRestartSync
 
 
+// - write error message into session log
+TSyError writeErrorMsg(
+  TStructFieldsKey *aStructFieldsKeyP, const TStructFieldInfo *aFldInfoP,
+  cAppPointer aBuffer, memSize aValSize
+)
+{
+  TAgentParamsKey *mykeyP = static_cast<TAgentParamsKey *>(aStructFieldsKeyP);
+  string msg;
+  msg.assign((cAppCharP)aBuffer, aValSize);
+  POBJDEBUGPRINTFX(mykeyP->fAgentP,DBG_ERROR,("external Error: %s",msg.c_str()));
+  return LOCERR_OK;
+} // writeErrorMsg
+
+
+// - write debug message into session log
+TSyError writeDebugMsg(
+  TStructFieldsKey *aStructFieldsKeyP, const TStructFieldInfo *aFldInfoP,
+  cAppPointer aBuffer, memSize aValSize
+)
+{
+  TAgentParamsKey *mykeyP = static_cast<TAgentParamsKey *>(aStructFieldsKeyP);
+  string msg;
+  msg.assign((cAppCharP)aBuffer, aValSize);
+  POBJDEBUGPRINTFX(mykeyP->fAgentP,DBG_HOT,("external Message: %s",msg.c_str()));
+  return LOCERR_OK;
+} // writeDebugMsg
+
+
+
+
 // accessor table for server session key
 static const TStructFieldInfo ServerParamFieldInfos[] =
 {
@@ -3935,6 +3965,10 @@ static const TStructFieldInfo ServerParamFieldInfos[] =
   { "displayalert", VALTYPE_TEXT, false, 0, 0, &readDisplayAlert, NULL },
   #endif
   #endif
+  // write into debug log
+  { "errorMsg", VALTYPE_TEXT, true, 0, 0, NULL, &writeErrorMsg },  
+  { "debugMsg", VALTYPE_TEXT, true, 0, 0, NULL, &writeDebugMsg }, 
+  // restart sync
   { "restartsync", VALTYPE_INT8, true, 0, 0, &readRestartSync, &writeRestartSync }
 };
 

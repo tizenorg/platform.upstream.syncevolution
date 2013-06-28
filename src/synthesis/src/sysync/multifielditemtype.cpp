@@ -69,6 +69,29 @@ void TMultiFieldTypeConfig::clear(void)
 class TMFTypeFuncs {
 public:
 
+  // integer SYNCMODESUPPORTED(string mode)
+  //
+  // True if the remote datastore is known to support the specific mode
+  // (usually because it sent SyncCap including the mode), false if unknown
+  // or not supported.
+  //
+  // Only works inside scripts which work on remote items.
+  static void func_SyncModeSupported(TItemField *&aTermP, TScriptContext *aFuncContextP)
+  {
+    bool supported = false;
+    TMultiFieldItemType *mfitP = static_cast<TMultiFieldItemType *>(aFuncContextP->getCallerContext());
+    if (mfitP->fFirstItemP &&
+        mfitP->fFirstItemP->getRemoteItemType()) {
+      TSyncDataStore *related = mfitP->fFirstItemP->getRemoteItemType()->getRelatedDatastore();
+      if (related) {
+        std::string mode;
+        aFuncContextP->getLocalVar(0)->getAsString(mode);
+        supported = related->syncModeSupported(mode);
+      }
+    }
+    aTermP->setAsInteger(supported);
+  }; // func_SyncModeSupported
+
   // void SETFILTERALL(integer all)
   // sets if all records in the syncset need to checked against filter or only those that are new or changed
   static void func_SetFilterAll(TItemField *&aTermP, TScriptContext *aFuncContextP)
@@ -321,6 +344,7 @@ const uInt8 param_IntArg[] = { VAL(fty_integer) };
 
 // builtin functions for datastore-context table
 const TBuiltInFuncDef DataTypeFuncDefs[] = {
+  { "SYNCMODESUPPORTED", TMFTypeFuncs::func_SyncModeSupported, fty_integer, 1, param_StrArg },
   { "SETFILTERALL", TMFTypeFuncs::func_SetFilterAll, fty_none, 1, param_IntArg },
   #ifdef SYSYNC_TARGET_OPTIONS
   { "SIZELIMIT", TMFTypeFuncs::func_Limit, fty_integer, 0, NULL },

@@ -939,7 +939,13 @@ bool TLocalDSConfig::localStartElement(const char *aElementName, const char **aA
     expectBool(fReadOnly);
   else if (strucmp(aElementName,"canrestart")==0)
     expectBool(fCanRestart);
-  else if (strucmp(aElementName,"reportupdates")==0)
+  else if (strucmp(aElementName,"syncmode")==0) {
+    if (!fSyncModeBuffer.empty()) {
+      fSyncModes.insert(fSyncModeBuffer);
+      fSyncModeBuffer.clear();
+    }
+    expectString(fSyncModeBuffer);
+  } else if (strucmp(aElementName,"reportupdates")==0)
     expectBool(fReportUpdates);
   else if (strucmp(aElementName,"deletewins")==0)
     expectBool(fDeleteWins);
@@ -1012,6 +1018,11 @@ bool TLocalDSConfig::localStartElement(const char *aElementName, const char **aA
 // resolve
 void TLocalDSConfig::localResolve(bool aLastPass)
 {
+  if (!fSyncModeBuffer.empty()) {
+    fSyncModes.insert(fSyncModeBuffer);
+    fSyncModeBuffer.clear();
+  }
+
   if (aLastPass) {
     #ifdef SCRIPT_SUPPORT
     TScriptContext *sccP = NULL;
@@ -1162,6 +1173,7 @@ void TLocalEngineDS::InternalResetDataStore(void)
   fReadOnly=false;
   fReportUpdates=fDSConfigP->fReportUpdates; // update reporting according to what is configured
   fCanRestart=fDSConfigP->fCanRestart;
+  fSyncModes=fDSConfigP->fSyncModes;
   fServerAlerted=false;
   fResuming=false;
   #ifdef SUPERDATASTORES
@@ -3516,6 +3528,7 @@ localstatus TLocalEngineDS::engGenerateClientSyncAlert(
   if (!fRemoteRecordFilterQuery.empty() || false /* %%% field level filter */) {
     if (fSessionP->getSyncMLVersion()<syncml_vers_1_2) {
       PDEBUGPRINTFX(DBG_ERROR,("Filter specified, but SyncML version is < 1.2"));
+      engAbortDataStoreSync(406, true, false); // can't continue sync
       return 406; // feature not supported
     }
     SmlFilterPtr_t filterP = SML_NEW(SmlFilter_t);
@@ -3771,11 +3784,28 @@ SmlDevInfSyncCapPtr_t TLocalEngineDS::newDevInfSyncCap(uInt32 aSyncCapMask)
   // Now add non-standard synccaps.
   // From the spec: "Other values can also be specified."
   // Values are PCDATA, so we can use plain strings.
+  // But the Funambol server expects integer numbers and
+  // throws a parser error when sent a string. So better
+  // stick to a semi-random number (hopefully no-one else
+  // is using it).
+  //
   // Corresponding code in TRemoteDataStore::setDatastoreDevInf().
   if (canRestart()) {
-    synctypeP=newPCDataString("X-SYNTHESIS-RESTART");
+    synctypeP=newPCDataString("390001");
     addPCDataToList(synctypeP,&(synccapP->synctype));
   }
+
+  // Finally add non-standard synccaps that are outside of the
+  // engine's control.
+  set<string> modes;
+  getSyncModes(modes);
+  for (set<string>::const_iterator it = modes.begin();
+       it != modes.end();
+       ++it) {
+    synctypeP=newPCDataString(*it);
+    addPCDataToList(synctypeP,&(synccapP->synctype));
+  }
+
   // return it
   return synccapP;
 } // TLocalEngineDS::newDevInfSyncCap
@@ -4557,16 +4587,16 @@ void TLocalEngineDS::showStatistics(void)
     else {
       CONSOLEPRINTF(("                               on Client   on Server"));
     }
-    CONSOLEPRINTF(("  Added:                       %9ld   %9ld",fLocalItemsAdded,fRemoteItemsAdded));
-    CONSOLEPRINTF(("  Deleted:                     %9ld   %9ld",fLocalItemsDeleted,fRemoteItemsDeleted));
-    CONSOLEPRINTF(("  Updated:                     %9ld   %9ld",fLocalItemsUpdated,fRemoteItemsUpdated));
-    CONSOLEPRINTF(("  Rejected with error:         %9ld   %9ld",fLocalItemsError,fRemoteItemsError));
+    CONSOLEPRINTF(("  Added:                       %9ld   %9ld",(long)fLocalItemsAdded,(long)fRemoteItemsAdded));
+    CONSOLEPRINTF(("  Deleted:                     %9ld   %9ld",(long)fLocalItemsDeleted,(long)fRemoteItemsDeleted));
+    CONSOLEPRINTF(("  Updated:                     %9ld   %9ld",(long)fLocalItemsUpdated,(long)fRemoteItemsUpdated));
+    CONSOLEPRINTF(("  Rejected with error:         %9ld   %9ld",(long)fLocalItemsError,(long)fRemoteItemsError));
     #ifdef SYSYNC_SERVER
     if (IS_SERVER) {
-      CONSOLEPRINTF(("  SlowSync Matches:            %9ld",fSlowSyncMatches));
-      CONSOLEPRINTF(("  Server won Conflicts:        %9ld",fConflictsServerWins));
-      CONSOLEPRINTF(("  Client won Conflicts:        %9ld",fConflictsClientWins));
-      CONSOLEPRINTF(("  Conflicts with Duplication:  %9ld",fConflictsDuplicated));
+      CONSOLEPRINTF(("  SlowSync Matches:            %9ld",(long)fSlowSyncMatches));
+      CONSOLEPRINTF(("  Server won Conflicts:        %9ld",(long)fConflictsServerWins));
+      CONSOLEPRINTF(("  Client won Conflicts:        %9ld",(long)fConflictsClientWins));
+      CONSOLEPRINTF(("  Conflicts with Duplication:  %9ld",(long)fConflictsDuplicated));
     }
     #endif
   }
@@ -4647,8 +4677,27 @@ TSyncOpCommand *TLocalEngineDS::newSyncOpCommand(
     if (syncop==sop_add || syncop==sop_wants_add)
       aSyncItemP->clearRemoteID(); // no remote ID
     else {
-      if (!fDSConfigP->fAlwaysSendLocalID) {
-        // only if localID may not be included in all syncops
+      if (!fDSConfigP->fAlwaysSendLocalID &&
+          aSyncItemP->hasRemoteID()) {
+        // only if localID may not be included in all syncops,
+        // and not if the item has no remote ID yet
+        //
+        // The second case had to be added to solve an issue
+        // during suspended syncs:
+        // - server tries to add a new item and uses the Replace op for it
+        // - pending Replace is added to map
+        // - next sync resends the Replace, but with empty IDs and thus
+        //   cannot be processed by client
+        //
+        // Log from such a failed sync:
+        // Item localID='328' already has map entry: remoteid='', mapflags=0x1, changed=0, deleted=0, added=0, markforresume=0, savedmark=1
+        // Resuming and found marked-for-resume -> send replace
+        // ...
+        // Command 'Replace': is 1-th counted cmd, cmdsize(+tags needed to end msg)=371, available=130664 (maxfree=299132, freeaftersend=298761, notUsableBufferBytes()=168468)
+        // Item remoteID='', localID='', datasize=334
+        // Replace: issued as (outgoing MsgID=2, CmdID=4), now queueing for status
+        // ...
+        // Status 404: Replace target not found on client -> silently ignore but remove map in server (item will be added in next session),
         aSyncItemP->clearLocalID(); // no local ID
       }
     }

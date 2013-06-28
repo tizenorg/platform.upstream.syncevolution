@@ -2223,6 +2223,7 @@ error:
   PDEBUGPRINTFX(DBG_ERROR,("Database Error --> SyncML status %ld%s",(long)statuscode,lastDBErrorText().c_str()));
   //aStatusCommand.addItemString(lastDBErrorDbgText().c_str());
 done:
+  delete augmentedItemP;
   aStatusCommand.setStatusCode(statuscode);
   return ok;
 } // TBinfileImplDS::implProcessItem

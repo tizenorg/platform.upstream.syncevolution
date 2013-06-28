@@ -761,6 +761,8 @@ bool TzDaylightToContext( const char*    aText,     ///< DAYLIGHT property value
   timecontext_t cc, ccFirst, ccSlash;
 
   aContext= aStdOffs; // as default, convert it into a enum TZ
+  string    sSv;
+  bool      dbg= false; // currently no debugging
 
   do {
     if (s=="FALSE"      ) { s= ""; break; } // no DST
@@ -801,12 +803,15 @@ bool TzDaylightToContext( const char*    aText,     ///< DAYLIGHT property value
     StringSubst( s, ";", "/" );
 
     TimeZoneNameToContext( s.c_str(), aContext, g );
+    sSv= s; // make a copy for Olson name test later
 
     // if it perfectly fits to a named zone, take it
     if (GetTZ( std,dst, mins,minsDST, t, g )) { ccFirst= TCTX_UNKNOWN; // start with these defaults
                                                 ccSlash= TCTX_UNKNOWN;
                                                 cc     = TCTX_SYSTEM;
+      if   (dbg) printf( "lv1 s='%s' %d pref=%d\n", s.c_str(), aContext, aPreferredCtx );
       while   (FoundTZ( t, rslt, cc, g, false,  cc )) {
+        if (dbg) printf( "lv1 rslt='%s'\n", rslt.c_str() );
         if (s==rslt) { aContext= cc; break; }
         if (s.empty()) {
           if (ccFirst==TCTX_UNKNOWN) ccFirst= cc;
@@ -828,9 +833,12 @@ bool TzDaylightToContext( const char*    aText,     ///< DAYLIGHT property value
 
   ccFirst= TCTX_UNKNOWN; // start with these defaults
   cc     = TCTX_SYSTEM;
+  tCopy= t; // make the copy before
 
   if (GetTZ( aContext, t,        g )) {
+    if   (dbg) printf( "lv2 s='%s' %d\n", s.c_str(), aContext );
     if       (FoundTZ( t, s, cc, g, false, cc )) { // search by correct name first
+      if (dbg) printf( "lv2 s='%s' / loc='%s'\n", s.c_str(), t.location.c_str() );
       if (!(cc!=aPreferredCtx && cc==t_Greenwich)) { // take UTC for this case
         if (pUnk || cc==aPreferredCtx) { aContext= cc; return true; }
         if (ccFirst==TCTX_UNKNOWN)        ccFirst= cc; // keep it, just in case
@@ -842,20 +850,33 @@ bool TzDaylightToContext( const char*    aText,     ///< DAYLIGHT property value
     t.biasDST= 0; // no DST offset
     t.dynYear= "";
     ClrDST( t );
+    tCopy=  t;
   } // if
 
-                   tCopy= t;
+                 //tCopy= t;
                    tCopy.name = ""; // make more generic comparison
                    tCopy.ident= "";        cc= TCTX_SYSTEM;
   while  (FoundTZ( tCopy, s, cc, g, false, cc )) {
+    if (dbg) printf( "lv3 s='%s' loc='%s' cc=%d\n", s.c_str(), tCopy.location.c_str(), cc );
     if (!(cc!=aPreferredCtx && cc==t_Greenwich)) { // take UTC for this case
-      if (pUnk || cc==aPreferredCtx) { aContext= cc; return true; }
+      if (pUnk || cc==aPreferredCtx) {  ccFirst= cc; break; }
       if (ccFirst==TCTX_UNKNOWN)        ccFirst= cc; // keep it, just in case
     } // if
   } // while
 
   aContext= ccFirst;
-  return true;
+  bool ok= !TCTX_IS_UNKNOWN( aContext );
+  if (dbg) printf( "aContext=%d ok=%d\n", aContext, ok );
+
+  // if not ok, try to use Olson names
+  if (!ok) {               s= sSv;
+    TimeZoneNameToContext( s.c_str(), aContext, g, true );
+    if (dbg) printf( "lv4 s='%s' aContext=%d\n", s.c_str(), aContext );
+    ok= !TCTX_IS_UNKNOWN( aContext );
+  }
+
+  if (dbg) printf( "aContext=%d ok=%d\n", aContext, ok );
+  return ok;
 } // TzDaylightToContext
 
 

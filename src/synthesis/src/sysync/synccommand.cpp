@@ -615,7 +615,7 @@ bool TSyncHeader::execute(void)
           // max (outgoing) message size
           if (metaP->maxmsgsize) {
             smlPCDataToLong(metaP->maxmsgsize,fSessionP->fMaxOutgoingMsgSize);
-            PDEBUGPRINTFX(DBG_REMOTEINFO,("MaxMsgSize for outgoing msgs set to %ld",(long)fSessionP->fMaxOutgoingMsgSize));
+            PDEBUGPRINTFX(DBG_REMOTEINFO,("MaxMsgSize found in SyncHdr: %ld -> set for outgoing msgs",(long)fSessionP->fMaxOutgoingMsgSize));
           }
           // max (outgoing) object size (SyncML 1.1 only)
           if (metaP->maxobjsize) {

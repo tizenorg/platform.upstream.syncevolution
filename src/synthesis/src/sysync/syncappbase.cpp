@@ -729,7 +729,11 @@ void TDebugConfig::localResolve(bool aLastPass)
       // XML config - user options settings are parsed into fSessionDbgLoggerOptions
       // - by default, global logging has same options as configured for session...
       fGlobalDbgLoggerOptions = fSessionDbgLoggerOptions;
-      // ...but we have a few hard-coded things for global logging:
+      if (fLogSessionsToGlobal) {
+        // ... and these settings are used as they are, if session and global
+        // logging are identical...
+      } else {
+        // ...but when they are different, we have a few hard-coded things for global logging:
       #ifdef MULTITHREAD_PIPESERVER
         // - for pipe server, global logs should be per-thread
         fGlobalDbgLoggerOptions.fFlushMode=dbgflush_flush; // flush every log line
@@ -745,6 +749,7 @@ void TDebugConfig::localResolve(bool aLastPass)
           fGlobalDbgLoggerOptions.fThreadIDForAll=true; // thread ID for each message
         #endif
       #endif
+      }
     #endif
     // initialize global debug logging options
     getSyncAppBase()->fAppLogger.setMask(fDebug); // set initial debug mask from config
@@ -3408,6 +3413,8 @@ bool TRootConfig::parseAgentConfig(const char **aAttributes, sInt32 aLine)
 
 #define GET_XMLOUTINSTANCE(u) ((InstanceID_t)GET_USERDATA(u))
 
+#define ERRCHK(CMDNAME,GENFUNC) { Ret_t r = GENFUNC; if (r!=SML_ERR_OK) CONSOLEPRINTF(("Error converting %s to XML -> XML output truncated!",CMDNAME)); }
+
 // SyncML toolkit callback implementations for sysytool debug decoder
 
 // userData must be instance_id of XML instance to generate XML message into
@@ -3423,19 +3430,19 @@ static Ret_t sysytoolStartMessageCallback(InstanceID_t id, VoidPtr_t userData, S
 
 static Ret_t sysytoolEndMessageCallback(InstanceID_t id, VoidPtr_t userData, Boolean_t final)
 {
-  smlEndMessage(GET_XMLOUTINSTANCE(userData),final);
+  ERRCHK("End Of Message",smlEndMessage(GET_XMLOUTINSTANCE(userData),final));
   return SML_ERR_OK;
 }
 
 static Ret_t sysytoolStartSyncCallback(InstanceID_t id, VoidPtr_t userData, SmlSyncPtr_t pContent)
 {
-  smlStartSync(GET_XMLOUTINSTANCE(userData),pContent);
+  ERRCHK("<Sync>",smlStartSync(GET_XMLOUTINSTANCE(userData),pContent));
   return SML_ERR_OK;
 }
 
 static Ret_t sysytoolEndSyncCallback(InstanceID_t id, VoidPtr_t userData)
 {
-  smlEndSync(GET_XMLOUTINSTANCE(userData));
+  ERRCHK("</Sync>",smlEndSync(GET_XMLOUTINSTANCE(userData)));
   return SML_ERR_OK;
 }
 
@@ -3444,13 +3451,13 @@ static Ret_t sysytoolEndSyncCallback(InstanceID_t id, VoidPtr_t userData)
 
 static Ret_t sysytoolStartAtomicCallback(InstanceID_t id, VoidPtr_t userData, SmlAtomicPtr_t pContent)
 {
-  smlStartAtomic(GET_XMLOUTINSTANCE(userData),pContent);
+  ERRCHK("<Atomic>",smlStartAtomic(GET_XMLOUTINSTANCE(userData),pContent));
   return SML_ERR_OK;
 }
 
 static Ret_t sysytoolEndAtomicCallback(InstanceID_t id, VoidPtr_t userData)
 {
-  smlEndAtomic(GET_XMLOUTINSTANCE(userData));
+  ERRCHK("</Atomic>",smlEndAtomic(GET_XMLOUTINSTANCE(userData)));
   return SML_ERR_OK;
 }
 
@@ -3460,13 +3467,13 @@ static Ret_t sysytoolEndAtomicCallback(InstanceID_t id, VoidPtr_t userData)
 
 static Ret_t sysytoolStartSequenceCallback(InstanceID_t id, VoidPtr_t userData, SmlSequencePtr_t pContent)
 {
-  smlStartSequence(GET_XMLOUTINSTANCE(userData),pContent);
+  ERRCHK("<Sequence>",smlStartSequence(GET_XMLOUTINSTANCE(userData),pContent));
   return SML_ERR_OK;
 }
 
 static Ret_t sysytoolEndSequenceCallback(InstanceID_t id, VoidPtr_t userData)
 {
-  smlEndSequence(GET_XMLOUTINSTANCE(userData));
+  ERRCHK("</Sequence>",smlEndSequence(GET_XMLOUTINSTANCE(userData)));
   return SML_ERR_OK;
 }
 
@@ -3474,39 +3481,39 @@ static Ret_t sysytoolEndSequenceCallback(InstanceID_t id, VoidPtr_t userData)
 
 static Ret_t sysytoolAddCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlAddPtr_t pContent)
 {
-  smlAddCmd(GET_XMLOUTINSTANCE(userData),pContent);
+  ERRCHK("<Add>",smlAddCmd(GET_XMLOUTINSTANCE(userData),pContent));
   return SML_ERR_OK;
 }
 
 static Ret_t sysytoolAlertCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlAlertPtr_t pContent)
 {
-  smlAlertCmd(GET_XMLOUTINSTANCE(userData),pContent);
+  ERRCHK("<Alert>",smlAlertCmd(GET_XMLOUTINSTANCE(userData),pContent));
   return SML_ERR_OK;
 }
 
 
 static Ret_t sysytoolDeleteCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlDeletePtr_t pContent)
 {
-  smlDeleteCmd(GET_XMLOUTINSTANCE(userData),pContent);
+  ERRCHK("<Delete>",smlDeleteCmd(GET_XMLOUTINSTANCE(userData),pContent));
   return SML_ERR_OK;
 }
 
 static Ret_t sysytoolGetCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlGetPtr_t pContent)
 {
-  smlGetCmd(GET_XMLOUTINSTANCE(userData),pContent);
+  ERRCHK("<Get>",smlGetCmd(GET_XMLOUTINSTANCE(userData),pContent));
   return SML_ERR_OK;
 }
 
 static Ret_t sysytoolPutCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlPutPtr_t pContent)
 {
-  smlPutCmd(GET_XMLOUTINSTANCE(userData),pContent);
+  ERRCHK("<Put>",smlPutCmd(GET_XMLOUTINSTANCE(userData),pContent));
   return SML_ERR_OK;
 }
 
 #ifdef MAP_RECEIVE
 static Ret_t sysytoolMapCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlMapPtr_t pContent)
 {
-  smlMapCmd(GET_XMLOUTINSTANCE(userData),pContent);
+  ERRCHK("<Map>",smlMapCmd(GET_XMLOUTINSTANCE(userData),pContent));
   return SML_ERR_OK;
 }
 #endif
@@ -3514,41 +3521,41 @@ static Ret_t sysytoolMapCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlMapP
 #ifdef RESULT_RECEIVE
 static Ret_t sysytoolResultsCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlResultsPtr_t pContent)
 {
-  smlResultsCmd(GET_XMLOUTINSTANCE(userData),pContent);
+  ERRCHK("<Results>",smlResultsCmd(GET_XMLOUTINSTANCE(userData),pContent));
   return SML_ERR_OK;
 }
 #endif
 
 static Ret_t sysytoolStatusCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlStatusPtr_t pContent)
 {
-  smlStatusCmd(GET_XMLOUTINSTANCE(userData),pContent);
+  ERRCHK("<Status>",smlStatusCmd(GET_XMLOUTINSTANCE(userData),pContent));
   return SML_ERR_OK;
 }
 
 static Ret_t sysytoolReplaceCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlReplacePtr_t pContent)
 {
-  smlReplaceCmd(GET_XMLOUTINSTANCE(userData),pContent);
+  ERRCHK("<Replace>",smlReplaceCmd(GET_XMLOUTINSTANCE(userData),pContent));
   return SML_ERR_OK;
 }
 
 #ifdef COPY_RECEIVE
 static Ret_t sysytoolCopyCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlCopyPtr_t pContent)
 {
-  smlCopyCmd(GET_XMLOUTINSTANCE(userData),pContent);
+  ERRCHK("<Copy>",smlCopyCmd(GET_XMLOUTINSTANCE(userData),pContent));
   return SML_ERR_OK;
 }
 #endif
 
 static Ret_t sysytoolMoveCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlMovePtr_t pContent)
 {
-  smlMoveCmd(GET_XMLOUTINSTANCE(userData),pContent);
+  ERRCHK("<Move>",smlMoveCmd(GET_XMLOUTINSTANCE(userData),pContent));
   return SML_ERR_OK;
 }
 
 #ifdef EXEC_RECEIVE
 static Ret_t sysytoolExecCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlExecPtr_t pContent)
 {
-  smlExecCmd(GET_XMLOUTINSTANCE(userData),pContent);
+  ERRCHK("<Exec>",smlExecCmd(GET_XMLOUTINSTANCE(userData),pContent));
   return SML_ERR_OK;
 }
 #endif
@@ -3557,7 +3564,7 @@ static Ret_t sysytoolExecCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlExe
 #ifdef SEARCH_RECEIVE
 static Ret_t sysytoolSearchCmdCallback(InstanceID_t id, VoidPtr_t userData, SmlSearchPtr_t pContent)
 {
-  smlSearchCmd(GET_XMLOUTINSTANCE(userData),pContent);
+  ERRCHK("<Search>",smlSearchCmd(GET_XMLOUTINSTANCE(userData),pContent));
   return SML_ERR_OK;
 }
 #endif
@@ -3572,6 +3579,7 @@ static Ret_t sysytoolTransmitChunkCallback(InstanceID_t id, VoidPtr_t userData)
 {
   return SML_ERR_INVALID_OPTIONS;
 }
+
 
 
 static const SmlCallbacks_t sysyncToolCallbacks = {
@@ -3618,7 +3626,6 @@ static const SmlCallbacks_t sysyncToolCallbacks = {
   sysytoolHandleErrorCallback,
   sysytoolTransmitChunkCallback
 }; /* sml_callbacks struct */
-
 
 
 // WBXML to XML conversion

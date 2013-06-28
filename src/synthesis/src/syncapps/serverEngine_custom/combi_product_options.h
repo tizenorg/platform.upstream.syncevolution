@@ -67,8 +67,8 @@
     #define SYDEBUG RELEASE_SYDEBUG
   #else
     #undef SYDEBUG // absolutely no debug code for release!
+    #undef CONSOLEINFO
   #endif
-  #undef CONSOLEINFO
 #else
   #define SYDEBUG 2 // 3=including XPT trace, 4=including memory leak detection
   #undef CONSOLEINFO

@@ -420,14 +420,14 @@ public:
   bool fServerHasSINCEBEFORE;
   #endif // SYSYNC_CLIENT
 
-  #ifdef SYSYNC_SERVER
-public:
-  // respuri
-  bool fUseRespURI;
   // flag controlled by app or datastore via "restartsync" session
   // variable: if true, the agent will try to restart the sync and
   // then clear the flag
   bool fRestartSyncOnce;
+  #ifdef SYSYNC_SERVER
+public:
+  // respuri
+  bool fUseRespURI;
 protected:
   // access to config
   TAgentConfig *getServerConfig(void);

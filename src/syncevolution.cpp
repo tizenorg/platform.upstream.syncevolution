@@ -59,7 +59,7 @@ using namespace GDBusCXX;
 #include <syncevo/SuspendFlags.h>
 #include <syncevo/LogRedirect.h>
 #include <syncevo/LocalTransportAgent.h>
-#include "CmdlineSyncClient.h"
+#include <syncevo/CmdlineSyncClient.h>
 
 #include <dlfcn.h>
 #include <signal.h>
@@ -92,24 +92,6 @@ extern "C" EContact *e_contact_new_from_vcard(const char *vcard)
     return impl ? impl(vcard) : NULL;
 }
 #endif
-
-/**
- * This is a class derived from Cmdline. The purpose
- * is to implement the factory method 'createSyncClient' to create
- * new implemented 'CmdlineSyncClient' objects.
- */
-class KeyringSyncCmdline : public Cmdline {
- public:
-    KeyringSyncCmdline(int argc, const char * const * argv, ostream &out, ostream &err):
-        Cmdline(argc, argv, out, err) 
-    {}
-    /**
-     * create a user implemented sync client.
-     */
-    SyncContext* createSyncClient() {
-        return new CmdlineSyncClient(m_server, true, m_keyring);
-    }
-};
 
 #ifdef DBUS_SERVICE
 class RemoteSession;
@@ -450,13 +432,7 @@ int main( int argc, char **argv )
             LoggerBase::instance().setLevel(Logger::DEBUG);
         }
 
-        /*
-         * don't log errors to cerr: LogRedirect cannot distinguish
-         * between our valid error messages and noise from other
-         * libs, therefore it would get suppressed (logged at
-         * level DEVELOPER, while output is at most INFO)
-         */
-        KeyringSyncCmdline cmdline(argc, argv, std::cout, std::cout);
+        SyncEvo::KeyringSyncCmdline cmdline(argc, argv);
         vector<string> parsedArgs;
         if(!cmdline.parse(parsedArgs)) {
             return 1;

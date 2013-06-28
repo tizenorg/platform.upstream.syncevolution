@@ -16,6 +16,7 @@
 #define SyncDataStore_H
 
 #include "syncitemtype.h"
+#include <set>
 
 namespace sysync {
 
@@ -78,6 +79,8 @@ public:
   sInt64 getFreeID(void) { return fFreeID; };
   sInt64 getMaxID(void) { return fMaxID; };
   bool canRestart() { return fCanRestart; }
+  virtual bool syncModeSupported(const std::string &mode) { return fSyncModes.find(mode) != fSyncModes.end(); }
+  virtual void getSyncModes(set<string> &modes) { modes = fSyncModes; }
   // - session
   TSyncSession *getSession(void) { return fSessionP; };
   // description structure of datastore (NULL if not available)
@@ -118,6 +121,7 @@ protected:
   sInt64 fMaxID;       // maximum number of ID
   sInt64 fFreeID;      // free IDs
   bool fCanRestart;    // if set, then the datastore is able to participate in multiple sync sessions; in other words after a successful read/write cycle it is possible to restart at the reading phase
+  set<string> fSyncModes; // all supported sync modes that we know about (empty unless SyncCap was parsed)
 public:
   // Type of items in this datastore (read-only, can be used by multiple Datastores simultaneously)
   // - receiving types (also used as default item type)

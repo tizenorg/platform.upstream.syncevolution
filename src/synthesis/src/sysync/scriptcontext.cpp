@@ -3007,9 +3007,14 @@ void TScriptContext::initParse(const string &aTScript, bool aExecuting)
   ep=bp+aTScript.size(); // end of script
   p=bp; // cursor, start at beginning
   np=NULL; // no next token yet
+  line=0; // no line yet
   linesource=NULL; // no source yet
   scriptname=NULL; // no name yet
   inComment=false; // not in comment yet
+  if (p == ep)
+    // empty script
+    return;
+
   // try to get start line
   if (ep>bp && *p!=TK_SOURCELINE)
     SYSYNC_THROW(TScriptErrorException(DEBUGTEXT("Script does not start with TK_SOURCELINE","scri2"),line));

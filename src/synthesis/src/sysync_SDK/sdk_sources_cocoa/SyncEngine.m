@@ -80,6 +80,31 @@
 }
 
 
+// writing to session log
+- (void)debugLog:(NSString *)aMessage
+{
+  TSyError sta; 
+  SettingsKey *sessionKey = [self newOpenSessionKeyWithMode:0 err:&sta];
+  if (sta==LOCERR_OK) {
+    [sessionKey setStringValueByName:"debugMsg" toValue:aMessage];
+    [sessionKey release];
+  }
+}
+
+
+- (void)errorLog:(NSString *)aMessage
+{
+  TSyError sta; 
+  SettingsKey *sessionKey = [self newOpenSessionKeyWithMode:0 err:&sta];
+  if (sta==LOCERR_OK) {
+    [sessionKey setStringValueByName:"errorMsg" toValue:aMessage];
+    [sessionKey release];
+  }
+}
+
+
+
+
 // Tunnel DB API
 
 - (TSyError)startDataReadWithLastToken:(cAppCharP)aLastToken andResumeToken:(cAppCharP)aResumeToken

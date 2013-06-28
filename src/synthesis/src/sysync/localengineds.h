@@ -140,6 +140,10 @@ public:
   // - options
   bool fReadOnly;          // if set, datastore will not write any data (only maps) to local DB (but fake successful status to remote)
   bool fCanRestart;        // if set, then the datastore is able to participate in multiple sync sessions; in other words after a successful read/write cycle it is possible to restart at the reading phase
+  set<string> fSyncModes;  // all additional, non-standard sync modes
+#ifndef HARDCODED_CONFIG
+  string fSyncModeBuffer;  // only used during XML config parsing
+#endif
   bool fReportUpdates;     // if set(normal case), updates of server items will be sent to client (can be set to false for example for emails)
   bool fResendFailing;     // if set, items that receive a failure status from the remote will be resent in the next session (if DS 1.2 suspend marks supported by the DB)
   bool fDeleteWins;        // if set, in a replace/delete conflict the delete wins (also see DELETEWINS())

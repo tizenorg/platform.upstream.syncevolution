@@ -55,6 +55,10 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
 #include <boost/bind.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/assign.hpp>
@@ -67,10 +71,6 @@
 #include <pcrecpp.h>
 
 #include <syncevo/declarations.h>
-
-#ifdef ENABLE_BUTEO_TESTS
-#include "client-test-buteo.h"
-#endif
 
 namespace CppUnit {
 
@@ -412,20 +412,10 @@ static void removeItem(TestingSyncSource *source, const std::string &luid)
 
 static void restoreStorage(const ClientTest::Config &config, ClientTest &client)
 {
-#ifdef ENABLE_BUTEO_TESTS
-    if (boost::iequals(config.sourceName,"qt_contact")) { 
-        QtContactsSwitcher::restoreStorage(client); 
-    }
-#endif
 }
 
 static void backupStorage(const ClientTest::Config &config, ClientTest &client)
 {
-#ifdef ENABLE_BUTEO_TESTS
-    if (boost::iequals(config.sourceName,"qt_contact")) { 
-        QtContactsSwitcher::backupStorage(client); 
-    }
-#endif
 }
 
 /** adds the supported tests to the instance itself */
@@ -1807,6 +1797,7 @@ void LocalTests::testLinkedItemsRemoveNormal() {
     // Skip the testing, proceed to full removal.
     if (currentServer() != "exchange") {
         SOURCE_ASSERT_NO_FAILURE(source.get(), source.reset(createSourceA()));
+#ifndef USE_ECAL_CLIENT
         if (getCurrentTest().find("::eds_event::") != std::string::npos) {
             // hack: ignore EDS side effect of adding EXDATE to parent, see http://bugs.meego.com/show_bug.cgi?id=10906
             size_t pos = parentData.rfind("DTSTART");
@@ -1815,6 +1806,7 @@ void LocalTests::testLinkedItemsRemoveNormal() {
                               "EXDATE:20080413T090000\n" :
                               "EXDATE:20080413\n");
         }
+#endif
         CT_ASSERT_NO_THROW(compareDatabases(*source, &parentData, NULL));
         SOURCE_ASSERT_EQUAL(source.get(), 1, countItems(source.get()));
         SOURCE_ASSERT_EQUAL(source.get(), 0, countNewItems(source.get()));
@@ -6024,22 +6016,48 @@ std::string ClientTest::import(ClientTest &client, TestingSyncSource &source, co
 
 bool ClientTest::compare(ClientTest &client, const std::string &fileA, const std::string &fileB)
 {
-    std::string cmdstr = std::string("env PATH=.:$PATH synccompare ") + fileA + " " + fileB;
     setenv("CLIENT_TEST_HEADER", "\n\n", 1);
     setenv("CLIENT_TEST_LEFT_NAME", fileA.c_str(), 1);
     setenv("CLIENT_TEST_RIGHT_NAME", fileB.c_str(), 1);
     setenv("CLIENT_TEST_REMOVED", "only in left file", 1);
     setenv("CLIENT_TEST_ADDED", "only in right file", 1);
+    bool success = false;
     const char* compareLog = getenv("CLIENT_TEST_COMPARE_LOG");
     if(compareLog && strlen(compareLog))
     {
+       std::string cmdstr = std::string("synccompare ") + fileA + " " + fileB;
        string tmpfile = "____compare.log";
        cmdstr =string("bash -c 'set -o pipefail;") + cmdstr;
        cmdstr += " 2>&1|tee " +tmpfile+"'";
+       success = system(cmdstr.c_str()) == 0;
+    } else {
+        // Shortcut: run synccompare directly, without shell in the middle
+        // (reduces overhead and output when running under valgrind).
+        pid_t child = fork();
+        switch (child) {
+        case -1:
+            perror("fork");
+            break;
+        case 0:
+            // child
+            execl("synccompare", "synccompare", fileA.c_str(), fileB.c_str(), (char *)NULL);
+            perror("synccompare");
+            exit(1);
+            break;
+        default:
+            // parent
+            int status;
+            child = waitpid(child, &status, 0);
+            if (child == -1) {
+                perror("wait for synccompare");
+            } else if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+                success = true;
+            }
+            break;
+        }
     }
-    bool success = system(cmdstr.c_str()) == 0;
     if (!success) {
-        printf("failed: env CLIENT_TEST_SERVER=%s PATH=.:$PATH synccompare %s %s\n",
+        printf("failed: env CLIENT_TEST_SERVER=%s synccompare %s %s\n",
                currentServer().c_str(),
                fileA.c_str(), fileB.c_str());
     }
@@ -6083,9 +6101,27 @@ void ClientTest::postSync(int res, const std::string &logname)
         int fd = open(serverLogFileName.c_str(), O_RDWR);
 
         if (fd >= 0) {
-            std::string cmd = std::string("cp ") + serverLogFileName + " " + logname + ".server.log";
-            if (system(cmd.c_str())) {
-                fprintf(stdout, "copying log file failed: %s\n", cmd.c_str());
+            int out = open((logname + ".server.log").c_str(), O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
+            if (out) {
+                char buffer[4096];
+                bool cont = true;
+                ssize_t len;
+                while (cont && (len = read(fd, buffer, sizeof(buffer))) > 0) {
+                    ssize_t total = 0;
+                    while (cont && total < len) {
+                        ssize_t written = write(out, buffer, len);
+                        if (written < 0) {
+                            perror(("writing " + logname + ".server.log").c_str());
+                            cont = false;
+                        } else {
+                            total += written;
+                        }
+                    }
+                }
+                if (len < 0) {
+                    perror(("reading " + serverLogFileName).c_str());
+                }
+                close(out);
             }
             if (ftruncate(fd, 0)) {
                 perror("truncating log file");

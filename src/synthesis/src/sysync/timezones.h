@@ -315,7 +315,7 @@ timecontext_t SelectTZ( TDaylightSavingZone zone, int bias, int biasDST, lineart
 
 // visible for platform_timezones.cpp/.mm
 bool ContextForEntry( timecontext_t &aContext, tz_entry &t, bool chkNameFirst, GZones* g );
-void Get_tChange( lineartime_t tim, tChange &v, bool asDate= false );
+void Get_tChange( lineartime_t tim, tChange &v, sInt16 &y, bool asDate= false );
 
 
 
@@ -349,7 +349,8 @@ bool FoundTZ( const tz_entry &t,
               timecontext_t &aContext,
               GZones*       g,
               bool          createIt    = false,
-              timecontext_t searchOffset= tctx_tz_unknown );
+              timecontext_t searchOffset= tctx_tz_unknown,
+              bool          olsonSupport= false );
 
 
 /*! Remove an existing entry
@@ -373,7 +374,7 @@ lineartime_t DST_Switch( const tz_entry &t, int bias, sInt16 aYear, bool toDST )
  *  @param[in]  g        : global list of additional time zones
  *
  */
-bool TimeZoneNameToContext( cAppCharP aName, timecontext_t &aContext, GZones* g );
+bool TimeZoneNameToContext( cAppCharP aName, timecontext_t &aContext, GZones* g, bool olsonSupport= false );
 
 /*! Convert context into time zone name, a preferred name can be given
  *  @param[in]  aContext   : time context to resolve

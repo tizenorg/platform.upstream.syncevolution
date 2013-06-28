@@ -32,13 +32,13 @@
 #if defined(EXPIRY_YEAR) && defined(SYSER_REGISTRATION)
   #error "it seems that this target still defines it's own private expiry date - please update target_options.h"
 #endif
-#if defined(EXPIRY_YEAR) && EXPIRY_YEAR<2010
+#if defined(EXPIRY_YEAR) && EXPIRY_YEAR<2014
 	#warning "Target has a dangerously early expiry year - please check if it is correct"
 #endif
 // global expiry date (usually applies for unregistered demos or regular products in trial mode)
 #ifndef EXPIRY_YEAR
-  #define EXPIRY_DATE_STRING "2012-03-31"
-  #define EXPIRY_YEAR 2012
+  #define EXPIRY_DATE_STRING "2014-03-31"
+  #define EXPIRY_YEAR 2014
   #define EXPIRY_MONTH 3
   #define EXPIRY_DAY 31
 #endif
@@ -53,8 +53,8 @@
 #endif
 // Real Release date (shown in some texts)
 #if !defined(REAL_RELEASE_YEAR)
-  #define REAL_RELEASE_YEAR     2011
-  #define REAL_RELEASE_YEAR_TXT "2011"
+  #define REAL_RELEASE_YEAR     2012
+  #define REAL_RELEASE_YEAR_TXT "2012"
 #endif
 
 
@@ -76,8 +76,8 @@
 #endif
 
 #ifndef SYSYNC_BUILDNUMBER
-#define SYSYNC_BUILDNUMBER          35
-#define SYSYNC_BUILDNUMBER_TXT     "35"
+#define SYSYNC_BUILDNUMBER          41
+#define SYSYNC_BUILDNUMBER_TXT     "41"
 #endif
 
 

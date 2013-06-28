@@ -72,6 +72,7 @@ void LogRedirect::init()
     m_buffer = NULL;
     m_len = 0;
     m_out = NULL;
+    m_err = NULL;
     m_streams = false;
     m_stderr.m_original =
         m_stderr.m_read =
@@ -92,6 +93,13 @@ void LogRedirect::init()
             ++it;
         }
     }
+
+    // CONSOLEPRINTF in libsynthesis.
+    m_knownErrors.insert("SYSYNC   Rejected with error:");
+    // libneon 'Request ends, status 207 class 2xx, error line:'
+    m_knownErrors.insert("xx, error line:\n");
+    // some internal Qt warning (?)
+    m_knownErrors.insert("Qt: Session management error: None of the authentication protocols specified are supported");
 }
 
 LogRedirect::LogRedirect(bool both, const char *filename) throw()
@@ -116,6 +124,12 @@ LogRedirect::LogRedirect(bool both, const char *filename) throw()
                 perror(filename);
             }
         }
+        // Separate FILE, will write into same file as normal output
+        // if a filename was given (for testing), otherwise to original
+        // stderr.
+        m_err = fdopen(dup((filename && m_out) ?
+                           fileno(m_out) :
+                           m_stderr.m_copy), "w");
     }
     LoggerBase::pushLogger(this);
     m_redirect = this;
@@ -165,6 +179,9 @@ LogRedirect::~LogRedirect() throw()
     if (m_out) {
         fclose(m_out);
     }
+    if (m_err) {
+        fclose(m_err);
+    }
     if (m_buffer) {
         free(m_buffer);
     }
@@ -211,7 +228,11 @@ void LogRedirect::messagev(Level level,
 {
     // check for other output first
     process();
-    LoggerStdout::messagev(m_out ? m_out : stdout,
+    // Choose output channel: SHOW goes to original stdout,
+    // everything else to stderr.
+    LoggerStdout::messagev(level == SHOW ?
+                           (m_out ? m_out : stdout) :
+                           (m_err ? m_err : stderr),
                            level, getLevel(),
                            prefix,
                            file, line, function,

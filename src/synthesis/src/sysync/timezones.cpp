@@ -46,7 +46,7 @@
 
 namespace sysync {
 
-static bool tzcmp( const tz_entry &t, const tz_entry &tzi );
+static bool tzcmp  ( const tz_entry &t, const tz_entry &tzi, bool olsonSupport );
 static bool YearFit( const tz_entry &t, const tz_entry &tzi, GZones* g );
 
 // ---- global structure -----------------------------------------------------------
@@ -80,9 +80,9 @@ const class tzdata : public std::vector<tz_entry>
       ));
 
       // allow olson names for Android
-      #ifdef ANDROID
+    //#ifdef ANDROID --
       if (t.olsonName!=NULL) back().location= t.olsonName;
-      #endif
+    //#endif --
     }
     //push_back(tz_entry("unknown",               0,  0, "x",    "", tChange( 0, 0,0, 0,0),  tChange( 0, 0,0, 0,0)));  //   0
     #endif
@@ -167,7 +167,11 @@ bool GZones::matchTZ(const tz_entry &aTZ, TDebugLogger *aLogP, timecontext_t &aC
     {
       if (aTZ.ident=="x") return false; // comparison with this type is not possible
 
-      bool rule_match = tzcmp(fTZ, aTZ) && YearFit(fTZ, aTZ, fG);
+      bool olsonSupport= false;
+      #ifdef ANDROID
+           olsonSupport= true;
+      #endif
+      bool rule_match = tzcmp( fTZ, aTZ, olsonSupport ) && YearFit(fTZ, aTZ, fG);
 
       // start of a group is an entry that has a dynYear empty or set to "CUR" (for dynamically created entries)
       if (aTZ.dynYear.empty() || aTZ.dynYear == "CUR")
@@ -430,9 +434,9 @@ bool GetTZ( timecontext_t aContext, tz_entry &t, GZones* g, int year )
 
 
 
-void Get_tChange( lineartime_t tim, tChange &v, bool asDate )
+void Get_tChange( lineartime_t tim, tChange &v, sInt16 &y, bool asDate )
 {
-  sInt16 y, day, d, sec, ms;
+  sInt16 day, d, sec, ms;
 
   lineartime2date( tim, &y,       &v.wMonth,  &day );
   lineartime2time( tim, &v.wHour, &v.wMinute, &sec, &ms );
@@ -455,7 +459,7 @@ void Get_tChange( lineartime_t tim, tChange &v, bool asDate )
 
 
 
-static bool Fill_tChange( string iso8601, int bias, int biasDST, tChange &tc, bool isDST )
+static bool Fill_tChange( string iso8601, int bias, int biasDST, tChange &tc, sInt16 &y, bool isDST )
 {
   lineartime_t  l;
   timecontext_t c;
@@ -464,11 +468,13 @@ static bool Fill_tChange( string iso8601, int bias, int biasDST, tChange &tc, bo
   string::size_type rslt= ISO8601StrToTimestamp( iso8601.c_str(), l, c );
   if    (rslt!=iso8601.length()) return false;
 
-  int                     bMins = bias;
-  if (!isDST)             bMins+= biasDST;
-  l+= seconds2lineartime( bMins*SecsPerMin );
+  if (iso8601[ rslt-1 ]=='Z') { // to it for UTC only
+    int                     bMins = bias;
+    if (!isDST)             bMins+= biasDST;
+    l+= seconds2lineartime( bMins*SecsPerMin );
+  } // if
 
-  Get_tChange( l, tc );
+  Get_tChange( l, tc, y );
 
   /*
   lineartime2date( l, &y,        &tc.wMonth,  &day );
@@ -487,6 +493,20 @@ static bool Fill_tChange( string iso8601, int bias, int biasDST, tChange &tc, bo
 } // Fill_tChange
 
 
+
+// Get int value <i> as string
+static string IntStr( sInt32 i )
+{
+  const int    FLen= 15;    /* max length of (internal) item name */
+  char      f[ FLen ];
+  // cheating: this printf format assumes that sInt32 == int
+  sprintf ( f, "%d", int(i) );
+  string s= f;
+  return s;
+} // IntStr
+
+
+
 bool GetTZ( string std, string dst, int bias, int biasDST, tz_entry &t, GZones* g )
 {
   t.name   = "";
@@ -495,8 +515,20 @@ bool GetTZ( string std, string dst, int bias, int biasDST, tz_entry &t, GZones* 
   t.ident  = "";
   t.dynYear= "";
 
-  return Fill_tChange( std, bias,biasDST, t.std, false ) &&
-         Fill_tChange( dst, bias,biasDST, t.dst, true  );
+  sInt16 y;
+  bool   ok= Fill_tChange( std, bias,biasDST, t.std, y, false ) &&
+             Fill_tChange( dst, bias,biasDST, t.dst, y, true  );
+  if    (ok) t.dynYear= IntStr( y );
+
+//printf( "tS   m=%d dw=%d n=%d H=%d M=%d\n",   t.std.wMonth,   t.std.wDayOfWeek, t.std.wNth,
+//                                                              t.std.wHour,      t.std.wMinute );
+//printf( "tD   m=%d dw=%d n=%d H=%d M=%d\n",   t.dst.wMonth,   t.dst.wDayOfWeek, t.dst.wNth,
+//                                                              t.dst.wHour,      t.dst.wMinute );
+//printf( "t    bs=%d bd=%d\n",                 t.bias,         t.biasDST );
+//
+//printf( "ok=%d y=%d dyn='%s'\n", ok, y, t.dynYear.c_str() );
+
+  return ok;
 } // GetTZ
 
 
@@ -511,20 +543,25 @@ static bool Same_tChange( const tChange &tCh1, const tChange &tCh2 )
 
 
 /*! Compare time zone information */
-static bool tzcmp( const tz_entry &t, const tz_entry &tzi )
+static bool tzcmp( const tz_entry &t, const tz_entry &tzi, bool olsonSupport )
 {
   bool sameName= !tzi.name.empty() &&
          strucmp( tzi.name.c_str(), t.name.c_str() )==0;
 
   bool sameLoc = false; // by default, no olson support here
-  #ifdef ANDROID
+//#ifdef ANDROID --
+  if (olsonSupport) {
     // allow olson names as well here
        sameLoc=  !tzi.location.empty() &&
          strucmp( tzi.location.c_str(), t.name.c_str() )==0;
 
 //__android_log_print( ANDROID_LOG_DEBUG, "TZ CMP", "'%s' == '%s' / '%s'\n",
 //                     t.name.c_str(), tzi.name.c_str(), tzi.location.c_str() );
-  #endif
+  }
+//#endif --
+
+//printf( "name='%s' loc='%s' ident='%s' sameName=%d sameLoc=%d\n",
+//         t.name.c_str(), t.ident.c_str(), tzi.location.c_str(), sameName, sameLoc );
 
   if        (!t.name.empty() &&       !sameName && !sameLoc)  return false;
 
@@ -639,7 +676,8 @@ static bool YearFit( const tz_entry &t, const tz_entry &tzi, GZones* g )
 bool FoundTZ( const tz_entry &tc,
               string        &aName,
               timecontext_t &aContext, GZones* g, bool createIt,
-              timecontext_t searchOffset )
+              timecontext_t searchOffset,
+              bool          olsonSupport )
 {
   aName    = "";
   aContext = TCTX_UNKNOWN;
@@ -655,12 +693,15 @@ bool FoundTZ( const tz_entry &tc,
   int  i; // search hard coded elements first
   for (i= offs+1; i<(int)tctx_numtimezones; i++) {
     const tz_entry &tzi = tz[ i ];
-    if (tzcmp  ( t, tzi  ) &&
+    if (tzcmp  ( t, tzi, olsonSupport ) &&
         YearFit( t, tzi, g )) {
       aName=        tzi.name;
+    //printf( "name='%s' i=%d\n", aName.c_str(), i );
       ok   = true; break;
     } // if
   } // for
+
+//printf( "ok=%d name='%s' i=%d olson=%d\n", ok, aName.c_str(), i, olsonSupport );
 
   // don't go thru the mutex, if not really needed
   if (!ok && g!=NULL) {
@@ -679,7 +720,7 @@ bool FoundTZ( const tz_entry &tc,
          pos!=g->tzP.end(); pos++) {
       if (j<0 &&
           !(pos->ident=="-") && // element must not be removed
-          tzcmp( t, *pos )) {
+          tzcmp( t, *pos, olsonSupport )) {
         aName= pos->name;
         ok   = true; break;
       } // if
@@ -697,7 +738,7 @@ bool FoundTZ( const tz_entry &tc,
            pos!=g->tzP.end(); pos++) {
         if (j<0 &&
             pos->ident == "-" && // removed element ?
-            tzcmp( t, *pos )) {
+            tzcmp( t, *pos, olsonSupport )) {
           pos->ident= t.ident; // reactivate the identifier
           aName = pos->name;  // should be the same
           ok    = true; break;
@@ -742,11 +783,16 @@ bool RemoveTZ( const tz_entry &t, GZones* g )
     lockMutex( g->muP );
   #endif
 
+  bool olsonSupport= false;
+  #ifdef ANDROID
+       olsonSupport= true;
+  #endif
+
   TZList::iterator pos;
   for (pos= g->tzP.begin();
        pos!=g->tzP.end(); pos++) {
     if (!(pos->ident=="-") && // element must not be removed
-        tzcmp( t, *pos )) {
+        tzcmp( t, *pos, olsonSupport )) {
       pos->ident = "-";
     //gz()->tzP.erase( pos ); // do not remove it, keep it persistent
       ok= true; break;
@@ -763,7 +809,7 @@ bool RemoveTZ( const tz_entry &t, GZones* g )
 
 
 
-bool TimeZoneNameToContext( cAppCharP aName, timecontext_t &aContext, GZones* g )
+bool TimeZoneNameToContext( cAppCharP aName, timecontext_t &aContext, GZones* g, bool olsonSupport )
 {
   // check some special cases
   if (strucmp(aName,"DATE")==0) {
@@ -791,7 +837,7 @@ bool TimeZoneNameToContext( cAppCharP aName, timecontext_t &aContext, GZones* g 
   t.dynYear= "";    // luz: must be initialized!
 
   string          tName;
-  if (FoundTZ( t, tName, aContext, g )) return true;
+  if (FoundTZ( t, tName, aContext, g, olsonSupport )) return true;
 
   /*
   int  i;     aContext= TCTX_UNKNOWN;
@@ -844,10 +890,10 @@ bool TimeZoneContextToName( timecontext_t aContext, string &aName, GZones* g,
   aName= "UNKNOWN";
 
   // setting it via param does not work currently for some reasons, switch it on permanently for Android
-  #ifdef ANDROID
+//#ifdef ANDROID --
     aPrefIdent= "o";
   //__android_log_print( ANDROID_LOG_DEBUG, "ContextToName", "pref='%s' / aContext=%d\n", aPrefIdent, aContext );
-  #endif
+//#endif --
 
   // if aPrefIndent contains "o", this means we'd like to see olson name, if possible
   // %%% for now, we can return olson for the built-ins only
@@ -1076,18 +1122,6 @@ timecontext_t SelectTZ( TDaylightSavingZone zone, int bias, int biasDST, lineart
   return TCTX_SYMBOLIC_TZ+t;
 } // SelectTZ
 
-
-
-// Get int value <i> as string
-static string IntStr( sInt32 i )
-{
-  const int    FLen= 15;    /* max length of (internal) item name */
-  char      f[ FLen ];
-  // cheating: this printf format assumes that sInt32 == int
-  sprintf ( f, "%d", int(i) );
-  string s= f;
-  return s;
-} // IntStr
 
 
 /* get system's time zone */

@@ -119,14 +119,8 @@ void SyncContext::initLocalSync(const string &config)
     m_localPeerContext.insert(0, "@");
 }
 
-void SyncContext::setOutput(ostream *out)
-{
-    m_out = out ? out : &std::cout;
-}
-
 void SyncContext::init()
 {
-    m_out = &std::cout;
     m_doLogging = false;
     m_quiet = false;
     m_dryrun = false;
@@ -291,7 +285,7 @@ class LogDir : public LoggerBase, private boost::noncopyable, private LogDirName
                                   of the file is hard-coded in the engine. Despite
                                   that this class still is the central point to ask
                                   for the name of the log file. */
-    SafeConfigNode *m_info;  /**< key/value representation of sync information */
+    boost::scoped_ptr<SafeConfigNode> m_info;  /**< key/value representation of sync information */
     bool m_readonly;         /**< m_info is not to be written to */
     SyncReport *m_report;    /**< record start/end times here */
 
@@ -383,7 +377,7 @@ public:
      */
     void openLogdir(const string &dir) {
         boost::shared_ptr<ConfigNode> filenode(new FileConfigNode(dir, "status.ini", true));
-        m_info = new SafeConfigNode(filenode);
+        m_info.reset(new SafeConfigNode(filenode));
         m_info->setMode(false);
         m_readonly = true;
     }
@@ -551,7 +545,7 @@ public:
         m_readonly = mode == SESSION_READ_ONLY;
         if (!m_path.empty()) {
             boost::shared_ptr<ConfigNode> filenode(new FileConfigNode(m_path, "status.ini", m_readonly));
-            m_info = new SafeConfigNode(filenode);
+            m_info.reset(new SafeConfigNode(filenode));
             m_info->setMode(false);
             if (mode != SESSION_READ_ONLY) {
                 // Create a status.ini which contains an error.
@@ -701,11 +695,9 @@ public:
         }
     }
 
-    // remove redirection of logging
-    void restore() {
-        if (&LoggerBase::instance() == this) {
-            LoggerBase::popLogger();
-        }
+    // finalize session
+    void endSession()
+    {
         time_t end = time(NULL);
         if (m_report) {
             m_report->setEnd(end);
@@ -718,8 +710,14 @@ public:
                 }
                 m_info->flush();
             }
-            delete m_info;
-            m_info = NULL;
+            m_info.reset();
+        }
+    }
+
+    // remove redirection of logging (safe for destructor)
+    void restore() {
+        if (&LoggerBase::instance() == this) {
+            LoggerBase::popLogger();
         }
     }
 
@@ -1209,7 +1207,6 @@ public:
             m_logdir.previousLogdirs(dirs);
         }
 
-        ostream &out = m_client.getOutput();
         BOOST_FOREACH(SyncSource *source, *this) {
             if ((!excludeSource.empty() && excludeSource != source->getName()) ||
                 (newSuffix == "after" && m_prepared.find(source->getName()) == m_prepared.end())) {
@@ -1218,7 +1215,7 @@ public:
 
             // dump only if not done before or changed
             if (m_intro != intro) {
-                m_client.getOutput() << intro;
+                SE_LOG_SHOW(NULL, NULL, "%s", intro.c_str());
                 m_intro = intro;
             }
 
@@ -1245,7 +1242,7 @@ public:
                 oldDir = databaseName(*source, oldSuffix, oldSession);
             }
             string newDir = databaseName(*source, newSuffix);
-            out << "*** " << source->getDisplayName() << " ***\n" << flush;
+            SE_LOG_SHOW(NULL, NULL, "*** %s ***", source->getDisplayName().c_str());
             string cmd = string("env CLIENT_TEST_COMPARISON_FAILED=10 " + config + " synccompare '" ) +
                 oldDir + "' '" + newDir + "'";
             int ret = Execute(cmd, EXECUTE_NO_STDERR);
@@ -1253,16 +1250,16 @@ public:
                     WIFEXITED(ret) ? WEXITSTATUS(ret) :
                     -1) {
             case 0:
-                out << "no changes\n";
+                SE_LOG_SHOW(NULL, NULL, "no changes");
                 break;
             case 10:
                 break;
             default:
-                out << "Comparison was impossible.\n";
+                SE_LOG_SHOW(NULL, NULL, "Comparison was impossible.");
                 break;
             }
         }
-        out << "\n";
+        SE_LOG_SHOW(NULL, NULL, "\n");
         return true;
     }
 
@@ -1332,8 +1329,11 @@ public:
                 updateSyncReport(*report);
             }
 
-            // ensure that stderr is seen again, also writes out session status
+            // ensure that stderr is seen again
             m_logdir.restore();
+
+            // write out session status
+            m_logdir.endSession();
 
             if (m_reportTodo) {
                 // haven't looked at result of sync yet;
@@ -1341,29 +1341,27 @@ public:
                 m_reportTodo = false;
 
                 string logfile = m_logdir.getLogfile();
-                ostream &out = m_client.getOutput();
-                out << flush;
-                out << "\n";
                 if (status == STATUS_OK) {
-                    out << "Synchronization successful.\n";
+                    SE_LOG_SHOW(NULL, NULL, "\nSynchronization successful.");
                 } else if (logfile.size()) {
-                    out << "Synchronization failed, see "
-                        << logfile
-                        << " for details.\n";
+                    SE_LOG_SHOW(NULL, NULL, "\nSynchronization failed, see %s for details.",
+                                logfile.c_str());
                 } else {
-                    out << "Synchronization failed.\n";
+                    SE_LOG_SHOW(NULL, NULL, "\nSynchronization failed.");
                 }
 
                 // pretty-print report
                 if (m_logLevel > LOGGING_QUIET) {
-                    out << "\nChanges applied during synchronization:\n";
+                    SE_LOG_SHOW(NULL, NULL, "\nChanges applied during synchronization:");
                 }
                 if (m_logLevel > LOGGING_QUIET && report) {
+                    ostringstream out;
                     out << *report;
                     std::string slowSync = report->slowSyncExplanation(m_client.getPeer());
                     if (!slowSync.empty()) {
                         out << endl << slowSync;
                     }
+                    SE_LOG_SHOW(NULL, NULL, "%s", out.str().c_str());
                 }
 
                 // compare databases?
@@ -1378,6 +1376,10 @@ public:
                 // now remove some old logdirs
                 m_logdir.expire();
             }
+        } else {
+            // finish debug session
+            m_logdir.restore();
+            m_logdir.endSession();
         }
     }
 
@@ -2352,8 +2354,6 @@ void SyncContext::getConfigXML(string &xml, string &configname)
         "      INTEGER alarmTimeToUTC;\n"
         "      alarmTimeToUTC = FALSE;\n"
         "      // for VCALENDAR_COMPARE_SCRIPT: don't use UID by default\n"
-        "      INTEGER VCALENDAR_COMPARE_UID;\n"
-        "      VCALENDAR_COMPARE_UID = FALSE;\n"
         "    ]]></sessioninitscript>\n";
 
     ostringstream clientorserver;
@@ -3271,6 +3271,17 @@ SyncMLStatus SyncContext::doSync()
         signalGuard = SuspendFlags::getSuspendFlags().activate();
     }
 
+    // delay the sync for debugging purposes
+    const char *delay = getenv("SYNCEVOLUTION_SYNC_DELAY");
+    if (delay) {
+        sleep(atoi(delay));
+    }
+
+    if (checkForSuspend() ||
+        checkForAbort()) {
+        return (SyncMLStatus)sysync::LOCERR_USERABORT;
+    }
+
     SyncMLStatus status = STATUS_OK;
     std::string s;
 
@@ -3300,6 +3311,11 @@ SyncMLStatus SyncContext::doSync()
             //by pass the exception if we will try again with legacy SANFormat
         }
 
+        if (checkForSuspend() ||
+            checkForAbort()) {
+            return (SyncMLStatus)sysync::LOCERR_USERABORT;
+        }
+
         if (! status) {
             if (sanFormat.empty()) {
                 SE_LOG_DEBUG (NULL, NULL, "Server Alerted Sync init with SANFormat %d failed, trying with legacy format", version);
@@ -3313,6 +3329,11 @@ SyncMLStatus SyncContext::doSync()
                 throwError ("Server Alerted Sync init failed");
             }
         }
+    }
+
+    if (checkForSuspend() ||
+        checkForAbort()) {
+        return (SyncMLStatus)sysync::LOCERR_USERABORT;
     }
 
     // re-init engine with all sources configured
@@ -3448,17 +3469,6 @@ SyncMLStatus SyncContext::doSync()
         // TODO: set "sendrespuri" session key to control
         // whether the generated messages contain a respURI
         // (not needed for OBEX)
-    }
-
-    // Choosing between comparing UID/RECURRENCE-ID vs. other
-    // iCalendar 2.0 properties is a hack: in local sync mode, the
-    // iCalendar 2.0 semantic is always picked.
-    if (m_serverMode && m_localSync) {
-        SharedKey sessionKey = m_engine.OpenSessionKey(session);
-        SharedKey contextKey = m_engine.OpenKeyByPath(sessionKey, "/sessionvars");
-        m_engine.SetInt32Value(contextKey,
-                               "VCALENDAR_COMPARE_UID",
-                               true);
     }
 
     // Sync main loop: runs until SessionStep() signals end or error.
@@ -3815,6 +3825,12 @@ SyncMLStatus SyncContext::doSync()
                     break;
                 }
             }
+
+            // Don't tell engine to abort when it already did.
+            if (aborting && stepCmd == sysync::STEPCMD_ABORT) {
+                stepCmd = sysync::STEPCMD_DONE;
+            }
+
             previousStepCmd = stepCmd;
             // loop until session done or aborted with error
         } catch (const BadSynthesisResult &result) {
@@ -3833,12 +3849,14 @@ SyncMLStatus SyncContext::doSync()
             } else {
                 Exception::handle(&status);
                 SE_LOG_DEBUG(NULL, NULL, "aborting after catching fatal error");
-                stepCmd = sysync::STEPCMD_ABORT;
+                // Don't tell engine to abort when it already did.
+                stepCmd = aborting ? sysync::STEPCMD_DONE : sysync::STEPCMD_ABORT;
             }
         } catch (...) {
             Exception::handle(&status);
             SE_LOG_DEBUG(NULL, NULL, "aborting after catching fatal error");
-            stepCmd = sysync::STEPCMD_ABORT;
+            // Don't tell engine to abort when it already did.
+            stepCmd = aborting ? sysync::STEPCMD_DONE : sysync::STEPCMD_ABORT;
         }
     } while (stepCmd != sysync::STEPCMD_DONE && stepCmd != sysync::STEPCMD_ERROR);
 
@@ -3920,10 +3938,9 @@ void SyncContext::status()
             }
         }
     } else {
-        ostream &out = getOutput();
-        out << "Previous log directory not found.\n";
+        SE_LOG_SHOW(NULL, NULL, "Previous log directory not found.");
         if (getLogDir().empty()) {
-            out << "Enable the 'logdir' option and synchronize to use this feature.\n";
+            SE_LOG_SHOW(NULL, NULL, "Enable the 'logdir' option and synchronize to use this feature.");
         }
     }
 }
@@ -4100,14 +4117,19 @@ string SyncContext::readSessionInfo(const string &dir, SyncReport &report)
  * With that setup and a fake SyncContext it is possible to simulate
  * sessions and test the resulting logdirs.
  */
-class LogDirTest : public CppUnit::TestFixture, private SyncContext
+class LogDirTest : public CppUnit::TestFixture, private SyncContext, private LoggerBase
 {
 public:
     LogDirTest() :
         SyncContext("nosuchconfig@nosuchcontext"),
         m_maxLogDirs(10)
     {
-        setOutput(&m_out);
+        // suppress output by redirecting into m_out
+        pushLogger(this);
+    }
+
+    ~LogDirTest() {
+        popLogger();
     }
 
     void setUp() {
@@ -4211,6 +4233,23 @@ private:
         ofstream out(name.c_str());
         out << data;
     }
+
+    /** capture output produced while test ran */
+    void messagev(Level level,
+                  const char *prefix,
+                  const char *file,
+                  int line,
+                  const char *function,
+                  const char *format,
+                  va_list args)
+    {
+        std::string str = StringPrintfV(format, args);
+        m_out << '[' << levelToStr(level) << ']' << str;
+        if (!boost::ends_with(str, "\n")) {
+            m_out << std::endl;
+        }
+    }
+    virtual bool isProcessSafe() const { return false; }
 
     CPPUNIT_TEST_SUITE(LogDirTest);
     CPPUNIT_TEST(testQuickCompare);

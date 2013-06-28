@@ -33,6 +33,7 @@
 SE_BEGIN_CXX
 
 SuspendFlags::SuspendFlags() :
+    m_level(Logger::INFO),
     m_state(NORMAL),
     m_lastSuspend(0),
     m_senderFD(-1),
@@ -47,8 +48,12 @@ SuspendFlags::~SuspendFlags()
 
 SuspendFlags &SuspendFlags::getSuspendFlags()
 {
-    static SuspendFlags flags;
-    return flags;
+    // never free the instance, other singletons might depend on it
+    static SuspendFlags *flags;
+    if (!flags) {
+        flags = new SuspendFlags;
+    }
+    return *flags;
 }
 
 static gboolean SignalChannelReadyCB(GIOChannel *source,
@@ -183,10 +188,13 @@ void SuspendFlags::deactivate()
     if (m_receiverFD >= 0) {
         sigaction(SIGTERM, &m_oldSigTerm, NULL);
         sigaction(SIGINT, &m_oldSigInt, NULL);
+        SE_LOG_DEBUG(NULL, NULL, "SuspendFlags: close m_receiverFD %d", m_receiverFD);
         close(m_receiverFD);
+        SE_LOG_DEBUG(NULL, NULL, "SuspendFlags: close m_senderFD %d", m_senderFD);
         close(m_senderFD);
         m_receiverFD = -1;
         m_senderFD = -1;
+        SE_LOG_DEBUG(NULL, NULL, "SuspendFlags: done with deactivation");
     }
 }
 
@@ -268,7 +276,7 @@ void SuspendFlags::printSignals()
             if (!str) {
                 SE_LOG_DEBUG(NULL, NULL, "internal error: received invalid signal msg %d", msg);
             } else {
-                SE_LOG_INFO(NULL, NULL, "%s", str);
+                SE_LOG(m_level, NULL, NULL, "%s", str);
             }
             m_stateChanged(*this);
         }

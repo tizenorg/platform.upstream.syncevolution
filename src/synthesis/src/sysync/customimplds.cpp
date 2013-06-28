@@ -3311,8 +3311,11 @@ localstatus TCustomImplDS::getItemFromSyncSetItem(TSyncSetItem *aSyncSetItemP, T
     aItemP->setSyncOp(sop_replace);
     // Now fetch item (read phase)
     localstatus sta = apiFetchItem(*((TMultiFieldItem *)aItemP),true,aSyncSetItemP);
-    if (sta!=LOCERR_OK)
-      return sta; // error
+    if (sta!=LOCERR_OK) {
+      delete aItemP;
+      aItemP = NULL;
+    }
+    return sta;
   }
   // ok
   return LOCERR_OK;
@@ -3476,7 +3479,12 @@ localstatus TCustomImplDS::getItemByID(localid_t aLocalID, TSyncItem *&aItemP)
     // - set default operation
     aItemP->setSyncOp(sop_replace);
     // - now fetch directly from DB
-    return apiFetchItem(*((TMultiFieldItem *)aItemP),true,NULL);
+    localstatus sta = apiFetchItem(*((TMultiFieldItem *)aItemP),true,NULL);
+    if (sta!=LOCERR_OK) {
+      delete aItemP;
+      aItemP = NULL;
+    }
+    return sta;
   }
   else {
     // return sync item from syncset item (fetches data now if not fetched before)

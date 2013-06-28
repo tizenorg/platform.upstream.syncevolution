@@ -174,11 +174,10 @@
       account:@"SyncMLPassword"
       error:NULL
     ];
-    // Now get the per-datastore settings. In this sample, we only have one single datastore (using the
-    // built-in datastore adaptor for the iPhone address book).
+    // Now get the per-datastore settings. In this sample, we only have one single datastore.
     // The datastores are identified by their <dbtypeid>, which is defined in the the
-    // iphone_client_sample.xml config file. The addressbook datastore is named "contacts" and has
-    // a dbtypeid of 1001
+    // ios_syncclient_app_sample.xml config file.
+    // For this app, the actual dbtypeid numeric value is defined as SYNCML_TARGET_DBID in AppDelegate.h    
     // - first open the targets container (a "target" represents settings for one datastore)
     SettingsKey *targetsKey = [profileKey newOpenKeyByPath:"/targets" withMode:0 err:&sta];
     if (targetsKey) {
@@ -247,11 +246,10 @@
       account:@"SyncMLPassword"
       error:NULL
     ];
-    // Now save the per-datastore settings. In this sample, we only have one single datastore (using the
-    // built-in datastore adaptor for the iPhone address book).
+    // Now save the per-datastore settings. In this sample, we only have one single datastore.
     // The datastores are identified by their <dbtypeid>, which is defined in the the
-    // iphone_client_sample.xml config file. The addressbook datastore is named "contacts" and has
-    // a dbtypeid of 1001
+    // ios_syncclient_app_sample.xml config file.
+    // For this app, the actual dbtypeid numeric value is defined as SYNCML_TARGET_DBID in AppDelegate.h
     // - first open the targets container (a "target" represents settings for one datastore)
     SettingsKey *targetsKey = [profileKey newOpenKeyByPath:"/targets" withMode:0 err:&sta];
     if (sta==LOCERR_OK) {

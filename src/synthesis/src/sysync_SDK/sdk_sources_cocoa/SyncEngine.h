@@ -26,6 +26,9 @@
 // read and write the SyncML messages
 - (TSyError)getSyncMLBufferForSend:(BOOL)aForSend buffer:(appPointer *)aBuffer bufSize:(memSize *)aBufSize;
 - (TSyError)retSyncMLBufferForSend:(BOOL)aForSend processed:(memSize)aProcessed;
+// writing to session log
+- (void)debugLog:(NSString *)aMessage;
+- (void)errorLog:(NSString *)aMessage;
 // Tunnel DB API
 - (TSyError)startDataReadWithLastToken:(cAppCharP)aLastToken andResumeToken:(cAppCharP)aResumeToken;
 - (TSyError)readNextItemAsKey:(SettingsKey *)aItemKey

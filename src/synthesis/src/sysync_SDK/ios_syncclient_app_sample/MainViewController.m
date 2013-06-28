@@ -8,6 +8,7 @@
 
 #import "MainViewController.h"
 
+#include "AppDelegate.h"
 
 @interface MainViewController ()
 // private methods declaration
@@ -234,19 +235,29 @@
 {
   // add setting of SyncML engine configuration variables here.
   // These will be set before the XML config is loaded
-  // pre-set some config vars
-  /*
   TSyError sta;
   SettingsKey *configVarsKey = [aSyncEngine newOpenKeyByPath:"/configvars" withMode:0 err:&sta];
   if (sta==LOCERR_OK) {
+    #if DEBUG
+    // In debug builds, direct XML configuration errors to console (stdout)
+    [configVarsKey setStringValueByName:"conferrpath" toValue:@"console"];
+    #endif
+    /* %%% enable these if you want a custom model or hardcoded URL
     // custom devInf model string
     [configVarsKey setStringValueByName:"custmodel" toValue:@"" CUSTOM_DEVINF_MODEL];    
     // custom predefined (fixed) URL
-    [configVarsKey setStringValueByName:"serverurl" toValue:@"" CUSTOM_SERVER_URL];    
+    [configVarsKey setStringValueByName:"serverurl" toValue:@"" CUSTOM_SERVER_URL];
+    */
   }
   // done with config vars
-  [configVarsKey release];    
-  */
+  [configVarsKey release];
+  // if debug build, create the log subdirectory in the sandbox' tmp/, such that
+  // the syncml engine will write detailed HTML logs. The engine checks the presence of
+  // the log directory and disables logging if it is not present.
+  // Note: this has to be in sync with the definition of "logpath" in the XML config 
+  #if DEBUG
+  [[NSFileManager defaultManager] createDirectoryAtPath:[NSHomeDirectory() stringByAppendingPathComponent:@"tmp/sysynclogs"] withIntermediateDirectories:NO attributes:nil error:NULL];
+  #endif
 }
 
  
@@ -292,9 +303,9 @@
   
   // use global status label for "Last Sync" title
   self.globalStatusLabel.text = @"Last Synchronisation:";
-  // show the time of last sync of the datastore with ID 1001
-  // we need to open the current profile, and find the target with ID 1001 (this is the <dbtypeid> of
-  // the  datastore as configured in the xml config file)
+  // show the time of last sync of the datastore with ID SYNCML_TARGET_DBID
+  // we need to open the current profile, and find the target with ID SYNCML_TARGET_DBID
+  // (this is the <dbtypeid> of the  datastore as configured in the xml config file)
   
   SettingsKey *profileKey = [self.syncmlClient newProfileKeyForID:PROFILEID_FIRST];
   if (profileKey) {
@@ -305,7 +316,7 @@
       // successfully opened targets container
       // - now open the target we are interested in, which is that for the address book
       //   by its ID 1001
-      SettingsKey *targetKey = [targetsKey newOpenSubKeyByID:1001 withMode:0 err:&sta];
+      SettingsKey *targetKey = [targetsKey newOpenSubKeyByID:SYNCML_TARGET_DBID withMode:0 err:&sta];
       if (sta==LOCERR_OK) {
         // get the date of last sync
         NSDate *lastSync = [targetKey dateValueByName:"lastSync"];

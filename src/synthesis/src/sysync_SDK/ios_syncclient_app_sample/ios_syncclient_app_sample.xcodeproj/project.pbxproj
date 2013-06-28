@@ -28,6 +28,8 @@
 		ED46AB9914238A160057DC96 /* libsqlite3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = ED46AB9814238A160057DC96 /* libsqlite3.dylib */; };
 		EDAF2DCB14A344510054960A /* ios_syncclient_app_sample.xml in Resources */ = {isa = PBXBuildFile; fileRef = EDAF2DCA14A344510054960A /* ios_syncclient_app_sample.xml */; };
 		EDC0F81E14A343530006710A /* SettingsKey.m in Sources */ = {isa = PBXBuildFile; fileRef = ED46AB67142348C10057DC96 /* SettingsKey.m */; };
+		EDE01B23151E975200352246 /* libdbplugin_cocoa_sample_ios.a in Frameworks */ = {isa = PBXBuildFile; fileRef = EDAF2DD414A346400054960A /* libdbplugin_cocoa_sample_ios.a */; };
+		EDE01B24151E975200352246 /* libsysync_client_ios.a in Frameworks */ = {isa = PBXBuildFile; fileRef = EDAF2DDE14A3464D0054960A /* libsysync_client_ios.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -119,6 +121,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EDE01B23151E975200352246 /* libdbplugin_cocoa_sample_ios.a in Frameworks */,
+				EDE01B24151E975200352246 /* libsysync_client_ios.a in Frameworks */,
 				ED46AB9914238A160057DC96 /* libsqlite3.dylib in Frameworks */,
 				ED46AB95142389E40057DC96 /* libstdc++.6.dylib in Frameworks */,
 				ED46AB91142381A50057DC96 /* Security.framework in Frameworks */,
@@ -447,7 +451,6 @@
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 4.0;
-				LIBRARY_SEARCH_PATHS = "$(SRCROOT)/../bin/iOS/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -466,7 +469,6 @@
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 4.0;
-				LIBRARY_SEARCH_PATHS = "$(SRCROOT)/../bin/iOS/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)";
 				OTHER_CFLAGS = "-DNS_BLOCK_ASSERTIONS=1";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -480,15 +482,7 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "ios_syncclient_app_sample-Prefix.pch";
 				INFOPLIST_FILE = "ios_syncclient_app_sample-Info.plist";
-				OTHER_LDFLAGS = (
-					"-l",
-					"$(SYNCMLLIB)",
-					"-l",
-					"$(SYNCMLPLUGINS)",
-				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SYNCMLLIB = sysync_combi_ios;
-				SYNCMLPLUGINS = dbplugin_cocoa_sample_ios;
 				WRAPPER_EXTENSION = app;
 			};
 			name = Debug;
@@ -499,15 +493,7 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "ios_syncclient_app_sample-Prefix.pch";
 				INFOPLIST_FILE = "ios_syncclient_app_sample-Info.plist";
-				OTHER_LDFLAGS = (
-					"-l",
-					"$(SYNCMLLIB)",
-					"-l",
-					"$(SYNCMLPLUGINS)",
-				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SYNCMLLIB = sysync_combi_ios;
-				SYNCMLPLUGINS = dbplugin_cocoa_sample_ios;
 				WRAPPER_EXTENSION = app;
 			};
 			name = Release;

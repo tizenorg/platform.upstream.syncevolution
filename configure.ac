@@ -25,7 +25,7 @@ SE_CHECK_FOR_STABLE_RELEASE
 
 # Minimum version of libsynthesis as defined in its
 # configure script and thus .pc files:
-define([SYNTHESIS_MIN_VERSION], [3.4.0.16.6])
+define([SYNTHESIS_MIN_VERSION], [3.4.0.16.7])
 
 # Line above is patched by gen-autotools.sh. Handle
 # both "yes" and "no".
@@ -66,8 +66,8 @@ AC_PROG_MAKE_SET
 # currently uses the "#pragma }" trick. Should remove that.
 # Fix code to work without deprecated methods: G GDK GDK_PIXBUF CAIRO PANGO GTK
 DK_ARG_ENABLE_WARNINGS([SYNCEVO_WFLAGS],
-                       [-Wall -Wno-unknown-pragmas],
-                       [-Wall -Wno-unknown-pragmas],
+                       [-Wall -Wno-unknown-pragmas -Wno-deprecated-declarations],
+                       [-Wall -Wno-unknown-pragmas -Wno-deprecated-declarations],
                        [])
 
 dnl default device type (see AC_DEFINE below)
@@ -129,17 +129,6 @@ AC_ARG_ENABLE(integration-tests,
                              [enables tests outside of the library (can be used together with normal builds of the library)]),
               enable_integration_tests="$enableval", enable_integration_tests="no")
 
-AC_ARG_ENABLE(buteo-tests,
-              AS_HELP_STRING([--enable-buteo-tests],
-                             [enables tests for Buteo sync framework. Not enabled when neither '--enable-unit-tests' nor '--enable-integration-tests' is specified]),
-              [ if test "$enable_unit_tests" = "yes" || test "$enable_integration_tests" = "yes" ; then
-                    enable_buteo_tests="$enableval"
-                else
-                    enable_buteo_tests="no"
-                fi], enable_buteo_tests="no")
-PKG_CHECK_MODULES(BUTEOSYNCPROFILE, [syncprofile], HAVE_SYNCPROFILE=yes, HAVE_SYNCPROFILE=no)
-PKG_CHECK_MODULES(BUTEOSYNCCOMMON, [synccommon], HAVE_SYNCCOMMON=yes, HAVE_SYNCCOMMON=no)
-
 AC_ARG_ENABLE(static-cxx,
               AS_HELP_STRING([--enable-static-cxx],
                              [build executables which contain libstdc++ instead of requiring suitable libstdc++.so to run]),
@@ -188,17 +177,8 @@ fi
 if test "x$enable_integration_tests" = 'xyes'; then
         AC_DEFINE(ENABLE_INTEGRATION_TESTS, 1, [enable integration tests inside the final library])
 fi
-if test "$enable_buteo_tests" = "yes"; then
-        AC_DEFINE(ENABLE_BUTEO_TESTS, 1, [enable buteo tests])
-        need_qt_modules="$need_qt_modules dbus xml"
-        AC_PATH_PROG(SQLITE3, sqlite3)
-        if test -z "$SQLITE3"; then
-            AC_MSG_ERROR([sqlite3 not found, is required for buteo testing])
-        fi
-fi
 AM_CONDITIONAL([ENABLE_UNIT_TESTS], [test "$enable_unit_tests" = "yes"])
 AM_CONDITIONAL([ENABLE_TESTING], [test "$enable_unit_tests" = "yes" || test "$enable_integration_tests" = "yes" ])
-AM_CONDITIONAL([ENABLE_BUTEO_TESTS], [test "$enable_buteo_tests" = "yes"])
 
 if test $enable_static_cxx = "yes"; then
         LIBS="$LIBS -L."
@@ -397,6 +377,29 @@ fi
 # for dbus interface file mangling
 AC_PATH_PROG(XSLT, xsltproc)
 
+
+# Changes in GTK3 mean that supporting both GTK3 and GTK2 in the same codebase
+# is difficult. We want to support GTK2 for the time being so the code is forked.
+AC_ARG_ENABLE(gtk,
+              AS_HELP_STRING([--enable-gtk=major version],
+                             [Selects the gtk+ version ("2" or "3") to use for the UI.
+                              If this option is used, --enable-gui should be used as well.
+                              "3" is the default option if available, otherwise "2".]),
+              [ if test "$enableval" = "3" ; then
+                    gtk_version=gtk+-3.0
+                elif test "$enableval" = "2" ; then
+                    gtk_version=gtk+-2.0
+                else
+                    AC_MSG_ERROR([Unknown gtk version: '$enableval'])
+                fi
+              ],
+              [ PKG_CHECK_EXISTS([gtk+-3.0],
+                                 [gtk_version=gtk+-3.0],
+                                 [gtk_version=gtk+-2.0]) ])
+
+
+AM_CONDITIONAL([COND_GTK2], [test "$gtk_version" = "gtk+-2.0"])
+
 AC_ARG_ENABLE(gui,
               AS_HELP_STRING([--enable-gui[=gui type]],
                              [enables building the GTK+ UI that uses the SyncEvolution DBus API.
@@ -444,7 +447,7 @@ AC_ARG_WITH([gio-gdbus],
             AS_HELP_STRING([--with-gio-gdbus],
                            [enables use of GIO's GDBus instead of the in-tree, Bluez gdbus.]),
             with_gio_gdbus="$withval",
-            PKG_CHECK_EXISTS([gio-2.0 >= 2.26],
+            PKG_CHECK_EXISTS([gio-2.0 >= 2.30],
                              [with_gio_gdbus="yes"],
                              [with_gio_gdbus="no"]))
 AM_CONDITIONAL([COND_GIO_GDBUS], [test "x$with_gio_gdbus" = "xyes"])
@@ -472,18 +475,15 @@ if test $enable_dbus_service = "yes"; then
     if test -z "$XSLT"; then
        AC_MSG_ERROR([xsltproc not found, is required for D-Bus service])
     fi
-    # Recent libnotify releases work with gtk+-2.0 and gtk+-3.0. We
-    # pick gtk+-2.0 here, to be compatible with old libnotify releases
-    # which had that hard-cored and because sync-ui also depends on
-    # gtk+-2.0.
+    # Recent libnotify releases work with gtk+-2.0 and gtk+-3.0.
     AC_ARG_ENABLE([notify],
         AS_HELP_STRING([--enable-notify],
                        [send notifications for automatic sync events, using libnotify]),
         enable_notify="$enableval",
-        PKG_CHECK_EXISTS([libnotify gtk+-2.0],
+        PKG_CHECK_EXISTS([libnotify $gtk_version],
                          [enable_notify="yes"],
                          [enable_notify="no"]))
-    AS_IF([test "x$enable_notify" = "xyes"], [PKG_CHECK_MODULES([LIBNOTIFY], [libnotify gtk+-2.0])]
+    AS_IF([test "x$enable_notify" = "xyes"], [PKG_CHECK_MODULES([LIBNOTIFY], [libnotify $gtk_version])]
                                              [AC_DEFINE(HAS_NOTIFY, 1,
                                                         [define if libnotify could be used in dbus service])])
 
@@ -525,10 +525,6 @@ AC_SUBST(DBUS_GLIB_LIBS)
 AC_SUBST(LIBNOTIFY_CFLAGS)
 AC_SUBST(LIBNOTIFY_LIBS)
 AC_SUBST(LIBEXECDIR)
-AC_SUBST(BUTEOSYNCPROFILE_LIBS)
-AC_SUBST(BUTEOSYNCPROFILE_CFLAGS)
-AC_SUBST(BUTEOSYNCCOMMON_LIBS)
-AC_SUBST(BUTEOSYNCCOMMON_CFLAGS)
 
 DBUS_SERVICES_DIR="${datadir}/dbus-1/services"
 AC_SUBST(DBUS_SERVICES_DIR)
@@ -544,9 +540,16 @@ fi
 
 # decide which sync-ui(s) we are building:
 # sync-ui (in either GTK or Moblin mode) or both (in separate binaries)
+
+if test $gtk_version = "gtk+-3.0"; then
+    gtk_dir=src/gtk3-ui
+else
+    gtk_dir=src/gtk-ui
+fi
+
 case $enable_gui in
-     all) GUI_PROGRAMS='src/gtk-ui/sync-ui-gtk${EXEEXT} src/gtk-ui/sync-ui-moblin${EXEEXT}'; GUI_DESKTOP_FILES="src/gtk-ui/sync-gtk.desktop src/gtk-ui/sync-moblin.desktop";;
-     gtk|moblin) GUI_PROGRAMS='src/gtk-ui/sync-ui${EXEEXT}'; GUI_DESKTOP_FILES="src/gtk-ui/sync.desktop";;
+     all) GUI_PROGRAMS=${gtk_dir}'/sync-ui-gtk${EXEEXT} '${gtk_dir}'/sync-ui-moblin${EXEEXT}'; GUI_DESKTOP_FILES="${gtk_dir}/sync-gtk.desktop ${gtk_dir}/sync-moblin.desktop";;
+     gtk|moblin) GUI_PROGRAMS=${gtk_dir}'/sync-ui${EXEEXT}'; GUI_DESKTOP_FILES="${gtk_dir}/sync.desktop";;
      no) GUI_PROGRAMS=; GUI_DESKTOP_FILES=;;
      *) AC_MSG_ERROR([Unknown enable_gui type: '$enable_gui'])
 esac
@@ -556,12 +559,15 @@ if test $enable_gui != "no"; then
     AC_PATH_PROG(DBUS_BINDING_TOOL, dbus-binding-tool)
     AC_PATH_PROG(GLIB_GENMARSHAL, glib-genmarshal)
 
-    gui_modules="glib-2.0 dbus-glib-1 >= 0.60 gtk+-2.0 libglade-2.0 gio-2.0"
+    gui_modules="$gtk_version glib-2.0 dbus-glib-1 >= 0.60 gio-2.0"
     if test $enable_gui = "moblin"; then
         AC_DEFINE(USE_MOBLIN_UX, 1, [Use Moblin UI widgets])
     fi
-    if test $enable_gui = "moblin" -o $enable_gui = "all"; then
-        gui_modules="$guimodules mx-gtk-1.0"
+
+    # gtk3 provides a switch widget, otherwise we need mx-gtk
+    if test $gtk_version != "gtk+-3.0" &&
+       test $enable_gui = "moblin" -o $enable_gui = "all"; then
+        gui_modules="$gui_modules mx-gtk-1.0"
 
         PKG_CHECK_MODULES(MX_GTK_0_99_1, mx-gtk-1.0 >= 0.99.1,
                           have_mx_gtk_0_99_1="yes",
@@ -588,7 +594,6 @@ if test $enable_gui != "no"; then
 
     PKG_CHECK_MODULES(GUI, $gui_modules)
 
-    AC_PATH_PROG([GTK_BUILDER_CONV], gtk-builder-convert)
 elif test "$enable_dbus_service" = "yes"; then
     # syncevo-dbus-server needs localization
     :
@@ -602,7 +607,6 @@ AC_SUBST(GUI_CFLAGS)
 AC_SUBST(GUI_LIBS)
 AC_SUBST(GUI_PROGRAMS)
 AC_SUBST(GUI_DESKTOP_FILES)
-
 
 # Boost headers: boost/foreach.hpp is needed (1.33/Debian Etch
 # doesn't have it, 1.34/Ubuntu 8.10 Hardy does). 1.35 is available
@@ -1019,7 +1023,11 @@ echo "DBus service: $enable_dbus_service"
 echo "Notifications: $enable_notify"
 echo "GIO GDBus: $with_gio_gdbus"
 echo "GNOME keyring: $enable_gnome_keyring"
-echo "UI (DBus client): $enable_gui"
+if test "$enable_gui" = "no"; then
+    echo "UI (DBus client): no"
+else
+    echo "UI (DBus client): $enable_gui (using $gtk_version)"
+fi
 echo "Bluetooth transport: $have_bluetooth"
 echo "GNOME Bluetooth panel plugin: $enable_gnome_bluetooth_panel"
 echo "SHA-256: $have_sha"

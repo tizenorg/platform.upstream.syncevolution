@@ -65,13 +65,9 @@ public:
 
 class Cmdline {
 public:
-    /**
-     * @param out      stdout stream for normal messages
-     * @param err      stderr stream for error messages
-     */
-    Cmdline(int argc, const char * const *argv, std::ostream &out, std::ostream &err);
-    Cmdline(const std::vector<std::string> &args, std::ostream &out, std::ostream &err);
-    Cmdline(std::ostream &out, std::ostream &err, const char *arg, ...);
+    Cmdline(int argc, const char * const *argv);
+    Cmdline(const std::vector<std::string> &args);
+    Cmdline(const char *arg, ...);
     virtual ~Cmdline() {}
 
     /**
@@ -120,6 +116,8 @@ public:
 
     /* check whether command line runs sync. It should be called after parsing. */
     bool isSync();
+    /** same as isSync() for --restore */
+    bool isRestore() const;
 
 protected:
     // vector to store strings for arguments 
@@ -127,7 +125,6 @@ protected:
 
     int m_argc;
     const char * const * m_argv;
-    std::ostream &m_out, &m_err;
 
     //array to store pointers of arguments
     boost::scoped_array<const char *> m_argvArray;
@@ -150,7 +147,6 @@ protected:
     Bool m_printConfig;
     Bool m_printSessions;
     Bool m_dontrun;
-    Bool m_keyring;
     Bool m_monitor;
     Bool m_useDaemon;
     FullProps m_props;
@@ -217,6 +213,20 @@ protected:
                    const char *param,
                    const char *propname = NULL);
 
+    /**
+     * parse keyword which sets a certain property,
+     * like --sync=two-way, --sync two-way, ... for the "sync" property
+     *
+     * If a default value is give, then the format is like:
+     * --keyring[=<def>], --keyring=<value>, ...
+     * but not
+     * --keyring <value>
+     */
+    bool parseAssignment(int &opt, std::vector<std::string> &parsed,
+                         PropertyType propertyType,
+                         const char *propname,
+                         const char *def);
+
     bool listPropValues(const ConfigPropertyRegistry &validProps,
                         const std::string &propName,
                         const std::string &opt);
@@ -240,8 +250,9 @@ protected:
                      const SyncConfig::ConfigList &servers);
 
     void dumpConfigTemplates(const std::string &preamble,
-                     const SyncConfig::TemplateList &templates,
-                     bool printRank = false);
+                             const SyncConfig::TemplateList &templates,
+                             bool printRank = false,
+                             Logger::Level level = Logger::SHOW);
 
     enum DumpPropertiesFlags {
         DUMP_PROPS_NORMAL = 0,

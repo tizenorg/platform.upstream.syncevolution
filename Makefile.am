@@ -61,7 +61,7 @@ MAINTAINERCLEANFILES += Makefile.in config.h.in config.guess config.sub configur
 
 TEST_README_FILES = $(wildcard $(top_srcdir)/test/README.*)
 
-DEV_FILE_PATTERN = $(1)$(2)/etc $(1)$(2)/include $(1)$(2)/lib/*.so $(1)$(2)/lib/*.a $(1)$(2)/lib/*.la $(1)$(2)/lib/*/*.la $(1)$(2)/lib/pkgconfig
+DEV_FILE_PATTERN = $(1)$(2)/include $(1)$(2)/lib/*.so $(1)$(2)/lib/*.a $(1)$(2)/lib/*.la $(1)$(2)/lib/*/*.la $(1)$(2)/lib/pkgconfig
 
 # binary distribution as .tar.gz
 if COND_DBUS
@@ -179,7 +179,7 @@ deb rpm : dist/$(distdir) dist/debian/control
 		--pkgsource='http://syncevolution.org' \
 		--pkggroup='$*' \
 		--pkggroup='comm' \
-		cp -r `pwd`/$</usr/* /usr
+		cp -r `pwd`/$</* /
 	if [ $@ = "rpm" ]; then cp /usr/src/rpm/RPMS/*/${PKGNAME}-${VERSION}-2.*.rpm .; fi
 
 # Pseudo platform .deb packages:
@@ -225,7 +225,7 @@ dist/$(distdir): all
 	rm -rf $@
 	$(MAKE) install DESTDIR=`pwd`/$@
 	$(MAKE) installcheck DESTDIR=`pwd`/$@
-	rm -rf $(call DEV_FILE_PATTERN, $@)
+	rm -rf $(call DEV_FILE_PATTERN,$@,/usr)
 clean-local: clean_dist
 clean_dist:
 	rm -rf dist description-pak
@@ -342,7 +342,7 @@ installcheck-local: $(all_local_installchecks) ;
 dist-hook: $(all_dist_hooks)
 
 # Force sequential installation. This is a workaround for relinking failures
-# during concurrent distcheck (a backed was relinked against not yet installed
+# during concurrent distcheck (a backend was relinked against not yet installed
 # libsyncevolution.la).
 install-am: all-am
 	@$(MAKE) $(AM_MAKEFLAGS) install-exec-am

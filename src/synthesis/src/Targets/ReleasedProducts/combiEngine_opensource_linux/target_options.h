@@ -23,6 +23,11 @@
 #define RELEASE_SYDEBUG 2 // extended DBG included
 //#define OPTIONAL_SYDEBUG 1
 
+// enable printing to console via libc by default,
+// might be turned off again in product_options.h
+#define CONSOLEINFO
+#define CONSOLEINFO_LIBC
+
 // Eval limit options
 // ==================
 

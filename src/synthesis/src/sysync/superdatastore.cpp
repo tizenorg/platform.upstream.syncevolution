@@ -250,6 +250,16 @@ TSuperDataStore::~TSuperDataStore()
 // Methods overriding TLocalEngineDS
 // ----------------------------------
 
+bool TSuperDataStore::canRestart()
+{
+  TSubDSLinkList::iterator pos;
+  for (pos=fSubDSLinks.begin();pos!=fSubDSLinks.end();pos++) {
+    if (!pos->fDatastoreLinkP->canRestart()) {
+      return false;
+    }
+  }
+  return true;
+}
 
 // obtain Sync Cap mask, must be lowest common mask of all subdatastores
 uInt32 TSuperDataStore::getSyncCapMask(void)
@@ -262,6 +272,43 @@ uInt32 TSuperDataStore::getSyncCapMask(void)
   }
   return capmask;
 } // TSuperDataStore::getSyncCapMask
+
+bool TSuperDataStore::syncModeSupported(const std::string &mode)
+{
+  TSubDSLinkList::iterator pos;
+  for (pos=fSubDSLinks.begin();pos!=fSubDSLinks.end();pos++) {
+    if (!pos->fDatastoreLinkP->syncModeSupported(mode)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void TSuperDataStore::getSyncModes(set<string> &modes)
+{
+  // Initialize with content from first subdatastore.
+  TSubDSLinkList::iterator pos = fSubDSLinks.begin();
+  if (pos!=fSubDSLinks.end()) {
+    pos->fDatastoreLinkP->getSyncModes(modes);
+    ++pos;
+  }
+  // Remove any mode not found in any of the other subdatastores.
+  while (pos!=fSubDSLinks.end() && !modes.empty()) {
+    set<string> b;
+    pos->fDatastoreLinkP->getSyncModes(b);
+    set<string>::iterator it = modes.begin();
+    while (it != modes.end()) { 
+      if (b.find(*it) != b.end()) {
+        ++it;
+      } else {
+        set<string>::iterator del = it;
+        ++it;
+        modes.erase(del);
+      }
+    }
+    pos++;
+  }
+}
 
 
 // process Sync alert from remote party: check if alert code is supported,

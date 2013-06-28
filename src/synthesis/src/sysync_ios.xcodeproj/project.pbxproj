@@ -1770,7 +1770,7 @@
 		29B97313FDCFA39411CA2CEA /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0420;
+				LastUpgradeCheck = 0430;
 				ORGANIZATIONNAME = plan44.ch;
 			};
 			buildConfigurationList = C01FCF4E08A954540054247B /* Build configuration list for PBXProject "sysync_ios" */;
@@ -2111,11 +2111,13 @@
 					armv7,
 				);
 				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_THUMB_SUPPORT = NO;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_MASTER_OBJECT_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 3.0;
 				ONLY_ACTIVE_ARCH = YES;
+				OTHER_CFLAGS = "-mno-thumb";
 				SDKROOT = iphoneos;
 			};
 			name = Debug;
@@ -2127,8 +2129,11 @@
 					armv6,
 					armv7,
 				);
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_THUMB_SUPPORT = NO;
 				GENERATE_MASTER_OBJECT_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 3.0;
+				OTHER_CFLAGS = "-mno-thumb";
 				SDKROOT = iphoneos;
 			};
 			name = Release;
@@ -2142,6 +2147,7 @@
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = "DEBUG=1";
+				GCC_THUMB_SUPPORT = NO;
 				PRODUCT_NAME = sysync_combi_ios;
 				SKIP_INSTALL = YES;
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/Targets/ReleasedProducts/combiEngine_opensource_ios";
@@ -2157,6 +2163,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				GCC_C_LANGUAGE_STANDARD = c99;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_THUMB_SUPPORT = NO;
 				PRODUCT_NAME = sysync_combi_ios;
 				SKIP_INSTALL = YES;
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/Targets/ReleasedProducts/combiEngine_opensource_ios";
@@ -2174,6 +2181,7 @@
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREFIX_HEADER = prefix_file.h;
 				GCC_PREPROCESSOR_DEFINITIONS = "DEBUG=1";
+				GCC_THUMB_SUPPORT = NO;
 				PRODUCT_NAME = sysync_client_ios;
 				SKIP_INSTALL = YES;
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/Targets/ReleasedProducts/clientEngine_opensource_ios";
@@ -2187,9 +2195,9 @@
 				CONFIGURATION_BUILD_DIR = "$(PROJECT_DIR)/sysync_SDK/bin/iOS/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)";
 				COPY_PHASE_STRIP = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				GCC_C_LANGUAGE_STANDARD = c99;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GCC_PREFIX_HEADER = prefix_file.h;
+				GCC_THUMB_SUPPORT = NO;
 				PRODUCT_NAME = sysync_client_ios;
 				SKIP_INSTALL = YES;
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/Targets/ReleasedProducts/clientEngine_opensource_ios";

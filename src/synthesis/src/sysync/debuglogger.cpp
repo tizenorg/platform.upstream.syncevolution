@@ -368,6 +368,8 @@ void TStdFileDbgOut::putLine(cAppCharP aLine, bool aForceFlush)
       // we need to open the file for append first
       lockMutex(mutex);
       fFile=fopen(fFileName.c_str(),"a");
+      if (!fFile)
+        unlockMutex(mutex);
     }
     if (fFile) {
       // now output

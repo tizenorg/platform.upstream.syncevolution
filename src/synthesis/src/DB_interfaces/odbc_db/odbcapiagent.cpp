@@ -1354,6 +1354,12 @@ bool TODBCApiAgent::appendFieldValueLiteral(
         if (intts) {
           // Timestamp represented as integer in the DB
           // - add as integer timestamp
+//          sInt64 ii = lineartimeToDbInt(ts,aDBFieldType);
+//          PDEBUGPRINTFX(DBG_DBAPI+DBG_EXOTIC,(
+//            "ts=%lld -> dbInteger=%lld/0x%llX (UnixToLineartimeOffset=%lld, secondToLinearTimeFactor=%lld)",
+//            ts,ii,ii,UnixToLineartimeOffset,secondToLinearTimeFactor
+//          ));
+//          StringObjAppendPrintf(aSQL,PRINTF_LLD,PRINTF_LLD_ARG(ii));
           StringObjAppendPrintf(aSQL,PRINTF_LLD,PRINTF_LLD_ARG(lineartimeToDbInt(ts,aDBFieldType)));
         }
         else {

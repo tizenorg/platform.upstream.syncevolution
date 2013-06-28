@@ -1224,7 +1224,7 @@ Ret_t xltEncPcdata(XltTagID_t tagId, XltRO_t reqOptFlag, const VoidPtr_t pConten
           }
 #endif
           default: {
-              return SML_ERR_XLT_INVAL_PCDATA_TYPE;
+              // 2003-11-24: Tomy to deal with pcdata empty extensions (for example <Meta></Meta> which is valid)
               // refer to xltdec.c to see that empty extensions result in SmlPcdataPtr_t with all fields (data) set to 0
               if (((SmlPcdataPtr_t)pContent)->contentType != SML_PCDATA_UNDEFINED ||
                 ((SmlPcdataPtr_t)pContent)->extension != SML_EXT_UNDEFINED ||
@@ -1428,7 +1428,7 @@ Ret_t xltBuildExtention(SmlPcdataExtension_t extId, XltRO_t reqOptFlag, VoidPtr_
         /* in the latter case, we need a special treatment of this sub-dtd, as we have */
         /* to put it into a SML_PCDATA_OPAQUE field ... */
         if (enc == SML_XML)
-        return devinfEncBlock(TN_DEVINF_DEVINF,reqOptFlag,pContent,enc,pBufMgr,SML_EXT_DEVINF);
+            return devinfEncBlock(TN_DEVINF_DEVINF,reqOptFlag,pContent,enc,pBufMgr,SML_EXT_DEVINF);
         else
             return subdtdEncWBXML(TN_DEVINF_DEVINF,reqOptFlag,pContent,SML_WBXML,pBufMgr,SML_EXT_DEVINF);
     break;

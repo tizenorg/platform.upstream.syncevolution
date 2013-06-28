@@ -815,6 +815,10 @@
       <!-- plan44.ch client libary handles all admin data in it's own binary files, plugins don't need to care about admin data at all -->
       <plugin_datastoreadmin>no</plugin_datastoreadmin>
 
+      <!-- Note: the plugin_params are specific to the plugin in use, and will not be accepted by all plugins.
+           For example, the <datafilepath> parameter is specific to SDK_textdb. If you change this sample to
+           use custom plugins, you might need to remove that parameter, otherwise the engine will report a
+           config error -->
       <plugin_params>
         <datafilepath expand="yes">$(textfilespath)</datafilepath>
       </plugin_params>

@@ -33,6 +33,14 @@ namespace GDBusCXX {
 MethodHandler::MethodMap MethodHandler::m_methodMap;
 boost::function<void (void)> MethodHandler::m_callback;
 
+static void GDBusNameLost(GDBusConnection *connection,
+                          const gchar *name,
+                          gpointer user_data)
+{
+    g_critical("lost D-Bus connection or failed to obtain %s D-Bus name, quitting", name);
+    exit(1);
+}
+
 DBusConnectionPtr dbus_get_bus_connection(const char *busType,
                                           const char *name,
                                           bool unshared,
@@ -82,8 +90,10 @@ DBusConnectionPtr dbus_get_bus_connection(const char *busType,
     }
 
     if(name) {
-        g_bus_own_name_on_connection(conn.get(), name, G_BUS_NAME_OWNER_FLAGS_NONE,
-                                     NULL, NULL, NULL, NULL);
+        // Copy name, to ensure that it remains available.
+        char *copy = g_strdup(name);
+        g_bus_own_name_on_connection(conn.get(), copy, G_BUS_NAME_OWNER_FLAGS_NONE,
+                                     NULL, GDBusNameLost, copy, g_free);
         g_dbus_connection_set_exit_on_close(conn.get(), TRUE);
     }
 
@@ -91,11 +101,18 @@ DBusConnectionPtr dbus_get_bus_connection(const char *busType,
 }
 
 DBusConnectionPtr dbus_get_bus_connection(const std::string &address,
-                                          DBusErrorCXX *err)
+                                          DBusErrorCXX *err,
+                                          bool delayed /*= false*/)
 {
     GError* error = NULL;
+    int flags = G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_CLIENT;
+
+    if (delayed) {
+        flags |= G_DBUS_CONNECTION_FLAGS_DELAY_MESSAGE_PROCESSING;
+    }
+
     DBusConnectionPtr conn(g_dbus_connection_new_for_address_sync(address.c_str(),
-                                                                  G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_CLIENT,
+                                                                  static_cast<GDBusConnectionFlags>(flags),
                                                                   NULL, /* GDBusAuthObserver */
                                                                   NULL, /* GCancellable */
                                                                   &error),
@@ -105,6 +122,37 @@ DBusConnectionPtr dbus_get_bus_connection(const std::string &address,
     }
 
     return conn;
+}
+
+void dbus_bus_connection_undelay(const DBusConnectionPtr &conn)
+{
+    g_dbus_connection_start_message_processing(conn.get());
+}
+
+static void ConnectionLost(GDBusConnection *connection,
+                           gboolean remotePeerVanished,
+                           GError *error,
+                           gpointer data)
+{
+    DBusConnectionPtr::Disconnect_t *cb = static_cast<DBusConnectionPtr::Disconnect_t *>(data);
+    (*cb)();
+}
+
+static void DestroyDisconnect(gpointer data,
+                              GClosure *closure)
+                           {
+    DBusConnectionPtr::Disconnect_t *cb = static_cast<DBusConnectionPtr::Disconnect_t *>(data);
+    delete cb;
+}
+
+void DBusConnectionPtr::setDisconnect(const Disconnect_t &func)
+{
+    g_signal_connect_closure(get(),
+                             "closed",
+                             g_cclosure_new(G_CALLBACK(ConnectionLost),
+                                            new Disconnect_t(func),
+                                            DestroyDisconnect),
+                             true);
 }
 
 boost::shared_ptr<DBusServerCXX> DBusServerCXX::listen(const std::string &address, DBusErrorCXX *err)
@@ -150,7 +198,7 @@ boost::shared_ptr<DBusServerCXX> DBusServerCXX::listen(const std::string &addres
         return boost::shared_ptr<DBusServerCXX>();
     }
 
-    g_dbus_server_start(server);
+    // steals reference to 'server'
     boost::shared_ptr<DBusServerCXX> res(new DBusServerCXX(server, realAddr));
     g_signal_connect(server,
                      "new-connection",
@@ -181,10 +229,14 @@ gboolean DBusServerCXX::newConnection(GDBusServer *server, GDBusConnection *newC
                 g_dbus_connection_get_capabilities(newConn) & G_DBUS_CAPABILITY_FLAGS_UNIX_FD_PASSING);
 
         try {
-            DBusConnectionPtr conn(newConn);
+            // Ref count of connection has to be increased if we want to handle it.
+            // Something inside m_newConnection has to take ownership of connection,
+            // because conn increases ref count only temporarily.
+            DBusConnectionPtr conn(newConn, true);
             me->m_newConnection(*me, conn);
         } catch (...) {
             g_error("handling new D-Bus connection failed with C++ exception");
+            return FALSE;
         }
 
         return TRUE;
@@ -194,10 +246,15 @@ gboolean DBusServerCXX::newConnection(GDBusServer *server, GDBusConnection *newC
 }
 
 DBusServerCXX::DBusServerCXX(GDBusServer *server, const std::string &address) :
-    m_server(server),
+    m_server(server, false), // steal reference
     m_address(address)
 {
+    g_dbus_server_start(server);
 }
 
+DBusServerCXX::~DBusServerCXX()
+{
+    g_dbus_server_stop(m_server.get());
+}
 
 }

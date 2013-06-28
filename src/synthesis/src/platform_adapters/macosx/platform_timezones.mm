@@ -106,11 +106,12 @@ bool getSystemTimeZoneContext(timecontext_t &aContext, GZones* aGZones)
   t.bias = 0;
   t.biasDST = 0;
   t.dst.wMonth= 0;
+  sInt16 y;
 
   lineartime_t stdTime, dstTime;
   if (getSystemTimeZone( t.name, t.bias,t.biasDST, stdTime,dstTime )) {
-    Get_tChange( stdTime, t.std );
-    Get_tChange( dstTime, t.dst );
+    Get_tChange( stdTime, t.std, y );
+    Get_tChange( dstTime, t.dst, y );
   }
   // search entry, first by rule
   return ContextForEntry(aContext, t, false, aGZones);

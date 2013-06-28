@@ -2635,7 +2635,7 @@ Ret_t TSyncSession::processHeader(TSyncHeader *aSyncHdrP)
               PDEBUGPRINTFX(DBG_HOT,("- Response to be sent to URI='%s'",fRespondURI.empty() ? "[none specified, back to source]" : fRespondURI.c_str()));
               PDEBUGPRINTFX(DBG_HOT,("- Target (Local party) : URI='%s' DisplayName='%s'",fLocalURI.c_str(),fLocalName.c_str()));
               #endif
-              CONSOLEPRINTF(("> SyncML message #%ld received from '%s'",fIncomingMsgID,fRemoteURI.c_str()));
+              CONSOLEPRINTF(("> SyncML message #%ld received from '%s'",(long)fIncomingMsgID,fRemoteURI.c_str()));
               // - UTC support is implied for SyncML 1.0 (as most devices support it, and
               //   there is was no way to signal it in 1.0).
               if (!fRemoteDevInfKnown && fSyncMLVersion==syncml_vers_1_0) fRemoteCanHandleUTC=true;

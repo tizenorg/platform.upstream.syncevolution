@@ -48,6 +48,7 @@ class CalDAVSource : public WebDAVSource,
     virtual void updateSynthesisInfo(SynthesisInfo &info,
                                      XMLConfigFragments &fragments) {
         info.m_backendRule = "HAVE-SYNCEVOLUTION-EXDATE-DETACHED";
+        info.m_globalIDs = true;
     }
 
     // implementation of SyncSourceLogging callback
@@ -196,6 +197,12 @@ class CalDAVSource : public WebDAVSource,
                    const std::string &href,
                    const std::string &etag,
                    std::string &data);
+
+    /** callback for loadItem(): store right item from REPORT */
+    int storeItem(const std::string &wantedLuid,
+                  std::string &item,
+                  std::string &data,
+                  const std::string &href);
 
     /** add to m_cache */
     void addSubItem(const std::string &luid,
