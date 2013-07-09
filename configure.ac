@@ -166,14 +166,13 @@ AC_CHECK_HEADERS(signal.h dlfcn.h)
 # cppunit-config is used even when both unit tests and integration tests are disabled.
 AC_PATH_PROG([CPPUNIT_CONFIG], [cppunit-config], [no])
 
-test "x$CPPUNIT_CONFIG" != 'xno' || AC_MSG_ERROR("cppunit-config not found.")
+# test "x$CPPUNIT_CONFIG" != 'xno' || AC_MSG_ERROR("cppunit-config not found.")
 
 # cppunit needed?
-#if test "x$enable_unit_tests" = 'xyes' || test "x$enable_integration_tests" = 'xyes'
-#then
+if test "x$enable_unit_tests" = 'xyes' || test "x$enable_integration_tests" = 'xyes'; then
   CPPUNIT_CXXFLAGS=`$CPPUNIT_CONFIG --cflags`
   CPPUNIT_LDFLAGS=`$CPPUNIT_CONFIG --libs`
-#fi
+fi
 AC_SUBST(CPPUNIT_CXXFLAGS)
 AC_SUBST(CPPUNIT_LDFLAGS)
 
