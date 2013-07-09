@@ -1,0 +1,4 @@
+* Tue Jul 09 2013 Patrick Ohly <patrick.ohly@intel.com>
+- initial packaging
+- autotools: cppunit is optional
+
