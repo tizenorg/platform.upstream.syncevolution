@@ -6228,9 +6228,9 @@ bool TLocalEngineDS::engProcessRemoteItemAsServer(
                 // - merge server's data into client item
                 PDEBUGPRINTFX(DBG_DATA,("Trying to merge some data from loosing server item into winning client item"));
                 aSyncItemP->mergeWith(*matchingItemP,changedincoming,changedexisting,this);
+                // only count if server gets updated
+                if (changedexisting) fConflictsClientWins++;
               }
-              // only count if server gets updated
-              if (changedexisting) fConflictsClientWins++;
               // Note: changedexisting will cause needserverupdate to be set below
             }
             else if (crstrategy==cr_server_wins) {

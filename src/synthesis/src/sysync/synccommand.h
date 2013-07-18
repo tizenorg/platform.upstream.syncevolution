@@ -90,6 +90,9 @@ public:
   #endif
   // - analyze command (but do not yet execute)
   virtual bool analyze(TPackageStates aPackageState) { fPackageState=aPackageState; return true; }; // returns false if command is bad and cannot be executed
+  // - execute() can be called even if there are other already queued commands.
+  //   True by default, exceptions must be defined explicitly.
+  virtual bool canExecuteOutOfOrder() { return true; }
   // - execute command (perform real actions, generate status)
   virtual bool execute(void); // returns true if command could execute, false if it must be queued for later finishing (next message)
   // - get number of bytes that will be still available in the workspace after
@@ -345,6 +348,9 @@ public:
   // - mark any syncitems (or other data) for resume. Called for pending commands
   //   when a Suspend alert is received or whenever a resumable state must be saved
   virtual void markPendingForResume(TLocalEngineDS *aForDatastoreP, bool aUnsent);
+
+  void setLocalDatastore(TLocalEngineDS *aLocalDataStoreP) { fLocalDataStoreP=aLocalDataStoreP; }
+  TLocalEngineDS *getLocalDatastore() const { return fLocalDataStoreP; }
 protected:
   virtual void FreeSmlElement(void);
   SmlSyncPtr_t fSyncElementP;
@@ -413,6 +419,7 @@ public:
   virtual ~TSyncOpCommand();
   virtual bool isSyncOp() { return true; };
   virtual bool analyze(TPackageStates aPackageState);
+  virtual bool canExecuteOutOfOrder();
   virtual bool execute(void);
   #ifndef USE_SML_EVALUATION
   // - get (approximated) message size required for sending it

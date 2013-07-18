@@ -25,12 +25,7 @@
 
 #include "PbapSyncSource.h"
 
-// SyncEvolution includes a copy of Boost header files.
-// They are safe to use without creating additional
-// build dependencies. boost::filesystem requires a
-// library and therefore is avoided here. Some
-// utility functions from SyncEvolution are used
-// instead, plus standard C/Posix functions.
+#include <boost/assign/list_of.hpp>
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/tokenizer.hpp>
 
@@ -74,6 +69,7 @@ class PullAll
     std::string m_buffer; // vCards kept in memory when using old obexd.
     TmpFile m_tmpFile; // Stored in temporary file and mmapped with more recent obexd.
     Content m_content; // Refers to chunks of m_buffer or m_tmpFile without copying them.
+    int m_numContacts; // Number of existing contacts, according to GetSize() or after downloading.
     int m_currentContact; // Numbered starting with zero according to discovery in addVCards.
     boost::shared_ptr<PbapSession> m_session; // Only set when there is a transfer ongoing.
     int m_tmpFileOffset; // Number of bytes already parsed.
@@ -85,6 +81,12 @@ public:
     const char *addVCards(int startIndex, const pcrecpp::StringPiece &content);
 };
 
+enum PullData
+{
+    PULL_AS_CONFIGURED,
+    PULL_WITHOUT_PHOTOS
+};
+
 class PbapSession : private boost::noncopyable {
 public:
     static boost::shared_ptr<PbapSession> create(PbapSyncSource &parent);
@@ -94,9 +96,10 @@ public:
     typedef std::map<std::string, pcrecpp::StringPiece> Content;
     typedef std::map<std::string, boost::variant<std::string> > Params;
 
-    boost::shared_ptr<PullAll> startPullAll();
+    boost::shared_ptr<PullAll> startPullAll(PullData pullata);
     void checkForError(); // Throws exception if transfer failed.
-    bool transferComplete() const { return m_transferComplete; }
+    Timespec transferComplete() const;
+    void resetTransfer();
     void shutdown(void);
 
 private:
@@ -107,18 +110,23 @@ private:
     std::auto_ptr<GDBusCXX::DBusRemoteObject> m_client;
     enum {
         OBEXD_OLD, // obexd < 0.47
-        OBEXD_NEW, // obexd >= 0.47
+        OBEXD_NEW, // obexd == 0.47, file-based transfer
+        // OBEXD_048 // obexd == 0.48, file-based transfer without SetFilter and with filter parameter to PullAll()
         BLUEZ5     // obexd in Bluez >= 5.0
     } m_obexAPI;
 
     /** filter parameters for BLUEZ5 PullAll */
-    typedef boost::variant< std::string, std::list<std::string> > Bluez5Values;
+    typedef std::list<std::string> Properties;
+    typedef boost::variant< std::string, Properties > Bluez5Values;
     std::map<std::string, Bluez5Values> m_filter5;
+    Properties m_filterFields;
+    Properties supportedProperties() const;
 
     /**
-     * m_transferComplete will be set to true when observing a
+     * m_transferComplete will be set to the current monotonic time when observing a
      * "Complete" signal on a transfer object path which has the
-     * current session as prefix.
+     * current session as prefix. There may be more than one such transfer,
+     * so record all completions that we see and then pick the right one.
      *
      * It also gets set when an error occurred for such a transfer,
      * in which case m_error will also be set.
@@ -127,10 +135,22 @@ private:
      * single transfer. Otherwise a more complex tracking of
      * completion, for example per transfer object path, is needed.
      */
-    bool m_transferComplete;
-    std::string m_transferErrorCode;
-    std::string m_transferErrorMsg;
-    
+    class Completion {
+    public:
+        Timespec m_transferComplete;
+        std::string m_transferErrorCode;
+        std::string m_transferErrorMsg;
+
+        static Completion now() {
+            Completion res;
+            res.m_transferComplete = Timespec::monotonic();
+            return res;
+        }
+    };
+    typedef std::map<std::string, Completion> Transfers;
+    Transfers m_transfers;
+    std::string m_currentTransfer;
+
     std::auto_ptr<GDBusCXX::SignalWatch3<GDBusCXX::Path_t, std::string, std::string> >
         m_errorSignal;
     void errorCb(const GDBusCXX::Path_t &path, const std::string &error,
@@ -156,8 +176,7 @@ private:
 };
 
 PbapSession::PbapSession(PbapSyncSource &parent) :
-    m_parent(parent),
-    m_transferComplete(false)
+    m_parent(parent)
 {
 }
 
@@ -180,23 +199,22 @@ void PbapSession::propChangedCb(const GDBusCXX::Path_t &path,
         std::string status = boost::get<std::string>(it->second);
         SE_LOG_DEBUG(NULL, "OBEXD transfer %s: %s",
                      path.c_str(), status.c_str());
-        if (status == "complete") {
-            SE_LOG_DEBUG(NULL, "obexd transfer completed");
-            m_transferComplete = true;
-        } else if (status == "error") {
-            m_transferComplete = true;
+        Completion completion = Completion::now();
+        SE_LOG_DEBUG(NULL, "obexd transfer %s: %s", path.c_str(), status.c_str());
+        if (status == "error") {
             // We have to make up some error descriptions. The Bluez
             // 5 API no longer seems to provide that.
-            m_transferErrorCode = "transfer failed";
-            m_transferErrorMsg = "reason unknown";
+            completion.m_transferErrorCode = "transfer failed";
+            completion.m_transferErrorMsg = "reason unknown";
         }
+        m_transfers[path] = completion;
     }
 }
 
 void PbapSession::completeCb(const GDBusCXX::Path_t &path)
 {
     SE_LOG_DEBUG(NULL, "obexd transfer %s completed", path.c_str());
-    m_transferComplete = true;
+    m_transfers[path] = Completion::now();
 }
 
 void PbapSession::errorCb(const GDBusCXX::Path_t &path,
@@ -205,9 +223,10 @@ void PbapSession::errorCb(const GDBusCXX::Path_t &path,
 {
     SE_LOG_DEBUG(NULL, "obexd transfer %s failed: %s %s",
                  path.c_str(), error.c_str(), msg.c_str());
-    m_transferComplete = true;
-    m_transferErrorCode = error;
-    m_transferErrorMsg = msg;
+    Completion &completion = m_transfers[path];
+    completion.m_transferComplete = Timespec::monotonic();
+    completion.m_transferErrorCode = error;
+    completion.m_transferErrorMsg = msg;
 }
 
 void PbapSession::propertyChangedCb(const GDBusCXX::Path_t &path,
@@ -222,6 +241,49 @@ void PbapSession::propertyChangedCb(const GDBusCXX::Path_t &path,
         SE_LOG_DEBUG(NULL, "obexd transfer %s property change: %s",
                      path.c_str(), name.c_str());
     }
+}
+
+PbapSession::Properties PbapSession::supportedProperties() const
+{
+    Properties props;
+    static const std::set<std::string> supported =
+        boost::assign::list_of("VERSION")
+        ("FN")
+        ("N")
+        ("PHOTO")
+        ("BDAY")
+        ("ADR")
+        ("LABEL")
+        ("TEL")
+        ("EMAIL")
+        ("MAILER")
+        ("TZ")
+        ("GEO")
+        ("TITLE")
+        ("ROLE")
+        ("LOGO")
+        ("AGENT")
+        ("ORG")
+        ("NOTE")
+        ("REV")
+        ("SOUND")
+        ("URL")
+        ("UID")
+        ("KEY")
+        ("NICKNAME")
+        ("CATEGORIES")
+        ("CLASS");
+
+    BOOST_FOREACH (const std::string &prop, m_filterFields) {
+        // Be conservative and only ask for properties that we
+        // really know how to use. obexd also lists the bit field
+        // strings ("BIT01") but phones have been seen to reject
+        // queries when those were enabled.
+        if (supported.find(prop) != supported.end()) {
+            props.push_back(prop);
+        }
+    }
+    return props;
 }
 
 void PbapSession::initSession(const std::string &address, const std::string &format)
@@ -383,15 +445,14 @@ void PbapSession::initSession(const std::string &address, const std::string &for
     SE_LOG_DEBUG(NULL, "PBAP session created: %s", m_session->getPath());
 
     // get filter list so that we can continue validating our format specifier
-    std::vector<std::string> filterFields =
-        GDBusCXX::DBusClientCall1< std::vector<std::string> >(*m_session, "ListFilterFields")();
+    m_filterFields = GDBusCXX::DBusClientCall1< Properties >(*m_session, "ListFilterFields")();
     SE_LOG_DEBUG(NULL, "supported PBAP filter fields:\n    %s",
-                 boost::join(filterFields, "\n    ").c_str());
+                 boost::join(m_filterFields, "\n    ").c_str());
 
-    std::list<std::string> filter;
+    Properties filter;
     if (negated) {
         // negated, start with everything set
-        filter.insert(filter.begin(), filterFields.begin(), filterFields.end());
+        filter = supportedProperties();
     }
 
     // validate parameters and update filter
@@ -400,12 +461,12 @@ void PbapSession::initSession(const std::string &address, const std::string &for
             continue;
         }
 
-        std::vector<std::string>::const_iterator entry =
-            std::find_if(filterFields.begin(),
-                         filterFields.end(),
+        Properties::const_iterator entry =
+            std::find_if(m_filterFields.begin(),
+                         m_filterFields.end(),
                          boost::bind(&boost::iequals<std::string,std::string>, _1, prop, std::locale()));
 
-        if (entry == filterFields.end()) {
+        if (entry == m_filterFields.end()) {
             m_parent.throwError(StringPrintf("invalid property name in PBAP vCard format specification (databaseFormat): %s",
                                              prop.c_str()));
         }
@@ -418,40 +479,82 @@ void PbapSession::initSession(const std::string &address, const std::string &for
     }
 
     GDBusCXX::DBusClientCall0(*m_session, "Select")(std::string("int"), std::string("PB"));
-
-    if (m_obexAPI == OBEXD_OLD) {
-        GDBusCXX::DBusClientCall0(*m_session, "SetFilter")(std::vector<std::string>(filter.begin(), filter.end()));
-        GDBusCXX::DBusClientCall0(*m_session, "SetFormat")(std::string(version == "2.1" ? "vcard21" : "vcard30"));
-    } else {
-        m_filter5["Format"] = version == "2.1" ? "vcard21" : "vcard30";
-        m_filter5["Fields"] = filter;
-    }
+    m_filter5["Format"] = version == "2.1" ? "vcard21" : "vcard30";
+    m_filter5["Fields"] = filter;
 
     SE_LOG_DEBUG(NULL, "PBAP session initialized");
 }
 
-boost::shared_ptr<PullAll> PbapSession::startPullAll()
+boost::shared_ptr<PullAll> PbapSession::startPullAll(PullData pullData)
 {
+    resetTransfer();
+
+    // Update prepared filter to match pullData.
+    std::map<std::string, Bluez5Values> currentFilter = m_filter5;
+    std::string &format = boost::get<std::string>(currentFilter["Format"]);
+    std::list<std::string> &filter = boost::get< std::list<std::string> >(currentFilter["Fields"]);
+    switch (pullData) {
+    case PULL_AS_CONFIGURED:
+        SE_LOG_DEBUG(NULL, "pull all with configured filter: '%s'",
+                     boost::join(filter, " ").c_str());
+        break;
+    case PULL_WITHOUT_PHOTOS:
+        // Remove PHOTO from list or create list with the other properties.
+        if (filter.empty()) {
+            filter = supportedProperties();
+        }
+        for (Properties::iterator it = filter.begin();
+             it != filter.end();
+             ++it) {
+            if (*it == "PHOTO") {
+                filter.erase(it);
+                break;
+            }
+        }
+        SE_LOG_DEBUG(NULL, "pull all without photos: '%s'",
+                     boost::join(filter, " ").c_str());
+        break;
+    }
+
+    if (m_obexAPI == OBEXD_OLD ||
+        m_obexAPI == OBEXD_NEW) {
+        GDBusCXX::DBusClientCall0(*m_session, "SetFilter")(filter);
+        GDBusCXX::DBusClientCall0(*m_session, "SetFormat")(format);
+    }
+
     boost::shared_ptr<PullAll> state(new PullAll);
     state->m_currentContact = 0;
     if (m_obexAPI != OBEXD_OLD) {
+        // Beware, this will lead to a "Complete" signal in obexd
+        // 0.47. We need to be careful with looking at the right
+        // transfer to determine whether PullAll completed.
+        state->m_numContacts = GDBusCXX::DBusClientCall1<uint16>(*m_session, "GetSize")();
+        SE_LOG_DEBUG(NULL, "Expecting %d contacts.", state->m_numContacts);
+
         state->m_tmpFile.create();
         SE_LOG_DEBUG(NULL, "Created temporary file for PullAll %s", state->m_tmpFile.filename().c_str());
         GDBusCXX::DBusClientCall1<std::pair<GDBusCXX::DBusObject_t, Params> > pullall(*m_session, "PullAll");
         std::pair<GDBusCXX::DBusObject_t, Params> tuple =
             m_obexAPI == OBEXD_NEW ?
             GDBusCXX::DBusClientCall1<std::pair<GDBusCXX::DBusObject_t, Params> >(*m_session, "PullAll")(state->m_tmpFile.filename()) :
-            GDBusCXX::DBusClientCall2<GDBusCXX::DBusObject_t, Params>(*m_session, "PullAll")(state->m_tmpFile.filename(), m_filter5);
+            GDBusCXX::DBusClientCall2<GDBusCXX::DBusObject_t, Params>(*m_session, "PullAll")(state->m_tmpFile.filename(), currentFilter);
         const GDBusCXX::DBusObject_t &transfer = tuple.first;
         const Params &properties = tuple.second;
+        m_currentTransfer = transfer;
         SE_LOG_DEBUG(NULL, "pullall transfer path %s, %ld properties", transfer.c_str(), (long)properties.size());
-        // Work will be finished incrementally in PullAll::getNextID().
+        // Work will be finished incrementally in PullAll::getContact().
+        //
+        // In the meantime we return IDs by simply enumerating the expected ones.
+        // If we don't get as many contacts as expected, we return 404 in getContact()
+        // and the Synthesis engine will ignore the ID (src/sysync/binfileimplds.cpp:
+        // "Record does not exist any more in database%s -> ignore").
         state->m_tmpFileOffset = 0;
         state->m_session = m_self.lock();
     } else {
         GDBusCXX::DBusClientCall1<std::string> pullall(*m_session, "PullAll");
         state->m_buffer = pullall();
         state->addVCards(0, state->m_buffer);
+        state->m_numContacts = state->m_content.size();
     }
     return state;
 }
@@ -474,19 +577,55 @@ const char *PullAll::addVCards(int startIndex, const pcrecpp::StringPiece &vcard
 
 void PbapSession::checkForError()
 {
-    if (!m_transferErrorCode.empty()) {
-        m_parent.throwError(StringPrintf("%s: %s",
-                                         m_transferErrorCode.c_str(),
-                                         m_transferErrorMsg.c_str()));
+    Transfers::const_iterator it = m_transfers.find(m_currentTransfer);
+    if (it != m_transfers.end()) {
+        if (!it->second.m_transferErrorCode.empty()) {
+            m_parent.throwError(StringPrintf("%s: %s",
+                                             it->second.m_transferErrorCode.c_str(),
+                                             it->second.m_transferErrorMsg.c_str()));
+        }
     }
+}
+
+Timespec PbapSession::transferComplete() const
+{
+    Timespec res;
+    Transfers::const_iterator it = m_transfers.find(m_currentTransfer);
+    if (it != m_transfers.end()) {
+        res = it->second.m_transferComplete;
+    }
+    return res;
+}
+
+void PbapSession::resetTransfer()
+{
+    m_transfers.clear();
 }
 
 std::string PullAll::getNextID()
 {
     std::string id;
-    while ((size_t)m_currentContact == m_content.size() &&
+    if (m_currentContact < m_numContacts) {
+        id = StringPrintf("%d", m_currentContact);
+        m_currentContact++;
+    }
+    return id;
+}
+
+bool PullAll::getContact(int contactNumber, pcrecpp::StringPiece &vcard)
+{
+    SE_LOG_DEBUG(NULL, "get PBAP contact #%d", contactNumber);
+    if (contactNumber < 0 ||
+        contactNumber >= m_numContacts) {
+        SE_LOG_DEBUG(NULL, "invalid contact number");
+        return false;
+    }
+
+    Content::iterator it;
+    while ((it = m_content.find(contactNumber)) == m_content.end() &&
            m_session &&
-           (!m_session->transferComplete() || m_tmpFile.moreData())) {
+           (!m_session->transferComplete() ||
+            m_tmpFile.moreData())) {
         // Wait? We rely on regular propgress signals to wake us up.
         // obex 0.47 sends them every 64KB, at least in combination
         // with a Samsung Galaxy SIII. This may depend on both obexd
@@ -528,18 +667,9 @@ std::string PullAll::getNextID()
             m_tmpFileOffset = newTmpFileOffset;
         }
     }
-    if ((size_t)m_currentContact < m_content.size()) {
-        id = StringPrintf("%d", m_currentContact);
-        m_currentContact++;
-    }
-    return id;
-}
 
-bool PullAll::getContact(int contactNumber, pcrecpp::StringPiece &vcard)
-{
-    SE_LOG_DEBUG(NULL, "get PBAP contact #%d", contactNumber);
-    Content::iterator it = m_content.find(contactNumber);
     if (it == m_content.end()) {
+        SE_LOG_DEBUG(NULL, "did not get the expected contact #%d, perhaps some contacts were deleted?", contactNumber);
         return false;
     }
     vcard = it->second;
@@ -568,6 +698,14 @@ PbapSyncSource::PbapSyncSource(const SyncSourceParams &params) :
     m_operations.m_readItemAsKey = boost::bind(&PbapSyncSource::readItemAsKey,
                                                this, _1, _2);
     m_session = PbapSession::create(*this);
+    const char *PBAPSyncMode = getenv("SYNCEVOLUTION_PBAP_SYNC");
+    m_PBAPSyncMode = !PBAPSyncMode ? PBAP_SYNC_NORMAL :
+        boost::iequals(PBAPSyncMode, "incremental") ? PBAP_SYNC_INCREMENTAL :
+        boost::iequals(PBAPSyncMode, "text") ? PBAP_SYNC_TEXT :
+        boost::iequals(PBAPSyncMode, "all") ? PBAP_SYNC_NORMAL :
+        (throwError(StringPrintf("invalid value for SYNCEVOLUTION_PBAP_SYNC: %s", PBAPSyncMode)), PBAP_SYNC_NORMAL);
+    m_isFirstCycle = true;
+    m_hadContacts = false;
 }
 
 PbapSyncSource::~PbapSyncSource()
@@ -590,14 +728,17 @@ void PbapSyncSource::open()
 
 void PbapSyncSource::beginSync(const std::string &lastToken, const std::string &resumeToken)
 {
+    if (!lastToken.empty()) {
+        throwError(STATUS_SLOW_SYNC_508, std::string("PBAP cannot do change detection"));
+    }
 }
 
 std::string PbapSyncSource::endSync(bool success)
 {
     m_pullAll.reset();
-    m_session->shutdown();
-
-    return "";
+    // Non-empty so that beginSync() can detect non-slow syncs and ask
+    // for one.
+    return "1";
 }
 
 bool PbapSyncSource::isEmpty()
@@ -607,6 +748,7 @@ bool PbapSyncSource::isEmpty()
 
 void PbapSyncSource::close()
 {
+    m_session->shutdown();
 }
 
 PbapSyncSource::Databases PbapSyncSource::getDatabases()
@@ -650,14 +792,24 @@ void PbapSyncSource::getSynthesisInfo(SynthesisInfo &info,
         type = sourceType.m_format;
     }
     info.m_datatypes = getDataTypeSupport(type, sourceType.m_forceFormat);
+
+    /**
+     * Access to data must be done early so that a slow sync can be
+     * enforced.
+     */
+    info.m_earlyStartDataRead = true;
 }
+
+// TODO: return IDs based on GetSize(), read only when engine needs data.
 
 sysync::TSyError PbapSyncSource::readNextItem(sysync::ItemID aID,
                                   sysync::sInt32 *aStatus,
                                   bool aFirst)
 {
     if (aFirst) {
-        m_pullAll = m_session->startPullAll();
+        m_pullAll = m_session->startPullAll((m_PBAPSyncMode == PBAP_SYNC_TEXT ||
+                                             (m_PBAPSyncMode == PBAP_SYNC_INCREMENTAL && m_isFirstCycle)) ? PULL_WITHOUT_PHOTOS :
+                                            PULL_AS_CONFIGURED);
     }
     if (!m_pullAll) {
         throwError("logic error: readNextItem without aFirst=true before");
@@ -665,10 +817,17 @@ sysync::TSyError PbapSyncSource::readNextItem(sysync::ItemID aID,
     std::string id = m_pullAll->getNextID();
     if (id.empty()) {
         *aStatus = sysync::ReadNextItem_EOF;
+        if (m_PBAPSyncMode == PBAP_SYNC_INCREMENTAL &&
+            m_hadContacts &&
+            m_isFirstCycle) {
+            requestAnotherSync();
+            m_isFirstCycle = false;
+        }
     } else {
         *aStatus = sysync::ReadNextItem_Unchanged;
         aID->item = StrAlloc(id.c_str());
         aID->parent = NULL;
+        m_hadContacts = true;
     }
     return sysync::LOCERR_OK;
 }

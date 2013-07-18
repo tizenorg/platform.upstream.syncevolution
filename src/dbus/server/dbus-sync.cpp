@@ -63,6 +63,17 @@ DBusSync::DBusSync(const SessionCommon::SyncParams &params,
     if (!params.m_mode.empty()) {
         if (params.m_mode == "ephemeral") {
             makeEphemeral();
+        } else if (params.m_mode == "pbap") {
+            // "pbap" may only be used by caller when it knows that
+            // the mode is safe to use.
+            makeEphemeral();
+            const char *sync = getenv("SYNCEVOLUTION_PBAP_SYNC");
+            if (!sync) {
+                SE_LOG_DEBUG(NULL, "enabling default SYNCEVOLUTION_PBAP_SYNC=incremental");
+                setenv("SYNCEVOLUTION_PBAP_SYNC", "incremental", true);
+            } else {
+                SE_LOG_DEBUG(NULL, "using SYNCEVOLUTION_PBAP_SYNC=%s from environment", sync);
+            }
         } else {
             filter["sync"] = params.m_mode;
         }
@@ -143,13 +154,16 @@ void DBusSync::displaySyncProgress(sysync::TProgressEventEnum type,
     m_helper.emitSyncProgress(type, extra1, extra2, extra3);
 }
 
-void DBusSync::displaySourceProgress(sysync::TProgressEventEnum type,
-                                     SyncSource &source,
-                                     int32_t extra1, int32_t extra2, int32_t extra3)
+bool DBusSync::displaySourceProgress(SyncSource &source,
+                                     const SyncSourceEvent &event,
+                                     bool flush)
 {
-    SyncContext::displaySourceProgress(type, source, extra1, extra2, extra3);
-    m_helper.emitSourceProgress(type, source.getName(), source.getFinalSyncMode(),
-                                extra1, extra2, extra3);
+    bool cached = SyncContext::displaySourceProgress(source, event, flush);
+    if (!cached) {
+        m_helper.emitSourceProgress(event.m_type, source.getName(), source.getFinalSyncMode(),
+                                    event.m_extra1, event.m_extra2, event.m_extra3);
+    }
+    return cached;
 }
 
 void DBusSync::reportStepCmd(sysync::uInt16 stepCmd)

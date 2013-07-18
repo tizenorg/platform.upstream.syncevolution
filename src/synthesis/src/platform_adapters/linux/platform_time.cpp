@@ -10,6 +10,12 @@
  *  2004-11-15 : luz : extracted from lineartime.h
  */
 
+// For tm_gmtoff on Linux.
+#ifndef _BSD_SOURCE
+# define _BSD_SOURCE 1
+#endif
+#include <time.h>
+
 #include "prefix_file.h"
 
 #include "lineartime.h"
@@ -45,20 +51,37 @@ lineartime_t getSystemNowAs(timecontext_t aTimeContext,GZones *aGZones, bool noO
   #ifdef NOW_WITH_MILLISECONDS
   // high precision time, UTC based
   struct timeval tv;
-  struct timezone tz;
   // gettimeofday return seconds and milliseconds since start of the UNIX epoch
-  gettimeofday(&tv,&tz);
+  gettimeofday(&tv,NULL);
   lineartime_t systime =
     (tv.tv_sec*secondToLinearTimeFactor+UnixToLineartimeOffset) +
     (tv.tv_usec*secondToLinearTimeFactor/1000000);
   #else
   // standard precision time (unix time), base is UTC
+  time_t t = time(NULL);
   lineartime_t systime =
-    time(NULL)*secondToLinearTimeFactor+UnixToLineartimeOffset;
+    t*secondToLinearTimeFactor+UnixToLineartimeOffset;
   #endif
   // - return as-is if requested time zone is UTC
   if (noOffset || TCTX_IS_UTC(aTimeContext))
     return systime; // return as-is
+#ifndef ANDROID
+  // - shortcut: conversion to system time is faster when done using
+  //   glibc. tm_gmtoff is a glibc extension, so don't try to use it on
+  //   Android.
+  if (TCTX_IS_SYSTEM(aTimeContext)) {
+    struct tm tm;
+    if (localtime_r(
+#ifdef NOW_WITH_MILLISECONDS
+                    &tv.tv_sec
+#else
+                    &t
+#endif
+                    , &tm)) {
+      return systime + (tm.tm_gmtoff * secondToLinearTimeFactor);
+    }
+  }
+#endif
   // - convert to requested zone
   sInt32 aOffsSeconds;
   if (!TzOffsetSeconds(systime,TCTX_UTC,aTimeContext,aOffsSeconds,aGZones))

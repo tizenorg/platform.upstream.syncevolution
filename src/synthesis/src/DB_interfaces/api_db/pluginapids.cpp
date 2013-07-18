@@ -113,6 +113,7 @@ void TPluginDSConfig::clear(void)
   fPluginParams_Data.clear();
   // - clear capabilities
   fItemAsKey = false;
+  fResumeSupported = true;
   fHasDeleteSyncSet = false;
   // clear inherited
   inherited::clear();
@@ -198,6 +199,8 @@ void TPluginDSConfig::localResolve(bool aLastPass)
       fHasDeleteSyncSet = FlagOK(capaStr,CA_DeleteSyncSet,true);
       // - Check for new method for data access (as keys instead of as text items)
       fItemAsKey = FlagOK(capaStr,CA_ItemAsKey,true);
+      // - Allow module to choose whether it wants to support suspend/resume.
+      fResumeSupported = FlagOK(capaStr,CA_ResumeSupported,true);
       // Check if engine is compatible
       #ifndef DBAPI_TEXTITEMS
       if (!fItemAsKey) SYSYNC_THROW(TConfigParseException("This engine does not support data items in text format"));
@@ -857,7 +860,7 @@ bool TPluginApiDS::dsResumeSupportedInDB(void)
 {
   if (fPluginDSConfigP->fDBApiConfig_Admin.Connected()) {
     // we can do resume if plugin supports it
-    return fPluginDSConfigP->fDBApiConfig_Admin.Version()>=sInt32(VE_InsertMapItem);
+    return fPluginDSConfigP->fResumeSupported && fPluginDSConfigP->fDBApiConfig_Admin.Version()>=sInt32(VE_InsertMapItem);
   }
   return inherited::dsResumeSupportedInDB();
 } // TPluginApiDS::dsResumeSupportedInDB

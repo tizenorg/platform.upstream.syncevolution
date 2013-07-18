@@ -1950,6 +1950,11 @@ bool TSyncSession::issuePtr(
         aSyncCommandP->getCmdType()==scmd_status) {
       // Queue instead of sending immediately, see TSyncSession::process().
       fCmdIncoming->queueStatusCmd(aSyncCommandP);
+      if (fCmdIncoming->getCmdType()==scmd_sync) {
+        TSyncCommand *syncCommandP=static_cast<TSyncCommand *>(fCmdIncoming);
+        syncCommandP->setLocalDatastore(fLocalSyncDatastoreP);
+        PDEBUGPRINTFX(DBG_SESSION,("issuePtr: store fLocalSyncDatastoreP in sync command"));
+      }
       DEBUGPRINTFX(DBG_PROTO,("%s: queue reply to %s because of pending commands",
         aSyncCommandP->getName(),
         fCmdIncoming->getName()
@@ -2549,6 +2554,13 @@ Ret_t TSyncSession::process(TSmlCommand *aSyncCommandP)
             delayExecUntilNextRequest(aSyncCommandP);
           }
           else {
+            if (fDelayedExecutionCommands.size()>0 &&
+                !aSyncCommandP->canExecuteOutOfOrder()) {
+              PDEBUGPRINTFX(DBG_SESSION,("%s: command cannot be executed with other commands already delayed -> flush queue",aSyncCommandP->getName()));
+              fCmdIncoming = NULL;
+              tryDelayedExecutionCommands();
+            }
+
             // command is ok, execute it
             fCmdIncomingState=aSyncCommandP->getPackageState();
             // Queue Status commands issued during execute()?
@@ -2787,6 +2799,19 @@ bool TSyncSession::onlyItemChangesPending()
   return true;
 }
 
+bool TSyncSession::onlySyncPending()
+{
+  TSmlCommandPContainer::iterator pos=fDelayedExecutionCommands.begin();
+  while (pos!=fDelayedExecutionCommands.end()) {
+    TSmlCommand *cmdP = *pos;
+    if (cmdP->getCmdType() != scmd_sync) {
+      return false;
+    }
+    ++pos;
+  }
+  return true;
+}
+
 bool TSyncSession::tryDelayedExecutionCommands()
 {
   bool syncEndAfterSyncPackageEnd=false;
@@ -2840,7 +2865,21 @@ bool TSyncSession::executeDelayedCmd(TSmlCommand *aCmdP)
     // if it has finished earlier. Now we can try to issue the
     // queued status replies, because all previous commands have
     // been dealt with.
-    //
+
+    // If a Sync command was queued, all of its SyncOp commands
+    // were also queued. We are going to execute them now for the
+    // first time, which depends on having fLocalSyncDatastoreP
+    // set correctly (see TSyncOpCommand::execute()). This was
+    // set when executing the Sync command for the first time, and
+    // must be restored here, otherwise we end up using the
+    // fLocalSyncDatastoreP from, for example, a previously resumed
+    // SyncOp from a different datastore.
+    if (aCmdP->getCmdType()==scmd_sync) {
+      TSyncCommand *syncCommandP=static_cast<TSyncCommand *>(aCmdP);
+      fLocalSyncDatastoreP=syncCommandP->getLocalDatastore();
+      PDEBUGPRINTFX(DBG_SESSION,("executeDelayedCmd: restore fLocalSyncDatastoreP from sync command"));
+    }
+
     // Take over ownership of all queued status commands.
     TSmlCommandPContainer statusCmds;
     aCmdP->transferQueuedStatusCmds(statusCmds);
@@ -3110,12 +3149,16 @@ void TSyncSession::delayExecUntilNextRequest(TSmlCommand *aCommand)
   if (aCommand->getCmdType()==scmd_sync) {
     // delayed <sync> has no datastore (yet)
     fLocalSyncDatastoreP=NULL;
+    PDEBUGPRINTFX(DBG_DATA,("delayExecUntilNextRequest: unsetting fLocalSyncDatastoreP for scmd_sync"));
   }
   else if (aCommand->getCmdType()==scmd_syncend) {
     // count delayed syncends as they need special care later
     fDelayedExecSyncEnds++;
-    // and forget current datastore - safety only, should be NULL here anyway
-    fLocalSyncDatastoreP=NULL;
+    if (fLocalSyncDatastoreP) {
+      // and forget current datastore - safety only, should be NULL here anyway
+      fLocalSyncDatastoreP=NULL;
+      PDEBUGPRINTFX(DBG_DATA,("processSyncEnd: unsetting fLocalSyncDatastoreP for scmd_syncend"));
+    }
   }
 } // TSyncSession::delayExecUntilNextRequest
 
@@ -3819,6 +3862,7 @@ localstatus TSyncSession::initSync(
                                                                      !aLocalDatastoreURI[0]) ?
                                                                     aRemoteDatastoreURI :
                                                                     aLocalDatastoreURI),&cgiOptions);
+  PDEBUGPRINTFX(DBG_DATA,("initSync: setting fLocalSyncDatastoreP"));
   if (!fLocalSyncDatastoreP) {
     // no such local datastore
     return 404;
@@ -3885,6 +3929,7 @@ bool TSyncSession::processSyncEnd(bool &aQueueForLater)
   #endif
   // no local datastore active
   fLocalSyncDatastoreP=NULL;
+  PDEBUGPRINTFX(DBG_DATA,("processSyncEnd: unsetting fLocalSyncDatastoreP"));
   return ok;
 } // TSyncSession::processSyncEnd
 
@@ -3910,6 +3955,7 @@ bool TSyncSession::processSyncOpItem(
   // "global" pointer to the active datastore by moving it into the <sync> command
   // object and installing a hierarchical command processor.)
   fLocalSyncDatastoreP=aLocalSyncDatastore;
+  PDEBUGPRINTFX(DBG_DATA,("processSyncOpItem: setting fLocalSyncDatastoreP"));
   // Server mode: commands affect datastores currently in sync
   if (!fLocalSyncDatastoreP) {
     // sync generic command outside sync bracket -> error
@@ -5494,7 +5540,7 @@ Ret_t TSyncSession::EndMessage(Boolean_t final)
   //   server forced the client to send another message, because client
   //   and server did not agree on the end of the session.  (see
   //   "[os-libsynthesis] temporary local ID + FinalizeLocalID").
-  if (final && onlyItemChangesPending() && !fDelayedExecutionCommands.empty()) {
+  if (final && !onlySyncPending() && !fDelayedExecutionCommands.empty()) {
     // TODO: tell stores explicitly that we really need the results now
     // instead of relying on the indirect semantic of "second call must
     // succeed".

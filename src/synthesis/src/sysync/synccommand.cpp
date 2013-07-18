@@ -2289,6 +2289,24 @@ missingeoc:
 } // TSyncOpCommand::AddNextChunk
 
 
+// SyncOp commands can execute out of order except when they
+// contain chunked items, because then we would have to issue
+// a 213 Status immediately, which would violate the ordering
+// of Status replies.
+bool TSyncOpCommand::canExecuteOutOfOrder()
+{
+  SmlItemListPtr_t *itemnodePP=&(fSyncOpElementP->itemList);
+  while (*itemnodePP) {
+    SmlItemListPtr_t thisitemnode = *itemnodePP;
+    if (thisitemnode->item &&
+        thisitemnode->item->flags & SmlMoreData_f) {
+      return false;
+    }
+    itemnodePP = &(thisitemnode->next);
+  }
+  return true;
+}
+
 // execute command (perform real actions, generate status)
 // returns true if command has executed and can be deleted
 bool TSyncOpCommand::execute(void)

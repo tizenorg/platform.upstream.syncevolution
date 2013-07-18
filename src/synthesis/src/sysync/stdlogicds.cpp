@@ -134,6 +134,17 @@ localstatus TStdLogicDS::logicMakeAdminReady(cAppCharP aDataStoreURI, cAppCharP 
       // remote should see our (probably changed) devInf
       PDEBUGPRINTFX(DBG_PROTO,("First time sync or config changed since last sync -> remote should see our devinf"));
       fSessionP->remoteMustSeeDevinf();
+    } else if (IS_CLIENT && canRestart()) {
+      // When a client can restart, it must tell the server before
+      // asking for the server's DevInf, because restart capability is
+      // negotiated with a SyncMode extension which is only sent by
+      // the server if it has seen the client indicate that it
+      // supports these extensions by sending its own. If the server
+      // somehow didn't store our DevInf, it'll ask for it, but then
+      // it may be too late, so we pro-actively always send it when
+      // restarting is possible.
+      PDEBUGPRINTFX(DBG_PROTO,("Client needs to negotiate restart capability -> remote should see our devinf"));
+      fSessionP->remoteMustSeeDevinf();
     }
     // empty saved anchors if first time sync (should be empty anyway, but...)
     if (fFirstTimeSync) {

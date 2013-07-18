@@ -427,8 +427,6 @@ const uInt8 param_DBIntToTimestamp[] = { VAL(fty_integer), VAL(fty_string) };
 const uInt8 param_TimestampToDBInt[] = { VAL(fty_timestamp), VAL(fty_string) };
 const uInt8 param_ConvertToDataZone[] = { VAL(fty_timestamp), OPTVAL(fty_integer) };
 
-const uInt8 param_oneString[] = { VAL(fty_string) };
-const uInt8 param_oneInteger[] = { VAL(fty_integer) };
 const uInt8 param_variant[] = { VAL(fty_none) };
 
 

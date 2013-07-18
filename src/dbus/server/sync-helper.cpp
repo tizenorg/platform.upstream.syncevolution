@@ -34,6 +34,7 @@ using namespace GDBusCXX;
 
 namespace {
     GMainLoop *loop = NULL;
+    int logLevelDBus = Logger::INFO;
 
     // that one is actually never called. probably a bug in ForkExec - it should
     // call m_onFailure instead of throwing an exception
@@ -50,6 +51,7 @@ namespace {
     {
         helper.reset(new SessionHelper(loop, conn, forkexec, parentLogger));
         helper->activate();
+        helper->setDBusLogLevel(Logger::Level(logLevelDBus));
     }
 
     void onAbort()
@@ -69,6 +71,15 @@ int main(int argc, char **argv, char **envp)
     const char *delay = getenv("SYNCEVOLUTION_LOCAL_CHILD_DELAY");
     if (delay) {
         Sleep(atoi(delay));
+    }
+
+    if (getenv("SYNCEVOLUTION_DBUS_HELPER_VGDB")) {
+        // Trigger an error in valgrind. Use in combination with
+        // --vgdb-error=1 --vgdb=yes (note the =1!) to attach when
+        // the process is running.
+        void *dummy = malloc(1);
+        free(dummy);
+        free(dummy);
     }
 
     SyncContext::initMain("syncevo-dbus-helper");
@@ -100,6 +111,20 @@ int main(int argc, char **argv, char **envp)
     setvbuf(stdout, NULL, _IONBF, 0);
 
     try {
+        static GOptionEntry entries[] = {
+            { "dbus-verbosity", 'v', 0, G_OPTION_ARG_INT, &logLevelDBus,
+              "Choose amount of output via D-Bus signals with Logger::Level; default is INFO = 3.",
+              "level" },
+            { NULL }
+        };
+        GErrorCXX gerror;
+        static GOptionContext *context = g_option_context_new("- SyncEvolution D-Bus Helper");
+        g_option_context_add_main_entries(context, entries, GETTEXT_PACKAGE);
+        bool success = g_option_context_parse(context, &argc, &argv, gerror);
+        if (!success) {
+            gerror.throwError("parsing command line options");
+        }
+
         if (debug) {
             Logger::instance().setLevel(Logger::DEBUG);
             Logger::setProcessName(StringPrintf("syncevo-dbus-helper-%ld", (long)getpid()));

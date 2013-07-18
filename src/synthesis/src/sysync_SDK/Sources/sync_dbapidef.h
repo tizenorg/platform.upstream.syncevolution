@@ -266,6 +266,7 @@ enum Version {
 #define CA_ItemAsKey         "ITEM_AS_KEY"  /* Supports the AsKey" mode */
 #define CA_AdminAsKey        "ADMIN_AS_KEY" /* Supports the AsKey" mode for Load/SaveAdminData */
 #define CA_DeleteSyncSet     "DeleteSyncSet"/* DeleteSyncSet ist fully implemented */
+#define CA_ResumeSupported   "ResumeSupported" /* InsertMapItem is functional, defaults to "yes" if the method is available. Can be used to override its usage. */
 #define CA_Error             "ERROR"        /* Capability error */
 
 /* Predefined identifiers */

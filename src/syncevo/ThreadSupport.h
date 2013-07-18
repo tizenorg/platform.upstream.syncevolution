@@ -80,6 +80,9 @@ template<class M, void (*_lock)(M *), void (*_unlock)(M *)> class MutexTemplate
         _lock(&m_mutex);
         return Guard(&m_mutex);
     }
+
+    M *get() { return &m_mutex; }
+    operator M * () { return &m_mutex; }
 };
 
 /**
@@ -93,11 +96,11 @@ template<class M, void (*_lock)(M *), void (*_unlock)(M *), void (*_init)(M *), 
  public:
     DynMutexTemplate()
     {
-        _init(&MutexTemplate<M, _lock, _unlock>::m_mutex);
+        _init(MutexTemplate<M, _lock, _unlock>::get());
     }
     ~DynMutexTemplate()
     {
-        _clear(&MutexTemplate<M, _lock, _unlock>::m_mutex);
+        _clear(MutexTemplate<M, _lock, _unlock>::get());
     }
 };
 
@@ -105,6 +108,18 @@ typedef MutexTemplate<GMutex, g_mutex_lock, g_mutex_unlock> Mutex;
 typedef DynMutexTemplate<GMutex, g_mutex_lock, g_mutex_unlock, g_mutex_init, g_mutex_clear> DynMutex;
 typedef MutexTemplate<GRecMutex, g_rec_mutex_lock, g_rec_mutex_unlock> RecMutex;
 typedef DynMutexTemplate<GRecMutex, g_rec_mutex_lock, g_rec_mutex_unlock, g_rec_mutex_init, g_rec_mutex_clear> DynRecMutex;
+
+class Cond
+{
+    GCond m_cond;
+
+ public:
+    Cond() { g_cond_init(&m_cond); }
+    ~Cond() { g_cond_clear(&m_cond); }
+
+    void signal() { g_cond_signal(&m_cond); }
+    template<class M> void wait(M &m) { g_cond_wait(&m_cond, m); }
+};
 
 #else
 
@@ -129,6 +144,13 @@ typedef DummyMutex Mutex;
 typedef DummyMutex DynMutex;
 typedef DummyMutex RecMutex;
 typedef DummyMutex RecDynMutex;
+
+class Cond
+{
+ public:
+    void signal() {}
+    template<class M> void wait(M &m) {}
+};
 
 #endif
 

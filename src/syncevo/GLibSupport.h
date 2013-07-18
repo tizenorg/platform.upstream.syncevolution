@@ -634,7 +634,7 @@ class PlainGStrArray : public boost::shared_ptr<gchar *>
         PlainGStrArray(gchar **array) : boost::shared_ptr<char *>(array, g_strfreev) {}
         PlainGStrArray(const PlainGStrArray &other) : boost::shared_ptr<char *>(other) {}
         operator gchar * const *() const { return &**this; }
-        gchar * operator [] (size_t index) { return get()[index]; }
+        gchar * &at(size_t index) { return get()[index]; }
 };
 
 // empty template, need specialization based on parameter and return types
@@ -1038,7 +1038,25 @@ template<> class GAsyncReadyDoneCXX<void>
         } \
     } while (false); \
 
-#endif
+
+/**
+ * Process events in the default context while the callback returns
+ * true.
+ *
+ * This must be used instead of g_main_context_iterate() by code which
+ * may get called in other threads. In that case the check is
+ * transferred to the main thread which does the actual event
+ * processing. g_main_context_iterate() would just block because we
+ * register the main thread as permanent owner of the default context,
+ * or would suffer from race conditions if we didn't.
+ *
+ * The main thread must also be running GRunWhile().
+ *
+ * Exceptions in the check code are fatal and should be avoided.
+ */
+void GRunWhile(const boost::function<bool ()> &check);
+
+#endif // HAVE_GLIB
 
 SE_END_CXX
 

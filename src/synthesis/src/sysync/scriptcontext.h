@@ -45,6 +45,11 @@ namespace sysync {
 #define REF(x)    (((uInt8)x)+PARAM_REF)
 #define REFARR(x) (((uInt8)x)+PARAM_REF+PARAM_ARR)
 
+extern const uInt8 param_oneTimestamp[];
+extern const uInt8 param_oneInteger[];
+extern const uInt8 param_oneString[];
+extern const uInt8 param_oneVariant[];
+extern const uInt8 param_oneOptInteger[];
 
 // Token definitions
 

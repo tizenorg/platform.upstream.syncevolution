@@ -2976,7 +2976,7 @@ fi
 
 # Define the identity of the package.
  PACKAGE=synthesis
- VERSION=3.4.0.16.9
+ VERSION=3.4.0.16.10
 
 
 cat >>confdefs.h <<_ACEOF

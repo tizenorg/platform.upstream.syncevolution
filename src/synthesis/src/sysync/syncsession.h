@@ -525,6 +525,7 @@ public:
   virtual void essentialStatusReceived(void) { /* NOP here */ };
   void delayExecUntilNextRequest(TSmlCommand *aCommand);
   bool onlyItemChangesPending();
+  bool onlySyncPending();
   bool tryDelayedExecutionCommands(); // returns syncEndAfterSyncPackageEnd
   bool executeDelayedCmd(TSmlCommand *aCmdP); // wrapper around TSmlCommand::execute() which issues queued Status commands if any are pending
   bool delayedSyncEndsPending(void) { return fDelayedExecSyncEnds>0; };

@@ -170,7 +170,8 @@ public:
     TMultiFieldItem &aLoosingItem,
     bool &aChangedWinning,
     bool &aChangedLoosing,
-    TLocalEngineDS *aDatastoreP
+    TLocalEngineDS *aDatastoreP,
+    int mode //< MERGE_OPTION_*
   );
   // check item before processing it
   bool checkItem(TMultiFieldItem &aItem, TLocalEngineDS *aDatastoreP);
@@ -209,6 +210,7 @@ public:
   bool fChangedSecond; // helper for script context funcs
   TEqualityMode fEqMode; // helper for script context funcs
   TSyncOperation fCurrentSyncOp; // helper for script context funcs
+  int fMergeMode; // helper for script context funcs
   #endif
 private:
   // array of field options

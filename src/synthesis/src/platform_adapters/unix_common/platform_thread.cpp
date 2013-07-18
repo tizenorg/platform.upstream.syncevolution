@@ -46,6 +46,7 @@ void* PosixThreadFunc(void *aParam)
 {
   // get Thread Object pointer
   TThreadObject *threadObjP = static_cast<TThreadObject *>(aParam);
+  PNCDEBUGPRINTFX(DBG_HOT,("thread object %p: starting", threadObjP));
   // call thread execution method
   uInt32 retval = threadObjP->execute();
   // signal thread termination condition
@@ -55,13 +56,14 @@ void* PosixThreadFunc(void *aParam)
   pthread_mutex_unlock(&(threadObjP->fDoneCondMutex));
   // auto-dispose the thread object if requested
   if (threadObjP->fAutoDisposeThreadObj) {
+    PNCDEBUGPRINTFX(DBG_HOT,("auto-disposing thread object %p", threadObjP));
     delete threadObjP;
   }
   // Exit thread now.
   // Avoid "cast to pointer from integer of different size" warning with
   // intermediate cast.
-  pthread_exit((void *)(uIntArch)retval);
-  return NULL;
+  PNCDEBUGPRINTFX(DBG_HOT,("thread object %p: terminating", threadObjP));
+  return (void *)(uIntArch)retval;
 } // PosixThreadFunc
 
 
@@ -102,6 +104,7 @@ bool TThreadObject::launch(
   bool aAutoDispose        // if true, the thread object will dispose itself when thread has finished running
 )
 {
+  PNCDEBUGPRINTFX(DBG_HOT,("thread object %p: launching", this));
   // save parameters
   fThreadFunc=aThreadFunc;
   fThreadFuncParam=aThreadFuncParam;
@@ -125,6 +128,7 @@ bool TThreadObject::launch(
     this // pass the pointer to the thread object
   );
   if (fExitCode==0) {
+    PNCDEBUGPRINTFX(DBG_HOT,("thread object %p: launched okay", this));
     // thread created successfully
     return true; // ok
   }
@@ -146,11 +150,14 @@ uIntArch TThreadObject::getid(void) {
 void TThreadObject::kill(void)
 {
   if (fPosixThread!=0 && !fTerminated) {
+    PNCDEBUGPRINTFX(DBG_HOT,("thread object %p: killing", this));
     // the thread is actually running
     fExitCode=EINTR; // nearest match, interrupted
     // kill it
     pthread_kill(fPosixThread, SIGKILL);
     fTerminated= true;
+  } else {
+    PNCDEBUGPRINTFX(DBG_HOT,("thread object %p: skipped killing, not running", this));
   }
 } // TThreadObject::kill
 
@@ -204,8 +211,13 @@ extern "C"
 // waits for the thread to stop
 bool TThreadObject::waitfor(sInt32 aMilliSecondsToWait)
 {
+  PNCDEBUGPRINTFX(DBG_HOT,("thread object %p: waitfor %d", this, aMilliSecondsToWait));
+
   int retval= 0;
-  if (fPosixThread==0) return true; // thread not running
+  if (fPosixThread==0) {
+    PNCDEBUGPRINTFX(DBG_HOT,("thread object %p: not running", this));
+    return true; // thread not running
+  }
 
   // thread is running
   // wait for termination condition of the thread
@@ -214,15 +226,21 @@ bool TThreadObject::waitfor(sInt32 aMilliSecondsToWait)
     retval= SySync_CondTimedWait(&fDoneCond, &fDoneCondMutex, fTerminated, aMilliSecondsToWait);
   } /* if */
   pthread_mutex_unlock(&fDoneCondMutex);
-  if (retval!=0) return false; // check if thread has completed => no, not yet
+  if (retval!=0) {
+    PNCDEBUGPRINTFX(DBG_HOT,("thread object %p: still running", this));
+    return false; // check if thread has completed => no, not yet
+  }
 
   // thread has terminated (or is terminating) -> join and get exit code
   void* threadret;
+  PNCDEBUGPRINTFX(DBG_HOT,("thread object %p: join thread", this));
   int ret= pthread_join(fPosixThread,&threadret);
   if (ret==0) fExitCode= (uInt32)(uIntPtr)threadret;
   else        fExitCode= ret;
 
   fTerminated= true; // thread has ended
+  fPosixThread= 0; // don't join thread again (doesn't work reliably) when waitfor() is called again
+  PNCDEBUGPRINTFX(DBG_HOT,("thread object %p: joined thread", this));
   return true;
 } // TThreadObject::waitfor
 

@@ -1361,8 +1361,8 @@ void TMultiFieldItem::mergeWith(TSyncItem &aItem, bool &aChangedThis, bool &aCha
   TMultiFieldItem *multifielditemP = castToSameTypeP(&aItem);
   if (!multifielditemP) return;
   // do the merge
-  if (fItemTypeP && mode == MERGE_OPTION_FROM_CONFIG)
-    fItemTypeP->mergeItems(*this,*multifielditemP,aChangedThis,aChangedOther,aDatastoreP);
+  if (fItemTypeP)
+    fItemTypeP->mergeItems(*this,*multifielditemP,aChangedThis,aChangedOther,aDatastoreP, mode);
   else
     standardMergeWith(*multifielditemP,aChangedThis,aChangedOther, mode);
   // show result
