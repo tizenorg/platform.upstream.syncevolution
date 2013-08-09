@@ -119,6 +119,7 @@ contacts via PBAP.
     --enable-dbus-service \
     --enable-dbus-service-pim \
     --enable-shared \
+    --enable-pbap \
     --with-expat=system \
     --enable-release-mode \
     --disable-unit-tests \
