@@ -1,6 +1,6 @@
 Name:       syncevolution
 Summary:    SyncML Client
-Version:    1.3.99.4
+Version:    1.3.99.5_20131030_SE_05e5911_SYSYNC_69de386
 Release:    1
 Group:      Social & Content/Service
 License:    LGPL-2.1+
@@ -108,6 +108,24 @@ Requires:   %{name} = %{version}-%{release}
 The %{name}-pbap package contains a backend which reads/writes
 contacts via PBAP.
 
+%package goa
+Summary:    SyncEvolution backend for SSO via GNOME Online Accounts
+Group:      Social & Content/Service
+Requires:   %{name} = %{version}-%{release}
+
+%description goa
+The %{name}-goa package contains a backend which uses
+GNOME Online Accounts for single-signon.
+
+%package gsso
+Summary:    SyncEvolution backend for SSO via gSSO
+Group:      Social & Content/Service
+Requires:   %{name} = %{version}-%{release}
+
+%description gsso
+The %{name}-gsoo package contains a backend which uses
+gSSO for single-signon.
+
 %prep
 %setup -q -n %{name}-%{version}
 
@@ -207,3 +225,11 @@ rm %{buildroot}/%{_libdir}/syncevolution/backends/platformkde.so
 %files pbap
 %defattr(-,root,root,-)
 %{_libdir}/syncevolution/backends/syncpbap.so
+
+%files goa
+%defattr(-,root,root,-)
+%{_libdir}/syncevolution/backends/providergoa.so
+
+%files gsso
+%defattr(-,root,root,-)
+%{_libdir}/syncevolution/backends/providergsso.so
