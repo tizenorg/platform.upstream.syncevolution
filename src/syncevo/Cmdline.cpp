@@ -51,6 +51,7 @@ using namespace std;
 #include <boost/tokenizer.hpp>
 #include <boost/foreach.hpp>
 #include <boost/range.hpp>
+#include <boost/assign/list_of.hpp>
 #include <fstream>
 
 #include <syncevo/declarations.h>
@@ -482,6 +483,11 @@ void Cmdline::makeObsolete(boost::shared_ptr<SyncConfig> &from)
     } else {
         newConfigName = oldContext + suffix;
     }
+
+    // Clear old pointer first. That frees cached data in SyncConfig,
+    // which otherwise fails to notice that we moved files on disk
+    // around.
+    from.reset();
     from.reset(new SyncConfig(newConfigName));
 }
 
@@ -654,30 +660,6 @@ public:
     }
 };
 
-void Cmdline::checkSyncPasswords(SyncContext &context)
-{
-    ConfigPropertyRegistry& registry = SyncConfig::getRegistry();
-    BOOST_FOREACH(const ConfigProperty *prop, registry) {
-        prop->checkPassword(context.getUserInterfaceNonNull(),
-                            context.getConfigName(),
-                            *context.getProperties());
-    }
-}
-
-void Cmdline::checkSourcePasswords(SyncContext &context,
-                                   const std::string &sourceName,
-                                   SyncSourceNodes &nodes)
-{
-    ConfigPropertyRegistry &registry = SyncSourceConfig::getRegistry();
-    BOOST_FOREACH(const ConfigProperty *prop, registry) {
-        prop->checkPassword(context.getUserInterfaceNonNull(),
-                            context.getConfigName(),
-                            *context.getProperties(),
-                            sourceName,
-                            nodes.getProperties());
-    }
-}
-
 static void ShowLUID(SyncSourceLogging *logging, const std::string &luid)
 {
     string description;
@@ -830,8 +812,10 @@ bool Cmdline::run() {
             if (source.get() != NULL) {
                 if (!m_server.empty() && nodes) {
                     // ensure that we have passwords for this config
-                    checkSyncPasswords(*context);
-                    checkSourcePasswords(*context, sourceName, *nodes);
+                    PasswordConfigProperty::checkPasswords(context->getUserInterfaceNonNull(),
+                                                           *context,
+                                                           PasswordConfigProperty::CHECK_PASSWORD_ALL,
+                                                           boost::assign::list_of(sourceName));
                 }
                 (this->*operation)(source.get(), header);
             } else {
@@ -1246,6 +1230,24 @@ bool Cmdline::run() {
                     // take some time, so allow the user to abort
                     SE_LOG_INFO(NULL, "%s: looking for databases...",
                                 source.c_str());
+                    // Even if the peer config does not exist yet
+                    // (fromScratch == true), the source config itself
+                    // may already exist with a username/password
+                    // using the keyring. Need to retrieve that
+                    // password before using the source.
+                    //
+                    // We need to check for databases again here,
+                    // because otherwise we don't know whether the
+                    // source is usable. The "database" property can
+                    // be empty in a usable source, and the "sync"
+                    // property in some potential other peer config
+                    // is not accessible.
+                    PasswordConfigProperty::checkPasswords(to->getUserInterfaceNonNull(),
+                                                           *to,
+                                                           PasswordConfigProperty::CHECK_PASSWORD_SOURCE|
+                                                           PasswordConfigProperty::CHECK_PASSWORD_RESOLVE_PASSWORD|
+                                                           PasswordConfigProperty::CHECK_PASSWORD_RESOLVE_USERNAME,
+                                                           boost::assign::list_of(source));
                     SyncSourceParams params(source, to->getSyncSourceNodes(source), to);
                     auto_ptr<SyncSource> syncSource(SyncSource::createSource(params, false, to.get()));
                     if (syncSource.get() == NULL) {
@@ -1384,8 +1386,10 @@ bool Cmdline::run() {
         sysync::TSyError err;
 #define CHECK_ERROR(_op) if (err) { SE_THROW_EXCEPTION_STATUS(StatusException, string(source->getName()) + ": " + (_op), SyncMLStatus(err)); }
 
-        checkSyncPasswords(*context);
-        checkSourcePasswords(*context, source->getName(), sourceNodes);
+        PasswordConfigProperty::checkPasswords(context->getUserInterfaceNonNull(),
+                                               *context,
+                                               PasswordConfigProperty::CHECK_PASSWORD_ALL,
+                                               boost::assign::list_of(source->getName()));
         source->setNeedChanges(false);
         source->open();
         const SyncSource::Operations &ops = source->getOperations();
@@ -2542,6 +2546,18 @@ static const std::string yahoo =
                "[calendar]\n"
                "sync = two-way\n"
                "backend = CalDAV\n";
+
+// Expected content of config.ini file depends on whether
+// a keyring is enabled or not.
+static const char DATABASE_PASSWORD_BAR[] =
+#ifdef HAVE_KEYRING
+               // In keyring.
+               "databasePassword = -"
+#else
+               // In file.
+               "databasePassword = bar"
+#endif
+               ;
 
 /**
  * Testing is based on a text representation of a directory
@@ -3932,7 +3948,7 @@ protected:
         boost::replace_first(expected, "# ConsumerReady = 0", "ConsumerReady = 1");
         boost::replace_first(expected, "# database = ", "database = xyz");
         boost::replace_first(expected, "# databaseUser = ", "databaseUser = foo");
-        boost::replace_first(expected, "# databasePassword = ", "databasePassword = bar");
+        boost::replace_first(expected, "# databasePassword = ", DATABASE_PASSWORD_BAR);
         // migrating "type" sets forceSyncFormat if not the default,
         // and databaseFormat (if format was part of type, as for addressbook)
         boost::replace_first(expected, "# databaseFormat = ", "databaseFormat = text/vcard");
@@ -4048,7 +4064,7 @@ protected:
             boost::replace_all(expected, "# ConsumerReady = 0", "ConsumerReady = 1");
             boost::replace_first(expected, "# database = ", "database = xyz");
             boost::replace_first(expected, "# databaseUser = ", "databaseUser = foo");
-            boost::replace_first(expected, "# databasePassword = ", "databasePassword = bar");
+            boost::replace_first(expected, "# databasePassword = ", DATABASE_PASSWORD_BAR);
             // migrating "type" sets forceSyncFormat if different from the "false" default
             // and databaseFormat (if format was part of type, as for addressbook)
             boost::replace_first(expected, "# databaseFormat = ", "databaseFormat = text/vcard");
@@ -4082,7 +4098,7 @@ protected:
             boost::replace_all(expected, "# ConsumerReady = 0", "ConsumerReady = 1");
             boost::replace_first(expected, "# database = ", "database = xyz");
             boost::replace_first(expected, "# databaseUser = ", "databaseUser = foo");
-            boost::replace_first(expected, "# databasePassword = ", "databasePassword = bar");
+            boost::replace_first(expected, "# databasePassword = ", DATABASE_PASSWORD_BAR);
             boost::replace_first(expected, "# databaseFormat = ", "databaseFormat = text/vcard");
             CPPUNIT_ASSERT_EQUAL_DIFF(expected, migratedConfig);
             string renamedConfig = scanFiles(newRoot, "scheduleworld.old.1");
@@ -4114,7 +4130,7 @@ protected:
             boost::replace_all(expected, "# ConsumerReady = 0", "ConsumerReady = 1");
             boost::replace_first(expected, "# database = ", "database = xyz");
             boost::replace_first(expected, "# databaseUser = ", "databaseUser = foo");
-            boost::replace_first(expected, "# databasePassword = ", "databasePassword = bar");
+            boost::replace_first(expected, "# databasePassword = ", DATABASE_PASSWORD_BAR);
             boost::replace_first(expected, "# databaseFormat = ", "databaseFormat = text/vcard");
             boost::replace_first(expected,
                                  "peers/scheduleworld/sources/addressbook/config.ini",
@@ -4153,7 +4169,7 @@ protected:
             boost::replace_all(expected, "# ConsumerReady = 0", "ConsumerReady = 1");
             boost::replace_first(expected, "# database = ", "database = xyz");
             boost::replace_first(expected, "# databaseUser = ", "databaseUser = foo");
-            boost::replace_first(expected, "# databasePassword = ", "databasePassword = bar");
+            boost::replace_first(expected, "# databasePassword = ", DATABASE_PASSWORD_BAR);
             boost::replace_first(expected, "# databaseFormat = ", "databaseFormat = text/vcard");
             CPPUNIT_ASSERT_EQUAL_DIFF(expected, migratedConfig);
             string renamedConfig = scanFiles(oldRoot + ".old");
@@ -4180,7 +4196,7 @@ protected:
             boost::replace_all(expected, "# ConsumerReady = 0", "ConsumerReady = 1");
             boost::replace_first(expected, "# database = ", "database = xyz");
             boost::replace_first(expected, "# databaseUser = ", "databaseUser = foo");
-            boost::replace_first(expected, "# databasePassword = ", "databasePassword = bar");
+            boost::replace_first(expected, "# databasePassword = ", DATABASE_PASSWORD_BAR);
             boost::replace_first(expected, "# databaseFormat = ", "databaseFormat = text/vcard");
             CPPUNIT_ASSERT_EQUAL_DIFF(expected, migratedConfig);
             renamedConfig = scanFiles(otherRoot, "scheduleworld.old.3");
@@ -4345,7 +4361,7 @@ protected:
             boost::replace_all(expected, "# ConsumerReady = 0", "ConsumerReady = 1");
             boost::replace_first(expected, "# database = ", "database = xyz");
             boost::replace_first(expected, "# databaseUser = ", "databaseUser = foo");
-            boost::replace_first(expected, "# databasePassword = ", "databasePassword = bar");
+            boost::replace_first(expected, "# databasePassword = ", DATABASE_PASSWORD_BAR);
             // migrating "type" sets forceSyncFormat if not already the default,
             // and databaseFormat (if format was part of type, as for addressbook)
             boost::replace_first(expected, "# databaseFormat = ", "databaseFormat = text/vcard");
@@ -4374,7 +4390,7 @@ protected:
             boost::replace_all(expected, "# ConsumerReady = 0", "ConsumerReady = 1");
             boost::replace_first(expected, "# database = ", "database = xyz");
             boost::replace_first(expected, "# databaseUser = ", "databaseUser = foo");
-            boost::replace_first(expected, "# databasePassword = ", "databasePassword = bar");
+            boost::replace_first(expected, "# databasePassword = ", DATABASE_PASSWORD_BAR);
             boost::replace_first(expected, "# databaseFormat = ", "databaseFormat = text/vcard");
             CPPUNIT_ASSERT_EQUAL_DIFF(expected, migratedConfig);
             string renamedConfig = scanFiles(newRoot, "scheduleworld.old.1");

@@ -8,7 +8,7 @@ dnl Invoke autogen.sh to produce a configure script.
 #
 # Starting with the 1.1 release cycle, the rpm-style
 # .99 pseudo-version number is used to mark a pre-release.
-AC_INIT([syncevolution], [m4_esyscmd([build/gen-git-version.sh 1.3.99.4])])
+AC_INIT([syncevolution], [m4_esyscmd([build/gen-git-version.sh 1.3.99.5])])
 # STABLE_VERSION=1.0.1+
 AC_SUBST(STABLE_VERSION)
 
@@ -1076,6 +1076,12 @@ AC_SUBST(SYNCEVOLUTION_LIBS)
 
 # invoking syncevolution binary is allowed to fail when cross-compiling
 AM_CONDITIONAL([COND_CROSS_COMPILING], [test "$cross_compiling" = "yes"])
+
+# Set by any of the backends providing a keyring, determines the
+# default for the "keyring" option.
+if test "$have_keyring" = "yes"; then
+   AC_DEFINE(HAVE_KEYRING, 1, [some kind of secure credential store is available])
+fi
 
 AC_CONFIG_FILES([
   Makefile

@@ -109,9 +109,6 @@
 /* The gettext package name */
 #undef GETTEXT_PACKAGE
 
-/* define if gnome keyring version is above 2.20 */
-#undef GNOME_KEYRING_220
-
 /* we have GTK+ 2.18 or better */
 #undef GTK_2_18
 
@@ -168,6 +165,9 @@
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
+
+/* some kind of secure credential store is available */
+#undef HAVE_KEYRING
 
 /* Define to 1 if you have the <kwallet.h> header file. */
 #undef HAVE_KWALLET_H
@@ -290,6 +290,12 @@
 
 /* define if gnome keyring should be used in dbus service */
 #undef USE_GNOME_KEYRING
+
+/* use GNOME Online Accounts */
+#undef USE_GOA
+
+/* use gSSO */
+#undef USE_GSSO
 
 /* KWallet available */
 #undef USE_KDE_KWALLET

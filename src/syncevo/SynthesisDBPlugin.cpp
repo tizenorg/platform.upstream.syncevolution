@@ -33,6 +33,7 @@ using namespace sysync;
 
 #include <syncevo/SyncContext.h>
 #include <syncevo/SyncSource.h>
+#include <syncevo/IdentityProvider.h>
 
 #include <sstream>
 
@@ -313,8 +314,10 @@ TSyError SyncEvolution_Session_Login( CContext sContext, cAppCharP sUsername, ap
         return LOCERR_WRONGUSAGE;
     }
     TSyError res = DB_Forbidden;
-    string user = sc->getSyncUsername();
-    string password = sc->getSyncPassword();
+    UserIdentity id = sc->getSyncUser();
+    Credentials cred = IdentityProviderCredentials(id, sc->getSyncPassword());
+    const std::string &user = cred.m_username;
+    const std::string &password = cred.m_password;
 
     if (user.empty() && password.empty()) {
         // nothing to check, accept peer

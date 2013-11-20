@@ -6735,7 +6735,764 @@
 	Initial Commit by Synthesis AG for Open Source libsynthesis
 	3.2.0.25 and libsmltk
 
-ck Ohly  <patrick.ohly@intel.com>
+hly@intel.com>
+
+	* src/syncevo/SyncContext.cpp:
+	* src/syncevo/SyncContext.h:
+
+	SyncContext: allow iterating over SyncSources
+
+2012-02-13  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/Cmdline.cpp:
+	* src/syncevo/SyncContext.cpp:
+	* src/syncevo/SyncContext.h:
+	* src/syncevo/SyncSource.cpp:
+	* src/syncevo/SyncSource.h:
+	* src/syncevo/SynthesisDBPlugin.cpp:
+	* test/ClientTest.cpp:
+
+	SyncSource: rewrote callback handling for operations
+
+2012-02-08  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/ClientTest.cpp:
+	* test/ClientTest.h:
+
+	Client::Source testing: cover multiple sync cycles
+
+2012-02-07  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/ClientTest.cpp:
+
+	client-test: fixed testAddBothSides* with dumb server as peer
+
+2012-02-07  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/ClientTest.cpp:
+	* test/ClientTest.h:
+
+	CheckSyncReport: added testing of number of sync cycles
+
+2012-03-01  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/backends/activesync/ActiveSyncCalendarSource.cpp:
+	* src/backends/webdav/CalDAVSource.cpp:
+	* src/syncevo/MapSyncSource.cpp:
+
+	CalDAV + ActiveSync: fixed support for multiple cycles
+
+2012-02-07  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/configs/remoterules/00_syncevolution.xml:
+
+	SyncEvolution<->SyncEvolution sync: allow multiple sync cycles
+	per session
+
+2012-02-07  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/SyncSource.cpp:
+	* src/syncevo/SyncSource.h:
+
+	SyncSource: support multiple sync cycles in the same session
+
+2012-02-07  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/SyncContext.cpp:
+
+	SyncContext: "before sync" dump improvements
+
+2012-02-03  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/SyncContext.cpp:
+	* src/syncevo/SyncContext.h:
+	* src/syncevo/SyncSource.cpp:
+	* src/syncevo/SyncSource.h:
+
+	SyncSource + SyncContext: added requestAnotherSync()
+
+2012-02-03  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/SyncContext.cpp:
+
+	SyncContext: increase "restart" counter in SyncSourceReport
+
+2012-02-03  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/SyncML.cpp:
+	* src/syncevo/SyncML.h:
+
+	SyncSourceReport: added "number of restarts"
+
+2012-02-03  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/SyncContext.cpp:
+
+	SyncContext: enable links to Synthesis source code again
+
+2012-02-03  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/SyncSource.cpp:
+	* src/syncevo/SyncSource.h:
+
+	SyncSource: grant control over "read-only" mode
+
+2012-01-27  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/gdbus/gdbus-cxx-bridge.h:
+
+	GDBus libdbus: add variant append support
+
+2012-01-27  Mikel Astiz  <mikel.astiz@bmw-carit.de>
+
+	* src/gdbusxx/gdbus-cxx-bridge.h:
+
+	GDBus GIO: add variant append support
+
+2012-02-28  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/runtests.py:
+
+	autotools: include libsynthesis in git version check again
+
+2012-02-28  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* configure.ac:
+
+	autotools: version bump to 1.2.99
+
+2012-02-28  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* Makefile.am:
+
+	autotools: special KDE dependencies for syncevolution.org .deb
+
+2012-02-28  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/Logging.cpp:
+
+	logging: fix crash in destructed LoggerStdout
+
+2012-02-28  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* configure.ac:
+
+	autotools: replaced obsolete QMAKE -query
+
+2012-02-20  Rohan Garg  <rohangarg@kubuntu.org>
+
+	* configure.ac:
+
+	Add proper search path for ld to search for KDE Libraries
+
+2012-02-27  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/syncevo-http-server.py:
+
+	syncevo-http-server: added message dumps
+
+2012-02-24  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/ClientTest.cpp:
+	* test/testcases/eds_event.ics.memotoo.tem.patch:
+
+	testing: Memotoo + local time
+
+2012-02-23  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/ClientTest.cpp:
+	* test/ClientTest.h:
+
+	client-test: better logging of item count errors
+
+2012-02-21  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/backends/webdav/WebDAVSource.cpp:
+
+	WebDAV: avoid potential crash during database detection
+
+2012-02-20  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/ClientTest.cpp:
+	* test/testcases/eds_event.ics.radicale.tem.patch:
+
+	testing: ignore Radicale detached recurrence issue
+
+2012-02-20  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/backends/webdav/WebDAVSource.cpp:
+
+	WebDAV: ignore Radicale PROPFIND + allprops problem
+
+2012-02-20  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/backends/webdav/CalDAVSource.cpp:
+	* src/backends/webdav/CalDAVSource.h:
+	* src/backends/webdav/WebDAVSource.h:
+
+	CalDAV: workaround for Radicale multiget
+
+2012-02-20  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/backends/webdav/NeonCXX.cpp:
+	* src/backends/webdav/NeonCXX.h:
+	* src/backends/webdav/WebDAVSource.cpp:
+
+	WebDAV: better path normalization (user config)
+
+2012-02-20  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/backends/webdav/NeonCXX.cpp:
+	* src/backends/webdav/NeonCXX.h:
+	* src/backends/webdav/WebDAVSource.cpp:
+
+	WebDAV: better path normalization (Radicale)
+
+2012-02-20  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/synccompare.pl:
+
+	synccompare: ignore X-RADICALE-NAME
+
+2012-02-23  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/backends/webdav/CalDAVSource.cpp:
+
+	CalDAV: ignore empty items in Google Calendar, part II
+
+2012-02-21  Patrick Ohly  <patrick.ohly@intel.com>
+
+
+	PBAB: Merge branch 'master' into pbap + D-Bus method calls
+
+2012-02-21  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/sys.supp:
+
+	testing: valgrind suppressions for Debian Testing
+
+2012-02-21  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/evo.supp:
+
+	D-Bus testing: ignore valgrind warning in
+	TestFileNotify.testRestart, part II
+
+2012-02-21  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/evo.supp:
+
+	testing: ignore real leak in libecal 3.2
+
+2012-02-21  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/backends/webdav/CalDAVSource.cpp:
+
+	WebDAV: ignore empty items in Google Calendar
+
+2012-02-21  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/synccompare.pl:
+
+	Oracle: ignore lost LANGUAGE in ATTENDEE
+
+2012-02-13  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/backends/evolution/EvolutionCalendarSource.cpp:
+	* src/backends/evolution/EvolutionContactSource.cpp:
+
+	EDS: always create databases (PTCOM-113)
+
+2012-02-16  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevolution.cpp:
+
+	command line: fixed --status and --monitor
+
+2012-02-06  Krzesimir Nowak  <krnowak@openismus.com>
+
+	* src/dbus/server/bluez-manager.cpp:
+	* src/dbus/server/connman-client.cpp:
+	* src/dbus/server/network-manager-client.cpp:
+	* src/gdbus/gdbus-cxx-bridge.h:
+	* src/gdbusxx/gdbus-cxx-bridge.h:
+	* src/syncevo/LocalTransportAgent.cpp:
+	* src/syncevolution.cpp:
+	* test/dbus-client-server.cpp:
+
+	GDBus libdbus+GIO: support blocking D-Bus calls
+
+2012-02-16  Krzesimir Nowak  <krnowak@openismus.com>
+
+	* src/gdbusxx/gdbus-cxx-bridge.cpp:
+	* src/gdbusxx/gdbus-cxx-bridge.h:
+
+	GDBus GIO: SignalWatch activation for one-to-one connections
+
+2012-01-15  Chris Kühl  <chrisk@openismus.com>
+
+	* src/gdbus/gdbus-cxx-bridge.h:
+	* src/gdbus/gdbus.h:
+	* src/gdbus/watch.c:
+
+	Enable SignalWatch activation for one-to-one connections
+
+2012-02-15  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/gdbusxx/gdbus-cxx-bridge.h:
+
+	GDBus GIO: simplified AppendRetvals
+
+2012-02-15  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/gdbusxx/gdbus-cxx-bridge.h:
+
+	GDBus GIO: fixed memory leak in prepare()
+
+2012-02-14  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/ForkExec.cpp:
+
+	ForkExec: fixed support for absolute helper path
+
+2012-02-17  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/test-dbus.py:
+
+	D-Bus testing: relaxed timing when using valgrind
+
+2012-02-17  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/evo.supp:
+
+	D-Bus testing: ignore valgrind warning in
+	TestFileNotify.testRestart
+
+2012-02-17  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/SyncContext.cpp:
+
+	KDE: don't allow KApplication to install SIGINT/SIGTERM handlers
+
+2012-02-17  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/dbus/server/main.cpp:
+	* src/syncevo/ForkExec.cpp:
+	* src/syncevo/LocalTransportAgent.cpp:
+	* src/syncevo/SuspendFlags.cpp:
+	* src/syncevo/SyncContext.cpp:
+	* test/valgrindcheck.sh:
+
+	added debug logging for signal and process handling
+
+2012-02-15  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/sys.supp:
+
+	D-Bus testing: ignore specific error in
+	TestLocalSync.testConcurrency
+
+2012-02-15  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/test-dbus.py:
+
+	D-Bus testing: give local sync more time to complete
+
+2012-02-13  Murray Cumming  <murrayc@murrayc.com>
+
+	* Makefile.am:
+	* src/gdbus/gdbus.am:
+	* src/gdbusxx/gdbusxx.am:
+
+	Do not install libgdbussyncevo in a subdir
+
+2012-02-15  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/src.am:
+
+	autotools: compile GDBus before libsyncevolution
+
+2012-01-31  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/SyncSource.cpp:
+
+	SyncSource: detect ambiguous "backend" value
+
+2012-01-31  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/backends/akonadi/AkonadiSyncSourceRegister.cpp:
+
+	Akonadi: ignore backend aliases
+
+2012-01-31  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/runtests.py:
+
+	Akonadi testing: ignore known errors
+
+2012-01-31  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/backends/akonadi/AkonadiSyncSourceRegister.cpp:
+	* src/backends/akonadi/akonadisyncsource.cpp:
+
+	Akonadi: fixed backend instantiation
+
+2012-01-31  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/sys.supp:
+
+	testing: ignore KDE memory errors
+
+2012-01-31  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/runtests.py:
+	* test/valgrindcheck.sh:
+
+	testing: enable valgrind checking of child processes
+
+2012-01-31  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/backends/akonadi/akonadisyncsource.cpp:
+
+	Akonadi: handle 404 in readItem()
+
+2012-01-27  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* configure.ac:
+	* src/CmdlineSyncClient.cpp:
+	* src/backends/akonadi/AkonadiSyncSourceRegister.cpp:
+	* src/backends/akonadi/README:
+	* src/backends/akonadi/akonadi.am:
+	* src/backends/akonadi/akonadisyncsource.cpp:
+	* src/dbus/server/dbus-sync.cpp:
+	* src/dbus/server/dbus-user-interface.cpp:
+	* src/src.am:
+	* src/syncevo/SyncContext.cpp:
+	* src/syncevo/syncevo.am:
+
+	Akonadi: fixed compile and runtime issues
+
+2012-01-30  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/gdbusxx/gdbus-cxx-bridge.h:
+
+	GDBus GIO: improved DBusArray encoding
+
+2012-01-30  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/sys.supp:
+
+	testing: ignore memory leaks in DBus libdbus server
+	implementation
+
+2012-01-27  Mikel Astiz  <mikel.astiz@bmw-carit.de>
+
+	* src/backends/pbap/README:
+
+	pbap backend: add simple README
+
+2012-01-27  Mikel Astiz  <mikel.astiz@bmw-carit.de>
+
+	* src/backends/pbap/PbapSyncSource.cpp:
+
+	pbap backend: some log traces added
+
+2012-01-27  Mikel Astiz  <mikel.astiz@bmw-carit.de>
+
+	* src/backends/pbap/PbapSyncSource.cpp:
+
+	pbap backend: implement addressbook pull
+
+2012-01-27  Mikel Astiz  <mikel.astiz@bmw-carit.de>
+
+	* src/backends/pbap/PbapSyncSource.cpp:
+	* src/backends/pbap/PbapSyncSource.h:
+
+	pback backend: create obex session on open()
+
+2012-01-27  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/backends/pbap/PbapSyncSource.cpp:
+	* src/backends/pbap/pbap.am:
+
+	PBAP: support both GIO and libdbus C++ bindings
+
+2012-01-27  Mikel Astiz  <mikel.astiz@bmw-carit.de>
+
+	* src/backends/pbap/PbapSyncSource.cpp:
+	* src/backends/pbap/pbap.am:
+
+	pbap backend: add obex-client D-Bus wrapper
+
+2012-01-27  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/gdbus/gdbus-cxx-bridge.h:
+
+	GDBus libdbus: add variant append support
+
+2012-01-27  Mikel Astiz  <mikel.astiz@bmw-carit.de>
+
+	* src/gdbusxx/gdbus-cxx-bridge.h:
+
+	GDBus GIO: add variant append support
+
+2012-01-27  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/backends/pbap/PbapSyncSourceRegister.cpp:
+
+	PBAP: removed source tests
+
+2012-01-27  Mikel Astiz  <mikel.astiz@bmw-carit.de>
+
+	* src/backends/pbap/PbapSyncSource.cpp:
+	* src/backends/pbap/PbapSyncSource.h:
+	* src/backends/pbap/PbapSyncSourceRegister.cpp:
+	* src/backends/pbap/configure-sub.in:
+	* src/backends/pbap/pbap.am:
+
+	pbap client: add skeleton
+
+2012-01-23  Krzesimir Nowak  <krnowak@openismus.com>
+
+	* Makefile.am:
+
+	Add another hack for installation.
+
+2012-01-25  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/sys.supp:
+
+	testing: ignore valgrind errors in libdbus
+
+2012-01-25  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/ClientTest.cpp:
+
+	Apple testing: must include DTSTAMP
+
+2012-01-23  Ove Kåven  <ovek@arcticnet.no>
+
+	* debian/changelog:
+
+	Updated changelog for this branch.
+
+2012-01-23  Ove Kåven  <ovek@arcticnet.no>
+
+
+	Merge branch 'FREMANTLE-1-2-2' into HARMATTAN-1-2-2
+
+2011-11-29  Ove Kåven  <ovek@arcticnet.no>
+
+	* debian/changelog:
+	* src/backends/qtcontacts/QtContactsSource.cpp:
+
+	QtContacts backend improvements for Harmattan. - list all
+	available managers as backend databases - only sync contacts with
+	a Sync Target of "addressbook" (cherry picked from commit
+	eff97d30ec13da5d6687807e102cd2687fe050f1)
+
+2012-01-23  Ove Kåven  <ovek@arcticnet.no>
+
+	* debian/changelog:
+
+	Updated changelog and version for this branch.
+
+2012-01-23  Ove Kåven  <ovek@arcticnet.no>
+
+
+	Merge commit 'syncevolution-1-2-2' into FREMANTLE-1-2-2
+
+2012-01-23  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/testcases/eds_task.ics.memotoo.tem.patch:
+
+	Memotoo testing: supports PERCENT-COMPLETE
+
+2012-01-20  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/dbus/server/dbus-sync.cpp:
+	* src/dbus/server/dbus-sync.h:
+	* src/dbus/server/session.cpp:
+	* src/dbus/server/session.h:
+	* src/syncevo/SuspendFlags.cpp:
+	* src/syncevo/SuspendFlags.h:
+
+	D-Bus server: set global suspend/abort state
+
+2012-01-20  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/LocalTransportAgent.cpp:
+
+	local sync: better error reporting when child finds problem
+
+2012-01-20  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/ForkExec.cpp:
+	* src/syncevo/ForkExec.h:
+	* src/syncevo/LocalTransportAgent.cpp:
+	* src/syncevo/SyncContext.cpp:
+
+	local sync: kill syncevo-local-sync with SIGTERM
+
+2012-01-19  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/dbus/server/main.cpp:
+	* src/syncevo/CurlTransportAgent.cpp:
+	* src/syncevo/LocalTransportAgent.cpp:
+	* src/syncevo/ObexTransportAgent.cpp:
+	* src/syncevo/SoupTransportAgent.cpp:
+	* src/syncevo/SoupTransportAgent.h:
+	* src/syncevo/SuspendFlags.cpp:
+	* src/syncevo/SuspendFlags.h:
+	* src/syncevo/SyncContext.cpp:
+	* src/syncevo/SyncContext.h:
+	* src/syncevo/syncevo.am:
+	* src/syncevolution.cpp:
+
+	rewrote signal handling
+
+2012-01-19  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/ObexTransportAgent.cpp:
+	* src/syncevo/ObexTransportAgent.h:
+
+	OBEX transport: code cleanup
+
+2012-01-09  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/src.am:
+	* src/syncevo-local-sync.cpp:
+	* src/syncevo/LocalTransportAgent.cpp:
+	* src/syncevo/LocalTransportAgent.h:
+	* src/syncevolution.cpp:
+
+	local sync: execute 'syncevo-local-sync' on child side,
+	communicate via D-Bus
+
+2012-01-18  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/SyncContext.h:
+
+	SyncContext: don't hide ConfigUserInterface implementation
+
+2012-01-09  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/SyncContext.cpp:
+
+	SyncContext: deal with shutdown inside child
+
+2012-01-09  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/SyncML.cpp:
+	* src/syncevo/SyncML.h:
+
+	SyncReport: added conversion to/from plain text
+
+2012-01-20  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/installcheck-local.sh:
+	* src/syncevo/syncevolution.pc.in:
+
+	pkg-config: added libgdbussyncevo
+
+2012-01-20  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/ForkExec.cpp:
+	* src/syncevo/ForkExec.h:
+
+	fork/exec: fixed ifdefs
+
+2012-01-20  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/syncevo.am:
+
+	autotools: fix for build without D-Bus server
+
+2012-01-20  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/src.am:
+
+	autotools: cleaned up choice between gdbus and gdbusxx
+
+2012-01-17  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/gdbus/gdbus-cxx-bridge.cpp:
+	* src/gdbus/gdbus-cxx-bridge.h:
+
+	GDBus libdbus: server must explicitly disconnect
+
+2012-01-20  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/src.am:
+	* test/test.am:
+
+	autotools: fixed combination of unit tests + shared linking
+
+2012-01-18  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* HACKING:
+	* configure.ac:
+
+	autotools: depend on D-Bus
+
+2012-01-16  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* README.rst:
+	* src/syncevo/ForkExec.cpp:
+	* src/syncevo/syncevo.am:
+
+	fork/exec: search for helper in libexec
+
+2012-01-09  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/syncevo/ForkExec.cpp:
+	* src/syncevo/SyncContext.cpp:
+
+	fork/exec: catch error messages from child
+
+2012-01-16  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/gdbusxx/gdbus-cxx-bridge.h:
+
+	GDBus GIO: no timeout for D-Bus method invocations
+
+2012-01-09  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/dbus/server/connection.cpp:
+	* src/dbus/server/connection.h:
+	* src/dbus/server/dbus-transport-agent.cpp:
+	* src/gdbus/gdbus-cxx-bridge.h:
+	* src/gdbusxx/gdbus-cxx-bridge.h:
+
+	GDBus + libdbus/GIO: use dedicated class for plain buffers
+
+2012-01-09  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/gdbusxx/gdbus-cxx-bridge.h:
+
+	GDBus + GIO: improved D-Bus method calls
+
+2012-01-09  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/gdbus/gdbus-cxx-bridge.cpp:
+	* src/gdbus/gdbus-cxx-bridge.h:
+
+	GDBus + libdbus: improved D-Bus method calls
+
+2012-01-13  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* src/gdbusxx/gdbus-cxx-bridge.cpp:
+	* src/gdbusxx/gdbus-cxx-bridge.h:
+
+	GDBus GIO: implemented client/server
+
+2012-01-13  Patrick Ohly  <patrick.ohly@intel.com>
+
+	* test/dbus-client-server.cpp:
+
+	D-Bus client/server: authentication
+
+2012-01-09  Patrick Ohly  <patrick.ohly@intel.com>
 
 	* src/syncevo/ForkExec.cpp:
 	* src/syncevo/ForkExec.h:

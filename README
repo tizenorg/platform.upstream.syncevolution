@@ -7,8 +7,8 @@ synchronize personal information management data
 ------------------------------------------------
 
 :Manual section: 1
-:Version: 1.3.99.4
-:Date: 2013-07-12
+:Version: 1.3.99.5
+:Date: 2013-10-01
 
 
 SYNOPSIS
@@ -1057,14 +1057,11 @@ keyring (yes, global)
    no/false/0
      store passwords in SyncEvolution config files
    
-   If unset, the default is to pick one automatically in
-   the D-Bus server and not use any keyring in the command
-   tool when running without that D-Bus server (because the
-   keyring might not be usable without a desktop session).
-   If support for only storage was compiled and installed,
-   then that is the one which gets picked. Otherwise the
-   default is to use GNOME Keyring (because distinguishing
-   between KDE and GNOME sessions automatically is tricky).
+   If unset, the default is to pick one automatically if support
+   for any kind of password storage was enabled and use the config files
+   otherwise. When choosing automatically, GNOME keyring is tried
+   first because distinguishing between KDE and GNOME sessions
+   automatically is tricky.
    
    Note that using this option applies to *all* passwords in
    a configuration and that the --keyring command line option
@@ -1075,9 +1072,9 @@ keyring (yes, global)
    
         --keyring --configure proxyPassword=foo
    
-   When passwords were stored in the keyring, their value is set to a single
+   When passwords were stored in a safe storage, their value is set to a single
    hyphen ("-") in the configuration. This means that when running a
-   synchronization without the --keyring argument, the password has to be
+   synchronization without using the storage, the password has to be
    entered interactively. The --print-config output always shows "-" instead
    of retrieving the password from the keyring.
 

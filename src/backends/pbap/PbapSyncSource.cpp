@@ -31,6 +31,7 @@
 
 #include <errno.h>
 #include <unistd.h>
+#include <stdint.h>
 
 #include <pcrecpp.h>
 #include <algorithm>
@@ -199,15 +200,16 @@ void PbapSession::propChangedCb(const GDBusCXX::Path_t &path,
         std::string status = boost::get<std::string>(it->second);
         SE_LOG_DEBUG(NULL, "OBEXD transfer %s: %s",
                      path.c_str(), status.c_str());
-        Completion completion = Completion::now();
-        SE_LOG_DEBUG(NULL, "obexd transfer %s: %s", path.c_str(), status.c_str());
-        if (status == "error") {
-            // We have to make up some error descriptions. The Bluez
-            // 5 API no longer seems to provide that.
-            completion.m_transferErrorCode = "transfer failed";
-            completion.m_transferErrorMsg = "reason unknown";
+        if (status == "complete" || status == "error") {
+            Completion completion = Completion::now();
+            if (status == "error") {
+                // We have to make up some error descriptions. The Bluez
+                // 5 API no longer seems to provide that.
+                completion.m_transferErrorCode = "transfer failed";
+                completion.m_transferErrorMsg = "reason unknown";
+            }
+            m_transfers[path] = completion;
         }
-        m_transfers[path] = completion;
     }
 }
 
@@ -528,7 +530,7 @@ boost::shared_ptr<PullAll> PbapSession::startPullAll(PullData pullData)
         // Beware, this will lead to a "Complete" signal in obexd
         // 0.47. We need to be careful with looking at the right
         // transfer to determine whether PullAll completed.
-        state->m_numContacts = GDBusCXX::DBusClientCall1<uint16>(*m_session, "GetSize")();
+        state->m_numContacts = GDBusCXX::DBusClientCall1<uint16_t>(*m_session, "GetSize")();
         SE_LOG_DEBUG(NULL, "Expecting %d contacts.", state->m_numContacts);
 
         state->m_tmpFile.create();
