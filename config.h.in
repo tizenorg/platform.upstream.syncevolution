@@ -9,6 +9,15 @@
 /* "SyncML DevInf DevType" */
 #undef DEVICE_TYPE
 
+/* "DLT app ID for syncevo-dbus-helper" */
+#undef DLT_SYNCEVO_DBUS_HELPER_ID
+
+/* "DLT app ID for syncevo-dbus-server" */
+#undef DLT_SYNCEVO_DBUS_SERVER_ID
+
+/* "DLT app ID for syncevo-local-helper" */
+#undef DLT_SYNCEVO_LOCAL_HELPER_ID
+
 /* ActiveSync available */
 #undef ENABLE_ACTIVESYNC
 
@@ -284,6 +293,9 @@
 
 /* "using Synthesis engine" */
 #undef SYNTHESIS
+
+/* "optionally use GENIVI Diagnostic Log and Trace for logging" */
+#undef USE_DLT
 
 /* use e_book/cal_client_* calls */
 #undef USE_EDS_CLIENT

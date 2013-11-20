@@ -372,7 +372,7 @@ EXTRA_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2) $(am__EXEEXT_3) \
 
 @COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@am__append_66 = $(DBUS_PIM_PLUGIN_LDFLAGS)
 @COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@am__append_67 = $(FOLKS_LIBS) $(DBUS_PIM_PLUGIN_LIBS) $(PHONENUMBERS_LIBS)
-@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@am__append_68 = $(FOLKS_CFLAGS) $(DBUS_PIM_PLUGIN_CFLAGS) $(PHONENUMBERS_CFLAGS)
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@am__append_68 = $(FOLKS_CFLAGS) $(DBUS_PIM_PLUGIN_CFLAGS) $(PHONENUMBERS_CFLAGS) $(DLT_CFLAGS)
 
 # Need to list all plugins here and not include the active one in the regular
 # source list above, because "make dist" would only include the configured one.
@@ -507,6 +507,8 @@ EXTRA_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2) $(am__EXEEXT_3) \
 # check .so (relevant for modular builds) and main syncevolution binary
 # (relevant in that case and for static builds) for dependencies on
 # problematic libraries and symbols
+#
+# Exclude *-2.so, these are EXTRA_BACKENDS for which other rules apply.
 #
 # ical_strdup is an exception because it is in SyncEvolution.
 @ENABLE_EVOLUTION_COMPATIBILITY_TRUE@am__append_106 = toplevel_so_check
@@ -1060,7 +1062,8 @@ am__src_dbus_server_libsyncevodbusserver_la_SOURCES_DIST =  \
 	src/dbus/server/connection.h src/dbus/server/connman-client.h \
 	src/dbus/server/dbus-callbacks.h \
 	src/dbus/server/dbus-user-interface.h \
-	src/dbus/server/exceptions.h src/dbus/server/info-req.h \
+	src/dbus/server/exceptions.h \
+	src/dbus/server/localed-listener.h src/dbus/server/info-req.h \
 	src/dbus/server/network-manager-client.h \
 	src/dbus/server/presence-status.h \
 	src/dbus/server/progress-data.h \
@@ -1092,7 +1095,9 @@ am__src_dbus_server_libsyncevodbusserver_la_SOURCES_DIST =  \
 	src/dbus/server/connman-client.cpp \
 	src/dbus/server/dbus-callbacks.cpp \
 	src/dbus/server/dbus-user-interface.cpp \
-	src/dbus/server/exceptions.cpp src/dbus/server/info-req.cpp \
+	src/dbus/server/exceptions.cpp \
+	src/dbus/server/localed-listener.cpp \
+	src/dbus/server/info-req.cpp \
 	src/dbus/server/network-manager-client.cpp \
 	src/dbus/server/presence-status.cpp \
 	src/dbus/server/progress-data.cpp \
@@ -1128,6 +1133,7 @@ am__src_dbus_server_libsyncevodbusserver_la_SOURCES_DIST =  \
 @COND_DBUS_TRUE@	src/dbus/server/src_dbus_server_libsyncevodbusserver_la-dbus-callbacks.lo \
 @COND_DBUS_TRUE@	src/dbus/server/src_dbus_server_libsyncevodbusserver_la-dbus-user-interface.lo \
 @COND_DBUS_TRUE@	src/dbus/server/src_dbus_server_libsyncevodbusserver_la-exceptions.lo \
+@COND_DBUS_TRUE@	src/dbus/server/src_dbus_server_libsyncevodbusserver_la-localed-listener.lo \
 @COND_DBUS_TRUE@	src/dbus/server/src_dbus_server_libsyncevodbusserver_la-info-req.lo \
 @COND_DBUS_TRUE@	src/dbus/server/src_dbus_server_libsyncevodbusserver_la-network-manager-client.lo \
 @COND_DBUS_TRUE@	src/dbus/server/src_dbus_server_libsyncevodbusserver_la-presence-status.lo \
@@ -1228,7 +1234,8 @@ am__src_syncevo_libsyncevolution_la_SOURCES_DIST =  \
 	src/syncevo/ThreadSupport.h src/syncevo/SyncML.h \
 	src/syncevo/SyncML.cpp src/syncevo/SynthesisEngine.h \
 	src/syncevo/SynthesisEngine.cpp src/syncevo/Logging.h \
-	src/syncevo/Logging.cpp src/syncevo/LogStdout.h \
+	src/syncevo/Logging.cpp src/syncevo/LogDLT.h \
+	src/syncevo/LogDLT.cpp src/syncevo/LogStdout.h \
 	src/syncevo/LogStdout.cpp src/syncevo/LogRedirect.h \
 	src/syncevo/LogRedirect.cpp src/syncevo/LogSyslog.h \
 	src/syncevo/LogSyslog.cpp src/syncevo/TransportAgent.h \
@@ -1281,6 +1288,7 @@ am__src_syncevo_libsyncevolution_la_SOURCES_DIST =  \
 @COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-SyncML.lo \
 @COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-SynthesisEngine.lo \
 @COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-Logging.lo \
+@COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-LogDLT.lo \
 @COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-LogStdout.lo \
 @COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-LogRedirect.lo \
 @COND_CORE_TRUE@	src/syncevo/src_syncevo_libsyncevolution_la-LogSyslog.lo \
@@ -2224,13 +2232,13 @@ DBUS_SERVICES_DIR = @DBUS_SERVICES_DIR@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DLLTOOL = @DLLTOOL@
+DLT_CFLAGS = @DLT_CFLAGS@
+DLT_LIBS = @DLT_LIBS@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
 EASCLIENT_CFLAGS = @EASCLIENT_CFLAGS@
 EASCLIENT_DEPENDENCIES = @EASCLIENT_DEPENDENCIES@
 EASCLIENT_LIBS = @EASCLIENT_LIBS@
-EBOOKCONTACTS_CFLAGS = @EBOOKCONTACTS_CFLAGS@
-EBOOKCONTACTS_LIBS = @EBOOKCONTACTS_LIBS@
 EBOOK_CFLAGS = @EBOOK_CFLAGS@
 EBOOK_LIBS = @EBOOK_LIBS@
 EBOOK_VERSION_CFLAGS = @EBOOK_VERSION_CFLAGS@
@@ -2405,6 +2413,7 @@ SYNCEVOLUTION_CXXFLAGS = @SYNCEVOLUTION_CXXFLAGS@
 SYNCEVOLUTION_LDADD = @SYNCEVOLUTION_LDADD@ $(am__append_83)
 SYNCEVOLUTION_LIBS = @SYNCEVOLUTION_LIBS@
 SYNCEVOLUTION_LOCALEDIR = @SYNCEVOLUTION_LOCALEDIR@
+SYNCEVO_DBUS_SERVER_ARGS = @SYNCEVO_DBUS_SERVER_ARGS@
 SYNCEVO_WFLAGS = @SYNCEVO_WFLAGS@
 SYNCSOURCES = @SYNCSOURCES@
 SYNTHESIS = @SYNTHESIS@
@@ -2751,6 +2760,7 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@	src/syncevo/SynthesisEngine.h \
 @COND_CORE_TRUE@	src/syncevo/SynthesisEngine.cpp \
 @COND_CORE_TRUE@	src/syncevo/Logging.h src/syncevo/Logging.cpp \
+@COND_CORE_TRUE@	src/syncevo/LogDLT.h src/syncevo/LogDLT.cpp \
 @COND_CORE_TRUE@	src/syncevo/LogStdout.h \
 @COND_CORE_TRUE@	src/syncevo/LogStdout.cpp \
 @COND_CORE_TRUE@	src/syncevo/LogRedirect.h \
@@ -2851,7 +2861,8 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_CORE_TRUE@	@EPACKAGE_LIBS@ @GIO_LIBS@ @GTHREAD_LIBS@ \
 @COND_CORE_TRUE@	@GLIB_LIBS@ $(SYNTHESIS_LIBS) $(PCRECPP_LIBS) \
 @COND_CORE_TRUE@	$(TRANSPORT_LIBS) @LIBS@ $(src_syncevo_ldadd) \
-@COND_CORE_TRUE@	$(DBUS_LIBS) $(NSS_LIBS) $(am__append_27)
+@COND_CORE_TRUE@	$(DLT_LIBS) $(DBUS_LIBS) $(NSS_LIBS) \
+@COND_CORE_TRUE@	$(am__append_27)
 @COND_CORE_TRUE@src_syncevo_libsyncevolution_la_CXXFLAGS = \
 @COND_CORE_TRUE@  $(PCRECPP_CFLAGS) \
 @COND_CORE_TRUE@  $(TRANSPORT_CFLAGS) \
@@ -2865,13 +2876,14 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 
 @COND_CORE_TRUE@src_syncevo_libsyncevolution_la_CPPFLAGS = \
 @COND_CORE_TRUE@  $(src_syncevo_cppflags) \
+@COND_CORE_TRUE@  $(DLT_CFLAGS) \
 @COND_CORE_TRUE@  $(DBUS_CFLAGS) \
 @COND_CORE_TRUE@  -DDATA_DIR=\""$(pkgdatadir)"\" \
 @COND_CORE_TRUE@  -DXML_CONFIG_DIR=\""$(datadir)/syncevolution/xml"\" \
 @COND_CORE_TRUE@  -DTEMPLATE_DIR=\""$(datadir)/syncevolution/templates"\" \
 @COND_CORE_TRUE@  -DLIBDIR=\""$(libdir)"\"
 
-@COND_CORE_TRUE@src_syncevo_libsyncevolution_la_DEPENDENCIES = $(SYNTHESIS_DEP) $(src_syncevo_ldadd)
+@COND_CORE_TRUE@src_syncevo_libsyncevolution_la_DEPENDENCIES = $(SYNTHESIS_DEP) $(filter %.la, $(src_syncevo_ldadd))
 @COND_CORE_TRUE@@ENABLE_MODULES_FALSE@src_syncevo_libsyncevolution_la_LDFLAGS = -static
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@src_syncevo_libsyncevolution_la_LDFLAGS = 
 
@@ -3286,6 +3298,7 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_8) \
 @COND_DBUS_TRUE@	src/dbus/server/dbus-callbacks.cpp \
 @COND_DBUS_TRUE@	src/dbus/server/dbus-user-interface.cpp \
 @COND_DBUS_TRUE@	src/dbus/server/exceptions.cpp \
+@COND_DBUS_TRUE@	src/dbus/server/localed-listener.cpp \
 @COND_DBUS_TRUE@	src/dbus/server/info-req.cpp \
 @COND_DBUS_TRUE@	src/dbus/server/network-manager-client.cpp \
 @COND_DBUS_TRUE@	src/dbus/server/presence-status.cpp \
@@ -3636,6 +3649,13 @@ TEST_README_FILES = $(wildcard $(top_srcdir)/test/README.*)
 DEV_FILE_PATTERN = $(1)$(2)/include $(1)$(2)/lib/*.so $(1)$(2)/lib/*.a \
 	$(1)$(2)/lib/*.la $(1)$(2)/lib/*/*.la $(1)$(2)/lib/pkgconfig \
 	$(1)$(2)/lib/syncevolution/backends/syncactivesync.so
+
+# It is possible to have additional .so backend files included in the
+# binary archives. The additional backend files must be named in the
+# EXTRA_BACKENDS env or make variable with their full file paths,
+# separated by spaces. They will be renamed to <basename>-2.so. See
+# also ScannedBackends in SyncSource.cpp.
+ADD_EXTRA_BACKENDS = set -e; for i in $(EXTRA_BACKENDS); do cp $$i $(1)/$(BACKENDS_DIRECTORY)/`basename $$i .so`-2.so; done
 IPHONE_FILENAME = syncevolution-$(VERSION)-iphone.zip
 TYPE_deb = -D
 TYPE_rpm = -R
@@ -4696,6 +4716,9 @@ src/dbus/server/src_dbus_server_libsyncevodbusserver_la-dbus-user-interface.lo: 
 src/dbus/server/src_dbus_server_libsyncevodbusserver_la-exceptions.lo:  \
 	src/dbus/server/$(am__dirstamp) \
 	src/dbus/server/$(DEPDIR)/$(am__dirstamp)
+src/dbus/server/src_dbus_server_libsyncevodbusserver_la-localed-listener.lo:  \
+	src/dbus/server/$(am__dirstamp) \
+	src/dbus/server/$(DEPDIR)/$(am__dirstamp)
 src/dbus/server/src_dbus_server_libsyncevodbusserver_la-info-req.lo:  \
 	src/dbus/server/$(am__dirstamp) \
 	src/dbus/server/$(DEPDIR)/$(am__dirstamp)
@@ -4829,6 +4852,9 @@ src/syncevo/src_syncevo_libsyncevolution_la-SynthesisEngine.lo:  \
 	src/syncevo/$(am__dirstamp) \
 	src/syncevo/$(DEPDIR)/$(am__dirstamp)
 src/syncevo/src_syncevo_libsyncevolution_la-Logging.lo:  \
+	src/syncevo/$(am__dirstamp) \
+	src/syncevo/$(DEPDIR)/$(am__dirstamp)
+src/syncevo/src_syncevo_libsyncevolution_la-LogDLT.lo:  \
 	src/syncevo/$(am__dirstamp) \
 	src/syncevo/$(DEPDIR)/$(am__dirstamp)
 src/syncevo/src_syncevo_libsyncevolution_la-LogStdout.lo:  \
@@ -5872,6 +5898,8 @@ mostlyclean-compile:
 	-rm -f src/dbus/server/src_dbus_server_libsyncevodbusserver_la-exceptions.lo
 	-rm -f src/dbus/server/src_dbus_server_libsyncevodbusserver_la-info-req.$(OBJEXT)
 	-rm -f src/dbus/server/src_dbus_server_libsyncevodbusserver_la-info-req.lo
+	-rm -f src/dbus/server/src_dbus_server_libsyncevodbusserver_la-localed-listener.$(OBJEXT)
+	-rm -f src/dbus/server/src_dbus_server_libsyncevodbusserver_la-localed-listener.lo
 	-rm -f src/dbus/server/src_dbus_server_libsyncevodbusserver_la-main.$(OBJEXT)
 	-rm -f src/dbus/server/src_dbus_server_libsyncevodbusserver_la-main.lo
 	-rm -f src/dbus/server/src_dbus_server_libsyncevodbusserver_la-network-manager-client.$(OBJEXT)
@@ -5974,6 +6002,8 @@ mostlyclean-compile:
 	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-IniConfigNode.lo
 	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-LocalTransportAgent.$(OBJEXT)
 	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-LocalTransportAgent.lo
+	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-LogDLT.$(OBJEXT)
+	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-LogDLT.lo
 	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-LogRedirect.$(OBJEXT)
 	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-LogRedirect.lo
 	-rm -f src/syncevo/src_syncevo_libsyncevolution_la-LogStdout.$(OBJEXT)
@@ -6192,6 +6222,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/dbus/server/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-dbus-user-interface.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/dbus/server/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-exceptions.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/dbus/server/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-info-req.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/dbus/server/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-localed-listener.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/dbus/server/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-main.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/dbus/server/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-network-manager-client.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/dbus/server/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-notification-backend-libnotify.Plo@am__quote@
@@ -6269,6 +6300,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-IdentityProvider.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-IniConfigNode.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-LocalTransportAgent.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-LogDLT.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-LogRedirect.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-LogStdout.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-LogSyslog.Plo@am__quote@
@@ -7302,6 +7334,13 @@ src/dbus/server/src_dbus_server_libsyncevodbusserver_la-exceptions.lo: src/dbus/
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_server_libsyncevodbusserver_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) $(CXXFLAGS) -c -o src/dbus/server/src_dbus_server_libsyncevodbusserver_la-exceptions.lo `test -f 'src/dbus/server/exceptions.cpp' || echo '$(srcdir)/'`src/dbus/server/exceptions.cpp
 
+src/dbus/server/src_dbus_server_libsyncevodbusserver_la-localed-listener.lo: src/dbus/server/localed-listener.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_server_libsyncevodbusserver_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) $(CXXFLAGS) -MT src/dbus/server/src_dbus_server_libsyncevodbusserver_la-localed-listener.lo -MD -MP -MF src/dbus/server/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-localed-listener.Tpo -c -o src/dbus/server/src_dbus_server_libsyncevodbusserver_la-localed-listener.lo `test -f 'src/dbus/server/localed-listener.cpp' || echo '$(srcdir)/'`src/dbus/server/localed-listener.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/dbus/server/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-localed-listener.Tpo src/dbus/server/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-localed-listener.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='src/dbus/server/localed-listener.cpp' object='src/dbus/server/src_dbus_server_libsyncevodbusserver_la-localed-listener.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_server_libsyncevodbusserver_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) $(CXXFLAGS) -c -o src/dbus/server/src_dbus_server_libsyncevodbusserver_la-localed-listener.lo `test -f 'src/dbus/server/localed-listener.cpp' || echo '$(srcdir)/'`src/dbus/server/localed-listener.cpp
+
 src/dbus/server/src_dbus_server_libsyncevodbusserver_la-info-req.lo: src/dbus/server/info-req.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_dbus_server_libsyncevodbusserver_la_CPPFLAGS) $(CPPFLAGS) $(src_dbus_server_libsyncevodbusserver_la_CXXFLAGS) $(CXXFLAGS) -MT src/dbus/server/src_dbus_server_libsyncevodbusserver_la-info-req.lo -MD -MP -MF src/dbus/server/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-info-req.Tpo -c -o src/dbus/server/src_dbus_server_libsyncevodbusserver_la-info-req.lo `test -f 'src/dbus/server/info-req.cpp' || echo '$(srcdir)/'`src/dbus/server/info-req.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/dbus/server/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-info-req.Tpo src/dbus/server/$(DEPDIR)/src_dbus_server_libsyncevodbusserver_la-info-req.Plo
@@ -7504,6 +7543,13 @@ src/syncevo/src_syncevo_libsyncevolution_la-Logging.lo: src/syncevo/Logging.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='src/syncevo/Logging.cpp' object='src/syncevo/src_syncevo_libsyncevolution_la-Logging.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -c -o src/syncevo/src_syncevo_libsyncevolution_la-Logging.lo `test -f 'src/syncevo/Logging.cpp' || echo '$(srcdir)/'`src/syncevo/Logging.cpp
+
+src/syncevo/src_syncevo_libsyncevolution_la-LogDLT.lo: src/syncevo/LogDLT.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -MT src/syncevo/src_syncevo_libsyncevolution_la-LogDLT.lo -MD -MP -MF src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-LogDLT.Tpo -c -o src/syncevo/src_syncevo_libsyncevolution_la-LogDLT.lo `test -f 'src/syncevo/LogDLT.cpp' || echo '$(srcdir)/'`src/syncevo/LogDLT.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-LogDLT.Tpo src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-LogDLT.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='src/syncevo/LogDLT.cpp' object='src/syncevo/src_syncevo_libsyncevolution_la-LogDLT.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -c -o src/syncevo/src_syncevo_libsyncevolution_la-LogDLT.lo `test -f 'src/syncevo/LogDLT.cpp' || echo '$(srcdir)/'`src/syncevo/LogDLT.cpp
 
 src/syncevo/src_syncevo_libsyncevolution_la-LogStdout.lo: src/syncevo/LogStdout.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(src_syncevo_libsyncevolution_la_CPPFLAGS) $(CPPFLAGS) $(src_syncevo_libsyncevolution_la_CXXFLAGS) $(CXXFLAGS) -MT src/syncevo/src_syncevo_libsyncevolution_la-LogStdout.lo -MD -MP -MF src/syncevo/$(DEPDIR)/src_syncevo_libsyncevolution_la-LogStdout.Tpo -c -o src/syncevo/src_syncevo_libsyncevolution_la-LogStdout.lo `test -f 'src/syncevo/LogStdout.cpp' || echo '$(srcdir)/'`src/syncevo/LogStdout.cpp
@@ -10741,7 +10787,8 @@ uninstall-am: uninstall-binPROGRAMS uninstall-binSCRIPTS \
 	uninstall-dist_src_testcases_templates_clients_phone_nokia_s40DATA \
 	uninstall-docDATA uninstall-libLTLIBRARIES \
 	uninstall-libexecPROGRAMS uninstall-libexecSCRIPTS \
-	uninstall-man uninstall-nodist_accounts_providersDATA \
+	uninstall-local uninstall-man \
+	uninstall-nodist_accounts_providersDATA \
 	uninstall-nodist_accounts_servicesDATA \
 	uninstall-nodist_binSCRIPTS \
 	uninstall-nodist_src_dbus_qt_libsyncevolution_qt_dbus_includeHEADERS \
@@ -10900,7 +10947,7 @@ uninstall-man: uninstall-man1
 	uninstall-dist_src_testcases_templates_clients_phone_nokia_s40DATA \
 	uninstall-docDATA uninstall-libLTLIBRARIES \
 	uninstall-libexecPROGRAMS uninstall-libexecSCRIPTS \
-	uninstall-man uninstall-man1 \
+	uninstall-local uninstall-man uninstall-man1 \
 	uninstall-nodist_accounts_providersDATA \
 	uninstall-nodist_accounts_servicesDATA \
 	uninstall-nodist_binSCRIPTS \
@@ -11159,11 +11206,11 @@ src/dbus/interfaces/%.xml: src/dbus/interfaces/%-full.xml src/dbus/interfaces/.s
 @ENABLE_QT_DBUS_TRUE@	&& perl -pi -e 's/SYNCEVO-(\w*)-FULL_H/SYNCEVO_$$1_FULL_H/' src/dbus/qt/syncevo-$*-full.* \
 @ENABLE_QT_DBUS_TRUE@	&& echo 'timestamp' >$@
 @COND_DBUS_TRUE@$(src_dbus_server_script): $(src_dbus_server_script_in)
-@COND_DBUS_TRUE@	@sed -e "s|\@libexecdir\@|$(libexecdir)|" $< >$@
+@COND_DBUS_TRUE@	@sed -e "s|\@libexecdir\@|$(libexecdir)|" -e "s|\@SYNCEVO_DBUS_SERVER_ARGS\@|$(SYNCEVO_DBUS_SERVER_ARGS)|" $< >$@
 @COND_DBUS_TRUE@$(src_dbus_server_desktop): $(src_dbus_server_desktop_in)
 @COND_DBUS_TRUE@	@sed -e "s|\@libexecdir\@|$(libexecdir)|" $< >$@
 @COND_DBUS_TRUE@src/dbus/server/%.service: src/dbus/server/%.service.in
-@COND_DBUS_TRUE@	@sed -e "s|\@libexecdir\@|$(libexecdir)|" $< >$@
+@COND_DBUS_TRUE@	@sed -e "s|\@libexecdir\@|$(libexecdir)|" -e "s|\@SYNCEVO_DBUS_SERVER_ARGS\@|$(SYNCEVO_DBUS_SERVER_ARGS)|" $< >$@
 
 # if this will pose a problem then see the link below, probably the solution
 # here will need to be used.
@@ -11329,6 +11376,7 @@ src/test: src/client-test
 @COND_DBUS_TRUE@	mkdir -p $(distdir)/usr/share/doc/syncevolution
 @COND_DBUS_TRUE@	cp $(srcdir)/INSTALL-tar-gz $(distdir)/INSTALL
 @COND_DBUS_TRUE@	cp $(filter-out all, $+) $(distdir)/usr/share/doc/syncevolution
+@COND_DBUS_TRUE@	$(call ADD_EXTRA_BACKENDS, $(distdir))
 @COND_DBUS_TRUE@	tar zcf $(distdir)-$(BINSUFFIX).tar.gz $(distdir)
 @COND_DBUS_TRUE@	rm -rf $(distdir)
 # without D-Bus, we can simply create an archive with a bin directory
@@ -11341,6 +11389,7 @@ src/test: src/client-test
 @COND_DBUS_FALSE@	rm -rf $(call DEV_FILE_PATTERN,$(distdir),/)
 @COND_DBUS_FALSE@	for i in `find $(distdir) -type d | sort -r`; do rmdir $$i 2>/dev/null || true; done
 @COND_DBUS_FALSE@	cp $(filter-out all, $+) $(distdir)
+@COND_DBUS_FALSE@	$(call ADD_EXTRA_BACKENDS, $(distdir))
 @COND_DBUS_FALSE@	tar zcf $(distdir)-$(BINSUFFIX).tar.gz $(distdir)
 @COND_DBUS_FALSE@	rm -rf $(distdir)
 
@@ -11425,6 +11474,7 @@ checkinstall/dist/$(distdir): all
 	rm -rf $@
 	$(MAKE) install DESTDIR=`pwd`/$@
 	$(MAKE) installcheck DESTDIR=`pwd`/$@
+	$(call ADD_EXTRA_BACKENDS, $@)
 	rm -rf $(call DEV_FILE_PATTERN,$@,/usr)
 clean-local: clean_dist
 clean_dist:
@@ -11461,7 +11511,7 @@ dot_dist_hook:
 	  echo 'A git checkout is required to generate a ChangeLog.' >&2; \
 	fi
 @ENABLE_EVOLUTION_COMPATIBILITY_TRUE@toplevel_so_check:
-@ENABLE_EVOLUTION_COMPATIBILITY_TRUE@	for i in `find $(DESTDIR)/$(libdir)/syncevolution $(DESTDIR)/$(libdir)/libsyncevo* $(DESTDIR)/$(libdir)/libsynthesis* -name *.so` $(DESTDIR)/$(bindir)/syncevolution; \
+@ENABLE_EVOLUTION_COMPATIBILITY_TRUE@	for i in `find $(DESTDIR)/$(libdir)/syncevolution $(DESTDIR)/$(libdir)/libsyncevo* $(DESTDIR)/$(libdir)/libsynthesis* -name *.so | grep -v -2.so` $(DESTDIR)/$(bindir)/syncevolution; \
 @ENABLE_EVOLUTION_COMPATIBILITY_TRUE@	do \
 @ENABLE_EVOLUTION_COMPATIBILITY_TRUE@	  if objdump -T -C $$i | grep -v :: | grep '\*UND\*' | sort | grep -v -w ical_strdup | grep -e ical -e " e_"; then \
 @ENABLE_EVOLUTION_COMPATIBILITY_TRUE@	    echo "$$i should not depend on EDS, libical or libbluetooth"; \
@@ -11533,9 +11583,16 @@ dist-hook: $(all_dist_hooks)
 # Force sequential installation. This is a workaround for relinking failures
 # during concurrent distcheck (a backend was relinked against not yet installed
 # libsyncevolution.la).
+#
+# Also used to add additional backends.
 install-am: all-am
 	@$(MAKE) $(AM_MAKEFLAGS) install-exec-am
 	@$(MAKE) $(AM_MAKEFLAGS) install-data-am
+	for i in $(EXTRA_BACKENDS); do $(INSTALL) $$i $(DESTDIR)/$(BACKENDS_DIRECTORY)/`basename $$i .so`-2.so; done
+
+# Necessary for "make distcheck": must not leave files behind.
+uninstall-local:
+	rm -f $(DESTDIR)/$(BACKENDS_DIRECTORY)/*-2.so
 
 .DELETE_ON_ERROR:
 

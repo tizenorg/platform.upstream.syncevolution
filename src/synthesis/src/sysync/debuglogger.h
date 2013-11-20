@@ -30,6 +30,9 @@ typedef enum {
   dbgfmt_text,        ///< plain text format (but can be indented)
   dbgfmt_xml,         ///< XML format
   dbgfmt_html,        ///< HTML format
+#ifdef USE_DLT
+  dbgfmt_dlt,         ///< GENIVI Diagnostic Log and Trace
+#endif
   numDbgOutFormats
 } TDbgOutFormats;
 

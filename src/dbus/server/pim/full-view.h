@@ -33,6 +33,7 @@ class FullView : public IndividualView
 {
     FolksIndividualAggregatorCXX m_folks;
     boost::shared_ptr<LocaleFactory> m_locale;
+    bool m_localeChanged;
     bool m_isQuiescent;
     boost::weak_ptr<FullView> m_self;
     Timeout m_waitForIdle;
@@ -77,6 +78,12 @@ class FullView : public IndividualView
      */
     static boost::shared_ptr<FullView> create(const FolksIndividualAggregatorCXX &folks,
                                               const boost::shared_ptr<LocaleFactory> &locale);
+
+    /**
+     * Change locale. Updating pre-computed data must be triggered by
+     * calling setCompare() later.
+     */
+    void setLocale(const boost::shared_ptr<LocaleFactory> &locale);
 
     /** FolksIndividualAggregator "individuals-changed" slot */
     void individualsChanged(GeeSet *added,

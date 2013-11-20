@@ -71,6 +71,7 @@ libsynthesis_la_CFLAGS = \
 	-I$(srcdir)/DB_interfaces/api_db/ \
 	-I$(srcdir)/sysync_SDK/Sources/ \
 	$(PCRE_CFLAGS) \
+	$(DLT_CFLAGS) \
 	$(SQLITE3_CFLAGS) \
 	$(ZLIB_CFLAGS) \
 	$(XMLPARSE_CFLAGS) \
@@ -78,7 +79,7 @@ libsynthesis_la_CFLAGS = \
 	$(LIBICAL_CFLAGS) \
 	$(LIBECAL_CFLAGS)
 libsynthesis_la_CXXFLAGS = $(libsynthesis_la_CFLAGS)
-libsynthesis_la_LIBADD = $(PCRE_LIBS) $(SQLITE3_LIBS) $(XMLPARSE_LIBS) $(LIBICAL_LIBS) $(LIBECAL_LIBS) libsmltk.la -lz -ldl -lpthread
+libsynthesis_la_LIBADD = $(PCRE_LIBS) $(DLT_LIBS) $(SQLITE3_LIBS) $(XMLPARSE_LIBS) $(LIBICAL_LIBS) $(LIBECAL_LIBS) libsmltk.la -lz -ldl -lpthread
 libsynthesis_la_LDFLAGS = -version-info $(ENGINE_CURRENT):$(ENGINE_REVISION):$(ENGINE_AGE) \
 	-Wl,--version-script=$(srcdir)/synthesis-linker.map
 libsynthesis_la_DEPENDENCIES = $(srcdir)/synthesis-linker.map libsmltk.la

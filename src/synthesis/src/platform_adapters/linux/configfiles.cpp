@@ -231,7 +231,6 @@ lineartime_t getFileModificationDate(const char *aFileName)
 bool getLocalDeviceID(string &aURI)
 {
   char     szHostname[100];
-  struct hostent *pHostEnt=NULL;
   string hostName;
 
   // get name of own machine
@@ -239,12 +238,25 @@ bool getLocalDeviceID(string &aURI)
     hostName="_unknown_";
   }
   else {
+    // A network lookup of the domain name is not likely
+    // to yield any good result on most Linux consumer
+    // devices. It just causes a slowdown, in particular
+    // when the device is not currently connected (which
+    // does not necessarily prevent syncing, for example
+    // when using Bluetooth); 10 second delays have
+    // been observed while the network stack waits for
+    // a timeout (FDO #70771).
+    //
+    // To avoid that timeout, disable this code unconditionally.
+#if 0
+    struct hostent *pHostEnt=NULL;
     // get host entry
     pHostEnt = gethostbyname(szHostname);
     // return fully qualified name of machine as ID
     if (pHostEnt)
       hostName=pHostEnt->h_name; // DNS name of machine
     else
+#endif
       hostName=szHostname; // just name of machine
   }
   // generate URI from name

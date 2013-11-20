@@ -68,6 +68,13 @@ DEV_FILE_PATTERN = $(1)$(2)/include $(1)$(2)/lib/*.so $(1)$(2)/lib/*.a $(1)$(2)/
 # be packaged separately.
 DEV_FILE_PATTERN += $(1)$(2)/lib/syncevolution/backends/syncactivesync.so
 
+# It is possible to have additional .so backend files included in the
+# binary archives. The additional backend files must be named in the
+# EXTRA_BACKENDS env or make variable with their full file paths,
+# separated by spaces. They will be renamed to <basename>-2.so. See
+# also ScannedBackends in SyncSource.cpp.
+ADD_EXTRA_BACKENDS = set -e; for i in $(EXTRA_BACKENDS); do cp $$i $(1)/$(BACKENDS_DIRECTORY)/`basename $$i .so`-2.so; done
+
 # binary distribution as .tar.gz
 if COND_DBUS
 # when building with D-Bus, we have no choice: the service has to go into /usr
@@ -83,6 +90,7 @@ distbin : $(distbin_docs) INSTALL-tar-gz all
 	mkdir -p $(distdir)/usr/share/doc/syncevolution
 	cp $(srcdir)/INSTALL-tar-gz $(distdir)/INSTALL
 	cp $(filter-out all, $+) $(distdir)/usr/share/doc/syncevolution
+	$(call ADD_EXTRA_BACKENDS, $(distdir))
 	tar zcf $(distdir)-$(BINSUFFIX).tar.gz $(distdir)
 	rm -rf $(distdir)
 else
@@ -96,6 +104,7 @@ distbin : $(distbin_docs) all
 	rm -rf $(call DEV_FILE_PATTERN,$(distdir),/)
 	for i in `find $(distdir) -type d | sort -r`; do rmdir $$i 2>/dev/null || true; done
 	cp $(filter-out all, $+) $(distdir)
+	$(call ADD_EXTRA_BACKENDS, $(distdir))
 	tar zcf $(distdir)-$(BINSUFFIX).tar.gz $(distdir)
 	rm -rf $(distdir)
 endif
@@ -250,6 +259,7 @@ checkinstall/dist/$(distdir): all
 	rm -rf $@
 	$(MAKE) install DESTDIR=`pwd`/$@
 	$(MAKE) installcheck DESTDIR=`pwd`/$@
+	$(call ADD_EXTRA_BACKENDS, $@)
 	rm -rf $(call DEV_FILE_PATTERN,$@,/usr)
 clean-local: clean_dist
 clean_dist:
@@ -298,10 +308,12 @@ if ENABLE_EVOLUTION_COMPATIBILITY
 # (relevant in that case and for static builds) for dependencies on
 # problematic libraries and symbols
 #
+# Exclude *-2.so, these are EXTRA_BACKENDS for which other rules apply.
+#
 # ical_strdup is an exception because it is in SyncEvolution.
 all_local_installchecks += toplevel_so_check
 toplevel_so_check:
-	for i in `find $(DESTDIR)/$(libdir)/syncevolution $(DESTDIR)/$(libdir)/libsyncevo* $(DESTDIR)/$(libdir)/libsynthesis* -name *.so` $(DESTDIR)/$(bindir)/syncevolution; \
+	for i in `find $(DESTDIR)/$(libdir)/syncevolution $(DESTDIR)/$(libdir)/libsyncevo* $(DESTDIR)/$(libdir)/libsynthesis* -name *.so | grep -v -2.so` $(DESTDIR)/$(bindir)/syncevolution; \
 	do \
 	  if objdump -T -C $$i | grep -v :: | grep '\*UND\*' | sort | grep -v -w ical_strdup | grep -e ical -e " e_"; then \
 	    echo "$$i should not depend on EDS, libical or libbluetooth"; \
@@ -406,8 +418,15 @@ dist-hook: $(all_dist_hooks)
 # Force sequential installation. This is a workaround for relinking failures
 # during concurrent distcheck (a backend was relinked against not yet installed
 # libsyncevolution.la).
+#
+# Also used to add additional backends.
 install-am: all-am
 	@$(MAKE) $(AM_MAKEFLAGS) install-exec-am
 	@$(MAKE) $(AM_MAKEFLAGS) install-data-am
+	for i in $(EXTRA_BACKENDS); do $(INSTALL) $$i $(DESTDIR)/$(BACKENDS_DIRECTORY)/`basename $$i .so`-2.so; done
+
+# Necessary for "make distcheck": must not leave files behind.
+uninstall-local:
+	rm -f $(DESTDIR)/$(BACKENDS_DIRECTORY)/*-2.so
 
 .DELETE_ON_ERROR:

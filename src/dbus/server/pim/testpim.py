@@ -45,6 +45,8 @@ import codecs
 import pprint
 import shutil
 
+import localed
+
 # Update path so that testdbus.py can be found.
 pimFolder = os.path.realpath(os.path.abspath(os.path.split(inspect.getfile(inspect.currentframe()))[0]))
 if pimFolder not in sys.path:
@@ -600,6 +602,16 @@ VERSION:3.0\r?
         return set([os.path.splitext(x)[0] for x in (os.path.exists(self.sourcedir) and os.listdir(self.sourcedir) or [])])
 
 
+    def readManagerIni(self):
+         '''returns content of manager.ini file, split into lines and sorted, None if not found'''
+         filename = os.path.join(xdg_root, "config", "syncevolution", "pim-manager.ini")
+         if os.path.exists(filename):
+              lines = open(filename, "r").readlines()
+              lines.sort()
+              return lines
+         else:
+              return None
+
 
 class TestContacts(TestPIMUtil, unittest.TestCase):
     """Tests for org._01.pim.contacts API.
@@ -634,6 +646,18 @@ XDG root.
         expected.add(self.managerPrefix + uid)
         self.assertEqual(peers, self.manager.GetAllPeers())
         self.assertEqual(expected, self.currentSources())
+        self.assertEqual(['sort =\n'],
+                         self.readManagerIni())
+
+        # Check effect of SetActiveAddressBooks() on pim-manager.ini.
+        self.manager.SetActiveAddressBooks(['peer-' + uid])
+        self.assertEqual(['active = pim-manager-' + uid + '\n',
+                          'sort =\n'],
+                         self.readManagerIni())
+        self.manager.SetActiveAddressBooks([])
+        self.assertEqual(['active = \n',
+                          'sort =\n'],
+                         self.readManagerIni())
 
         # PIM Manager must not allow overwriting an existing config.
         # Uses the new name for SetPeer().
@@ -659,14 +683,21 @@ XDG root.
         self.manager.RemovePeer(uid)
         self.assertEqual(peers, self.manager.GetAllPeers())
         self.assertEqual(expected, self.currentSources())
+        self.assertEqual(['active = \n',
+                          'sort =\n'],
+                         self.readManagerIni())
 
-        # add and remove foo again
+        # add and remove foo again, this time while its address book is active
         uid = self.uidPrefix + 'foo4' # work around EDS bug with reusing UID
         peers[uid] = {'protocol': 'PBAP',
                       'address': 'xxx'}
         self.manager.SetPeer(uid,
                              peers[uid])
         expected.add(self.managerPrefix + uid)
+        self.manager.SetActiveAddressBooks(['peer-' + uid])
+        self.assertEqual(['active = pim-manager-' + uid + '\n',
+                          'sort =\n'],
+                         self.readManagerIni())
         self.assertEqual(peers, self.manager.GetAllPeers())
         self.assertEqual(expected, self.currentSources())
         time.sleep(2)
@@ -675,9 +706,14 @@ XDG root.
         self.manager.RemovePeer(uid)
         self.assertEqual(peers, self.manager.GetAllPeers())
         self.assertEqual(expected, self.currentSources())
+        self.assertEqual(['active = \n',
+                          'sort =\n'],
+                         self.readManagerIni())
 
         # add foo, bar, xyz
+        addressbooks = []
         uid = self.uidPrefix + 'foo2'
+        addressbooks.append('peer-' + uid)
         peers[uid] = {'protocol': 'PBAP',
                       'address': 'xxx'}
         self.manager.SetPeer(uid,
@@ -685,8 +721,12 @@ XDG root.
         expected.add(self.managerPrefix + uid)
         self.assertEqual(peers, self.manager.GetAllPeers())
         self.assertEqual(expected, self.currentSources())
+        self.assertEqual(['active = \n',
+                          'sort =\n'],
+                         self.readManagerIni())
 
         uid = self.uidPrefix + 'bar'
+        addressbooks.append('peer-' + uid)
         peers[uid] = {'protocol': 'PBAP',
                       'address': 'yyy'}
         self.manager.SetPeer(uid,
@@ -696,6 +736,7 @@ XDG root.
         self.assertEqual(expected, self.currentSources())
 
         uid = self.uidPrefix + 'xyz'
+        addressbooks.append('peer-' + uid)
         peers[uid] = {'protocol': 'PBAP',
                       'address': 'zzz'}
         self.manager.SetPeer(uid,
@@ -703,6 +744,15 @@ XDG root.
         expected.add(self.managerPrefix + uid)
         self.assertEqual(peers, self.manager.GetAllPeers())
         self.assertEqual(expected, self.currentSources())
+        self.assertEqual(['active = \n',
+                          'sort =\n'],
+                         self.readManagerIni())
+
+        self.manager.SetActiveAddressBooks(addressbooks)
+        addressbooks.sort()
+        self.assertEqual(['active = ' + ' '.join([x.replace('peer-', 'pim-manager-') for x in addressbooks]) + '\n',
+                          'sort =\n'],
+                         self.readManagerIni())
 
         # EDS workaround
         time.sleep(2)
@@ -710,9 +760,13 @@ XDG root.
         # remove yxz, bar, foo
         expected.remove(self.managerPrefix + uid)
         del peers[uid]
+        addressbooks.remove('peer-' + uid)
         self.manager.RemovePeer(uid)
         self.assertEqual(peers, self.manager.GetAllPeers())
         self.assertEqual(expected, self.currentSources())
+        self.assertEqual(['active = ' + ' '.join([x.replace('peer-', 'pim-manager-') for x in addressbooks]) + '\n',
+                          'sort =\n'],
+                         self.readManagerIni())
 
         # EDS workaround
         time.sleep(2)
@@ -720,9 +774,13 @@ XDG root.
         uid = self.uidPrefix + 'bar'
         expected.remove(self.managerPrefix + uid)
         del peers[uid]
+        addressbooks.remove('peer-' + uid)
         self.manager.RemovePeer(uid)
         self.assertEqual(peers, self.manager.GetAllPeers())
         self.assertEqual(expected, self.currentSources())
+        self.assertEqual(['active = ' + ' '.join([x.replace('peer-', 'pim-manager-') for x in addressbooks]) + '\n',
+                          'sort =\n'],
+                         self.readManagerIni())
 
         # EDS workaround
         time.sleep(2)
@@ -730,12 +788,22 @@ XDG root.
         uid = self.uidPrefix + 'foo2'
         expected.remove(self.managerPrefix + uid)
         del peers[uid]
+        addressbooks.remove('peer-' + uid)
         self.manager.RemovePeer(uid)
         self.assertEqual(peers, self.manager.GetAllPeers())
         self.assertEqual(expected, self.currentSources())
+        self.assertEqual(['active = ' + ' '.join([x.replace('peer-', 'pim-manager-') for x in addressbooks]) + '\n',
+                          'sort =\n'],
+                         self.readManagerIni())
 
         # EDS workaround
         time.sleep(2)
+
+    @property("snapshot", "broken-config")
+    def testBrokenConfig(self):
+        '''TestContacts.testBrokenConfig - start with broken pim-manager.ini'''
+        self.manager.Start()
+        self.assertEqual("last/first", self.manager.GetSortOrder())
 
     @timeout(os.environ.get('TESTPIM_TEST_SYNC_TESTCASES', False) and 300000 or 300)
     @property("snapshot", "simple-sort")
@@ -1534,8 +1602,7 @@ END:VCARD''']):
         # Check that order was adapted and stored permanently.
         self.assertEqual("last/first", self.manager.GetSortOrder())
         self.assertIn("sort = last/first\n",
-                      open(os.path.join(xdg_root, "config", "syncevolution", "pim-manager.ini"),
-                           "r").readlines())
+                      self.readManagerIni())
 
         # Contact in the middle may or may not become invalidated.
         self.runUntil('reordered',
@@ -1984,8 +2051,7 @@ END:VCARD'''
         # assuming that the PIM Manager preserves that order (not really guaranteed
         # by the API, but is how it is implemented).
         self.assertIn('active = pim-manager-' + self.uidPrefix + 'a pim-manager-' + self.uidPrefix + 'b pim-manager-' + self.uidPrefix + 'c system-address-book\n',
-                      open(os.path.join(xdg_root, "config", "syncevolution", "pim-manager.ini"),
-                           "r").readlines())
+                      self.readManagerIni())
 
         for peer in active:
              for index in range(0, contactsPerPeer):
@@ -2397,26 +2463,40 @@ END:VCARD''']):
 
         # Find Abraham via caller ID for 089/7888-99 (country is Germany).
         view = ContactsView(self.manager)
-        view.search([['phone', '+49897888']])
-        self.runUntil('"+49897888" search results',
+        view.search([['phone', '+4989788899']])
+        self.runUntil('"+4989788899" search results',
                       check=lambda: self.assertEqual([], view.errors),
                       until=lambda: view.quiescentCount > 0)
         self.assertEqual(1, len(view.contacts))
         view.read(0, 1)
-        self.runUntil('+49897888 data',
+        self.runUntil('+4989788899 data',
+                      check=lambda: self.assertEqual([], view.errors),
+                      until=lambda: view.haveData(0))
+        self.assertEqual(u'Abraham', view.contacts[0]['structured-name']['given'])
+
+        # Find Abraham via caller ID for +44 89 7888-99 (Abraham has no country code
+        # set and matches, whereas Benjamin has +1 as country code and does not match).
+        view = ContactsView(self.manager)
+        view.search([['phone', '+4489788899']])
+        self.runUntil('"+4489788899" search results',
+                      check=lambda: self.assertEqual([], view.errors),
+                      until=lambda: view.quiescentCount > 0)
+        self.assertEqual(1, len(view.contacts))
+        view.read(0, 1)
+        self.runUntil('+4489788899 data',
                       check=lambda: self.assertEqual([], view.errors),
                       until=lambda: view.haveData(0))
         self.assertEqual(u'Abraham', view.contacts[0]['structured-name']['given'])
 
         # Find Abraham via 089/7888-99 (not a full caller ID, but at least a valid phone number).
         view = ContactsView(self.manager)
-        view.search([['phone', '0897888']])
-        self.runUntil('"0897888" search results',
+        view.search([['phone', '089788899']])
+        self.runUntil('"089788899" search results',
                       check=lambda: self.assertEqual([], view.errors),
                       until=lambda: view.quiescentCount > 0)
         self.assertEqual(1, len(view.contacts))
         view.read(0, 1)
-        self.runUntil('0897888 data',
+        self.runUntil('089788899 data',
                       check=lambda: self.assertEqual([], view.errors),
                       until=lambda: view.haveData(0))
         self.assertEqual(u'Abraham', view.contacts[0]['structured-name']['given'])
@@ -2433,6 +2513,7 @@ END:VCARD''']):
         self.setUpView()
 
         msg = None
+        view = None
         try:
              # Insert new contacts and calculate their family names.
              names = []
@@ -2503,6 +2584,7 @@ END:VCARD
                   raise Exception('%s:\n%s' % (msg, repr(ex))), None, info[2]
              else:
                   raise
+        return view
 
     @timeout(60)
     @property("ENV", "LC_TYPE=ja_JP.UTF-8 LC_ALL=ja_JP.UTF-8 LANG=ja_JP.UTF-8")
@@ -2521,13 +2603,19 @@ END:VCARD
          self.doFilter(# Names of all contacts, sorted as expected.
                        # 江 = jiāng = Jiang when using Pinyin and thus after Jeffries and before Meadows.
                        # 鳥 = niǎo before 女性 = nǚ xìng (see FDO #66618)
-                       ('Adams', 'Jeffries', u'江', 'Meadows', u'鳥', u'女性' ),
-                       # 'J' not expected to find Jiang; searching
-                       # is meant to use Chinese letters.
-                       (([['any-contains', 'J']], ('Jeffries',)),
-                        ([['any-contains', u'江']], (u'江',)),
-                        ([['any-contains', u'jiāng']], ()),
-                        ([['any-contains', u'Jiang']], ()),
+                       ('Adams', 'Jeffries', u'江', 'jiang', 'Meadows', u'鳥', u'女性' ),
+                       # 'J' may or may not match Jiang; by default, it matches.
+                       (([['any-contains', 'J']], ('Jeffries', u'江', 'jiang')),
+                        ([['any-contains', 'J', 'no-transliteration']], ('Jeffries', 'jiang')),
+                        ([['any-contains', 'J', 'no-transliteration', 'case-sensitive']], ('Jeffries',)),
+                        ([['any-contains', u'江']], (u'江', 'jiang')),
+                        ([['any-contains', u'jiang']], (u'江', 'jiang')),
+                        ([['any-contains', u'jiāng']], (u'江', 'jiang')),
+                        ([['any-contains', u'jiāng', 'no-transliteration']], ('jiang',)),
+                        ([['any-contains', u'jiāng', 'accent-sensitive']], (u'江',)),
+                        ([['any-contains', u'jiāng', 'accent-sensitive', 'case-sensitive']], (u'江',)),
+                        ([['any-contains', u'Jiāng', 'accent-sensitive', 'case-sensitive']], ()),
+                        ([['any-contains', u'Jiang']], (u'江', 'jiang')),
                         ),
                        )
 
@@ -2541,6 +2629,100 @@ END:VCARD
                        (u'Göbel', u'Goethe', u'Göthe', u'Götz', u'Goldmann'),
                        (),
                        )
+
+    @timeout(60)
+    @property("ENV", "LC_TYPE=zh_CN.UTF-8 LANG=zh_CN.UTF-8")
+    def testLocaled(self):
+         # Use mixed Chinese/Western names, because then the locale really matters.
+         namespinyin = ('Adams', 'Jeffries', u'江', 'Meadows', u'鳥', u'女性' )
+         namesgerman = ('Adams', 'Jeffries', 'Meadows', u'女性', u'江', u'鳥' )
+         numtestcases = len(namespinyin)
+         self.doFilter(namespinyin, ())
+
+         daemon = localed.Localed()
+         msg = None
+         try:
+              # Broadcast Locale value together with PropertiesChanged signal.
+              self.view.quiescentCount = 0
+              daemon.SetLocale(['LC_TYPE=de_DE.UTF-8', 'LANG=de_DE.UTF-8'], False)
+              logging.log('reading contacts, German')
+              self.runUntil('German sorting',
+                            check=lambda: self.assertEqual([], self.view.errors),
+                            until=lambda: self.view.quiescentCount > 1)
+              self.view.read(0, numtestcases)
+              self.runUntil('German contacts',
+                            check=lambda: self.assertEqual([], self.view.errors),
+                            until=lambda: self.view.haveData(0, numtestcases))
+              for i, name in enumerate(namesgerman):
+                   msg = u'contact #%d with name %s in\n%s' % (i, name, pprint.pformat(self.stripDBus(self.view.contacts, sortLists=False)))
+                   self.assertEqual(name, self.view.contacts[i]['full-name'])
+
+              # Switch back to Pinyin without including the new value.
+              self.view.quiescentCount = 0
+              daemon.SetLocale(['LC_TYPE=zh_CN.UTF-8', 'LANG=zh_CN.UTF-8'], True)
+              logging.log('reading contacts, Pinyin')
+              self.runUntil('Pinyin sorting',
+                            check=lambda: self.assertEqual([], self.view.errors),
+                            until=lambda: self.view.quiescentCount > 1)
+              self.view.read(0, numtestcases)
+              self.runUntil('Pinyin contacts',
+                            check=lambda: self.assertEqual([], self.view.errors),
+                            until=lambda: self.view.haveData(0, numtestcases))
+              for i, name in enumerate(namespinyin):
+                   msg = u'contact #%d with name %s in\n%s' % (i, name, pprint.pformat(self.stripDBus(self.view.contacts, sortLists=False)))
+                   self.assertEqual(name, self.view.contacts[i]['full-name'])
+         except Exception, ex:
+             if msg:
+                  info = sys.exc_info()
+                  raise Exception('%s:\n%s' % (msg, repr(ex))), None, info[2]
+             else:
+                  raise
+
+    @timeout(60)
+    # Must disable usage of pre-computed phone numbers from EDS, because we can't tell EDS
+    # when locale is meant to change.
+    @property("ENV", "LANG=en_US.UTF-8 SYNCEVOLUTION_PIM_EDS_NO_E164=1")
+    def testLocaledPhone(self):
+         # Parsing of 1234-5 depends on locale: US drops the 1 from 1234
+         # Germany (and other countries) don't. Use that to match (or not match)
+         # a contact.
+         testcases = (('Doe', '''BEGIN:VCARD
+VERSION:3.0
+FN:Doe
+N:Doe;;;;
+TEL:12 34-5
+END:VCARD
+'''),)
+         names = ('Doe')
+         numtestcases = len(testcases)
+         view = self.doFilter(testcases,
+                              (([['phone', '+12345']], ('Doe',)),))
+
+         daemon = localed.Localed()
+         msg = None
+         try:
+              # Contact no longer matched because it's phone number normalization
+              # becomes different.
+              view.quiescentCount = 0
+              daemon.SetLocale(['LANG=de_DE.UTF-8'], True)
+              self.runUntil('German locale',
+                            check=lambda: self.assertEqual([], view.errors),
+                            until=lambda: view.quiescentCount > 1)
+              self.assertEqual(len(view.contacts), 0)
+
+              # Switch back to US.
+              view.quiescentCount = 0
+              daemon.SetLocale(['LANG=en_US.UTF-8'], True)
+              self.runUntil('US locale',
+                            check=lambda: self.assertEqual([], view.errors),
+                            until=lambda: view.quiescentCount > 1)
+              self.assertEqual(len(view.contacts), 1)
+         except Exception, ex:
+             if msg:
+                  info = sys.exc_info()
+                  raise Exception('%s:\n%s' % (msg, repr(ex))), None, info[2]
+             else:
+                  raise
 
     # Not supported correctly by ICU?
     # See icu-support "Subject: Austrian phone book sorting"

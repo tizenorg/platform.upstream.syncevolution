@@ -23,7 +23,26 @@
 #include "platform_thread.h"
 #endif
 
+#ifdef USE_DLT
+#include <dlt.h>
+#endif
+
 namespace sysync {
+
+#ifdef USE_DLT
+static bool DbgDLTInitialized;
+static DltContext DbgProtoContext;
+static DltContext DbgSessionContext;
+static DltContext DbgAdminContext;
+static DltContext DbgDataContext;
+static DltContext DbgRemoteInfoContext;
+static DltContext DbgParseContext;
+static DltContext DbgGenerateContext;
+static DltContext DbgTranspContext;
+static DltContext DbgSyncMLTKContext;
+static DltContext DbgDefaultContext;
+#endif
+
 
 #ifndef HARDCODED_CONFIG
 
@@ -32,6 +51,13 @@ cAppCharP const DbgOutFormatNames[numDbgOutFormats] = {
   "text",       // plain text format (but can be indented)
   "xml",        // XML format
   "html"        // HTML format
+#ifdef USE_DLT
+  // If DLT support is not enabled, then trying to uses it in a config
+  // will lead to a generic parse error. Might be good enough, although
+  // a dedicated error message about "DLT being disabled in this build"
+  // would be nicer.
+  , "dlt"         // GENIVI Diagnostic Log and Trace
+#endif
 };
 
 
@@ -733,6 +759,39 @@ string TDebugLoggerBase::dbg2Link(const TDbgLocation &aTDbgLoc, const string &aT
 
 #endif // SYDEBUG_LOCATION
 
+#ifdef USE_DLT
+static void DbgText2PlainText(const char *in, size_t len, std::string &out)
+{
+  const char *q=in;
+  const char *s=q;
+  const char *end=in + len;
+
+  while (q<end) {
+    if (*q=='&') {
+      if (end-q>=6 && strucmp(q,"&html;",6)==0) {
+        if (q>s) out.append(s,q-s);
+        // everything until next &html; must be filtered out
+        // - search next &html;
+        s=q=q+6;
+        while(q+6<=end && strucmp(q,"&html;",6)!=0) q++;
+        s=q=q+6;
+      }
+      else if (end-q>=4 && strucmp(q,"&sp;",4)==0) {
+        if (q>s) out.append(s,q-s);
+        s=q=q+4;
+        out += ' '; // convert to plain space
+      }
+      else
+        q++;
+    }
+    else {
+      q++;
+    }
+  }
+  if (q>s) out.append(s,q-s);
+}
+#endif // USE_DLT
+
 
 // output text to debug channel
 void TDebugLoggerBase::DebugPuts(TDBG_LOCATION_PROTO uInt32 aDbgMask, cAppCharP aText, stringSize aTextSize, bool aPreFormatted)
@@ -759,6 +818,72 @@ void TDebugLoggerBase::DebugPuts(TDBG_LOCATION_PROTO uInt32 aDbgMask, cAppCharP 
         return; // stop all efforts here
       }
     }
+
+#ifdef USE_DLT
+    // DLT logging logs everything in one chunk
+    if (fDbgOptionsP->fOutputFormat == dbgfmt_dlt) {
+      DltContext *context = &DbgDefaultContext;
+      if (aDbgMask & DBG_PROTO) {
+        context = &DbgProtoContext;
+      }
+      else if (aDbgMask & DBG_SESSION) {
+        context = &DbgSessionContext;
+      }
+      else if (aDbgMask & DBG_ADMIN) {
+        context = &DbgAdminContext;
+      }
+      else if (aDbgMask & DBG_DATA) {
+        context = &DbgDataContext;
+      }
+      else if (aDbgMask & DBG_REMOTEINFO) {
+        context = &DbgRemoteInfoContext;
+      }
+      else if (aDbgMask & DBG_PARSE) {
+        context = &DbgParseContext;
+      }
+      else if (aDbgMask & DBG_GEN) {
+        context = &DbgGenerateContext;
+      }
+      else if (aDbgMask & DBG_TRANSP) {
+        context = &DbgTranspContext;
+      }
+      else if (aDbgMask & (DBG_RTK_SML|DBG_RTK_XPT)) {
+        context = &DbgSyncMLTKContext;
+      }
+
+      DltLogLevelType level = DLT_LOG_VERBOSE;
+      if (level > DLT_LOG_INFO &&
+          (aDbgMask & DBG_HOT)) {
+        level = DLT_LOG_INFO;
+      }
+      if (level > DLT_LOG_ERROR &&
+          (aDbgMask & DBG_ERROR)) {
+        level = DLT_LOG_ERROR;
+      }
+      if (level > DLT_LOG_DEBUG &&
+          (aDbgMask & (DBG_USERDATA|DBG_PLUGIN|DBG_FILTER|DBG_CONFLICT))) {
+        level = DLT_LOG_DEBUG;
+      }
+      if (level < DLT_LOG_VERBOSE &&
+          (aDbgMask & DBG_DETAILS)) {
+        level = (DltLogLevelType)((int)level + 1);
+      }
+      if ((aTextSize > 0 && strlen(aText) > aTextSize) ||
+          strstr(aText, "&html;") ||
+          strstr(aText, "&sp;")) {
+            // Must make a copy and potentially filter out html markup.
+        string buffer;
+        buffer.reserve(aTextSize);
+        DbgText2PlainText(aText, aTextSize ? aTextSize : strlen(aText), buffer);
+        DLT_LOG(*context, level, DLT_STRING(buffer.c_str()));
+      } else {
+        // Fast path: log directly.
+        DLT_LOG(*context, level, DLT_STRING(aText));
+      }
+      return;
+    }
+#endif // USE_DLT
+
     // dissect into lines
     cAppCharP end=aTextSize ? aText+aTextSize : NULL;
     bool firstLine=true;
@@ -1325,11 +1450,47 @@ void TDebugLoggerBase::internalCloseBlocks(TDBG_LOCATION_PROTO cAppCharP aBlockN
   }
 } // TDebugLoggerBase::internalCloseBlocks
 
+#ifdef USE_DLT
+static void RegisterContext(DltContext *aHandle, const char *aContextID, const char *aDescription)
+{
+  std::string envName = "LIBSYNTHESIS_";
+  envName += aContextID;
+  const char *value = getenv(envName.c_str());
+  if (value) {
+    // Explicit level.
+    DltLogLevelType level = (DltLogLevelType)atoi(value);
+    dlt_register_context_ll_ts(aHandle, aContextID, aDescription, level, DLT_TRACE_STATUS_OFF);
+  } else {
+    // Default level.
+    dlt_register_context(aHandle, aContextID, aDescription);
+  }
+}
+#endif // USE_DLT
 
 // start debugging output if needed and sets fOutStarted
 bool TDebugLoggerBase::DebugStartOutput(void)
 {
   if (!fOutStarted) {
+#ifdef USE_DLT
+    if (fDbgOptionsP && fDbgOptionsP->fOutputFormat==dbgfmt_dlt) {
+      // Register our logging contexts.
+      if (!DbgDLTInitialized) {
+        RegisterContext(&DbgProtoContext, "PROT", "SyncML protocol related information");
+        RegisterContext(&DbgSessionContext, "SESS", "session management related information");
+        RegisterContext(&DbgAdminContext, "ADMN", "verything that has to do with administrative data (anchors, targets, map table)");
+        RegisterContext(&DbgDataContext, "DATA", "Everything that has to do with handling user data (data objects). Actual user data will however be shown only if loglevel >= debug.");
+        RegisterContext(&DbgRemoteInfoContext, "REMI", "This shows information delivered in the remote party's device information, such as manufacturer name, datatypes supported, fields supported etc.");
+        RegisterContext(&DbgParseContext, "PARS", "This shows information related to parsing and processing incoming data from the remote party. Actual user data will however be shown only if loglevel >= debug.");
+        RegisterContext(&DbgGenerateContext, "GEN", "This shows information related to generating outgoing data for the remote party. Actual user data will however be shown only if loglevel >= debug.");
+        RegisterContext(&DbgTranspContext, "TRNS", "shows transport (http and TCP communication) related information");
+        RegisterContext(&DbgSyncMLTKContext, "SMLT", "messages generated by the SyncML Toolkit code");
+        RegisterContext(&DbgDefaultContext, "SYS", "any other libsynthesis debug log message that does not fit in any of the other contexts");
+        DbgDLTInitialized = true;
+      }
+      fOutStarted = true;
+    }
+    else
+#endif // USE_DLT
     if (fOutputLoggerP) {
       // using another logger, call it to start output
       fOutStarted = fOutputLoggerP->DebugStartOutput();
@@ -1396,6 +1557,23 @@ void TDebugLoggerBase::DebugFinalizeOutput(void)
 // Output single line to debug channel (includes indenting and other prefixing, but no further formatting)
 void TDebugLoggerBase::DebugPutLine(TDBG_LOCATION_PROTO cAppCharP aText, stringSize aTextSize, bool aPre)
 {
+#ifdef USE_DLT
+  if (fDbgOptionsP && fDbgOptionsP->fOutputFormat==dbgfmt_dlt) {
+    // One example where this gets called is DebugVOpen/CloseBlock()
+    // with lines prepared as if we are printing plain text. Use
+    // a fairly neutral log level here.
+    if (aText) {
+      if (aTextSize > 0 && aTextSize < strlen(aText)) {
+        string buffer(aText, aTextSize);
+        DLT_LOG(DbgDefaultContext, DLT_LOG_INFO, DLT_STRING(buffer.c_str()));
+      } else {
+        DLT_LOG(DbgDefaultContext, DLT_LOG_INFO, DLT_STRING(aText));
+      }
+    }
+    return;
+  }
+#endif // USE_DLT
+
   if (!aText || (!fDbgOutP && !fOutputLoggerP)) return;
   if (*aText) {
     // not an empty line

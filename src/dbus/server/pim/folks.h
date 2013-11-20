@@ -116,8 +116,10 @@ struct IndividualData
      * Sets all members to match the given individual, using the
      * compare instance to compute values. Both compare and locale may
      * be NULL.
+     *
+     * Returns true if the precomputed values changed.
      */
-    void init(const IndividualCompare *compare,
+    bool init(const IndividualCompare *compare,
               const LocaleFactory *locale,
               FolksIndividual *individual);
 
@@ -313,6 +315,12 @@ class IndividualAggregator
      * Set sorting without starting the view just yet.
      */
     void setCompare(const boost::shared_ptr<IndividualCompare> &compare);
+
+    /**
+     * Change current locale. Must be followed by setCompare() to update
+     * any pre-computed data.
+     */
+    void setLocale(const boost::shared_ptr<LocaleFactory> &locale);
 
     /**
      * Starts pulling and sorting of contacts.

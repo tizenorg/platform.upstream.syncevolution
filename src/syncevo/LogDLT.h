@@ -17,21 +17,45 @@
  * 02110-1301  USA
  */
 
-#include <syncevo/EDSClient.h>
+#ifndef INCL_LOGDLT
+#define INCL_LOGDLT
 
 #include <config.h>
+
+#ifdef USE_DLT
+
+#include <syncevo/Logging.h>
+#include <syncevo/util.h>
 
 #include <syncevo/declarations.h>
 SE_BEGIN_CXX
 
-EDSRegistryLoader &EDSRegistryLoaderSingleton(const boost::shared_ptr<EDSRegistryLoader> &loader)
+/**
+ * A logger which writes to DLT and passes log messages
+ * through to its parent.
+ */
+class LoggerDLT : public Logger
 {
-    static boost::shared_ptr<EDSRegistryLoader> singleton;
-    if (!singleton) {
-        singleton = loader;
-    }
-    return *singleton;
-}
+    Handle m_parentLogger;
+    // avoid dependency on dlt.h here
+    void *m_dltContext;
+
+public:
+    LoggerDLT(const char *appid, const char *description);
+    ~LoggerDLT();
+
+    virtual void messagev(const MessageOptions &options,
+                          const char *format,
+                          va_list args);
+
+    /**
+     * Extracts current log level from the LoggerDLT which was
+     * pushed onto the stack, DLT_LOG_DEFAULT if none active.
+     */
+    static int getCurrentDLTLogLevel();
+};
 
 SE_END_CXX
 
+#endif // USE_DLT
+#endif // INCL_LOGSYSLOG

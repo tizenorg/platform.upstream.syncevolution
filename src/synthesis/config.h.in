@@ -97,5 +97,8 @@
 /* libsynthesis.a linked statically */
 #undef UIAPI_LINKED
 
+/* "optionally use GENIVI Diagnostic Log and Trace for logging" */
+#undef USE_DLT
+
 /* Version number of package */
 #undef VERSION

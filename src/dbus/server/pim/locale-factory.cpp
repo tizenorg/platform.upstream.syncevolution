@@ -29,6 +29,35 @@
 
 SE_BEGIN_CXX
 
+std::string SimpleE164::toString() const
+{
+    std::ostringstream out;
+    if (m_countryCode) {
+        out << "+" << m_countryCode;
+    }
+    if (m_nationalNumber) {
+        out << m_nationalNumber;
+    }
+    return out.str();
+}
+
+bool LocaleFactory::Precomputed::operator == (const LocaleFactory::Precomputed &other) const
+{
+    if (other.m_phoneNumbers.size() != m_phoneNumbers.size()) {
+        return false;
+    }
+    PhoneNumbers::const_iterator ita = other.m_phoneNumbers.begin();
+    PhoneNumbers::const_iterator itb = m_phoneNumbers.begin();
+    while (ita != other.m_phoneNumbers.end()) {
+        if (*ita != *itb) {
+            return false;
+        }
+        ++ita;
+        ++itb;
+    }
+    return true;
+}
+
 class Filter2StringVisitor : public boost::static_visitor<void>
 {
     std::ostringstream m_out;

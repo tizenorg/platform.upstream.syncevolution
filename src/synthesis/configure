@@ -754,6 +754,8 @@ LIBECAL_LIBS
 LIBECAL_CFLAGS
 LIBICAL_LIBS
 LIBICAL_CFLAGS
+DLT_LIBS
+DLT_CFLAGS
 PCRE_LIBS
 PCRE_CFLAGS
 SQLITE3_LIBS
@@ -891,6 +893,7 @@ enable_warnings
 enable_debug_logs
 enable_sqlite
 enable_regex
+enable_dlt
 enable_libical
 enable_evolution_compatibility
 with_xmltok
@@ -916,6 +919,8 @@ SQLITE3_CFLAGS
 SQLITE3_LIBS
 PCRE_CFLAGS
 PCRE_LIBS
+DLT_CFLAGS
+DLT_LIBS
 LIBICAL_CFLAGS
 LIBICAL_LIBS
 LIBECAL_CFLAGS
@@ -1553,6 +1558,8 @@ Optional Features:
                           libsqlite3, enabled by default
   --enable-regex          enable regular expression support in scripts,
                           depends on libpcre, enabled by default
+  --enable-dlt            enable logging mode "dlt" = GENIVI Diagnostic Log
+                          and Trace
   --enable-libical        use libical (if necessary, the one in libecal) to
                           improve time zone support, enabled by default if
                           necessary libs are found
@@ -1604,6 +1611,8 @@ Some influential environment variables:
               linker flags for SQLITE3, overriding pkg-config
   PCRE_CFLAGS C compiler flags for PCRE, overriding pkg-config
   PCRE_LIBS   linker flags for PCRE, overriding pkg-config
+  DLT_CFLAGS  C compiler flags for DLT, overriding pkg-config
+  DLT_LIBS    linker flags for DLT, overriding pkg-config
   LIBICAL_CFLAGS
               C compiler flags for LIBICAL, overriding pkg-config
   LIBICAL_LIBS
@@ -2976,7 +2985,7 @@ fi
 
 # Define the identity of the package.
  PACKAGE=synthesis
- VERSION=3.4.0.16.10
+ VERSION=3.4.0.16.11
 
 
 cat >>confdefs.h <<_ACEOF
@@ -5067,13 +5076,13 @@ if test "${lt_cv_nm_interface+set}" = set; then :
 else
   lt_cv_nm_interface="BSD nm"
   echo "int some_variable = 0;" > conftest.$ac_ext
-  (eval echo "\"\$as_me:5070: $ac_compile\"" >&5)
+  (eval echo "\"\$as_me:5079: $ac_compile\"" >&5)
   (eval "$ac_compile" 2>conftest.err)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:5073: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
+  (eval echo "\"\$as_me:5082: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
   (eval "$NM \"conftest.$ac_objext\"" 2>conftest.err > conftest.out)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:5076: output\"" >&5)
+  (eval echo "\"\$as_me:5085: output\"" >&5)
   cat conftest.out >&5
   if $GREP 'External.*some_variable' conftest.out > /dev/null; then
     lt_cv_nm_interface="MS dumpbin"
@@ -6279,7 +6288,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 6282 "configure"' > conftest.$ac_ext
+  echo '#line 6291 "configure"' > conftest.$ac_ext
   if { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_compile\""; } >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -8334,11 +8343,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8337: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8346: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:8341: \$? = $ac_status" >&5
+   echo "$as_me:8350: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -8673,11 +8682,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8676: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8685: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:8680: \$? = $ac_status" >&5
+   echo "$as_me:8689: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -8778,11 +8787,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8781: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8790: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:8785: \$? = $ac_status" >&5
+   echo "$as_me:8794: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -8833,11 +8842,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8836: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8845: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:8840: \$? = $ac_status" >&5
+   echo "$as_me:8849: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -11217,7 +11226,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11220 "configure"
+#line 11229 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11313,7 +11322,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11316 "configure"
+#line 11325 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -13269,11 +13278,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:13272: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:13281: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:13276: \$? = $ac_status" >&5
+   echo "$as_me:13285: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -13368,11 +13377,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:13371: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:13380: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:13375: \$? = $ac_status" >&5
+   echo "$as_me:13384: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -13420,11 +13429,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:13423: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:13432: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:13427: \$? = $ac_status" >&5
+   echo "$as_me:13436: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -15038,6 +15047,91 @@ cat >>confdefs.h <<_ACEOF
 #define ONOFF_REGEX_SUPPORT $HAVE_PCRE
 _ACEOF
 
+
+# Check whether --enable-dlt was given.
+if test "${enable_dlt+set}" = set; then :
+  enableval=$enable_dlt; enable_dlt=$enableval
+               test $enable_dlt = "yes" || test $enable_dlt = "no" || as_fn_error "invalid value of --enable-dlt: $enableval" "$LINENO" 5
+else
+  enable_dlt="no"
+fi
+
+if test "$enable_dlt" = "yes"; then
+
+pkg_failed=no
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for DLT" >&5
+$as_echo_n "checking for DLT... " >&6; }
+
+if test -n "$PKG_CONFIG"; then
+    if test -n "$DLT_CFLAGS"; then
+        pkg_cv_DLT_CFLAGS="$DLT_CFLAGS"
+    else
+        if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"automotive-dlt\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "automotive-dlt") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_DLT_CFLAGS=`$PKG_CONFIG --cflags "automotive-dlt" 2>/dev/null`
+else
+  pkg_failed=yes
+fi
+    fi
+else
+	pkg_failed=untried
+fi
+if test -n "$PKG_CONFIG"; then
+    if test -n "$DLT_LIBS"; then
+        pkg_cv_DLT_LIBS="$DLT_LIBS"
+    else
+        if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"automotive-dlt\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "automotive-dlt") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_DLT_LIBS=`$PKG_CONFIG --libs "automotive-dlt" 2>/dev/null`
+else
+  pkg_failed=yes
+fi
+    fi
+else
+	pkg_failed=untried
+fi
+
+
+
+if test $pkg_failed = yes; then
+
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
+fi
+        if test $_pkg_short_errors_supported = yes; then
+	        DLT_PKG_ERRORS=`$PKG_CONFIG --short-errors --errors-to-stdout --print-errors "automotive-dlt"`
+        else
+	        DLT_PKG_ERRORS=`$PKG_CONFIG --errors-to-stdout --print-errors "automotive-dlt"`
+        fi
+	# Put the nasty error message in config.log where it belongs
+	echo "$DLT_PKG_ERRORS" >&5
+
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+                as_fn_error "dlt not found, required for --enable-dlt" "$LINENO" 5
+elif test $pkg_failed = untried; then
+	as_fn_error "dlt not found, required for --enable-dlt" "$LINENO" 5
+else
+	DLT_CFLAGS=$pkg_cv_DLT_CFLAGS
+	DLT_LIBS=$pkg_cv_DLT_LIBS
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+	USE_DLT=1
+fi
+
+$as_echo "#define USE_DLT 1" >>confdefs.h
+
+fi
 
 ac_fn_c_check_header_mongrel "$LINENO" "zlib.h" "ac_cv_header_zlib_h" "$ac_includes_default"
 if test "x$ac_cv_header_zlib_h" = x""yes; then :

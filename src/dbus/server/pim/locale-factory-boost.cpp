@@ -29,10 +29,12 @@
 #include <phonenumbers/phonenumberutil.h>
 #include <phonenumbers/logger.h>
 #include <boost/locale.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include <unicode/unistr.h>
 #include <unicode/translit.h>
 #include <unicode/bytestream.h>
+#include <unicode/locid.h>
 
 SE_GLIB_TYPE(EBookQuery, e_book_query)
 
@@ -110,6 +112,8 @@ std::string CompareBoost::transform(const char *string) const
 
 std::string CompareBoost::transform(const std::string &string) const
 {
+    // TODO: use e_collator_generate_key
+
     if (m_trans.get()) {
         // std::string result;
         // m_trans->transliterate(icu::StringPiece(string), icu::StringByteSink<std::string>(&result));
@@ -205,30 +209,61 @@ class AnyContainsBoost : public IndividualFilter
 {
 public:
     enum Mode {
-        CASE_SENSITIVE,
-        CASE_INSENSITIVE
+        EXACT = 0,
+        CASE_INSENSITIVE = 1<<0,
+        ACCENT_INSENSITIVE = 1<<1,
+        TRANSLITERATE = 1<<2,
+        ALL =
+        CASE_INSENSITIVE|
+        ACCENT_INSENSITIVE|
+        TRANSLITERATE|
+        0
     };
 
     AnyContainsBoost(const std::locale &locale,
                      const std::string &searchValue,
-                     Mode mode) :
+                     int mode) :
         m_locale(locale),
+        // For performance reasons we use ICU directly and thus need
+        // an ICU::Locale.
+        //         m_ICULocale(std::use_facet<boost::locale::info>(m_locale).language().c_str(),
+        //            std::use_facet<boost::locale::info>(m_locale).country().c_str(),
+        //            std::use_facet<boost::locale::info>(m_locale).variant().c_str()),
         // m_collator(std::use_facet<boost::locale::collator>(locale)),
         m_searchValue(searchValue),
         m_mode(mode)
     {
+        if (mode & TRANSLITERATE) {
+            UErrorCode status = U_ZERO_ERROR;
+            m_transliterator.reset(Transliterator::createInstance ("Any-Latin", UTRANS_FORWARD, status));
+            if (!m_transliterator ||
+                U_FAILURE(status)) {
+                SE_LOG_WARNING(NULL, "creating ICU Any-Latin Transliterator failed, error code %s; falling back to not transliterating", u_errorName(status));
+                m_transliterator.reset();
+                mode ^= TRANSLITERATE;
+                m_mode = mode;
+            }
+        }
+
         switch (mode) {
-        case CASE_SENSITIVE:
-            // Search directly, no preprocessing.
+        case EXACT:
             break;
-        case CASE_INSENSITIVE:
-            // Locale-aware conversion to fold case (= case
-            // independent) representation before search.
-            m_searchValueTransformed = boost::locale::fold_case(m_searchValue, m_locale);
+        default:
+            m_searchValueTransformed = transform(m_searchValue);
             break;
         }
         m_searchValueTel = normalizePhoneText(m_searchValue.c_str());
     }
+
+    /**
+     * Turn filter arguments into bit field.
+     */
+    static int getFilterMode(const std::vector<LocaleFactory::Filter_t> &terms,
+                             size_t start);
+
+    /** simplify according to mode */
+    std::string transform(const char *in) const;
+    std::string transform(const std::string &in) const { return transform(in.c_str()); }
 
     /**
      * The search text is not necessarily a full phone number,
@@ -271,12 +306,12 @@ public:
             return false;
         }
         switch (m_mode) {
-        case CASE_SENSITIVE:
+        case EXACT:
             return boost::contains(text, m_searchValue);
             break;
-        case CASE_INSENSITIVE: {
-            std::string lower(boost::locale::fold_case(text, m_locale));
-            return boost::contains(lower, m_searchValueTransformed);
+        default: {
+            std::string transformed = transform(text);
+            return boost::contains(transformed, m_searchValueTransformed);
             break;
         }
         }
@@ -296,12 +331,12 @@ public:
             return false;
         }
         switch (m_mode) {
-        case CASE_SENSITIVE:
+        case EXACT:
             return boost::equals(text, m_searchValue);
             break;
-        case CASE_INSENSITIVE: {
-            std::string lower(boost::locale::fold_case(text, m_locale));
-            return boost::equals(lower, m_searchValueTransformed);
+        default: {
+            std::string transformed = transform(text);
+            return boost::equals(transformed, m_searchValueTransformed);
             break;
         }
         }
@@ -321,12 +356,12 @@ public:
             return false;
         }
         switch (m_mode) {
-        case CASE_SENSITIVE:
+        case EXACT:
             return boost::starts_with(text, m_searchValue);
             break;
-        case CASE_INSENSITIVE: {
-            std::string lower(boost::locale::fold_case(text, m_locale));
-            return boost::starts_with(lower, m_searchValueTransformed);
+        default:  {
+            std::string transformed = transform(text);
+            return boost::starts_with(transformed, m_searchValueTransformed);
             break;
         }
         }
@@ -346,12 +381,12 @@ public:
             return false;
         }
         switch (m_mode) {
-        case CASE_SENSITIVE:
+        case EXACT:
             return boost::ends_with(text, m_searchValue);
             break;
-        case CASE_INSENSITIVE: {
-            std::string lower(boost::locale::fold_case(text, m_locale));
-            return boost::ends_with(lower, m_searchValueTransformed);
+        default: {
+            std::string transformed = transform(text);
+            return boost::ends_with(transformed, m_searchValueTransformed);
             break;
         }
         }
@@ -416,12 +451,61 @@ public:
 
 private:
     std::locale m_locale;
+    // icu::Locale m_ICULocale;
+    boost::shared_ptr<icu::Transliterator> m_transliterator;
     std::string m_searchValue;
     std::string m_searchValueTransformed;
     std::string m_searchValueTel;
-    Mode m_mode;
+    int m_mode;
     // const bool (*m_contains)(const std::string &, const std::string &, const std::locale &);
 };
+
+std::string AnyContainsBoost::transform(const char *in) const
+{
+    icu::UnicodeString unicode = icu::UnicodeString::fromUTF8(in);
+    if (m_mode & TRANSLITERATE) {
+        m_transliterator->transliterate(unicode);
+    }
+    if (m_mode & CASE_INSENSITIVE) {
+        unicode.foldCase();
+    }
+    std::string utf8;
+    unicode.toUTF8String(utf8);
+    if (m_mode & ACCENT_INSENSITIVE) {
+        // Haven't found an easy way to do this with ICU.
+        // Use e_util_utf8_remove_accents(), which also ensures
+        // consistency with EDS.
+        PlainGStr res = e_util_utf8_remove_accents(utf8.c_str());
+        return std::string(res);
+    } else {
+        return utf8;
+    }
+}
+
+int AnyContainsBoost::getFilterMode(const std::vector<LocaleFactory::Filter_t> &terms,
+                                    size_t start)
+{
+    int mode = ALL;
+    for (size_t i = start; i < terms.size(); i++) {
+        const std::string flag = LocaleFactory::getFilterString(terms[i], "any-contains flag");
+        if (flag == "case-sensitive") {
+            mode &= ~CASE_INSENSITIVE;
+        } else if (flag == "case-insensitive") {
+            mode |= CASE_INSENSITIVE;
+        } else if (flag == "accent-sensitive") {
+            mode &= ~ACCENT_INSENSITIVE;
+        } else if (flag == "accent-insensitive") {
+            mode |= ACCENT_INSENSITIVE;
+        } else if (flag == "no-transliteration") {
+            mode &= ~TRANSLITERATE;
+        } else if (flag == "transliteration") {
+            mode |= TRANSLITERATE;
+        } else {
+            SE_THROW("unsupported filter flag: " + flag);
+        }
+    }
+    return mode;
+}
 
 class FilterFullName : public AnyContainsBoost
 {
@@ -430,7 +514,7 @@ class FilterFullName : public AnyContainsBoost
 public:
     FilterFullName(const std::locale &locale,
                    const std::string &searchValue,
-                   Mode mode,
+                   int mode,
                    bool (AnyContainsBoost::*operation)(const char *text) const) :
         AnyContainsBoost(locale, searchValue, mode),
         m_operation(operation)
@@ -453,7 +537,7 @@ class FilterNickname : public AnyContainsBoost
 public:
     FilterNickname(const std::locale &locale,
                    const std::string &searchValue,
-                   Mode mode,
+                   int mode,
                    bool (AnyContainsBoost::*operation)(const char *text) const) :
         AnyContainsBoost(locale, searchValue, mode),
         m_operation(operation)
@@ -476,7 +560,7 @@ class FilterFamilyName : public AnyContainsBoost
 public:
     FilterFamilyName(const std::locale &locale,
                      const std::string &searchValue,
-                     Mode mode,
+                     int mode,
                      bool (AnyContainsBoost::*operation)(const char *text) const) :
         AnyContainsBoost(locale, searchValue, mode),
         m_operation(operation)
@@ -504,7 +588,7 @@ class FilterGivenName : public AnyContainsBoost
 public:
     FilterGivenName(const std::locale &locale,
                     const std::string &searchValue,
-                    Mode mode,
+                    int mode,
                     bool (AnyContainsBoost::*operation)(const char *text) const) :
         AnyContainsBoost(locale, searchValue, mode),
         m_operation(operation)
@@ -532,7 +616,7 @@ class FilterAdditionalName : public AnyContainsBoost
 public:
     FilterAdditionalName(const std::locale &locale,
                          const std::string &searchValue,
-                         Mode mode,
+                         int mode,
                          bool (AnyContainsBoost::*operation)(const char *text) const) :
         AnyContainsBoost(locale, searchValue, mode),
         m_operation(operation)
@@ -560,7 +644,7 @@ class FilterEmails : public AnyContainsBoost
 public:
     FilterEmails(const std::locale &locale,
                  const std::string &searchValue,
-                 Mode mode,
+                 int mode,
                  bool (AnyContainsBoost::*operation)(const char *text) const) :
         AnyContainsBoost(locale, searchValue, mode),
         m_operation(operation)
@@ -591,7 +675,7 @@ public:
     FilterTel(const std::locale &locale,
               const std::string &searchValue,
               bool (AnyContainsBoost::*operation)(const char *text) const) :
-        AnyContainsBoost(locale, searchValue, CASE_SENSITIVE /* doesn't matter */),
+        AnyContainsBoost(locale, searchValue, 0 /* doesn't matter */),
         m_operation(operation)
     {
     }
@@ -620,7 +704,7 @@ protected:
 public:
     FilterAddr(const std::locale &locale,
                const std::string &searchValue,
-               Mode mode,
+               int mode,
                bool (AnyContainsBoost::*operation)(const char *text) const) :
         AnyContainsBoost(locale, searchValue, mode),
         m_operation(operation)
@@ -650,7 +734,7 @@ class FilterAddrPOBox : public FilterAddr
 public:
     FilterAddrPOBox(const std::locale &locale,
                     const std::string &searchValue,
-                    Mode mode,
+                    int mode,
                     bool (AnyContainsBoost::*operation)(const char *text) const) :
         FilterAddr(locale, searchValue, mode, operation)
     {
@@ -668,7 +752,7 @@ class FilterAddrExtension : public FilterAddr
 public:
     FilterAddrExtension(const std::locale &locale,
                         const std::string &searchValue,
-                        Mode mode,
+                        int mode,
                         bool (AnyContainsBoost::*operation)(const char *text) const) :
         FilterAddr(locale, searchValue, mode, operation)
     {
@@ -686,7 +770,7 @@ class FilterAddrStreet : public FilterAddr
 public:
     FilterAddrStreet(const std::locale &locale,
                      const std::string &searchValue,
-                     Mode mode,
+                     int mode,
                      bool (AnyContainsBoost::*operation)(const char *text) const) :
         FilterAddr(locale, searchValue, mode, operation)
     {
@@ -704,7 +788,7 @@ class FilterAddrLocality : public FilterAddr
 public:
     FilterAddrLocality(const std::locale &locale,
                        const std::string &searchValue,
-                       Mode mode,
+                       int mode,
                        bool (AnyContainsBoost::*operation)(const char *text) const) :
         FilterAddr(locale, searchValue, mode, operation)
     {
@@ -722,7 +806,7 @@ class FilterAddrRegion : public FilterAddr
 public:
     FilterAddrRegion(const std::locale &locale,
                      const std::string &searchValue,
-                     Mode mode,
+                     int mode,
                      bool (AnyContainsBoost::*operation)(const char *text) const) :
         FilterAddr(locale, searchValue, mode, operation)
     {
@@ -740,7 +824,7 @@ class FilterAddrPostalCode : public FilterAddr
 public:
     FilterAddrPostalCode(const std::locale &locale,
                          const std::string &searchValue,
-                         Mode mode,
+                         int mode,
                          bool (AnyContainsBoost::*operation)(const char *text) const) :
         FilterAddr(locale, searchValue, mode, operation)
     {
@@ -758,7 +842,7 @@ class FilterAddrCountry : public FilterAddr
 public:
     FilterAddrCountry(const std::locale &locale,
                       const std::string &searchValue,
-                      Mode mode,
+                      int mode,
                       bool (AnyContainsBoost::*operation)(const char *text) const) :
         FilterAddr(locale, searchValue, mode, operation)
     {
@@ -775,10 +859,16 @@ public:
 
 
 /**
- * Search value must be a valid caller ID. The telephone numbers
- * in the contacts may or may not be valid; only valid ones
- * will match. The user is expected to clean up that data to get
- * exact matches for the others.
+ * Search value must be a valid caller ID (with or without a country
+ * code). The telephone numbers in the contacts may or may not be
+ * valid; only valid ones will match. The user is expected to clean up
+ * that data to get exact matches for the others.
+ *
+ * The matching uses the same semantic as EQUALS_NATIONAL_PHONE_NUMBER:
+ * - If both numbers have an explicit country code, that code must be
+ *   the same for a match.
+ * - If one or both numbers have no country code, matching the national
+ *   part is enough for a match.
  */
 class PhoneStartsWith : public IndividualFilter
 {
@@ -811,19 +901,19 @@ public:
             break;
         }
 
-        // Search based on full internal format, without formatting.
-        // For example: +41446681800
-        //
-        // A prefix match is good enough. That way a caller ID
-        // with suppressed extension still matches a contact with
-        // extension.
-        m_phoneNumberUtil.Format(number, i18n::phonenumbers::PhoneNumberUtil::E164, &m_tel);
+        m_number.m_countryCode = number.country_code();
+        m_number.m_nationalNumber = number.national_number();
     }
 
     virtual bool matches(const IndividualData &data) const
     {
-        BOOST_FOREACH(const std::string &tel, data.m_precomputed.m_phoneNumbers) {
-            if (boost::starts_with(tel, m_tel)) {
+        BOOST_FOREACH(const SimpleE164 &number, data.m_precomputed.m_phoneNumbers) {
+            // National part must always match, country code only if
+            // set explicitly in both (NSN_MATCH in libphonenumber,
+            // EQUALS_NATIONAL_PHONE_NUMBER in EDS).
+            if (number.m_nationalNumber == m_number.m_nationalNumber &&
+                (!number.m_countryCode || !m_number.m_countryCode ||
+                 number.m_countryCode == m_number.m_countryCode)) {
                 return true;
             }
         }
@@ -832,12 +922,13 @@ public:
 
     virtual std::string getEBookFilter() const
     {
-        size_t len = std::min((size_t)4, m_tel.size());
+        std::string tel = m_number.toString();
+        size_t len = std::min((size_t)4, tel.size());
         EBookQueryCXX query(m_simpleEDSSearch ?
                             // A suffix match with a limited number of digits is most
                             // likely to find the right contacts.
                             e_book_query_field_test(E_CONTACT_TEL, E_BOOK_QUERY_ENDS_WITH,
-                                                    m_tel.substr(m_tel.size() - len, len).c_str()) :
+                                                    tel.substr(tel.size() - len, len).c_str()) :
                             // We use EQUALS_NATIONAL_PHONE_NUMBER
                             // instead of EQUALS_PHONE_NUMBER here,
                             // because it will also match contacts
@@ -851,19 +942,19 @@ public:
                             // check that and not return a false match
                             // if the country code is different.
                             //
-                            // At the moment, we pass the E164
-                            // formatted search term with a country
-                            // code here. The country code is the
-                            // current default one.  We could think
-                            // about passing the original search term
-                            // instead, to allow matches where contact
-                            // and search term have no country code,
-                            // but it is uncertain whether EDS
-                            // currently works that way. It looks like
-                            // it always adds the default country code
-                            // to the search term.
+                            // We try to pass the E164 string here. If
+                            // the search term had no country code,
+                            // that's a bit difficult because we can't
+                            // just add the default country code.
+                            // That would break the
+                            // NATIONAL_PHONE_NUMBER semantic because
+                            // EDS wouldn't know that the search term
+                            // had no country code. We resort to the
+                            // format of SimpleE164.toString(), which
+                            // is passing the national number
+                            // formatted as string.
                             e_book_query_field_test(E_CONTACT_TEL, E_BOOK_QUERY_EQUALS_NATIONAL_PHONE_NUMBER,
-                                                    m_tel.c_str()),
+                                                    tel.c_str()),
                             TRANSFER_REF);
         PlainGStr filter(e_book_query_to_string(query.get()));
         return filter.get();
@@ -873,7 +964,7 @@ private:
     const i18n::phonenumbers::PhoneNumberUtil &m_phoneNumberUtil;
     bool m_simpleEDSSearch;
     std::string m_country;
-    std::string m_tel;
+    SimpleE164 m_number;
 };
 
 class PhoneNumberLogger : public i18n::phonenumbers::Logger
@@ -911,23 +1002,6 @@ public:
     }
 };
 
-static AnyContainsBoost::Mode getFilterMode(const std::vector<LocaleFactory::Filter_t> &terms,
-                                            size_t start)
-{
-    AnyContainsBoost::Mode mode = AnyContainsBoost::CASE_INSENSITIVE;
-    for (size_t i = start; i < terms.size(); i++) {
-        const std::string flag = LocaleFactory::getFilterString(terms[i], "any-contains flag");
-        if (flag == "case-sensitive") {
-            mode = AnyContainsBoost::CASE_SENSITIVE;
-        } else if (flag == "case-insensitive") {
-            mode = AnyContainsBoost::CASE_INSENSITIVE;
-        } else {
-            SE_THROW("unsupported filter flag: " + flag);
-        }
-    }
-    return mode;
-}
-
 class LocaleFactoryBoost : public LocaleFactory
 {
     const i18n::phonenumbers::PhoneNumberUtil &m_phoneNumberUtil;
@@ -940,7 +1014,7 @@ class LocaleFactoryBoost : public LocaleFactory
 public:
     LocaleFactoryBoost() :
         m_phoneNumberUtil(*i18n::phonenumbers::PhoneNumberUtil::GetInstance()),
-        m_edsSupportsPhoneNumbers(e_phone_number_is_supported()),
+        m_edsSupportsPhoneNumbers(e_phone_number_is_supported() && !getenv("SYNCEVOLUTION_PIM_EDS_NO_E164")),
         m_locale(genLocale()),
         m_country(std::use_facet<boost::locale::info>(m_locale).country()),
         m_defaultCountryCode(StringPrintf("+%d", m_phoneNumberUtil.GetCountryCodeForRegion(m_country)))
@@ -1048,7 +1122,7 @@ public:
                                                 func == &AnyContainsBoost::endsWithSearchText ? &AnyContainsBoost::endsWithSearchTel :
                                                 func));
                     } else {
-                        AnyContainsBoost::Mode mode = getFilterMode(terms, 3);
+                        int mode = AnyContainsBoost::getFilterMode(terms, 3);
                         if (field == "full-name") {
                             res.reset(new FilterFullName(m_locale, value, mode, func));
                         } else if (field == "nickname") {
@@ -1084,7 +1158,7 @@ public:
                         SE_THROW("missing search value");
                     }
                     const std::string &value = getFilterString(terms[1], "search string");
-                    AnyContainsBoost::Mode mode = getFilterMode(terms, 2);
+                    int mode = AnyContainsBoost::getFilterMode(terms, 2);
                     res.reset(new AnyContainsBoost(m_locale, value, mode));
                 } else if (operation == "phone") {
                     if (terms.size() != 2) {
@@ -1104,9 +1178,10 @@ public:
         return res ? res : LocaleFactory::createFilter(filter, level);
     }
 
-    virtual void precompute(FolksIndividual *individual, Precomputed &precomputed) const
+    virtual bool precompute(FolksIndividual *individual, Precomputed &precomputed) const
     {
-        precomputed.m_phoneNumbers.clear();
+        LocaleFactory::Precomputed old;
+        std::swap(old, precomputed);
 
         FolksPhoneDetails *phoneDetails = FOLKS_PHONE_DETAILS(individual);
         GeeSet *phones = folks_phone_details_get_phone_numbers(phoneDetails);
@@ -1116,7 +1191,8 @@ public:
                 reinterpret_cast<const gchar *>(folks_abstract_field_details_get_value(phone));
             if (value) {
                 if (m_edsSupportsPhoneNumbers) {
-                    // TODO: check X-EVOLUTION-E164 (made lowercase by folks!).
+                    // Check X-EVOLUTION-E164 (made lowercase by folks!).
+                    //
                     // It has the format <local number>,<country code>,
                     // where <country code> happens to be in quotation marks.
                     // This ends up being split into individual values which
@@ -1133,21 +1209,32 @@ public:
                         components.reserve(2);
                         BOOST_FOREACH (const gchar *component, GeeStringCollection(coll)) {
                             // Empty component represents an unset
-                            // country code. Replace with the current
-                            // country code to form the full number.
-                            // Note that it is not certain whether we
-                            // get to see the empty component. At the
-                            // moment (EDS 3.7, folks 0.9.1), someone
-                            // swallows it.
-                            components.push_back(component[0] ? component : m_defaultCountryCode);
+                            // country code. Note that it is not
+                            // certain whether we get to see the empty
+                            // component. At the moment (EDS 3.7,
+                            // folks 0.9.1), someone swallows it.
+                            components.push_back(component);
                         }
-                        // Only one component? We must still miss the country code.
-                        if (components.size() == 1) {
-                            components.push_back(m_defaultCountryCode);
+                        if (!components.empty()) {
+                            // Only one component? We must still miss the country code.
+                            if (components.size() == 1) {
+                                components.push_back("");
+                            }
+                            std::sort(components.begin(), components.end());
+                            try {
+                                SimpleE164 number;
+                                number.m_countryCode = components[0].empty() ?
+                                    0 :
+                                    boost::lexical_cast<SimpleE164::CountryCode_t>(components[0]);
+                                number.m_nationalNumber = components[1].empty() ?
+                                    0 :
+                                    boost::lexical_cast<SimpleE164::NationalNumber_t>(components[1]);
+                                precomputed.m_phoneNumbers.push_back(number);
+                            } catch (const boost::bad_lexical_cast &ex) {
+                                SE_LOG_WARNING(NULL, "ignoring malformed X-EVOLUTION-E164 (sorted): %s",
+                                               boost::join(components, ", ").c_str());
+                            }
                         }
-                        std::sort(components.begin(), components.end());
-                        std::string normal = boost::join(components, "");
-                        precomputed.m_phoneNumbers.push_back(normal);
                     }
                     // Either EDS had a normalized value or there is none because
                     // the value is not a phone number. No need to try parsing again.
@@ -1158,12 +1245,16 @@ public:
                 i18n::phonenumbers::PhoneNumberUtil::ErrorType error =
                     m_phoneNumberUtil.Parse(value, m_country, &number);
                 if (error == i18n::phonenumbers::PhoneNumberUtil::NO_PARSING_ERROR) {
-                    std::string tel;
-                    m_phoneNumberUtil.Format(number, i18n::phonenumbers::PhoneNumberUtil::E164, &tel);
-                    precomputed.m_phoneNumbers.push_back(tel);
+                    SimpleE164 e164;
+                    e164.m_countryCode = number.country_code();
+                    e164.m_nationalNumber = number.national_number();
+                    precomputed.m_phoneNumbers.push_back(e164);
                 }
             }
         }
+
+        // Now check if any phone number changed.
+        return old != precomputed;
     }
 };
 
