@@ -1,6 +1,6 @@
 Name:       syncevolution
 Summary:    SyncML Client
-Version:    1.3.99.5_20131030_SE_05e5911_SYSYNC_69de386
+Version:    1.3.99.6
 Release:    1
 Group:      Social & Content/Service
 License:    LGPL-2.1+
