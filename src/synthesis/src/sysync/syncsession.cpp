@@ -3993,9 +3993,18 @@ bool TSyncSession::processSyncOpItem(
   bool regular = fLocalSyncDatastoreP->engProcessSyncOpItem(aSyncOp, aItemP, aMetaP, aStatusCommand);
   TSyError statuscode = aStatusCommand.getStatusCode();
   if (statuscode == LOCERR_AGAIN) {
-    PDEBUGPRINTFX(DBG_DATA,("Queueing  %s-operation for later.", SyncOpNames[aSyncOp]));
-    aQueueForLater=true; // re-execute later...
-    return true; // ...but otherwise ok
+    if (fStrictExecOrdering) {
+      // Cannot reorder commands, so force execution now. If we had a way of
+      // telling the store that it should not use LOCERR_AGAIN, we could
+      // avoid this unnecessary "delay + flush" for each item.
+      PDEBUGPRINTFX(DBG_DATA,("Re-executing %s-operation because <strictexecordering> is on.", SyncOpNames[aSyncOp]));
+      regular = fLocalSyncDatastoreP->engProcessSyncOpItem(aSyncOp, aItemP, aMetaP, aStatusCommand);
+      statuscode = aStatusCommand.getStatusCode();
+    } else {
+      PDEBUGPRINTFX(DBG_DATA,("Queueing  %s-operation for later.", SyncOpNames[aSyncOp]));
+      aQueueForLater=true; // re-execute later...
+      return true; // ...but otherwise ok
+    }
   }
   #ifdef SCRIPT_SUPPORT
   // let script check status code if the operation completed

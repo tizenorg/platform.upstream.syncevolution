@@ -3674,7 +3674,7 @@ REQUIRES_deb = --requires="'$(shell set -x; cd checkinstall/dist; LD_LIBRARY_PAT
 # --enable-neon-compatibility in src/backends/webdav:
 # replace dependencies from linking with hard-coded dlopen() dependencies
 @NEON_COMPATIBILITY_TRUE@REQUIRES_deb_neon = , libneon27 (>= 0.29.0) | libneon27-gnutls (>= 0.29.0)
-@ENABLE_ICAL_TRUE@REQUIRES_deb_ical = , libical0
+@ENABLE_ICAL_TRUE@REQUIRES_deb_ical = , libical0 | libical1
 VERSION_deb = 1:$(STABLE_VERSION)$(VERSION)
 VERSION_rpm = `echo $(VERSION) | sed -e s/-/_/g`
 RELEASE = 2

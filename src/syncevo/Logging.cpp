@@ -247,7 +247,8 @@ Logger::MessageOptions::MessageOptions(Level level) :
     m_file(NULL),
     m_line(0),
     m_function(NULL),
-    m_processName(NULL)
+    m_processName(NULL),
+    m_flags(0)
 {
 }
 
@@ -374,7 +375,8 @@ void Logger::glogFunc(const gchar *logDomain,
 {
     Level level =
         (logLevel & (G_LOG_LEVEL_ERROR|G_LOG_LEVEL_CRITICAL)) ? ERROR :
-        (logLevel & G_LOG_LEVEL_WARNING) ? WARNING :
+        // glib warnings are usually not relevant for users, only for developers.
+        (logLevel & G_LOG_LEVEL_WARNING) ? DEV :
         (logLevel & (G_LOG_LEVEL_MESSAGE|G_LOG_LEVEL_INFO)) ? SHOW :
         DEBUG;
 
