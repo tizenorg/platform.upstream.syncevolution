@@ -82,6 +82,15 @@ The %{name}-devel package contains libraries and header files for
 developing applications that use %{name}.
 
 
+%package dav
+Summary:    SyncEvolution backend for CalDAV/CardDAV
+Group:      Social & Content/Service
+Requires:   %{name} = %{version}-%{release}
+
+%description dav
+The %{name}-dav package contains a backend which reads/writes
+contacts and calendar data via CardDAV/CalDAV.
+
 %package ebook
 Summary:    SyncEvolution backend for EDS contacts
 Group:      Social & Content/Service
@@ -143,6 +152,7 @@ gSSO for single-signon.
     --enable-dbus-service-pim \
     --enable-shared \
     --enable-pbap \
+    --enable-webdav \
     --with-expat=system \
     --enable-release-mode \
     --disable-unit-tests \
@@ -183,7 +193,6 @@ rm %{buildroot}/%{_libdir}/syncevolution/backends/platformkde.so
 %{_libdir}/libgdbussyncevo.*
 %{_libdir}/syncevolution/backends/syncqtcontacts.so
 %{_libdir}/syncevolution/backends/synckcalextended.so
-%{_libdir}/syncevolution/backends/syncdav.so
 %{_libexecdir}/syncevo-dbus-server
 %{_libexecdir}/syncevo-dbus-server-startup.sh
 %{_libexecdir}/syncevo-dbus-helper
@@ -218,6 +227,10 @@ rm %{buildroot}/%{_libdir}/syncevolution/backends/platformkde.so
 %{_libdir}/pkgconfig/syncevolution.pc
 %{_libdir}/pkgconfig/synthesis.pc
 %{_libdir}/pkgconfig/synthesis-sdk.pc
+
+%files dav
+%defattr(-,root,root,-)
+%{_libdir}/syncevolution/backends/syncdav.so
 
 %files ebook
 %defattr(-,root,root,-)
