@@ -11802,12 +11802,14 @@ src/test: src/client-test
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@	ln -f -s $(bindir)/syncevolution $(DESTDIR)/$(testdir)
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@	ln -f -s $(bindir)/synccompare $(DESTDIR)/$(testdir)
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@	ln -f -s $(libexecdir)/syncevo-dbus-server $(DESTDIR)/$(testdir)
-@COND_CORE_TRUE@@ENABLE_TESTING_TRUE@	cp config.h $(top_srcdir)/src/syncevo/SyncConfig.h $(DESTDIR)/$(testdir) # needed by test-dbus.py
+@COND_CORE_TRUE@@ENABLE_TESTING_TRUE@	ln -f -s $(bindir)/synclog2html $(DESTDIR)/$(testdir)
+@COND_CORE_TRUE@@ENABLE_TESTING_TRUE@	cp config.h $(top_srcdir)/src/syncevo/SyncConfig.h src/ClientTest.cpp.html $(DESTDIR)/$(testdir) # needed by test-dbus.py
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@uninstall-test-files:
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@	rm -f $(DESTDIR)/$(testdir)/syncevolution \
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@		$(DESTDIR)/$(testdir)/synccompare \
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@		$(DESTDIR)/$(testdir)/syncevo-dbus-server \
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@		$(DESTDIR)/$(testdir)/SyncConfig.h \
+@COND_CORE_TRUE@@ENABLE_TESTING_TRUE@		$(DESTDIR)/$(testdir)/ClientTests.cpp.html \
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@		$(DESTDIR)/$(testdir)/config.h \
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@		$(NOP)
 

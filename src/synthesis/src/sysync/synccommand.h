@@ -365,6 +365,7 @@ private:
   // involved datastores and mode
   TLocalEngineDS *fLocalDataStoreP;
   TRemoteDataStore *fRemoteDataStoreP;
+  bool fRemoteWantsNOC;
 }; // TSyncCommand
 
 

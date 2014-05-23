@@ -115,6 +115,9 @@
 /* avoid hard dependency on Evolution shared objects */
 #undef EVOLUTION_COMPATIBILITY
 
+/* work with both libical.so.0 and libical.so.1 */
+#undef EVOLUTION_ICAL_COMPATIBILITY
+
 /* The gettext package name */
 #undef GETTEXT_PACKAGE
 

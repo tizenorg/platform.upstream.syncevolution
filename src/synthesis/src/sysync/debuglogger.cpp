@@ -324,6 +324,28 @@ TStdFileDbgOut::~TStdFileDbgOut()
 } // TStdFileDbgOut::~TStdFileDbgOut
 
 
+#ifdef LINUX
+# include <unistd.h>
+# include <fcntl.h>
+#endif
+
+static FILE *FOpen(const char *path, const char *mode)
+{
+  FILE *file = fopen(path, mode);
+#ifdef LINUX
+  // Be careful not to leak this file descriptor into forked
+  // processes.
+  int fd = file ? fileno(file) : -1;
+  if (fd >= 0) {
+    int flags = fcntl(fd, F_GETFD);
+    if (flags != -1) {
+      fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
+    }
+  }
+#endif
+  return file;
+}
+
 // open standard C file based debug output channel
 bool TStdFileDbgOut::openDbg(cAppCharP aDbgOutputName, cAppCharP aSuggestedExtension, TDbgFlushModes aFlushMode, bool aOverWrite, bool aRawMode)
 {
@@ -338,7 +360,7 @@ bool TStdFileDbgOut::openDbg(cAppCharP aDbgOutputName, cAppCharP aSuggestedExten
   // for C files, use the extension provided
   fFileName+=aSuggestedExtension;
   // open
-  fFile=fopen(fFileName.c_str(),aRawMode ? (aOverWrite ? "wb" : "ab") : (aOverWrite ? "w" : "a"));
+  fFile=FOpen(fFileName.c_str(),aRawMode ? (aOverWrite ? "wb" : "ab") : (aOverWrite ? "w" : "a"));
   // in case this fails, we'll have a NULL fFile. We can't do anything more here
   fIsOpen=fFile!=NULL;
   // For openclose mode, we have opened here only to check for logfile writability - close again
@@ -358,7 +380,7 @@ uInt32 TStdFileDbgOut::dbgFileSize(void)
   uInt32 sz;
   if (fFlushMode==dbgflush_openclose) {
     // we need to open the file for append first
-    fFile=fopen(fFileName.c_str(),"a");
+    fFile=FOpen(fFileName.c_str(),"a");
     fseek(fFile,0,SEEK_END); // move to end (needed, otherwise ftell may return 0 despite "a" fopen mode)
     sz=ftell(fFile);
     fclose(fFile);
@@ -393,7 +415,7 @@ void TStdFileDbgOut::putLine(cAppCharP aLine, bool aForceFlush)
     if (fFlushMode==dbgflush_openclose) {
       // we need to open the file for append first
       lockMutex(mutex);
-      fFile=fopen(fFileName.c_str(),"a");
+      fFile=FOpen(fFileName.c_str(),"a");
       if (!fFile)
         unlockMutex(mutex);
     }
@@ -425,7 +447,7 @@ void TStdFileDbgOut::putRawData(cAppPointer aData, memSize aSize)
     if (fFlushMode==dbgflush_openclose) {
       // we need to open the file for append first
       lockMutex(mutex);
-      fFile=fopen(fFileName.c_str(),"a");
+      fFile=FOpen(fFileName.c_str(),"a");
     }
     if (fFile) {
       if (fwrite(aData, 1, aSize, fFile) != 1) {

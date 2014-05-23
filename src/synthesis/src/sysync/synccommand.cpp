@@ -742,7 +742,8 @@ TSyncCommand::TSyncCommand(
   fSyncElementP->meta=NULL; // %%% no search grammar for now
   // add number of changes for SyncML 1.1 if remote supports it
   fSyncElementP->noc=NULL; // default to none
-  if (aSessionP->fRemoteWantsNOC) {
+  fRemoteWantsNOC=aSessionP->fRemoteWantsNOC;
+  if (fRemoteWantsNOC) {
     sInt32 noc = fLocalDataStoreP->getNumberOfChanges();
     if (noc>=0) {
       // we have a valid NOC value, add it
@@ -954,6 +955,17 @@ bool TSyncCommand::generateOpen(void)
   // issue command Start <Sync> with SyncML toolkit
   fPrepared=false; // force re-preparing in all cases (as this might be continuing a command)
   PrepareIssue(&fSyncElementP->cmdID,&fSyncElementP->flags);
+
+  // (re-)check NumberOfChanges, because in a SyncML client that number might not
+  // have been available right away when constructing the TSyncCommand.
+  if (!fSyncElementP->noc &&
+      fRemoteWantsNOC) {
+    sInt32 noc = fLocalDataStoreP->getNumberOfChanges();
+    if (noc>=0) {
+      fSyncElementP->noc=newPCDataLong(noc);
+    }
+  }
+
   if (!fEvalMode) {
     #ifdef SYDEBUG
     if (fSessionP->fXMLtranslate && fSessionP->fOutgoingXMLInstance)
