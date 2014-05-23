@@ -1,6 +1,6 @@
 Name:       syncevolution
 Summary:    SyncML Client
-Version:    1.3.99.6
+Version:    1.4.99.1
 Release:    1
 Group:      Social & Content/Service
 License:    LGPL-2.1+
@@ -235,6 +235,6 @@ rm %{buildroot}/%{_libdir}/syncevolution/backends/platformkde.so
 %defattr(-,root,root,-)
 %{_libdir}/syncevolution/backends/providergoa.so
 
-%files gsso
-%defattr(-,root,root,-)
-%{_libdir}/syncevolution/backends/providergsso.so
+#%files gsso
+#%defattr(-,root,root,-)
+#%{_libdir}/syncevolution/backends/providergsso.so
