@@ -1,6 +1,6 @@
 Name:       syncevolution
 Summary:    SyncML Client
-Version:    1.3.99.6
+Version:    1.4.99.2
 Release:    1
 Group:      Social & Content/Service
 License:    LGPL-2.1+
@@ -27,6 +27,8 @@ BuildRequires:  libtool
 BuildRequires:  python
 BuildRequires:  libxslt-tools
 BuildRequires:  libphonenumber-devel
+BuildRequires:  pkgconfig(neon)
+BuildRequires:  pkgconfig(libgsignon-glib)
 
 
 %description
@@ -45,6 +47,15 @@ The %{name}-synccompare package contains a perl script used in
 SyncEvolution command line mode for data comparison. It is optional
 and not normally called when using a GUI.
 
+%package test
+Summary:    Optional test tools and scripts for SyncEvolution
+Group:      Social & Content/Service
+Requires:   %{name} = %{version}-%{release}
+Requires:   python-gobject
+
+%description test
+The %{name}-test package contains test tools and scripts for
+SyncEvolution intended for testing via the command line.
 
 %package http-server
 Summary:    SyncEvolution HTTP SyncML server
@@ -78,6 +89,15 @@ Requires:   %{name} = %{version}-%{release}
 The %{name}-devel package contains libraries and header files for
 developing applications that use %{name}.
 
+
+%package dav
+Summary:    SyncEvolution backend for CalDAV/CardDAV
+Group:      Social & Content/Service
+Requires:   %{name} = %{version}-%{release}
+
+%description dav
+The %{name}-dav package contains a backend which reads/writes
+contacts and calendar data via CardDAV/CalDAV.
 
 %package ebook
 Summary:    SyncEvolution backend for EDS contacts
@@ -132,12 +152,16 @@ gSSO for single-signon.
 %build
 ./autogen.sh
 
+
+
 %configure --disable-static \
     'PHONENUMBERS_LIBS=-lphonenumber -lboost_thread' \
     --enable-dbus-service \
     --enable-dbus-service-pim \
     --enable-shared \
     --enable-pbap \
+    --enable-dav \
+    --enable-signon \
     --with-expat=system \
     --enable-release-mode \
     --disable-unit-tests \
@@ -171,14 +195,12 @@ rm %{buildroot}/%{_libdir}/syncevolution/backends/platformkde.so
 %{_libdir}/syncevolution/backends/syncactivesync.so
 %{_libdir}/syncevolution/backends/syncfile.so
 %{_libdir}/syncevolution/backends/syncxmlrpc.so
-%{_libdir}/syncevolution/backends/syncaddressbook.so
 %{_libdir}/syncevolution/backends/syncsqlite.so
 %{_libdir}/syncevolution/backends/syncmaemocal.so
 %{_libdir}/syncevolution/backends/syncakonadi.so
 %{_libdir}/libgdbussyncevo.*
 %{_libdir}/syncevolution/backends/syncqtcontacts.so
 %{_libdir}/syncevolution/backends/synckcalextended.so
-%{_libdir}/syncevolution/backends/syncdav.so
 %{_libexecdir}/syncevo-dbus-server
 %{_libexecdir}/syncevo-dbus-server-startup.sh
 %{_libexecdir}/syncevo-dbus-helper
@@ -193,6 +215,11 @@ rm %{buildroot}/%{_libdir}/syncevolution/backends/platformkde.so
 %files synccompare
 %defattr(-,root,root,-)
 %{_bindir}/synccompare
+
+%files test
+%defattr(-,root,root,-)
+%{_libdir}/syncevolution/test/search.py
+%{_libdir}/syncevolution/test/sync.py
 
 %files http-server
 %defattr(-,root,root,-)
@@ -214,6 +241,10 @@ rm %{buildroot}/%{_libdir}/syncevolution/backends/platformkde.so
 %{_libdir}/pkgconfig/synthesis.pc
 %{_libdir}/pkgconfig/synthesis-sdk.pc
 
+%files dav
+%defattr(-,root,root,-)
+%{_libdir}/syncevolution/backends/syncdav.so
+
 %files ebook
 %defattr(-,root,root,-)
 %{_libdir}/syncevolution/backends/syncebook.so
@@ -230,6 +261,7 @@ rm %{buildroot}/%{_libdir}/syncevolution/backends/platformkde.so
 %defattr(-,root,root,-)
 %{_libdir}/syncevolution/backends/providergoa.so
 
+# gSSO without libaccounts -> providersignon.so instead of providergsso.so
 %files gsso
 %defattr(-,root,root,-)
-%{_libdir}/syncevolution/backends/providergsso.so
+%{_libdir}/syncevolution/backends/providersignon.so
