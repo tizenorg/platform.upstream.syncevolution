@@ -37,6 +37,12 @@
 #include <Akonadi/Control>
 #include <kurl.h>
 
+#include <syncevo/util.h>
+
+#include <boost/lambda/lambda.hpp>
+#include <boost/lambda/bind.hpp>
+#include <boost/bind.hpp>
+
 #include <QtCore/QDebug>
 
 SE_BEGIN_CXX
@@ -57,8 +63,8 @@ template<class J> J *DisableAutoDelete(J *job) { job->setAutoDelete(false); retu
 AkonadiSyncSource::AkonadiSyncSource(const char *submime,
                                      const SyncSourceParams &params)
     : TrackingSyncSource(params)
-    , m_subMime(submime)
 {
+    m_mimeTypes = QString(submime).split(",", QString::SkipEmptyParts);
 }
 
 AkonadiSyncSource::~AkonadiSyncSource()
@@ -67,6 +73,12 @@ AkonadiSyncSource::~AkonadiSyncSource()
 
 bool AkonadiSyncSource::isEmpty()
 {
+    if (!GRunIsMain()) {
+        bool result;
+        GRunInMain(boost::lambda::var(result) = boost::lambda::bind(&AkonadiSyncSource::isEmpty, this));
+        return result;
+    }
+
     //To Check if the respective collection is Empty, without actually loading the collections
     std::auto_ptr<CollectionStatisticsJob> statisticsJob(DisableAutoDelete(new CollectionStatisticsJob(m_collection)));
     if (!statisticsJob->exec()) {
@@ -77,7 +89,12 @@ bool AkonadiSyncSource::isEmpty()
 
 void AkonadiSyncSource::start()
 {
-    // Start The Akonadi Server if not already Running.
+    if (!GRunIsMain()) {
+        GRunInMain(boost::bind(&AkonadiSyncSource::start, this));
+        return;
+    }
+
+    // Check for Akonadi server.
     if (!Akonadi::ServerManager::isRunning()) {
         // Don't try to start it. A normal KDE user should have it already
         // running. Users of other desktop systems probably don't want it
@@ -98,11 +115,15 @@ void AkonadiSyncSource::start()
 
 SyncSource::Databases AkonadiSyncSource::getDatabases()
 {
+    if (!GRunIsMain()) {
+        Databases result;
+        GRunInMain(boost::lambda::var(result) = boost::lambda::bind(&AkonadiSyncSource::getDatabases, this));
+        return result;
+    }
+
     start();
 
     Databases res;
-    QStringList mimeTypes;
-    mimeTypes << m_subMime.c_str();
     // Insert databases which match the "type" of the source, including a user-visible
     // description and a database IDs. Exactly one of the databases  should be marked
     // as the default one used by the source.
@@ -111,7 +132,7 @@ SyncSource::Databases AkonadiSyncSource::getDatabases()
     std::auto_ptr<CollectionFetchJob> fetchJob(DisableAutoDelete(new CollectionFetchJob(Collection::root(),
                                                                                         CollectionFetchJob::Recursive)));
 
-    fetchJob->fetchScope().setContentMimeTypes(mimeTypes);
+    fetchJob->fetchScope().setContentMimeTypes(m_mimeTypes);
 
     if (!fetchJob->exec()) {
         throwError("cannot list collections");
@@ -133,6 +154,11 @@ SyncSource::Databases AkonadiSyncSource::getDatabases()
 
 void AkonadiSyncSource::open()
 {
+    if (!GRunIsMain()) {
+        GRunInMain(boost::bind(&AkonadiSyncSource::open, this));
+        return;
+    }
+
     start();
 
     // the "evolutionsource" property, empty for default,
@@ -163,20 +189,53 @@ void AkonadiSyncSource::open()
     }
 
     m_collection = Collection::fromUrl(KUrl(id.c_str()));
+
+    // Verify that the collection exists and ensure that
+    // m_collection.contentMimeTypes() returns valid information. The
+    // collection constructed so far only contains the collection ID.
+    std::auto_ptr<CollectionFetchJob> fetchJob(DisableAutoDelete(new CollectionFetchJob(m_collection,
+                                                                                        CollectionFetchJob::Base)));
+    if (!fetchJob->exec()) {
+        throwError(StringPrintf("cannot fetch collection %s", id.c_str()));
+    }
+    Collection::List collections = fetchJob->collections();
+    if (collections.isEmpty()) {
+        throwError(StringPrintf("collection %s not found", id.c_str()));
+    }
+    m_collection = collections.front();
+
+    m_contentMimeType = "";
+    QStringList collectionMimeTypes = m_collection.contentMimeTypes();
+    foreach (const QString &mimeType, m_mimeTypes) {
+        if (collectionMimeTypes.contains(mimeType)) {
+            m_contentMimeType = mimeType;
+            break;
+        }
+    }
+    if (m_contentMimeType.isEmpty()) {
+        throwError(StringPrintf("Resource %s cannot store items of type(s) %s. It can only store %s.",
+                                id.c_str(),
+                                m_mimeTypes.join(",").toUtf8().constData(),
+                                collectionMimeTypes.join(",").toUtf8().constData()));
+    }
 }
 
 void AkonadiSyncSource::listAllItems(SyncSourceRevisions::RevisionMap_t &revisions)
 {
+    if (!GRunIsMain()) {
+        GRunInMain(boost::bind(&AkonadiSyncSource::listAllItems, this, boost::ref(revisions)));
+        return;
+    }
+
     // copy all local IDs and the corresponding revision
     std::auto_ptr<ItemFetchJob> fetchJob(DisableAutoDelete(new ItemFetchJob(m_collection)));
-
     if (!fetchJob->exec()) {
         throwError("listing items");
     }
     BOOST_FOREACH (const Item &item, fetchJob->items()) {
         // Filter out items which don't have the right type (for example, VTODO when
         // syncing events)
-        if (item.mimeType() == m_subMime.c_str()) {
+        if (m_mimeTypes.contains(item.mimeType())) {
             revisions[QByteArray::number(item.id()).constData()] =
                       QByteArray::number(item.revision()).constData();
         }
@@ -190,10 +249,16 @@ void AkonadiSyncSource::close()
 
 TrackingSyncSource::InsertItemResult AkonadiSyncSource::insertItem(const std::string &luid, const std::string &data, bool raw)
 {
+    if (!GRunIsMain()) {
+        InsertItemResult result;
+        GRunInMain(boost::lambda::var(result) = boost::lambda::bind(&AkonadiSyncSource::insertItem, this, boost::cref(luid), boost::cref(data), raw));
+        return result;
+    }
+
     Item item;
 
     if (luid.empty()) {
-        item.setMimeType(m_subMime.c_str());
+        item.setMimeType(m_mimeTypes.front());
         item.setPayloadFromData(QByteArray(data.c_str()));
         std::auto_ptr<ItemCreateJob> createJob(DisableAutoDelete(new ItemCreateJob(item, m_collection)));
         if (!createJob->exec()) {
@@ -230,6 +295,11 @@ TrackingSyncSource::InsertItemResult AkonadiSyncSource::insertItem(const std::st
 
 void AkonadiSyncSource::removeItem(const string &luid)
 {
+    if (!GRunIsMain()) {
+        GRunInMain(boost::bind(&AkonadiSyncSource::removeItem, this, boost::cref(luid)));
+        return;
+    }
+
     Entity::Id syncItemId = QByteArray(luid.c_str()).toLongLong();
 
     // Delete the item from our collection
@@ -242,6 +312,11 @@ void AkonadiSyncSource::removeItem(const string &luid)
 
 void AkonadiSyncSource::readItem(const std::string &luid, std::string &data, bool raw)
 {
+    if (!GRunIsMain()) {
+        GRunInMain(boost::bind(&AkonadiSyncSource::readItem, this, boost::cref(luid), boost::ref(data), raw));
+        return;
+    }
+
     Entity::Id syncItemId = QByteArray(luid.c_str()).toLongLong();
 
     std::auto_ptr<ItemFetchJob> fetchJob(DisableAutoDelete(new ItemFetchJob(Item(syncItemId))));

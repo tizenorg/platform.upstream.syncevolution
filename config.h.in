@@ -9,6 +9,9 @@
 /* "SyncML DevInf DevType" */
 #undef DEVICE_TYPE
 
+/* use libical's icaltzutil_get_zone_directory() */
+#undef DISABLE_ICALTZUTIL_GET_ZONE_DIRECTORY
+
 /* "DLT app ID for syncevo-dbus-helper" */
 #undef DLT_SYNCEVO_DBUS_HELPER_ID
 
@@ -51,6 +54,9 @@
 
 /* libical in use */
 #undef ENABLE_ICAL
+
+/* use internal icaltz-util.c */
+#undef ENABLE_ICALTZ_UTIL
 
 /* enable integration tests inside the final library */
 #undef ENABLE_INTEGRATION_TESTS
@@ -148,6 +154,9 @@
 /* define if the Boost::Locale library is available */
 #undef HAVE_BOOST_LOCALE
 
+/* Define to 1 if you have the <byteswap.h> header file. */
+#undef HAVE_BYTESWAP_H
+
 /* Define to 1 if you have the `dcgettext' function. */
 #undef HAVE_DCGETTEXT
 
@@ -156,6 +165,9 @@
 
 /* evolution-dataserver available */
 #undef HAVE_EDS
+
+/* Define to 1 if you have the <endian.h> header file. */
+#undef HAVE_ENDIAN_H
 
 /* Define to 1 if you have the <execinfo.h> header file. */
 #undef HAVE_EXECINFO_H
@@ -229,6 +241,9 @@
 
 /* Define to 1 if you have the <string.h> header file. */
 #undef HAVE_STRING_H
+
+/* Define to 1 if you have the <sys/endian.h> header file. */
+#undef HAVE_SYS_ENDIAN_H
 
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #undef HAVE_SYS_STAT_H
