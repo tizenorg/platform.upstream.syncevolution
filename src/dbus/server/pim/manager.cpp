@@ -155,7 +155,11 @@ void Manager::init()
     add(this, &Manager::createPeer, "CreatePeer"); // Strict version: uid must be new.
     add(this, &Manager::removePeer, "RemovePeer");
     add(this, &Manager::syncPeer, "SyncPeer");
+    add(this, &Manager::syncPeerWithFlags, "SyncPeerWithFlags");
     add(this, &Manager::stopSync, "StopSync");
+    add(this, &Manager::getPeerStatus, "GetPeerStatus");
+    add(this, &Manager::suspendSync, "SuspendSync");
+    add(this, &Manager::resumeSync, "ResumeSync");
     add(this, &Manager::getAllPeers, "GetAllPeers");
     add(this, &Manager::addContact, "AddContact");
     add(this, &Manager::modifyContact, "ModifyContact");
@@ -1263,6 +1267,99 @@ void Manager::doSetPeer(const boost::shared_ptr<Session> &session,
     result->done();
 }
 
+static Manager::SyncResult SourceProgress2SyncProgress(Session *session,
+                                                       int32_t percent,
+                                                       const Session::SourceProgresses_t &progress)
+{
+    Manager::SyncResult result;
+
+    // As default, always trust the normal completion computation.
+    // PBAP syncing is handled as special case below.
+    result["percent"] = (double)percent / 100;
+
+    // Non-PBAP sync as default, with empty string as default.
+    Manager::SyncResult::mapped_type &syncCycle = result["sync-cycle"];
+    syncCycle = std::string("");
+
+    // It should have the well-known source.
+    static const std::string name = MANAGER_LOCAL_SOURCE;
+    Session::SourceProgresses_t::const_iterator it;
+    if ((it = progress.find(name)) != progress.end()) {
+        const SourceProgress &source = it->second;
+
+        Session::SourceProgresses_t last;
+        session->getLastProgress(last);
+        Session::SourceProgresses_t::iterator it = last.find(name);
+        if ((source.m_added > 0 || source.m_updated > 0 || source.m_deleted > 0) &&
+            (it == last.end() ||
+             source.m_added != it->second.m_added ||
+             source.m_updated != it->second.m_updated ||
+             source.m_deleted != it->second.m_deleted)) {
+            // Create the entry. We don't specify what it contains and "None" would
+            // be best, but boost::variant cannot be empty and void is not supported
+            // by our D-Bus wrapper, so set it to 'true'.
+            result["modified"] = true;
+        }
+
+        if (session->getSyncMode() == "pbap") {
+            StringMap env = session->getSyncEnv();
+            StringMap::const_iterator var = env.find("SYNCEVOLUTION_PBAP_SYNC");
+            int cycles = (var != env.end() && var->second == "incremental") ? 2 : 1;
+            double percent = 0;
+            SyncSourceReport report;
+            if (cycles == 2 && session->getSyncSourceReport(name, report)) {
+                // Done first cycle.
+                percent = 0.5;
+                syncCycle = std::string("incremental-picture");
+            } else if (cycles == 2) {
+                syncCycle = std::string("incremental-text");
+            } else if (var != env.end() && var->second == "text") {
+                syncCycle = std::string("text");
+            } else {
+                syncCycle = std::string("all");
+            }
+            if (source.m_receiveTotal > 0 && source.m_phase == "receiving") {
+                percent += (double)source.m_receiveCount / (cycles * source.m_receiveTotal);
+            }
+            result["percent"] = percent;
+        }
+    }
+    return result;
+}
+
+Manager::PeerStatus Manager::getPeerStatus(const std::string &uid)
+{
+    checkPeerUID(uid);
+
+    PeerStatus status;
+
+    // Idle unless we find a running session.
+    status["status"] = "idle";
+
+    // Same logic as in stopPeer().
+    std::string syncConfigName = StringPrintf("%s@%s%s",
+                                              MANAGER_LOCAL_CONFIG,
+                                              MANAGER_PREFIX,
+                                              uid.c_str());
+    boost::shared_ptr<Session> session = m_server->getSyncSession();
+    if (session) {
+        std::string configName = session->getConfigName();
+        if (configName == syncConfigName) {
+            status["status"] = session->getFreeze() ? "suspended" : "syncing";
+            int32_t percent;
+            Session::SourceProgresses_t sources;
+            session->getProgress(percent, sources);
+
+            status["progress"] = SourceProgress2SyncProgress(session.get(),
+                                                             percent,
+                                                             sources);
+            status["last-progress"] = (Timespec::monotonic() - session->getLastProgressTimestamp()).duration();
+        }
+    }
+
+    return status;
+}
+
 Manager::PeersMap Manager::getAllPeers()
 {
     PeersMap peers;
@@ -1390,7 +1487,21 @@ void Manager::syncPeer(const boost::shared_ptr<GDBusCXX::Result1<SyncResult> > &
                               uid.c_str()),
                  Server::SESSION_FLAG_NO_SYNC,
                  result,
-                 boost::bind(&Manager::doSyncPeer, this, _1, result, uid));
+                 boost::bind(&Manager::doSyncPeer, this, _1, result, uid, SyncFlags()));
+}
+
+void Manager::syncPeerWithFlags(const boost::shared_ptr<GDBusCXX::Result1<SyncResult> > &result,
+                                const std::string &uid,
+                                const SyncFlags &flags)
+{
+    checkPeerUID(uid);
+    runInSession(StringPrintf("%s@%s%s",
+                              MANAGER_LOCAL_CONFIG,
+                              MANAGER_PREFIX,
+                              uid.c_str()),
+                 Server::SESSION_FLAG_NO_SYNC,
+                 result,
+                 boost::bind(&Manager::doSyncPeer, this, _1, result, uid, flags));
 }
 
 static Manager::SyncResult SyncReport2Result(const SyncReport &report)
@@ -1426,12 +1537,16 @@ static void doneSyncPeer(const boost::shared_ptr<GDBusCXX::Result1<Manager::Sync
 
 void Manager::doSyncPeer(const boost::shared_ptr<Session> &session,
                          const boost::shared_ptr<GDBusCXX::Result1<SyncResult> > &result,
-                         const std::string &uid)
+                         const std::string &uid,
+                         const SyncFlags &flags)
 {
     // Keep client informed about progress.
     emitSyncProgress(uid, "started", SyncResult());
     session->m_doneSignal.connect(boost::bind(boost::ref(emitSyncProgress), uid, "done", SyncResult()));
     session->m_sourceSynced.connect(boost::bind(&Manager::report2SyncProgress, m_self, uid, _1, _2));
+    // React *before* Session updates its value for getLastProgress(). */
+    session->m_progressSignal.connect(boost::bind(&Manager::progress2SyncProgress, m_self, uid, session.get(), _1, _2),
+                                      boost::signals2::at_front);
 
     // Determine sync mode. "pbap" is valid only when the remote
     // source uses the PBAP backend. Otherwise we use "ephemeral",
@@ -1444,10 +1559,44 @@ void Manager::doSyncPeer(const boost::shared_ptr<Session> &session,
         syncMode = "pbap";
     }
 
+    StringMap env;
+    BOOST_FOREACH (const SyncFlags::value_type &entry, flags) {
+        if (entry.first == "pbap-sync") {
+            const std::string *value = boost::get<const std::string>(&entry.second);
+            if (!value) {
+                SE_THROW(StringPrintf("SyncPeerWithFlags flag 'pbap-sync' expects a string value"));
+            }
+            if (*value != "text" &&
+                *value != "all" &&
+                *value != "incremental") {
+                SE_THROW(StringPrintf("SyncPeerWithFlags flag 'pbap-sync' expects one of 'text', 'all', or 'incremental': %s", value->c_str()));
+            }
+            env["SYNCEVOLUTION_PBAP_SYNC"] = *value;
+        } else if (entry.first == "progress-frequency") {
+            const double *value = boost::get<const double>(&entry.second);
+            if (!value) {
+                SE_THROW(StringPrintf("SyncPeerWithFlags flag 'progress-frequency' expects a double value"));
+            }
+            if (*value <= 0) {
+                SE_THROW(StringPrintf("SyncPeerWithFlags flag 'progress-frequency' must be a positive, non-zero frequency value (Hz): %lf", *value));
+            }
+            // Configure session progress frequency.
+            session->setProgressTimeout(1 / *value * 1000 /* ms */);
+        } else {
+            SE_THROW(StringPrintf("invalid SyncPeerWithFlags flag: %s", entry.first.c_str()));
+        }
+    }
+
+    // Always be explicit about the PBAP sync mode. Needed to have syncing
+    // and PIM Manager aligned on the exact mode.
+    if (env.find("SYNCEVOLUTION_PBAP_SYNC") == env.end()) {
+        env["SYNCEVOLUTION_PBAP_SYNC"] = getEnv("SYNCEVOLUTION_PBAP_SYNC", "incremental");
+    }
+
     // After sync(), the session is tracked as the active sync session
     // by the server. It was removed from our own m_pending list by
     // doSession().
-    session->sync(syncMode, SessionCommon::SourceModes_t());
+    session->syncExtended(syncMode, SessionCommon::SourceModes_t(), env);
     // Relay result to caller when done.
     session->m_doneSignal.connect(boost::bind(doneSyncPeer, result, _1, _2));
 }
@@ -1459,6 +1608,14 @@ void Manager::report2SyncProgress(const std::string &uid,
     SyncReport report;
     report.addSyncSourceReport("foo", source);
     emitSyncProgress(uid, "modified", SyncReport2Result(report));
+}
+
+void Manager::progress2SyncProgress(const std::string &uid,
+                                    Session *session,
+                                    int32_t percent,
+                                    const Session::SourceProgresses_t &progress)
+{
+    emitSyncProgress(uid, "progress", SourceProgress2SyncProgress(session, percent, progress));
 }
 
 void Manager::stopSync(const boost::shared_ptr<GDBusCXX::Result0> &result,
@@ -1502,6 +1659,55 @@ void Manager::stopSync(const boost::shared_ptr<GDBusCXX::Result0> &result,
         result->done();
     }
 }
+
+void Manager::setFreeze(const boost::shared_ptr< GDBusCXX::Result1<bool> > &result,
+                        const std::string &uid,
+                        bool freeze)
+{
+    checkPeerUID(uid);
+
+    // Fully qualified peer config name. Only used for sync sessions
+    // and thus good enough to identify them.
+    std::string syncConfigName = StringPrintf("%s@%s%s",
+                                              MANAGER_LOCAL_CONFIG,
+                                              MANAGER_PREFIX,
+                                              uid.c_str());
+
+    // Remove all pending sessions of the peer. Make a complete
+    // copy of the list, to avoid issues with modifications of the
+    // underlying list while we iterate over it.
+    //
+    // Cancel pending syncs. This is similar to how we handle suspending of
+    // queued obex transfers: those can't be suspended either and therefore
+    // cancelling them is the simplest solution.
+    BOOST_FOREACH (const Pending_t::value_type &entry, Pending_t(m_pending)) {
+        std::string configName = entry.second->getConfigName();
+        if (configName == syncConfigName) {
+            entry.first->failed(GDBusCXX::dbus_error(MANAGER_ERROR_ABORTED, "pending sync aborted by StopSync()"));
+            m_pending.remove(entry);
+        }
+    }
+
+    // Freeze the currently running sync if it is for the peer.
+    boost::shared_ptr<Session> session = m_server->getSyncSession();
+    bool freezing = false;
+    if (session) {
+        std::string configName = session->getConfigName();
+        if (configName == syncConfigName) {
+            // Return to caller later, when aborting is done.
+            session->setFreezeAsync(freeze,
+                                    Result<void (bool)>(boost::bind(&GDBusCXX::Result1<bool>::done,
+                                                                    result,
+                                                                    _1),
+                                                        createDBusErrorCb(result)));
+            freezing = true;
+        }
+    }
+    if (!freezing) {
+        result->done(false);
+    }
+}
+
 
 void Manager::addContact(const boost::shared_ptr< GDBusCXX::Result1<std::string> > &result,
                          const std::string &addressbook,

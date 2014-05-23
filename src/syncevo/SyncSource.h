@@ -1926,6 +1926,28 @@ class SyncSource : virtual public SyncSourceBase, public SyncSourceConfig, publi
     virtual void close() = 0;
 
     /**
+     * A hint to the source that syncing will stop processing data
+     * for a while (freeze = true) or resume processing (freeze =
+     * false).
+     *
+     * If the source needs to change its own state to accomodate
+     * the new freeze state of the sync and that change fails, then
+     * the source must throw an error in setFreeze(). The caller will
+     * not interact with the source while frozen and thus would not
+     * notice the failure if no error was thrown.
+     */
+    virtual void setFreeze(bool freeze) {}
+
+    /**
+     * Number of InsertItem operations, regardless whether the
+     * operation succeeded or failed. Operations which get suspended
+     * are counted again each time they are resumed.
+     */
+    int32_t getAdded() const { return m_added; }
+    int32_t getUpdated() const { return m_updated; }
+    int32_t getDeleted() const { return m_deleted; }
+
+    /**
      * return Synthesis API pointer, if one currently is available
      * (between SyncEvolution_Module_CreateContext() and
      * SyncEvolution_Module_DeleteContext())
@@ -2046,6 +2068,11 @@ class SyncSource : virtual public SyncSourceBase, public SyncSourceConfig, publi
      * (RemoveAllItems()) count the removals itself.
      */
     long m_numDeleted;
+
+    /**
+     * Counter for InsertItem operations. Updated by hooking into the operation.
+     */
+    int32_t m_added, m_updated, m_deleted;
 
     bool m_forceSlowSync;
 

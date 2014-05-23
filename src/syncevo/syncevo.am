@@ -72,6 +72,7 @@ src_syncevo_sources = \
   src/syncevo/util.cpp \
   src/syncevo/util.h \
   src/syncevo/BoostHelper.h \
+  src/syncevo/GuardFD.h \
   \
   src/syncevo/TmpFile.cpp \
   src/syncevo/TmpFile.h \
@@ -142,6 +143,13 @@ src_syncevo_sources = \
   src/syncevo/TrackingSyncSource.h \
   src/syncevo/TrackingSyncSource.cpp
 
+if COND_GIO_GDBUS
+# Only useful in combination with GDBus GIO.
+src_syncevo_sources += \
+  src/syncevo/gsignond-pipe-stream.h \
+  src/syncevo/gsignond-pipe-stream.cpp
+endif
+
 if ENABLE_ICAL
 src_syncevo_sources += \
   src/syncevo/icalstrdup.c \
@@ -176,6 +184,7 @@ src_syncevo_libsyncevolution_include_HEADERS = \
   src/syncevo/SyncConfig.h \
   src/syncevo/SyncSource.h \
   src/syncevo/IdentityProvider.h \
+  src/syncevo/GuardFD.h \
   src/syncevo/util.h \
   src/syncevo/BoostHelper.h \
   src/syncevo/SuspendFlags.h \
@@ -214,6 +223,7 @@ nodist_src_syncevo_libsyncevolution_la_SOURCES = src/syncevo/SyncEvolutionXML.c
 CLEANFILES += src/syncevo/SyncEvolutionXML.c
 src_syncevo_libsyncevolution_la_LIBADD = \
   @GIO_LIBS@ \
+  $(GIOUNIX_LIBS) \
   @GTHREAD_LIBS@ \
   @GLIB_LIBS@ \
   $(SYNTHESIS_LIBS) \
@@ -228,6 +238,7 @@ if ENABLE_MODULES
 src_syncevo_libsyncevolution_la_LIBADD += -ldl
 endif
 src_syncevo_libsyncevolution_la_CXXFLAGS = \
+  $(GIOUNIX_CFLAGS) \
   $(PCRECPP_CFLAGS) \
   $(TRANSPORT_CFLAGS) \
   $(src_syncevo_cxxflags) \

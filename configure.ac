@@ -8,7 +8,7 @@ dnl Invoke autogen.sh to produce a configure script.
 #
 # Starting with the 1.1 release cycle, the rpm-style
 # .99 pseudo-version number is used to mark a pre-release.
-AC_INIT([syncevolution], [m4_esyscmd([build/gen-git-version.sh 1.4.1])])
+AC_INIT([syncevolution], [m4_esyscmd([build/gen-git-version.sh 1.4.99.1])])
 # STABLE_VERSION=1.0.1+
 AC_SUBST(STABLE_VERSION)
 
@@ -990,6 +990,7 @@ if test "$need_glib" = "yes"; then
         PKG_CHECK_MODULES(GTHREAD, "gthread-2.0", , GLIBFOUND=no)
         PKG_CHECK_MODULES(GOBJECT, "gobject-2.0", , GLIBFOUND=no)
         PKG_CHECK_MODULES(GIO, "gio-2.0", , GLIBFOUND=no)
+        PKG_CHECK_MODULES(GIOUNIX, "gio-unix-2.0", , GLIBFOUND=no)
 
         if  test "x${GLIBFOUND}" = "xyes"; then
             AC_DEFINE(HAVE_GLIB, 1, [glib found])

@@ -58,6 +58,7 @@ using namespace std;
 #include <boost/algorithm/string/split.hpp>
 #include <boost/bind.hpp>
 #include <boost/utility.hpp>
+#include <boost/lambda/bind.hpp>
 
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -151,6 +152,7 @@ void SyncContext::init()
     m_firstSourceAccess = true;
     m_remoteInitiated = false;
     m_sourceListPtr = NULL;
+    m_syncFreeze = SYNC_FREEZE_NONE;
 }
 
 SyncContext::~SyncContext()
@@ -1917,6 +1919,8 @@ bool SyncContext::displaySourceProgress(SyncSource &source,
                     SharedKey contextKey = m_engine.OpenKeyByPath(sessionKey, "/sessionvars");
                     m_engine.SetInt32Value(contextKey, "keepPhotoData", false);
                 }
+                // Reset "started" flags for PEV_SYNCSTART.
+                m_sourceStarted.clear();
             }
         } else {
             SE_LOG_INFO(NULL, "%s: restore from backup", source.getDisplayName().c_str());
@@ -1926,8 +1930,12 @@ bool SyncContext::displaySourceProgress(SyncSource &source,
     }
     case sysync::PEV_SYNCSTART:
         /* sync started */
-        SE_LOG_INFO(NULL, "%s: started",
-                    source.getDisplayName().c_str());
+        /* Get's triggered by libsynthesis frequently. Limit it to once per sync cycle. */
+        if (m_sourceStarted.find(source.getName()) == m_sourceStarted.end()) {
+            SE_LOG_INFO(NULL, "%s: started",
+                        source.getDisplayName().c_str());
+            m_sourceStarted.insert(source.getName());
+        }
         break;
     case sysync::PEV_ITEMRECEIVED:
         /* item received, extra1=current item count,
@@ -3702,6 +3710,45 @@ static string Step2String(sysync::uInt16 stepcmd)
     }
 }
 
+const char *SyncContext::SyncFreezeName(SyncFreeze syncFreeze)
+{
+    switch (syncFreeze) {
+    case SYNC_FREEZE_NONE: return "none";
+    case SYNC_FREEZE_RUNNING: return "running";
+    case SYNC_FREEZE_FROZEN: return "frozen";
+    }
+    return "???";
+}
+
+bool SyncContext::setFreeze(bool freeze)
+{
+    SyncFreeze newSyncFreeze = freeze ? SYNC_FREEZE_FROZEN : SYNC_FREEZE_RUNNING;
+    if (m_syncFreeze == SYNC_FREEZE_NONE ||
+        newSyncFreeze == m_syncFreeze) {
+        SE_LOG_DEBUG(NULL, "SyncContext::setFreeze(%s): not changing freeze state: %s",
+                     freeze ? "freeze" : "thaw",
+                     SyncFreezeName(m_syncFreeze));
+        return false;
+    } else {
+        SE_LOG_DEBUG(NULL, "SyncContext::setFreeze(%s): changing freeze state: %s -> %s",
+                     freeze ? "freeze" : "thaw",
+                     SyncFreezeName(m_syncFreeze),
+                     SyncFreezeName(newSyncFreeze));
+        if (m_agent) {
+            SE_LOG_DEBUG(NULL, "SyncContext::setFreeze(): transport agent");
+            m_agent->setFreeze(freeze);
+        }
+        if (m_sourceListPtr) {
+            BOOST_FOREACH (SyncSource *source, *m_sourceListPtr) {
+                SE_LOG_DEBUG(NULL, "SyncContext::setFreeze(): source %s", source->getDisplayName().c_str());
+                source->setFreeze(freeze);
+            }
+        }
+        m_syncFreeze = newSyncFreeze;
+        return true;
+    }
+}
+
 SyncMLStatus SyncContext::doSync()
 {
     boost::shared_ptr<SuspendFlags::Guard> signalGuard;
@@ -3711,6 +3758,9 @@ SyncMLStatus SyncContext::doSync()
         SE_LOG_DEBUG(NULL, "sync is starting, catch signals");
         signalGuard = SuspendFlags::getSuspendFlags().activate();
     }
+
+    // From now on it is possible to freeze the sync.
+    m_syncFreeze = SYNC_FREEZE_RUNNING;
 
     // delay the sync for debugging purposes
     SE_LOG_DEBUG(NULL, "ready to sync");
@@ -3984,6 +4034,18 @@ SyncMLStatus SyncContext::doSync()
                 } else {
                     suspending++; 
                 }
+            }
+
+            // Need to wait for setFrozen(false) or suspend/abort request.
+            // Such a call can come in via a D-Bus interface that we keep
+            // active by servicing the event loop inside GRunWhile().
+            //
+            // We freeze without notifying our peer. It will freeze itself
+            // eventually because we stop exchanging SyncML messages.
+            if (!aborting && !suspending && m_syncFreeze == SYNC_FREEZE_FROZEN) {
+                SE_LOG_DEBUG(NULL, "freezing sync");
+                GRunWhile(boost::lambda::var(m_syncFreeze) == SYNC_FREEZE_FROZEN &&
+                          boost::lambda::bind(&SuspendFlags::isNormal, &flags));
             }
 
             if (stepCmd == sysync::STEPCMD_NEEDDATA) {
@@ -4371,6 +4433,8 @@ SyncMLStatus SyncContext::doSync()
     // may involve shutting down the helper background thread which
     // opened our local datastore.
     SE_LOG_DEBUG(NULL, "closing session");
+    // setFreeze() no longer has an effect and returns false from now on.
+    m_syncFreeze = SYNC_FREEZE_NONE;
     sessionSentinel.reset();
     session.reset();
     SE_LOG_DEBUG(NULL, "session closed");

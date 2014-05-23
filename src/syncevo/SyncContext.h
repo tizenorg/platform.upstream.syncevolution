@@ -65,6 +65,12 @@ class SyncContext : public SyncConfig {
     bool m_quiet;
     bool m_dryrun;
 
+    enum SyncFreeze {
+        SYNC_FREEZE_NONE,
+        SYNC_FREEZE_RUNNING,
+        SYNC_FREEZE_FROZEN
+    } m_syncFreeze;
+    static const char *SyncFreezeName(SyncFreeze syncFreeze);
     bool m_localSync;
     string m_localPeerContext; /**< context name (including @) if doing local sync */
     string m_localClientRootPath;
@@ -486,6 +492,15 @@ class SyncContext : public SyncConfig {
     static void requestAnotherSync();
 
     /**
+     * If called while a sync runs, it will change the state of that
+     * sync. A frozen sync can only be unfrozen (via setFreeze(false))
+     * or suspended/aborted (via signals).
+     *
+     * @return true if there was a running sync, false otherwise
+     */
+    bool setFreeze(bool freeze);
+
+    /**
      * access to current set of sync sources, NULL if not instantiated yet
      */
     const std::vector<SyncSource *> *getSources() const;
@@ -742,6 +757,7 @@ class SyncContext : public SyncConfig {
     // Cache for use in displaySourceProgress().
     SyncSource *m_sourceProgress;
     SyncSourceEvent m_sourceEvent;
+    std::set<std::string> m_sourceStarted;
 
 public:
     /**

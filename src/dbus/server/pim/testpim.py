@@ -63,9 +63,15 @@ import testdbus
 
 def timeFunction(func, *args1, **args2):
      start = time.time()
-     res = func(*args1, **args2)
+     res = { }
+     args2['reply_handler'] = lambda x: (res.__setitem__('okay', x), loop.quit())
+     args2['error_handler'] = lambda x: (res.__setitem__('failed', x), loop.quit())
+     func(*args1, **args2)
+     loop.run()
      end = time.time()
-     return (end - start, res)
+     if 'failed' in res:
+          raise res['failed']
+     return (end - start, res['okay'])
 
 @unittest.skip("not a real test")
 class ContactsView(dbus.service.Object, unittest.TestCase):
@@ -830,7 +836,7 @@ XDG root.
                   pass
 
         syncProgress = []
-        signal = bus.add_signal_receiver(lambda uid, event, data: (logging.printf('received SyncProgress: %s, %s, %s', uid, event, data), syncProgress.append((uid, event, data)), logging.printf('progress %s' % syncProgress)),
+        signal = bus.add_signal_receiver(lambda uid, event, data: (logging.printf('received SyncProgress: %s, %s, %s', self.stripDBus(uid, sortLists=False), self.stripDBus(event, sortLists=False), self.stripDBus(data, sortLists=False)), syncProgress.append((uid, event, data)), logging.printf('progress %s' % self.stripDBus(syncProgress, sortLists=False))),
                                          'SyncProgress',
                                          'org._01.pim.contacts.Manager',
                                          None, #'org._01.pim.contacts',
@@ -846,7 +852,7 @@ XDG root.
                   progress.append((uid, 'modified', intermediateResult))
              progress.append((uid, 'modified', expectedResult))
              progress.append((uid, 'done', {}))
-             self.assertEqual(progress, syncProgress)
+             self.assertEqual(progress, [(u, e, d) for u, e, d in syncProgress if e != 'progress'])
 
 
         # Must be the Bluetooth MAC address (like A0:4E:04:1E:AD:30)
@@ -1022,7 +1028,8 @@ END:VCARD
                   item = os.path.join(contacts, '%d.vcf' % i)
                   output = open(item, "w")
                   output.write(data)
-                  numPhotos = numPhotos + 1
+                  if hasPhoto.search(data):
+                       numPhotos = numPhotos + 1
                   output.close()
              numItems = i + 1
         else:
@@ -1121,6 +1128,45 @@ END:VCARD
              self.assertEqual(files, listsyncevo(exclude=exclude))
              self.assertEqual(4, len(os.listdir(logdir)))
 
+        # Test incremental sync API. Only possible with real phone.
+        if phone:
+             expectedResult = {'modified': False,
+                               'added': 0,
+                               'updated': 0,
+                               'removed': 0}
+
+             syncProgress = []
+             duration, result = timeFunction(self.manager.SyncPeerWithFlags, uid, { 'pbap-sync': 'text' })
+             # TODO: check that we actually do text-only sync
+             checkSync(expectedResult,
+                       result,
+                       None)
+
+             syncProgress = []
+             duration, result = timeFunction(self.manager.SyncPeerWithFlags, uid, { 'pbap-sync': 'all' })
+             expectedResult = {'modified': False,
+                               'added': 0,
+                               'updated': 0,
+                               'removed': 0}
+             # TODO: check that we actually do complete sync
+             checkSync(expectedResult,
+                       result,
+                       None)
+
+             syncProgress = []
+             duration, result = timeFunction(self.manager.SyncPeerWithFlags, uid, { 'pbap-sync': 'incremental' })
+             expectedResult = {'modified': False,
+                               'added': 0,
+                               'updated': 0,
+                               'removed': 0}
+             # TODO: check that we actually do incremental sync *without* relying on
+             # "modified" begin emitted at the end of the first cycle despite there being
+             # no changes.
+             checkSync(expectedResult,
+                       result,
+                       expectedResult)
+
+
         # Cannot update data when using pre-defined test cases.
         if not testcases:
              # Update contact, removing extra properties.
@@ -1181,10 +1227,10 @@ END:VCARD'''
         self.assertEqual(files, listsyncevo(exclude=exclude))
 
     @timeout(100)
-    @property("ENV", "SYNCEVOLUTION_SYNC_DELAY=200")
+    @property("ENV", "SYNCEVOLUTION_SYNC_DELAY=5") # first parent sleeps, then child -> total delay 10s
     @property("snapshot", "simple-sort")
-    def testSyncAbort(self):
-        '''TestContacts.testSyncAbort - test StopSync()'''
+    def testSyncSuspend(self):
+        '''TestContacts.testSyncSuspend - test Suspend/ResumeSync()'''
         self.setUpServer()
         sources = self.currentSources()
         expected = sources.copy()
@@ -1209,17 +1255,31 @@ END:VCARD'''
         self.assertEqual(peers, self.manager.GetAllPeers())
         self.assertEqual(expected, self.currentSources())
 
-        # Start a sync. Because of SYNCEVOLUTION_SYNC_DELAY, this will block until
-        # we kill it.
-        syncCompleted = [ False, False ]
-        self.aborted = False
+        # Can't suspend or resume. Not an error, though.
+        self.assertEqual(False, self.manager.SuspendSync(uid))
+        self.assertEqual(False, self.manager.ResumeSync(uid))
+
+        # Start a sync. Because of SYNCEVOLUTION_SYNC_DELAY, this will block long
+        # enough for us to suspend the sync. Normally, the delay would be small.
+        # When suspending, we resume after the end of the delay and thus can
+        # detect that suspending really worked by looking at timing.
+        syncCompleted = [ False ]
+        self.suspended = None
+        self.resumed = None
+        self.syncStarted = None
         def result(index, res):
              syncCompleted[index] = res
         def output(path, level, text, procname):
-            if self.running and not self.aborted and text == 'ready to sync':
-                logging.printf('aborting sync')
-                self.manager.StopSync(uid)
-                self.aborted = True
+            if self.running and text == 'ready to sync':
+                logging.printf('suspending sync')
+                self.syncStarted = time.time()
+                self.suspended = self.manager.SuspendSync(uid)
+                self.suspended2 = self.manager.SuspendSync(uid)
+                logging.printf('waiting 20 seconds')
+                time.sleep(20)
+                logging.printf('resuming sync')
+                self.resumed = self.manager.ResumeSync(uid)
+                self.resumed2 = self.manager.ResumeSync(uid)
         receiver = bus.add_signal_receiver(output,
                                            'LogOutput',
                                            'org.syncevolution.Server',
@@ -1228,22 +1288,22 @@ END:VCARD'''
                                            utf8_strings=True)
         try:
              self.manager.SyncPeer(uid,
-                                   reply_handler=lambda: result(0, True),
+                                   reply_handler=lambda x: result(0, True),
                                    error_handler=lambda x: result(0, x))
-             self.manager.SyncPeer(uid,
-                                   reply_handler=lambda: result(1, True),
-                                   error_handler=lambda x: result(1, x))
-             self.runUntil('both syncs done',
+             self.runUntil('sync done',
                            check=lambda: True,
                            until=lambda: not False in syncCompleted)
+             self.syncEnded = time.time()
         finally:
             receiver.remove()
 
-        # Check for specified error.
-        self.assertIsInstance(syncCompleted[0], dbus.DBusException)
-        self.assertEqual('org._01.pim.contacts.Manager.Aborted', syncCompleted[0].get_dbus_name())
-        self.assertIsInstance(syncCompleted[1], dbus.DBusException)
-        self.assertEqual('org._01.pim.contacts.Manager.Aborted', syncCompleted[1].get_dbus_name())
+        # Check for successful sync, with intermediate suspend/resume.
+        self.assertEqual(True, self.suspended)
+        self.assertEqual(False, self.suspended2)
+        self.assertEqual(True, self.resumed)
+        self.assertEqual(False, self.resumed2)
+        self.assertEqual(True, syncCompleted[0])
+        self.assertLess(20, self.syncEnded - self.syncStarted)
 
     @timeout(60)
     @property("snapshot", "simple-sort")
