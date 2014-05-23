@@ -962,7 +962,7 @@ bool TTextProfileHandler::generateBody(sInt16 aLevel, TMultiFieldItem &aItem, TL
         // approximately, UTF-8 conversion and CRLF might cause slightly more chars
         fGeneratedBytes+=bodysize;
         // - get rid of buffer
-        delete bodyP;
+        delete [] bodyP;
         #else
         // simply get it
         fieldP->appendToString(aString,fItemSizeLimit);

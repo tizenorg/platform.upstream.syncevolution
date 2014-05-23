@@ -2978,7 +2978,7 @@ void SyncTests::deleteAll(DeleteAllMode mode) {
 
 /** get both clients in sync with empty server, then copy one item from client A to B */
 void SyncTests::doCopy() {
-    SyncPrefix("copy", *this);
+    SyncPrefix copy("copy", *this);
 
     // check requirements
     CT_ASSERT(accessClientB);
@@ -3337,7 +3337,9 @@ void SyncTests::doRestartSync(SyncMode mode)
     }
 
     // update item while the sync runs
+#ifndef __clang_analyzer__
     needToConnect = true;
+#endif
     startCount = 0;
     results.clear();
     end =
@@ -3395,7 +3397,9 @@ void SyncTests::doRestartSync(SyncMode mode)
     }
 
     // delete item while the sync runs
+#ifndef __clang_analyzer__
     needToConnect = true;
+#endif
     startCount = 0;
     results.clear();
     end =
@@ -6053,7 +6057,6 @@ public:
             }
         }
         alltests->addTest(FilterTest(tests));
-        tests = 0;
 
         // create sync tests with just one source
         tests = new CppUnit::TestSuite(alltests->getName() + "::Sync");

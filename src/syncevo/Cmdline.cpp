@@ -110,7 +110,7 @@ bool Cmdline::parse()
 /**
  * Detects "--sync foo", "--sync=foo", "-s foo".
  */
-static bool IsKeyword(const std::string arg,
+static bool IsKeyword(const std::string &arg,
                       const char *longWord,
                       const char *shortWord)
 {
@@ -1645,7 +1645,7 @@ bool Cmdline::run() {
         }
 
         // check whether there were any sources specified which do not exist
-        if (unmatchedSources.size()) {
+        if (!unmatchedSources.empty()) {
             context->throwError(string("no such source(s): ") + boost::join(unmatchedSources, " "));
         }
 

@@ -1642,45 +1642,45 @@ sInt32 TBinfileClientConfig::newProfile(const char *aProfileName, bool aSetDefau
   // copy from template profile, if any
   if (aTemplateProfile>=0) {
     aTemplateProfile=getProfile(aTemplateProfile,templateprofile);
-  }
-  if (aTemplateProfile>=0) {
-    // copy user config
-    profile.encoding=templateprofile.encoding;
-    #ifndef HARD_CODED_SERVER_URI
-    strncpy(profile.serverURI,templateprofile.serverURI,maxurisiz); // if hardcoded, don't copy from template
-    #endif
-    strncpy(profile.serverUser,templateprofile.serverUser,maxupwsiz);
-    strncpy(profile.transportUser,templateprofile.transportUser,maxupwsiz);
-    strncpy(profile.socksHost,templateprofile.socksHost,maxurisiz);
-    strncpy(profile.proxyHost,templateprofile.proxyHost,maxurisiz);
-    strncpy(profile.proxyUser,templateprofile.proxyUser,maxupwsiz);
-    // additional proxy flags
-    profile.useProxy=templateprofile.useProxy;
-    profile.useConnectionProxy=templateprofile.useConnectionProxy;
-    // improved URI settings
-    strncpy(profile.URIpath,templateprofile.URIpath,maxpathsiz);
-    profile.protocol=templateprofile.protocol;
-    // feature flags
-    profile.readOnlyFlags = 0; // no read-only flags by default
-    profile.featureFlags=templateprofile.featureFlags; // inherit features
-    profile.dsAvailFlags=templateprofile.dsAvailFlags; // inherit datastore availability
-    // extras
-    profile.transpFlags=templateprofile.transpFlags; // inherit transport related flags
-    profile.profileFlags=templateprofile.profileFlags; // inherit general profile flags
-    // Note: do not copy profileExtra1/2 and profileData - as these are too app specific
-    // local DB profile (not used in PPC, only for Outlook client)
-    strncpy(profile.localDBProfileName,templateprofile.localDBProfileName,localDBpathMaxLen);
-    // autosync settings
-    profile.AutoSyncLevel[0]=templateprofile.AutoSyncLevel[0];
-    profile.AutoSyncLevel[1]=templateprofile.AutoSyncLevel[1];
-    profile.AutoSyncLevel[2]=templateprofile.AutoSyncLevel[2];
-    // timed sync settings
-    profile.TimedSyncMobilePeriod=templateprofile.TimedSyncMobilePeriod;
-    profile.TimedSyncCradledPeriod=templateprofile.TimedSyncCradledPeriod;
-    /* %%% do not copy IPP settings, these should be provisioned by the SyncML server
-    // IPP settings (not available in all clients, but present in all profile records
-    profile.ippSettings=templateprofile.ippSettings;
-    */
+    if (aTemplateProfile>=0) {
+      // copy user config
+      profile.encoding=templateprofile.encoding;
+      #ifndef HARD_CODED_SERVER_URI
+      strncpy(profile.serverURI,templateprofile.serverURI,maxurisiz); // if hardcoded, don't copy from template
+      #endif
+      strncpy(profile.serverUser,templateprofile.serverUser,maxupwsiz);
+      strncpy(profile.transportUser,templateprofile.transportUser,maxupwsiz);
+      strncpy(profile.socksHost,templateprofile.socksHost,maxurisiz);
+      strncpy(profile.proxyHost,templateprofile.proxyHost,maxurisiz);
+      strncpy(profile.proxyUser,templateprofile.proxyUser,maxupwsiz);
+      // additional proxy flags
+      profile.useProxy=templateprofile.useProxy;
+      profile.useConnectionProxy=templateprofile.useConnectionProxy;
+      // improved URI settings
+      strncpy(profile.URIpath,templateprofile.URIpath,maxpathsiz);
+      profile.protocol=templateprofile.protocol;
+      // feature flags
+      profile.readOnlyFlags = 0; // no read-only flags by default
+      profile.featureFlags=templateprofile.featureFlags; // inherit features
+      profile.dsAvailFlags=templateprofile.dsAvailFlags; // inherit datastore availability
+      // extras
+      profile.transpFlags=templateprofile.transpFlags; // inherit transport related flags
+      profile.profileFlags=templateprofile.profileFlags; // inherit general profile flags
+      // Note: do not copy profileExtra1/2 and profileData - as these are too app specific
+      // local DB profile (not used in PPC, only for Outlook client)
+      strncpy(profile.localDBProfileName,templateprofile.localDBProfileName,localDBpathMaxLen);
+      // autosync settings
+      profile.AutoSyncLevel[0]=templateprofile.AutoSyncLevel[0];
+      profile.AutoSyncLevel[1]=templateprofile.AutoSyncLevel[1];
+      profile.AutoSyncLevel[2]=templateprofile.AutoSyncLevel[2];
+      // timed sync settings
+      profile.TimedSyncMobilePeriod=templateprofile.TimedSyncMobilePeriod;
+      profile.TimedSyncCradledPeriod=templateprofile.TimedSyncCradledPeriod;
+      /* %%% do not copy IPP settings, these should be provisioned by the SyncML server
+      // IPP settings (not available in all clients, but present in all profile records
+      profile.ippSettings=templateprofile.ippSettings;
+      */
+    }
   }
   #ifndef HARD_CODED_SERVER_URI
   // override with config-defined fixed server URL, if any

@@ -156,7 +156,7 @@ uInt8 *b64::decode(const char *instr, uInt32 len, uInt32 *outlenP)
 
   // this should always be more than enough len:
   // 3 times number of quads touched plus one for NUL terminator
-  outstr = (uInt8 *)malloc(((3*(len/4+1))+1) * sizeof(char));
+  outstr = (uInt8 *)malloc(((3*(len/4+1))+1) * sizeof(uInt8));
   if (!outstr) return NULL;
   q=outstr;
 

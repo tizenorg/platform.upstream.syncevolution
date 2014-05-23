@@ -244,7 +244,8 @@ Ret_t TEngineSessionDispatch::HandleDecodingException(TSyncSession *aSessionP, c
   #endif
   // try to kill session
   DEBUGPRINTFX(DBG_SESSION,("******** Exception aborts session"));
-  aSessionP->AbortSession(412,true); // incomplete command
+  if (aSessionP)
+    aSessionP->AbortSession(412,true); // incomplete command
   // return error
   DEBUGPRINTFX(DBG_SESSION,("******** Exception: returning SML_ERR_UNSPECIFIC to abort smlProcessData"));
   return SML_ERR_UNSPECIFIC;

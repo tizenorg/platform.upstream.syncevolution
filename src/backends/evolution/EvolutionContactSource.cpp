@@ -79,6 +79,10 @@ EvolutionContactSource::EvolutionContactSource(const SyncSourceParams &params,
         m_contactsFromDB =
         m_contactQueries = 0;
     m_readAheadOrder = READ_NONE;
+    const char *mode = getEnv("SYNCEVOLUTION_EDS_ACCESS_MODE", "");
+    m_accessMode = boost::iequals(mode, "synchronous") ? SYNCHRONOUS :
+        boost::iequals(mode, "batched") ? BATCHED :
+        DEFAULT;
 #endif
     SyncSourceLogging::init(InitList<std::string>("N_FIRST") + "N_MIDDLE" + "N_LAST",
                             " ",
@@ -191,10 +195,6 @@ void EvolutionContactSource::open()
     m_addressbook.reset(E_BOOK_CLIENT(openESource(E_SOURCE_EXTENSION_ADDRESS_BOOK,
                                                   e_source_registry_ref_builtin_address_book,
                                                   newEBookClient).get()));
-    const char *mode = getEnv("SYNCEVOLUTION_EDS_ACCESS_MODE", "");
-    m_accessMode = boost::iequals(mode, "synchronous") ? SYNCHRONOUS :
-        boost::iequals(mode, "batched") ? BATCHED :
-        DEFAULT;
 #else
     GErrorCXX gerror;
     bool created = false;
@@ -564,9 +564,17 @@ void EvolutionContactSource::invalidateCachedContact(boost::shared_ptr<ContactCa
 bool EvolutionContactSource::getContact(const string &luid, EContact **contact, GErrorCXX &gerror)
 {
     SE_LOG_DEBUG(getDisplayName(), "reading: getting contact %s", luid.c_str());
-    ReadAheadOrder order = m_readAheadOrder;
 
     // Use switch and let compiler tell us when we don't cover a case.
+    ReadAheadOrder order
+#ifndef __clang_analyzer__
+        // scan-build would complain: value stored to 'order' during
+        // its initialization is never read.  But we need to keep it
+        // otherwise, to avoid: 'order' may be used uninitialized in
+        // this function [-Werror=maybe-uninitialized]
+        = m_readAheadOrder
+#endif
+        ;
     switch (m_accessMode) {
     case SYNCHRONOUS:
     case DEFAULT:

@@ -2385,18 +2385,18 @@ bool TODBCApiAgent::getColumnValueAsString(
         if (maxstringlen<65536 && nextbuflen>maxstringlen) {
           // we could need a larger buffer
           maxstringlen = nextbuflen>65536 ? 65536 : nextbuflen;
-          delete strbufP;
+          delete [] strbufP;
           strbufP = new uInt8[maxstringlen+1];
           PDEBUGPRINTFX(DBG_DBAPI+DBG_EXOTIC,("Allocating bigger buffer for next call to SQLGetData: %ld bytes",(uInt32)maxstringlen));
         }
       }
     } while(!gotAllData);
     // done, we don't need the buffer any more
-    if (strbufP) delete strbufP;
+    delete [] strbufP;
   }
   catch (...) {
     // clean up buffer
-    if (strbufP) delete strbufP;
+    delete [] strbufP;
     throw;
   }
   // convert from Unicode to UTF-8 if we got unicode here

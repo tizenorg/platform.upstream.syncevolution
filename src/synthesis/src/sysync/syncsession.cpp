@@ -2668,6 +2668,7 @@ Ret_t TSyncSession::processHeader(TSyncHeader *aSyncHdrP)
           // bad command
           PDEBUGPRINTFX(DBG_ERROR,("%s: failed analyze() -> deleting",aSyncHdrP->getName()));
           delete aSyncHdrP;
+          aSyncHdrP = NULL;
         }
         else {
           // command is ok, execute it
@@ -2693,6 +2694,7 @@ Ret_t TSyncSession::processHeader(TSyncHeader *aSyncHdrP)
               // execution finished, can be deleted
               PDEBUGPRINTFX(DBG_SESSION,("%s: finished execution -> deleting",aSyncHdrP->getName()));
               delete aSyncHdrP;
+              aSyncHdrP = NULL;
               // now execute delayed commands (before executing new ones)
               PDEBUGPRINTFX(DBG_SESSION,("New message: Executing %ld delayed commands",(long)fDelayedExecutionCommands.size()));
               bool syncEndAfterSyncPackageEnd=tryDelayedExecutionCommands();
@@ -2741,7 +2743,7 @@ Ret_t TSyncSession::processHeader(TSyncHeader *aSyncHdrP)
             SYSYNC_RETHROW;
           SYSYNC_ENDCATCH
         }
-      } while(tryagain);
+      } while(tryagain && aSyncHdrP);
       PDEBUGENDBLOCK("SyncHdr");
     }
     SYSYNC_CATCH (TSmlException &e)

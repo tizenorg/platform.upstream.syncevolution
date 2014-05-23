@@ -912,7 +912,7 @@ SML_API SmlCredPtr_t smlAllocCred() {
 
 SML_API SmlRecordOrFieldFilterPtr_t smlAllocRecordFieldFilter()
 {
-    SmlRecordOrFieldFilterPtr_t p = (SmlRecordOrFieldFilterPtr_t)smlLibMalloc(sizeof(SmlRecordOrFieldFilterPtr_t));
+    SmlRecordOrFieldFilterPtr_t p = (SmlRecordOrFieldFilterPtr_t)smlLibMalloc(sizeof(SmlRecordOrFieldFilter_t));
     if (p == NULL) return NULL;
     smlLibMemset(p, 0, sizeof(SmlRecordOrFieldFilterPtr_t));
     p->item = smlAllocItem();
@@ -925,7 +925,7 @@ SML_API SmlRecordOrFieldFilterPtr_t smlAllocRecordFieldFilter()
 
 SML_API SmlFilterPtr_t smlAllocFilter()
 {
-    SmlFilterPtr_t p = (SmlFilterPtr_t)smlLibMalloc(sizeof(SmlFilterPtr_t));
+    SmlFilterPtr_t p = (SmlFilterPtr_t)smlLibMalloc(sizeof(SmlFilter_t));
     if (p == NULL) return NULL;
     smlLibMemset(p, 0, sizeof(SmlFilterPtr_t));
     p->meta = smlAllocPcdata();
@@ -939,7 +939,7 @@ SML_API SmlFilterPtr_t smlAllocFilter()
 
 SML_API SmlSourceParentPtr_t smlAllocSourceParent()
 {
-    SmlSourceParentPtr_t p = (SmlSourceParentPtr_t)smlLibMalloc(sizeof(SmlSourceParentPtr_t));
+    SmlSourceParentPtr_t p = (SmlSourceParentPtr_t)smlLibMalloc(sizeof(SmlSourceParent_t));
     if (p == NULL) return NULL;
     smlLibMemset(p, 0, sizeof(SmlSourceParentPtr_t));
     p->locURI = smlAllocPcdata();

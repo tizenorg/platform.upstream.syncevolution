@@ -42,7 +42,16 @@ TBinFileBase::TBinFileBase() :
 // destructor
 TBinFileBase::~TBinFileBase()
 {
-  destruct();
+  // If the instance hasn't been destructed yet, it is too late now,
+  // because close() depends on pure-virtual methods from derived
+  // classes which are no longer accessible (derived classes already
+  // deconstructed!). This should never happen, because destruct()
+  // must be called by ALL destructors of derivates.
+  //
+  // Removing destruct() here because it is redundant, would crash and
+  // causes a cppcheck warning ("Call of pure virtual function
+  // 'platformFileIsOpen' in destructor.").
+  // destruct();
 } // TBinFileBase::~TBinFileBase
 
 

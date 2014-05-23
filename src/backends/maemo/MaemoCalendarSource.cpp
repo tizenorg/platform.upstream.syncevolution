@@ -68,9 +68,17 @@ MaemoCalendarSource::MaemoCalendarSource(int EntryType, int EntryFormat,
     }
     mc = CMulticalendar::MCInstance();
     cal = NULL;
+    conv = NULL;
     if (!mc) {
         throwError("Could not connect to Maemo Calendar backend");
     }
+}
+
+MaemoCalendarSource::~MaemoCalendarSource()
+{
+    // Don't rely on close() getting called to free resources. There's
+    // no hard guarantee that it gets called in all cases.
+    MaemoCalendarSource::close();
 }
 
 std::string MaemoCalendarSource::getMimeType() const
@@ -272,7 +280,7 @@ TrackingSyncSource::InsertItemResult MaemoCalendarSource::insertItem(const strin
         }
         vector< CComponent * >::iterator it = comps.begin();
         if (comps.size() > 1) {
-            for (; it != comps.end(); it++) {
+            for (; it != comps.end(); ++it) {
                 delete (*it);
             }
             throwError(string("too many events in ical: ") + item);

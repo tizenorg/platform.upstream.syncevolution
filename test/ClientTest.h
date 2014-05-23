@@ -492,9 +492,6 @@ public:
     /** helper funclets to create sources */
     CreateSource createSourceA, createSourceB;
 
-    /** if set, then this will be called at the end of testing */
-    void (*cleanupSources)();
-
     LocalTests(const std::string &name, ClientTest &cl, int sourceParam, ClientTest::Config &co) :
         CppUnit::TestSuite(name),
         client(cl),
@@ -895,11 +892,11 @@ protected:
     void doSync(const char *file, int line,
                 const char *logPrefix,
                 const SyncOptions &options) {
-        CT_WRAP_ASSERT(file, line, doSync(logPrefix, options));
+        CT_WRAP_ASSERT(file, line, doSync(logPrefix, options), true);
     }
     void doSync(const char *file, int line,
                 const SyncOptions &options) {
-        CT_WRAP_ASSERT(file, line, doSync(options));
+        CT_WRAP_ASSERT(file, line, doSync(options), true);
     }
     virtual void postSync(int res, const std::string &logname);
 

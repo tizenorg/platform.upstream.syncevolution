@@ -162,7 +162,7 @@ static void vStringObjPrintf( string &aStringObj, cAppCharP aFormat, bool aAppen
     if (actualsize>0) {
       aStringObj += bufP;
     }
-    delete bufP;
+    delete [] bufP;
   }
   else
   #endif

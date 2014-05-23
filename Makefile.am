@@ -68,13 +68,6 @@ DEV_FILE_PATTERN = $(1)$(2)/include $(1)$(2)/lib/*.so $(1)$(2)/lib/*.a $(1)$(2)/
 # be packaged separately.
 DEV_FILE_PATTERN += $(1)$(2)/lib/syncevolution/backends/syncactivesync.so
 
-# It is possible to have additional .so backend files included in the
-# binary archives. The additional backend files must be named in the
-# EXTRA_BACKENDS env or make variable with their full file paths,
-# separated by spaces. They will be renamed to <basename>-2.so. See
-# also ScannedBackends in SyncSource.cpp.
-ADD_EXTRA_BACKENDS = set -e; for i in $(EXTRA_BACKENDS); do cp $$i $(1)/$(BACKENDS_DIRECTORY)/`basename $$i .so`-2.so; done
-
 # binary distribution as .tar.gz
 if COND_DBUS
 # when building with D-Bus, we have no choice: the service has to go into /usr
@@ -90,7 +83,6 @@ distbin : $(distbin_docs) INSTALL-tar-gz all
 	mkdir -p $(distdir)/usr/share/doc/syncevolution
 	cp $(srcdir)/INSTALL-tar-gz $(distdir)/INSTALL
 	cp $(filter-out all, $+) $(distdir)/usr/share/doc/syncevolution
-	$(call ADD_EXTRA_BACKENDS, $(distdir))
 	tar zcf $(distdir)-$(BINSUFFIX).tar.gz $(distdir)
 	rm -rf $(distdir)
 else
@@ -104,7 +96,6 @@ distbin : $(distbin_docs) all
 	rm -rf $(call DEV_FILE_PATTERN,$(distdir),/)
 	for i in `find $(distdir) -type d | sort -r`; do rmdir $$i 2>/dev/null || true; done
 	cp $(filter-out all, $+) $(distdir)
-	$(call ADD_EXTRA_BACKENDS, $(distdir))
 	tar zcf $(distdir)-$(BINSUFFIX).tar.gz $(distdir)
 	rm -rf $(distdir)
 endif
@@ -139,7 +130,8 @@ TYPE_rpm = -R
 #   Squeeze the package was replaced by individual library packages. On such
 #   distros, libkdeui5 is what we need.
 # - same for kdepimlibs5 -> libakonadi-kde4
-REQUIRES_SED_KDE = -e 's/kdelibs5 ([^,]*),/kdelibs5 | libkdeui5,/g' -e 's/kdepimlibs5 ([^,]*),/kdepimlibs5 | libakonadi-kde4,/g'
+# - kdebase-runtime became kde-runtime in Debian Wheezy
+REQUIRES_SED_KDE = -e 's/kdelibs5 ([^,]*),/kdelibs5 | libkdeui5,/g' -e 's/kdepimlibs5 ([^,]*),/kdepimlibs5 | libakonadi-kde4,/g' -e 's/kdebase-runtime/kdebase-runtime | kde-runtime/g'
 REQUIRES_deb = --requires="'$(shell set -x; cd checkinstall/dist; LD_LIBRARY_PATH=$(distdir)/usr/lib:$(distdir)/usr/lib/syncevolution dpkg-shlibdeps -L$(srcdir)/src/shlibs.local --ignore-missing-info -O $$(for i in $$(find $(distdir) -type f -perm /u+x | grep -v -e client-test -e lib/syncevolution/backends/); do if file $$i | grep ELF >/dev/null; then echo $$i; fi; done) | sed $(REQUIRES_SED_KDE) -e 's/[^=]*=//')$(REQUIRES_deb_neon)$(REQUIRES_deb_ical)'"
 if NEON_COMPATIBILITY
 # --enable-neon-compatibility in src/backends/webdav:
@@ -176,7 +168,9 @@ PKGS = $(addprefix syncevolution-evolution-, 2.6 2.8 2.12)
 # after the lib and its major version, which holds for libsmltk and
 # libsynthesis in Debian.
 deb rpm : checkinstall/dist/$(distdir) checkinstall/dist/debian/control
-	(echo "SyncEvolution - synchronizing personal information management data" && cat $(srcdir)/description) >description-pak
+	(echo "SyncEvolution - synchronizing personal information management data" && cat $(srcdir)/description) >checkinstall/description-pak
+	 echo "/sbin/ldconfig" >checkinstall/postremove-pak
+	 echo "/sbin/ldconfig" >checkinstall/postinstall-pak
 	conflicts=`ls -1 checkinstall/dist/$(distdir)/usr/lib/*.so.[0123456789] | sed -e 's;.*/;;' -e 's/\.so\.//' -e 's/$$/, /'` && \
 	tmpdir=`mktemp -d $$HOME/syncevolution.XXXXXXXXXX` && \
 	trap "rm -rf $$tmpdir" EXIT && \
@@ -226,11 +220,11 @@ SYNCEVOLUTION_kde_DEB_ARGS = \
 	--conflicts=syncevolution-foobar \
         --replaces=syncevolution-foobar
 SYNCEVOLUTION_evolution_DEB_ARGS = \
-	--conflicts="'evolution-data-server (>= 3.6), libebook-1.2-14 (>= 3.6), libecal-1.2.12 (>= 3.6)'" \
+	--conflicts=syncevolution-foobar \
 	--replaces=syncevolution-foobar
 SYNCEVOLUTION_evolution_DEB_REQUIRES = \
-	, libebook1.2-5 | libebook1.2-6 | libebook1.2-7 | libebook1.2-8 | libebook1.2-9 | libebook1.2-10 | libebook1.2-11 | libebook-1.2-11 | libebook-1.2-12 | libebook-1.2-13 \
-	, libecal1.2-3 | libecal1.2-4 | libecal1.2-5 | libecal1.2-6 | libecal1.2-7 | libecal1.2-8 | libecal1.2-9 | libecal1.2-10 | libecal-1.2-10 | libecal-1.2-11
+	, libebook1.2-5 | libebook1.2-6 | libebook1.2-7 | libebook1.2-8 | libebook1.2-9 | libebook1.2-10 | libebook1.2-11 | libebook-1.2-11 | libebook-1.2-12 | libebook-1.2-13 $(EXTRA_BACKENDS_EBOOK_REQUIRES) \
+	, libecal1.2-3 | libecal1.2-4 | libecal1.2-5 | libecal1.2-6 | libecal1.2-7 | libecal1.2-8 | libecal1.2-9 | libecal1.2-10 | libecal-1.2-10 | libecal-1.2-11 $(EXTRA_BACKENDS_ECAL_REQUIRES)
 
 syncevolution-%-deb: checkinstall/dist/$(distdir) checkinstall/dist/debian/control
 	(echo "SyncEvolution - meta package for $*" && cat $(srcdir)/description) >checkinstall/description-pak
@@ -259,7 +253,6 @@ checkinstall/dist/$(distdir): all
 	rm -rf $@
 	$(MAKE) install DESTDIR=`pwd`/$@
 	$(MAKE) installcheck DESTDIR=`pwd`/$@
-	$(call ADD_EXTRA_BACKENDS, $@)
 	rm -rf $(call DEV_FILE_PATTERN,$@,/usr)
 clean-local: clean_dist
 clean_dist:
@@ -361,6 +354,10 @@ if NEON_COMPATIBILITY
 # libneon is intentionally not linked against, to choose between
 # GNUTLS and OpenSSL at runtime.
 LINK_CHECK_ALLOWED += -e 'symbol ne_.*syncdav.so'
+# Allow undefined references to libstdcxx. This happens when
+# adding backends compiled on more recent Linux distros into
+# the release archive.
+LINK_CHECK_ALLOWED += -e '@GLIBCXX_[^ ]* used by'
 endif
 
 # Be strict about running 'syncevolution' only when not doing
@@ -414,19 +411,23 @@ CLEANFILES += README.html
 installcheck-local: $(all_local_installchecks) ;
 
 dist-hook: $(all_dist_hooks)
+install-exec-hook: $(all_install_exec_hooks)
+uninstall-hook: $(all_uninstall_hooks)
 
 # Force sequential installation. This is a workaround for relinking failures
 # during concurrent distcheck (a backend was relinked against not yet installed
 # libsyncevolution.la).
 #
-# Also used to add additional backends.
+# Also used to add additional backends. EXTRA_BACKENDS must already contain
+# renamed files, by convention using -2.so, -3.so, etc as suffix instead of the
+# base file's .so.
 install-am: all-am
 	@$(MAKE) $(AM_MAKEFLAGS) install-exec-am
 	@$(MAKE) $(AM_MAKEFLAGS) install-data-am
-	for i in $(EXTRA_BACKENDS); do $(INSTALL) $$i $(DESTDIR)/$(BACKENDS_DIRECTORY)/`basename $$i .so`-2.so; done
+	for i in $(EXTRA_BACKENDS); do $(INSTALL) $$i $(DESTDIR)/$(BACKENDS_DIRECTORY)/; done
 
 # Necessary for "make distcheck": must not leave files behind.
 uninstall-local:
-	rm -f $(DESTDIR)/$(BACKENDS_DIRECTORY)/*-2.so
+	rm -f $(DESTDIR)/$(BACKENDS_DIRECTORY)/*-[0-9].so
 
 .DELETE_ON_ERROR:

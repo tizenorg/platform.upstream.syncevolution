@@ -750,12 +750,12 @@ bool TPluginApiDS::writeBlobs(
             remaining-=actualbytes;
           } // while not last
           #ifdef STREAMFIELD_SUPPORT
-          if (!isString && bufferP) delete (char *)bufferP;
+          if (!isString && bufferP) delete [] (char *)bufferP;
           #endif
         }
         SYSYNC_CATCH (...)
           #ifdef STREAMFIELD_SUPPORT
-          if (!isString && bufferP) delete (char *)bufferP;
+          if (!isString && bufferP) delete [] (char *)bufferP;
           #endif
           SYSYNC_RETHROW;
         SYSYNC_ENDCATCH
@@ -2531,7 +2531,7 @@ TApiBlobProxy::TApiBlobProxy(
 
 TApiBlobProxy::~TApiBlobProxy()
 {
-  if (fBlobBuffer) delete (char *)fBlobBuffer; // gcc 3.2.2 needs cast to suppress warning
+  if (fBlobBuffer) delete [] (char *)fBlobBuffer; // gcc 3.2.2 needs cast to suppress warning
   fBlobBuffer=NULL;
 } // TApiBlobProxy::~TApiBlobProxy
 
@@ -2594,7 +2594,7 @@ void TApiBlobProxy::fetchBlob(size_t aNeededSize, bool aNeedsTotalSize, bool aNe
         if (fBlobBuffer) {
           if (fFetchedSize)
             memcpy(bufP,fBlobBuffer,fFetchedSize); // copy fetched portion from old buffer
-          delete (uInt8P)fBlobBuffer; // dispose old buffer
+          delete [] (uInt8P)fBlobBuffer; // dispose old buffer
         } // if
         fBlobBuffer = bufP; // save new one, in EVERY CASE
       }
@@ -2648,7 +2648,7 @@ void TApiBlobProxy::fetchBlob(size_t aNeededSize, bool aNeedsTotalSize, bool aNe
       else {
         fBufferSize=fBlobSize+1;
         bufP = new unsigned char [fBufferSize];
-        delete (unsigned char *)fBlobBuffer;
+        delete [] (unsigned char *)fBlobBuffer;
         fBlobBuffer = bufP;
       }
       memcpy(bufP,strUtf8.c_str(),strUtf8.size());

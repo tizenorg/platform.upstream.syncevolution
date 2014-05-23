@@ -318,6 +318,9 @@
 /* choose implementation of SHA-256 */
 #undef USE_SHA256
 
+/* use UOA */
+#undef USE_UOA
+
 /* Version number of package */
 #undef VERSION
 
