@@ -75,7 +75,7 @@ libneon.la: $(OBJECTS)
 
 libneon.a: $(OBJECTS)
 	@rm -f $@
-	$(AR) cru $@ $(patsubst %.lo,%.o,$(OBJECTS))
+	$(AR) cru $@ $(OBJECTS)
 	$(RANLIB) $@
 
 clean:
