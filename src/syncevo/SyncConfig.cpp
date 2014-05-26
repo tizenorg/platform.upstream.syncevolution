@@ -202,7 +202,7 @@ void ConfigProperty::splitComment(const string &comment, list<string> &commentLi
 
 void ConfigProperty::throwValueError(const ConfigNode &node, const string &name, const string &value, const string &error) const
 {
-    SyncContext::throwError(node.getName() + ": " + name + " = " + value + ": " + error);
+    Exception::throwError(SE_HERE, node.getName() + ": " + name + " = " + value + ": " + error);
 }
 
 std::string ConfigProperty::sharing2str(Sharing sharing)
@@ -1302,9 +1302,7 @@ static ConfigProperty syncPropSyncURL("syncURL",
                                       "Identifies how to contact the peer,\n"
                                       "best explained with some examples.\n\n"
                                       "HTTP(S) SyncML servers::\n\n"
-                                      "  http://my.funambol.com/sync\n"
-                                      "  http://sync.scheduleworld.com/funambol/ds\n"
-                                      "  https://m.google.com/syncml\n\n"
+                                      "  http://example.com/sync\n"
                                       "OBEX over Bluetooth uses the MAC address, with\n"
                                       "the channel chosen automatically::\n\n"
                                       "  obex-bt://00:0A:94:03:F3:7E\n\n"
@@ -2062,7 +2060,7 @@ void PasswordConfigProperty::checkPassword(UserInterface &ui,
             const char *envval = getenv(envname.c_str());
             SE_LOG_DEBUG(NULL, "using password from env var %s", envname.c_str());
             if (!envval) {
-                SyncContext::throwError(string("the environment variable '") +
+                Exception::throwError(SE_HERE, string("the environment variable '") +
                                         envname +
                                         "' for the '" +
                                         descr +

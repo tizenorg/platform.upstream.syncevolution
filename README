@@ -7,8 +7,8 @@ synchronize personal information management data
 ------------------------------------------------
 
 :Manual section: 1
-:Version: 1.4.99.1
-:Date: 2014-04-01
+:Version: 1.4.99.2
+:Date: 2014-05-23
 
 
 SYNOPSIS
@@ -697,10 +697,7 @@ syncURL (no default, unshared, required)
    
    HTTP(S) SyncML servers::
    
-     http://my.funambol.com/sync
-     http://sync.scheduleworld.com/funambol/ds
-     https://m.google.com/syncml
-   
+     http://example.com/sync
    OBEX over Bluetooth uses the MAC address, with
    the channel chosen automatically::
    

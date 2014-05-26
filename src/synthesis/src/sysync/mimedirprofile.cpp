@@ -504,7 +504,9 @@ bool TMIMEProfileConfig::localStartElement(const char *aElementName, const char 
       bool defparam=false;
       bool shownonempty=false; // don't show properties that have only param values, but no main value
       bool showinctcap=false; // don't show parameter in CTCap by default
+      bool sharedfield=false; // assume traditional, unshared field for parameter
       if (
+        !getAttrBool(aAttributes,"sharedfield",sharedfield,true) ||
         !getAttrBool(aAttributes,"positional",positional,true) ||
         !getAttrBool(aAttributes,"default",defparam,true) ||
         !getAttrBool(aAttributes,"shownonempty",shownonempty,true) ||
@@ -513,7 +515,7 @@ bool TMIMEProfileConfig::localStartElement(const char *aElementName, const char 
       )
         return fail("bad boolean value");
       // - add parameter
-      fOpenParameter = fOpenProperty->addParam(nam,defparam,positional,shownonempty,showinctcap,modeDep);
+      fOpenParameter = fOpenProperty->addParam(nam,defparam,positional,shownonempty,showinctcap,modeDep,sharedfield);
       #ifndef NO_REMOTE_RULES
       const char *depRuleName = getAttr(aAttributes,"rule");
       TCFG_ASSIGN(fOpenParameter->dependencyRuleName,depRuleName); // save name for later resolving
@@ -936,13 +938,14 @@ void TConversionDef::addEnumNameExt(TPropertyDefinition *aProp, const char *aEnu
 
 TParameterDefinition::TParameterDefinition(
   const char *aName, bool aDefault, bool aExtendsName, bool aShowNonEmpty, bool aShowInCTCap, TMimeDirMode aModeDep
-) {
+, bool aSharedField) {
   next=NULL;
   TCFG_ASSIGN(paramname,aName);
   defaultparam=aDefault;
   extendsname=aExtendsName;
   shownonempty=aShowNonEmpty;
   showInCTCap=aShowInCTCap;
+  sharedField=aSharedField;
   modeDependency=aModeDep;
   #ifndef NO_REMOTE_RULES
   ruleDependency=NULL;
@@ -1087,11 +1090,11 @@ void TPropertyDefinition::addNameExt(TProfileDefinition *aRootProfile, // for pr
 
 TParameterDefinition *TPropertyDefinition::addParam(
   const char *aName, bool aDefault, bool aExtendsName, bool aShowNonEmpty, bool aShowInCTCap, TMimeDirMode aModeDep
-)
+, bool aSharedField)
 {
   TParameterDefinition **paramPP = &parameterDefs;
   while(*paramPP!=NULL) paramPP=&((*paramPP)->next); // find last in chain
-  *paramPP = new TParameterDefinition(aName,aDefault,aExtendsName,aShowNonEmpty,aShowInCTCap, aModeDep);
+  *paramPP = new TParameterDefinition(aName,aDefault,aExtendsName,aShowNonEmpty,aShowInCTCap, aModeDep, aSharedField);
   return *paramPP;
 } // TPropertyDefinition::addParam
 
@@ -2356,9 +2359,36 @@ sInt16 TMimeDirProfileHandler::generateValue(
             }
             // - val is now translated enum (or original value if value does not match any enum text)
             valsiz+=val.size();
+            // We have two choices for parameter values:
+            // - quoted string in double quotes
+            // - a simple string without
+            //
+            // Line breaks and control characters are not supported
+            // either way; the backslash escape mechanism is not used
+            // unless explicitly specified otherwise for specific
+            // parameters (like TYPE).
+            //
+            // We pick the simple string option only if the value
+            // contains only alphanumeric characters plus hyphen and
+            // underscore. Spaces are allowed by the RFC, but are
+            // known to cause issues in other parsers (EDS before
+            // 3.10) unless used in a quoted string, therefore we
+            // are more conservative than the RFC.
+            bool quotedstring = false;
+            if (aParamValue) {
+              for (const char *p=val.c_str();(c=*p)!=0;p++) {
+                if (!(isalnum(c) ||
+                      c == '-' ||
+                      c == '_')) {
+                  quotedstring = true;
+                  outval+='"';
+                  break;
+                }
+              }
+            }
+
             // perform escaping and determine need for encoding
             bool spaceonly = true;
-            bool firstchar = true;
             for (const char *p=val.c_str();(c=*p)!=0 && (c!=aConvDefP->combineSep);p++) {
               // process char
               // - check for whitespace
@@ -2377,24 +2407,25 @@ sInt16 TMimeDirProfileHandler::generateValue(
               // escape reserved chars
               switch (c) {
                 case '"':
-                  if (firstchar && aParamValue && aMimeMode==mimo_standard) goto do_escape; // if param value starts with a double quote, we need to escape it because param value can be in double-quote-enclosed form
+                  if (aParamValue) { c = '\''; goto add_char; } // replace double quotes with single quotes
                   goto add_char; // otherwise, just add
                 case ',':
                   // in MIME-DIR, always escape commas, in pre-MIME-DIR only if usage in value list requires it
-                  if (!aCommaEscape && aMimeMode==mimo_old) goto add_char;
+                  if ((!aCommaEscape && aMimeMode==mimo_old) || quotedstring) goto add_char;
                   goto do_escape;
                 case ':':
                   // always escape colon in parameters
-                  if (!aParamValue) goto add_char;
+                  if (!aParamValue || quotedstring) goto add_char;
                   goto do_escape;
                 case '\\':
+                  if (quotedstring) goto add_char;
                   // Backslash must always be escaped
                   // - for MIMO-old: at least Nokia 9210 does it this way
                   // - for MIME-DIR: specified in the standard
                   goto do_escape;
                 case ';':
                   // in MIME-DIR, always escape semicolons, in pre-MIME-DIR only in parameters and structured values
-                  if (!aParamValue && !aStructured && aMimeMode==mimo_old) goto add_char;
+                  if ((!aParamValue && !aStructured && aMimeMode==mimo_old) || quotedstring) goto add_char;
                 do_escape:
                   if (!aEscapeOnlyLF) {
                     // escape chars with backslash
@@ -2405,6 +2436,7 @@ sInt16 TMimeDirProfileHandler::generateValue(
                   // ignore returns
                   break;
                 case '\n':
+                  if (quotedstring) { c = ' '; goto add_char; }
                   // quote linefeeds
                   if (aMimeMode==mimo_old) {
                     if (aEncoding==enc_none) {
@@ -2428,10 +2460,15 @@ sInt16 TMimeDirProfileHandler::generateValue(
                   if ((uInt8)c > 0x7F) aNonASCII=true;
                   // just copy to output
                   outval+=c;
-                  firstchar = false; // first char is out
                   break;
               }
             } // for all chars in val item
+
+            // terminate quoted string parameter value
+            if (quotedstring) {
+              outval+='"';
+            }
+
             // go to next item in the val list (if any)
             if (*lp!=0) {
               // more items in the list
@@ -3707,7 +3744,7 @@ bool TMimeDirProfileHandler::parseValue(
             break;
           }
           // check for escaped chars
-          if (c=='\\') {
+          if (!aParamValue && c=='\\') {
             p++;
             c=*p;
             if (!c) break; // half escape sequence, ignore
@@ -3911,19 +3948,6 @@ bool TMimeDirProfileHandler::parseProperty(
         else {
           // not within double quoted value
           if (c==':' || c==';') break; // end of value
-          // check escaped characters
-          if (c=='\\') {
-            // escape char, do not check next char for end-of-value (but DO NOT expand \-escaped chars here!!)
-            vp=nextunfolded(vp,aMimeMode);
-            c=*vp; // get next
-            if (c) {
-              val+='\\'; // keep the escaped sequence for later when value is actually processed!
-            }
-            else {
-              // half-finished escape at end of value, ignore
-              break;
-            }
-          }
         }
         val+=c;
         // cancel QP softbreaks if encoding is already switched to QP at this point
@@ -4127,7 +4151,6 @@ bool TMimeDirProfileHandler::parseProperty(
               // - calculate repeat offset to be used
               repinc=propnameextP->repeatInc;
               // note: repArray will be updated below (if property not empty or !overwriteempty)
-              dostore=true; // we can store
               do {
                 repoffset = aRepArray[repid]*repinc;
                 // - set flag if repeat offset should be incremented after storing an empty property or not
@@ -4145,14 +4168,48 @@ bool TMimeDirProfileHandler::parseProperty(
                   TItemField *e_fldP = NULL;
                   if (e_basefldP)
                     e_fldP=e_basefldP->getArrayField(e_rep,true); // get leaf field, if it exists
-                  if (!e_basefldP || (e_fldP && e_fldP->isAssigned())) {
-                    // base field of one of the main fields does not exist or leaf field is already assigned
+                  if (!e_basefldP || (e_fldP && e_fldP->isAssigned()) ||
+                      (aPropP->groupFieldID!=FID_NOT_SUPPORTED && !valuelist &&
+                       aItem.getArrayFieldAdjusted(aPropP->groupFieldID+baseoffset,e_rep,true))) {
+                    // base field of one of the main fields does not exist or leaf field is already assigned,
+                    // or the group field entry is already in use (doesn't matter whether it is empty)
                     // -> skip that repetition
                     dostore = false;
                     break;
                   }
                   else
                     dostore = true; // at least one field exists, we might store
+                }
+                // - check if shared fields used for parameters are available;
+                //   must be enabled explicitly with <parameter ... sharedfield="yes">
+                const TParameterDefinition *paramP = aPropP->parameterDefs;
+                while (paramP) {
+                  if (paramP->sharedField &&
+                      mimeModeMatch(paramP->modeDependency)
+#ifndef NO_REMOTE_RULES
+                      && (!paramP->ruleDependency || isActiveRule(paramP->ruleDependency))
+#endif
+                      ) {
+                    if (paramP->convdef.fieldid==FID_NOT_SUPPORTED)
+                      continue; // no field, no need to check it
+                    sInt16 e_fid = paramP->convdef.fieldid /* +baseoffset */;
+                    sInt16 e_rep = repoffset;
+                    aItem.adjustFidAndIndex(e_fid,e_rep);
+                    // - get base field
+                    TItemField *e_basefldP = aItem.getField(e_fid);
+                    TItemField *e_fldP = NULL;
+                    if (e_basefldP)
+                      e_fldP=e_basefldP->getArrayField(e_rep,true); // get leaf field, if it exists
+                    if (!e_basefldP || e_fldP) {
+                      // base field or leaf field is already in use
+                      // (unassigned is not good enough, otherwise we might end up adding information
+                      // to some other, previously parsed property using the same array field)
+                      // -> skip that repetition
+                      dostore=false;
+                      break;
+                    }
+                  }
+                  paramP=paramP->next;
                 }
                 // check if we can test more repetitions
                 if (!dostore) {
@@ -4289,6 +4346,21 @@ bool TMimeDirProfileHandler::parseProperty(
         // requesting the pointer creates the field if it does not already exist
         aItem.getArrayFieldAdjusted(fid+baseoffset,repoffset,false);
       }
+    }
+    const TParameterDefinition *paramP = aPropP->parameterDefs;
+    while (paramP) {
+      if (paramP->sharedField &&
+          mimeModeMatch(paramP->modeDependency)
+#ifndef NO_REMOTE_RULES
+          && (!paramP->ruleDependency || isActiveRule(paramP->ruleDependency))
+#endif
+          ) {
+        sInt16 fid=paramP->convdef.fieldid;
+        if (fid>=0) {
+          aItem.getArrayFieldAdjusted(fid+baseoffset,repoffset,false);
+        }
+      }
+      paramP=paramP->next;
     }
   }
   if (!valuelist && repid>=0 && (notempty || !overwriteempty) && !repoffsByGroup) {

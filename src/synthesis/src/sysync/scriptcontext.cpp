@@ -941,6 +941,24 @@ public:
     }
   } // func_URIToPath
 
+  // string URLEncode(string text)
+  static void func_URLDecode(TItemField *&aTermP, TScriptContext *aFuncContextP)
+  {
+    string text;
+    aFuncContextP->getLocalVar(0)->getAsString(text);
+    urlDecode(&text);
+    aTermP->setAsString(text);
+  } // func_URLDecode
+
+  // string URLDecode(string url)
+  static void func_URLEncode(TItemField *&aTermP, TScriptContext *aFuncContextP)
+  {
+    string text;
+    aFuncContextP->getLocalVar(0)->getAsString(text);
+    urlEncode(&text);
+    aTermP->setAsString(text);
+  } // func_URLEncode
+
   // string REMOTERULENAME()
   // returns name of the LAST matched remote rule (or subrule), empty if none
   // Note: this is legacy from 3.4.0.4 onwards, as we now have a list of multiple active rules
@@ -1774,6 +1792,8 @@ public:
     (*tempP)=(*p1);
     (*p1)=(*p2);
     (*p2)=(*tempP);
+
+    delete tempP;
   }; // func_Swap
 
 
@@ -2329,6 +2349,8 @@ const TBuiltInFuncDef BuiltInFuncDefs[] = {
   { "SHELLEXECUTE", TBuiltinStdFuncs::func_Shellexecute, fty_integer, 3, param_Shellexecute },
   { "READ",  TBuiltinStdFuncs::func_Read, fty_string, 1, param_oneString },
   { "URITOPATH",  TBuiltinStdFuncs::func_URIToPath, fty_string, 1, param_oneString },
+  { "URLENCODE",  TBuiltinStdFuncs::func_URLEncode, fty_string, 1, param_oneString },
+  { "URLDECODE",  TBuiltinStdFuncs::func_URLDecode, fty_string, 1, param_oneString },
   { "SESSIONVAR", TBuiltinStdFuncs::func_SessionVar, fty_none, 1, param_oneString },
   { "SETSESSIONVAR", TBuiltinStdFuncs::func_SetSessionVar, fty_none, 2, param_SetSessionVar },
   { "ABORTSESSION", TBuiltinStdFuncs::func_AbortSession, fty_none, 1, param_oneInteger },

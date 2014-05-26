@@ -310,6 +310,10 @@ public:
   virtual void DebugOpenBlock(TDBG_LOCATION_PROTO cAppCharP aBlockName, cAppCharP aBlockTitle=NULL, bool aCollapsed=false);
   /// @brief Close structure Block. Name is used to close possibly unclosed contained Blocks automatically.
   virtual void DebugCloseBlock(TDBG_LOCATION_PROTO cAppCharP aBlockName);
+
+  /// @brief find or create logger for subthread, may return NULL if not implemented
+  virtual TDebugLoggerBase *getThreadLogger(bool aCreateNew=true) { return NULL; }
+
 protected:
   // helper methods
   /// @brief start debugging output if needed and sets fOutStarted
@@ -395,8 +399,8 @@ private:
   ///        IF AND ONLY IF aThreadID is the calling thread (i.e. only own thread may be removed from the list)!
   ///        Note that the caller must take care of deleting the subthread record
   TSubThreadLog *findSubThread(uInt32 aThreadID, bool aAndRemove=false);
-  /// @brief find or create logger for subthread
-  TDebugLoggerBase *getThreadLogger(bool aCreateNew=true);
+  /// @brief find or create logger for subthread, actually implements the call
+  virtual TDebugLoggerBase *getThreadLogger(bool aCreateNew=true);
   // Variables
   uIntArch fMainThreadID;
   TSubThreadLog *fSubThreadLogs; // the linked list of active subthreads

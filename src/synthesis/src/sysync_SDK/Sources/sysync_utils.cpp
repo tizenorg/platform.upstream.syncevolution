@@ -2285,6 +2285,36 @@ void urlDecode(string *str)
   *str = replacement;
 }
 
+// translate %XX into corresponding character in-place
+void urlEncode(string *str)
+{
+  if (!str) {
+    return;
+  }
+
+  string replacement;
+  size_t i, start = 0;
+  const char *t = str->c_str();
+  const char *s = t;
+  char buffer[4];
+  char c;
+  for (i = 0; (c = *t) != 0; i++, t++) {
+    if (!isalnum(c)) {
+      replacement.append(s + start, i - start);
+      start = i + 1;
+      sprintf(buffer, "%%%02X", c);
+      replacement.append(buffer, 3);
+    }
+  }
+
+  if (start > 0) {
+    // Something was added to replacement because we found unsafe
+    // characters, finish the job.
+    replacement.append(s + start, i - start);
+    *str = replacement;
+  }
+}
+
 // split URL into protocol, hostname, document name and auth-info (user, password);
 // the optional query and port are not url-decoded, everything else is
 void splitURL(const char *aURI,string *aProtocol,string *aHost, 

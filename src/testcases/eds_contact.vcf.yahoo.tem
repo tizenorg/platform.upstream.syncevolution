@@ -1,5 +1,6 @@
 BEGIN:VCARD
 VERSION:3.0
+UID:unique-id-user17
 NICKNAME:user17
 NOTE:triggers parser bug in Funambol 3.0: trailing = is mistaken for soft line break=
 FN:parserbug=
@@ -9,6 +10,7 @@ END:VCARD
 
 BEGIN:VCARD
 VERSION:3.0
+UID:unique-id-user16
 NICKNAME:user16
 NOTE:test case with empty email
 FN:incomplete
@@ -19,6 +21,7 @@ END:VCARD
 
 BEGIN:VCARD
 VERSION:3.0
+UID:unique-id-user11
 NICKNAME:user11
 NOTE:This is a long line without any special characters. This is a simpler 
  example that should require folding in vcards. Does folding insert a crlf
@@ -31,6 +34,7 @@ END:VCARD
 
 BEGIN:VCARD
 VERSION:3.0
+UID:unique-id-user13
 NICKNAME:user13
 NOTE:a colon is not a special character so here it comes : and not quoting necessary
 FN:colon
@@ -40,6 +44,7 @@ END:VCARD
 
 BEGIN:VCARD
 VERSION:3.0
+UID:unique-id-user14
 NICKNAME:user14
 NOTE:here are some quotation marks: single ' double " back ` - none of them is special
 FN:quotation marks
@@ -49,6 +54,7 @@ END:VCARD
 
 BEGIN:VCARD
 VERSION:3.0
+UID:unique-id-user15
 NICKNAME:user15
 NOTE:Spouse's Name: foobar
 FN:spouse name
@@ -58,6 +64,7 @@ END:VCARD
 
 BEGIN:VCARD
 VERSION:3.0
+UID:unique-id-user9
 NICKNAME:user9
 NOTE;CHARSET="UTF-8":Tests charset specification with quotation marks.
 FN:charset
@@ -72,6 +79,7 @@ TITLE:Senior Tester
 ORG:Test Inc.
 X-EVOLUTION-MANAGER:John Doe Senior
 X-EVOLUTION-ASSISTANT:John Doe Junior
+UID:unique-id-user1
 NICKNAME:user1
 BDAY:2006-01-08
 X-FOOBAR-EXTENSION;X-FOOBAR-PARAMETER=foobar:has to be stored internally by engine and preserved in testExtensions test\; never sent to a peer
@@ -98,7 +106,6 @@ LABEL;TYPE=HOME:Test Drive 1\nTest Village\, Lower Test County\n12345\nTest
 ADR:;;Test Drive 3;Test Megacity;Test County;12347;New Testonia
 LABEL;TYPE=OTHER:Test Drive 3\nTest Megacity\, Test County\n12347\nTest Box
   #3\nNew Testonia
-UID:pas-id-43C0ED3900000001
 EMAIL:john.doe@work.com
 EMAIL:john.doe@home.priv
 EMAIL:john.doe@other.world

@@ -157,7 +157,7 @@ public:
 class TParameterDefinition : noncopyable {
 public:
   // constructor/destructor
-  TParameterDefinition(const char *aName, bool aDefault, bool aExtendsName, bool aShowNonEmpty, bool aShowInCTCap, TMimeDirMode aModeDep);
+  TParameterDefinition(const char *aName, bool aDefault, bool aExtendsName, bool aShowNonEmpty, bool aShowInCTCap, TMimeDirMode aModeDep, bool aSharedField);
   ~TParameterDefinition();
   // tools
   TConversionDef *setConvDef(sInt16 aFieldId=FID_NOT_SUPPORTED,sInt16 aConvMode=0,char aCombSep=0)
@@ -177,6 +177,9 @@ public:
   bool shownonempty;
   // flag if parameter should be (not necessarily IS, depending on SyncML version) shown in CTCap
   bool showInCTCap;
+  // flag if parameter field is shared between different properties and thus needs to be checked
+  // when looking for the offset where repeating properties get stored
+  bool sharedField;
   // conversion information
   TConversionDef convdef;
   #ifndef NO_REMOTE_RULES
@@ -244,7 +247,7 @@ public:
   TPropertyDefinition(const char* aName, sInt16 aNumVals, bool aMandatory, bool aShowInCTCap, bool aSuppressEmpty, uInt16 aDelayedProcessing, char aValuesep, char aAltValuesep, uInt16 aPropertyGroupID, bool aCanFilter, TMimeDirMode aModeDep, sInt16 aGroupFieldID, bool aAllowFoldAtSep);
   ~TPropertyDefinition();
   // tools
-  TParameterDefinition *addParam(const char *aName, bool aDefault, bool aExtendsName, bool aShowNonEmpty=false, bool aShowInCTCap=false, TMimeDirMode aModeDep=numMimeModes);
+  TParameterDefinition *addParam(const char *aName, bool aDefault, bool aExtendsName, bool aShowNonEmpty=false, bool aShowInCTCap=false, TMimeDirMode aModeDep=numMimeModes, bool aSharedField=false);
   void addNameExt(TProfileDefinition *aRootProfile, // for profile-global RepID generation
     TNameExtIDMap aMusthave_ids, TNameExtIDMap aForbidden_ids, TNameExtIDMap aAddtlSend_ids,
     sInt16 aFieldidoffs, sInt16 aMaxRepeat=1, sInt16 aRepeatInc=1, sInt16 aMinShow=-1,

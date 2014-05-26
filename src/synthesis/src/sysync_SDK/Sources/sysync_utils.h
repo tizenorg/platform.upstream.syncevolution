@@ -436,6 +436,9 @@ void splitURL(const char *aURI,string *aProtocol,string *aHost,string *aDoc,stri
 // in-place decoding of %XX, NULL pointer allowed
 void urlDecode(string *str);
 
+// in-place encoding of unsafe characters as %XX, NULL pointer allowed
+void urlEncode(string *str);
+
 // returns error code made ready for SyncML sending (that is, remove offset
 // of 10000 if present, and make generic error 500 for non-SyncML errors,
 // and return LOCERR_OK as 200)

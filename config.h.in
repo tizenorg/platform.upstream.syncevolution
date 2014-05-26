@@ -24,9 +24,6 @@
 /* ActiveSync available */
 #undef ENABLE_ACTIVESYNC
 
-/* addressbook available */
-#undef ENABLE_ADDRESSBOOK
-
 /* Akonadi available */
 #undef ENABLE_AKONADI
 
@@ -300,6 +297,15 @@
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
 
+/* activate gsso */
+#undef STATIC_GSSO
+
+/* activate gsso */
+#undef STATIC_SIGNON
+
+/* activate gsso */
+#undef STATIC_UOA
+
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
 
@@ -324,9 +330,6 @@
 /* use GNOME Online Accounts */
 #undef USE_GOA
 
-/* use gSSO */
-#undef USE_GSSO
-
 /* KWallet available */
 #undef USE_KDE_KWALLET
 
@@ -335,9 +338,6 @@
 
 /* choose implementation of SHA-256 */
 #undef USE_SHA256
-
-/* use UOA */
-#undef USE_UOA
 
 /* Version number of package */
 #undef VERSION

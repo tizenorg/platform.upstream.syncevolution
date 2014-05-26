@@ -1721,6 +1721,12 @@ TSubThreadLog *TDebugLogger::findSubThread(uInt32 aThreadID, bool aAndRemove)
 /// @brief find or create logger for subthread
 TDebugLoggerBase *TDebugLogger::getThreadLogger(bool aCreateNew)
 {
+  if (fOutputLoggerP) {
+    TDebugLoggerBase *logger = fOutputLoggerP->getThreadLogger(aCreateNew);
+    if (logger)
+      return logger;
+  }
+
   if (!fDbgOptionsP || fDbgOptionsP->fSubThreadMode==dbgsubthread_none)
     return this; // no options, do not handle subthreads specially
   uIntArch threadID = myThreadID();
