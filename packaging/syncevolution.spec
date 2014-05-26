@@ -27,6 +27,7 @@ BuildRequires:  libtool
 BuildRequires:  python
 BuildRequires:  libxslt-tools
 BuildRequires:  libphonenumber-devel
+BuildRequires:  pkgconfig(neon)
 
 
 %description
