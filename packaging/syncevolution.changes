@@ -1,3 +1,8 @@
+* Tue May 27 2014 Patrick Ohly <patrick.ohly@intel.com> upstream/1.4.99.2-14-gbda8df6
+- import neon 0.30
+- fix static neon compilation
+- compile neon as internal library
+
 * Tue May 27 2014 Patrick Ohly <patrick.ohly@intel.com> upstream/1.4.99.2-10-ga30c1b3
 - update to 1.4.99.2 with CardDAV enabled
 
