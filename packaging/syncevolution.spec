@@ -27,7 +27,7 @@ BuildRequires:  libtool
 BuildRequires:  python
 BuildRequires:  libxslt-tools
 BuildRequires:  libphonenumber-devel
-BuildRequires:  pkgconfig(neon)
+BuildRequires:  pkgconfig(gnutls)
 BuildRequires:  pkgconfig(libgsignon-glib)
 
 
@@ -151,11 +151,11 @@ gSSO for single-signon.
 
 %build
 ./autogen.sh
-
-
+(cd src/neon && sh ./autogen.sh && ./configure --with-ssl=gnutls --with-expat --disable-shared CFLAGS=-fpic CPPFLAGS=-DPIC && cd src && make %{?jobs:-j%jobs} libneon.a)
 
 %configure --disable-static \
     'PHONENUMBERS_LIBS=-lphonenumber -lboost_thread' \
+    "NEON_CFLAGS=-I`pwd`/src/neon/src" "NEON_LIBS=-L`pwd`/src/neon/src -lneon -lgnutls -lexpat" \
     --enable-dbus-service \
     --enable-dbus-service-pim \
     --enable-shared \
