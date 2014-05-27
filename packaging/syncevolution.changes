@@ -1,3 +1,6 @@
+* Tue May 27 2014 Patrick Ohly <patrick.ohly@intel.com> upstream/1.4.99.2-10-ga30c1b3
+- update to 1.4.99.2 with CardDAV enabled
+
 * Mon Dec 16 2013 Patrick Ohly <patrick.ohly@intel.com> upstream/1.3.99.6@127706d
 - update to upstream 1.3.99.6
 
