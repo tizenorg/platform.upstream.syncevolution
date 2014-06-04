@@ -1,3 +1,6 @@
+* Wed Jun 04 2014 Patrick Ohly <patrick.ohly@intel.com> upstream/1.4.99.2-12-g96cf6de
+- remove bundled neon and use system version of it
+
 * Tue May 27 2014 Patrick Ohly <patrick.ohly@intel.com> upstream/1.4.99.2-14-gbda8df6
 - import neon 0.30
 - fix static neon compilation
