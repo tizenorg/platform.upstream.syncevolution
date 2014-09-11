@@ -256,7 +256,7 @@ TESTS =
 # "Synopsis" and "Usage"
 @COND_CORE_TRUE@am__append_28 = src/syncevo/SyncEvolutionXML.c \
 @COND_CORE_TRUE@	src/syncevo/CmdlineHelp.c \
-@COND_CORE_TRUE@	src/backends/webdav/syncevo-webdav-lookup
+@COND_CORE_TRUE@	src/syncevo-webdav-lookup
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@am__append_29 = -ldl
 @COND_CORE_TRUE@am__append_30 = src/syncevo/GenSyncEvolutionXML
 @COND_CORE_TRUE@am__append_31 = src/syncevo/CmdlineHelp.c
@@ -320,8 +320,7 @@ TESTS =
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@am__append_44 = \
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@  src/backends/signon/signonRegister.cpp
 
-@COND_CORE_TRUE@am__append_45 =  \
-@COND_CORE_TRUE@	src/backends/webdav/syncevo-webdav-lookup \
+@COND_CORE_TRUE@am__append_45 = src/syncevo-webdav-lookup \
 @COND_CORE_TRUE@	src/synccompare
 @COND_CORE_TRUE@@NEON_COMPATIBILITY_TRUE@am__append_46 = webdav_so_check
 @COND_CORE_TRUE@@ENABLE_MODULES_TRUE@am__append_47 = $(DESTDIR)/$(src_backends_webdav_backenddir)/syncdav.so
@@ -3826,9 +3825,9 @@ src_abort_redirect_DEPENDENCIES = all
 @COND_CORE_TRUE@@COND_DBUS_TRUE@	test/dbus-client-server.cpp \
 @COND_CORE_TRUE@@COND_DBUS_TRUE@	$(am__append_105)
 @COND_CORE_TRUE@@COND_DBUS_TRUE@test_dbus_client_server_CPPFLAGS = -I$(gdbus_dir) -I$(top_srcdir)/src
-@COND_CORE_TRUE@@COND_DBUS_TRUE@test_dbus_client_server_CXXFLAGS = $(CPPUNIT_CXXFLAGS) $(SYNCEVOLUTION_CXXFLAGS) $(BACKEND_CPPFLAGS) $(DBUS_CFLAGS) $(GLIB_CFLAGS) $(GOBJECT_CFLAGS)
+@COND_CORE_TRUE@@COND_DBUS_TRUE@test_dbus_client_server_CXXFLAGS = $(CPPUNIT_CXXFLAGS) $(SYNCEVOLUTION_CXXFLAGS) $(BACKEND_CPPFLAGS) $(DBUS_CFLAGS) $(GLIB_CFLAGS) $(GOBJECT_CFLAGS) $(PCRECPP_CFLAGS)
 @COND_CORE_TRUE@@COND_DBUS_TRUE@test_dbus_client_server_LDFLAGS = $(CPPUNIT_LDFLAGS)
-@COND_CORE_TRUE@@COND_DBUS_TRUE@test_dbus_client_server_LDADD = $(gdbus_build_dir)/libgdbussyncevo.la src/syncevo/libsyncevolution.la $(DBUS_LIBS) $(GLIB_LIBS) $(GOBJECT_LIBS)
+@COND_CORE_TRUE@@COND_DBUS_TRUE@test_dbus_client_server_LDADD = $(gdbus_build_dir)/libgdbussyncevo.la src/syncevo/libsyncevolution.la $(DBUS_LIBS) $(GLIB_LIBS) $(GOBJECT_LIBS) $(PCRECPP_LIBS)
 @COND_CORE_TRUE@@COND_DBUS_TRUE@test_dbus_client_server_DEPENDENCIES = $(gdbus_build_dir)/libgdbussyncevo.la src/syncevo/libsyncevolution.la
 TEST_README_FILES = $(wildcard $(top_srcdir)/test/README.*)
 
@@ -11476,7 +11475,7 @@ uninstall-man: uninstall-man1
 #	perl -e '$$_ = join("", <>); s/^(ADR|TEL|EMAIL|PHOTO).*?(?=^\S)//msg; s/;X-EVOLUTION-UI-SLOT=\d+//g; print;' $< >$@
 # all: ../../testcases/sqlite_vcard21.vcf
 
-@COND_CORE_TRUE@src/backends/webdav/syncevo-webdav-lookup: $(top_srcdir)/src/backends/webdav/syncevo-webdav-lookup.sh
+@COND_CORE_TRUE@src/syncevo-webdav-lookup: $(top_srcdir)/src/backends/webdav/syncevo-webdav-lookup.sh
 @COND_CORE_TRUE@	$(AM_V_GEN) rm -f $@ && cp $< $@ && chmod a+rx $@
 
 @COND_CORE_TRUE@webdav_so_check:
@@ -11727,11 +11726,14 @@ src/test: src/client-test
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@	ln -f -s $(bindir)/synccompare $(DESTDIR)/$(testdir)
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@	ln -f -s $(libexecdir)/syncevo-dbus-server $(DESTDIR)/$(testdir)
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@	ln -f -s $(bindir)/synclog2html $(DESTDIR)/$(testdir)
+@COND_CORE_TRUE@@ENABLE_TESTING_TRUE@	ln -f -s $(bindir)/syncevo-webdav-lookup $(DESTDIR)/$(testdir)
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@	cp config.h $(top_srcdir)/src/syncevo/SyncConfig.h src/ClientTest.cpp.html $(DESTDIR)/$(testdir) # needed by test-dbus.py
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@uninstall-test-files:
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@	rm -f $(DESTDIR)/$(testdir)/syncevolution \
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@		$(DESTDIR)/$(testdir)/synccompare \
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@		$(DESTDIR)/$(testdir)/syncevo-dbus-server \
+@COND_CORE_TRUE@@ENABLE_TESTING_TRUE@		$(DESTDIR)/$(testdir)/synclog2html \
+@COND_CORE_TRUE@@ENABLE_TESTING_TRUE@		$(DESTDIR)/$(testdir)/syncevo-webdav-lookup \
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@		$(DESTDIR)/$(testdir)/SyncConfig.h \
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@		$(DESTDIR)/$(testdir)/ClientTests.cpp.html \
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@		$(DESTDIR)/$(testdir)/config.h \

@@ -829,7 +829,7 @@ TSyError TDBItem::LoadDB( bool withKey, cAppCharP aPrefix, void* aCB )
   string rslt;
   DEBUG_Block( aCB, LDB, fFileName.c_str(), s.c_str() ); // hierarchical log
 
-  if (!err) {
+  if (f) {
     while (true) {      // loop ...
       bool is0D= false; // last line ended with 0D ?
 
@@ -966,7 +966,7 @@ TSyError TDBItem::SaveDB( bool withKey, void* aCB )
   string rslt;
   DEBUG_Block( aCB, SDB, fFileName.c_str(), s.c_str() ); // hierarchical log
 
-  if (!err) {
+  if (f) {
     fputs( "\xEF\xBB\xBF", f ); // UTF-8 lead-in
     DEBUG_Exotic_DB( aCB, MyDB,"","UTF-8 lead-in written" );
 

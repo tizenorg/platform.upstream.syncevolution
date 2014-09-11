@@ -1231,7 +1231,7 @@ TSyError TDB_Api_Session::GetDBTime( TDB_Api_Str &currentDBTime )
 // No 'lineartime_t' available for standalone
 TSyError TDB_Api_Session::GetDBTime( lineartime_t &currentDBTime, GZones* g )
 {
-  timecontext_t                                                       tctx;
+  timecontext_t                                                       tctx = 0;
   TDB_Api_Str               s;
   TSyError  err= GetDBTime( s );                       currentDBTime= 0;
   if      (!err && !ISO8601StrToTimestamp ( s.c_str(), currentDBTime, tctx )) return DB_Error;

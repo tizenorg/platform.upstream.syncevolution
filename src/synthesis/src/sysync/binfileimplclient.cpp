@@ -236,9 +236,7 @@ static TSyError writeTargetFeatureCheck(
 
 
 // macro simplifying typing in the table below
-#define OFFS_SZ_TG(n) (offsetof(TBinfileDBSyncTarget,n)), sizeof(dP_tg->n)
-// dummy pointer needed for sizeof
-static const TBinfileDBSyncTarget *dP_tg=NULL;
+#define OFFS_SZ_TG(n) (offsetof(TBinfileDBSyncTarget,n)), sizeof(((TBinfileDBSyncTarget *)NULL)->n)
 
 // accessor table for target key and for TARGETSETTING() script function
 const TStructFieldInfo TargetFieldInfos[] =
@@ -679,9 +677,7 @@ static TSyError writeReadOnlyCheck(
 
 
 // macro simplifying typing in the table below
-#define OFFS_SZ_PF(n) (offsetof(TBinfileDBSyncProfile,n)), sizeof(dP_pf->n)
-// dummy pointer needed for sizeof
-static const TBinfileDBSyncProfile *dP_pf=NULL;
+#define OFFS_SZ_PF(n) (offsetof(TBinfileDBSyncProfile,n)), sizeof(((TBinfileDBSyncProfile *)NULL)->n)
 
 // accessor table for profiles and for PROFILESETTING script function
 const TStructFieldInfo ProfileFieldInfos[] =
@@ -1058,9 +1054,7 @@ static TSyError readLogProfileName(
 
 
 // macro simplifying typing in the table below
-#define OFFS_SZ_LOG(n) (offsetof(TLogFileEntry,n)), sizeof(dP_log->n)
-// dummy pointer needed for sizeof
-static const TLogFileEntry *dP_log=NULL;
+#define OFFS_SZ_LOG(n) (offsetof(TLogFileEntry,n)), sizeof(((TLogFileEntry *)NULL)->n)
 
 // accessor table for log entries
 static const TStructFieldInfo LogEntryFieldInfos[] =

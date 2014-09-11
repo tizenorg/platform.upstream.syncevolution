@@ -2748,6 +2748,8 @@ struct TCustomItemAux : public TSyncItemAux
   TSyncOperation fSop;
   bool fRemoteHasLatestData;
   CustomItemOp fOp;
+  bool fChangedDBVersion;
+  bool fChangedNewVersion;
 };
 
 /// process item (according to operation: add/delete/replace - and for future: copy/move)
@@ -2775,6 +2777,7 @@ bool TCustomImplDS::implProcessItem(
   TMultiFieldItem *augmentedItemP = NULL;
   bool remoteHasLatestData;
   CustomItemOp op;
+  bool changedDBVersion, changedNewVersion;
 
   TP_DEFIDX(li);
   TP_SWITCH(li,fSessionP->fTPInfo,TP_database);
@@ -2799,6 +2802,8 @@ bool TCustomImplDS::implProcessItem(
       sop = aux->fSop;
       remoteHasLatestData = aux->fRemoteHasLatestData;
       op = aux->fOp;
+      changedDBVersion = aux->fChangedDBVersion;
+      changedNewVersion = aux->fChangedNewVersion;
 
       // Stripped down logic from normal code path below.
       // We can't save/restore mapppos because it points into
@@ -2846,8 +2851,14 @@ bool TCustomImplDS::implProcessItem(
       aux->fRemoteID = remoteID ? remoteID : "";
       aux->fRemoteIDSet = remoteID != NULL;
       aux->fSop = sop;
+      // cppcheck-suppress uninitvar
       aux->fRemoteHasLatestData = remoteHasLatestData;
+      // cppcheck-suppress uninitvar
       aux->fOp = op;
+      // cppcheck-suppress uninitvar
+      aux->fChangedDBVersion = changedDBVersion;
+      // cppcheck-suppress uninitvar
+      aux->fChangedNewVersion = changedNewVersion;
 
       aStatusCommand.setStatusCode(LOCERR_AGAIN);
       goto error;
@@ -2910,7 +2921,6 @@ bool TCustomImplDS::implProcessItem(
         if (sta==DB_Conflict) {
           // DB has detected item conflicts with data already stored in the database and
           // request merging current data from the backend with new data before storing.
-          bool changedDBVersion, changedNewVersion;
           augmentedItemP = mergeWithDatabaseVersion(myitemP, changedDBVersion, changedNewVersion);
           if (augmentedItemP==NULL)
             sta = DB_Error; // no item found, DB error
@@ -3044,7 +3054,6 @@ bool TCustomImplDS::implProcessItem(
           if (sta==DB_Conflict) {
             // DB has detected item conflicts with data already stored in the database and
             // request merging current data from the backend with new data before storing.
-            bool changedDBVersion, changedNewVersion;
             augmentedItemP = mergeWithDatabaseVersion(myitemP, changedDBVersion, changedNewVersion);
             if (augmentedItemP==NULL)
               sta = DB_Error; // no item found, DB error

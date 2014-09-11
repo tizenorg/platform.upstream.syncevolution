@@ -1,10 +1,10 @@
 dnl Invoke autogen.sh to produce a configure script.
 
-AC_INIT(src/sysync/engineinterface.cpp)
-AC_CONFIG_MACRO_DIR([m4])
 # four digit upstream version, one additional digit for
 # Linux/SyncEvolution specific extensions:
-AM_INIT_AUTOMAKE(synthesis, 3.4.0.47.2)
+AC_INIT([synthesis], [3.4.0.47.3])
+AM_INIT_AUTOMAKE(subdir-objects)
+AC_CONFIG_MACRO_DIR([m4])
 AM_CONFIG_HEADER(config.h)
 AC_LIBTOOL_DLOPEN
 

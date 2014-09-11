@@ -862,7 +862,7 @@ xmlTag(xmlScannerPrivPtr_t pScanner, Byte_t endtag)
           smlLibStrcpy(nsprefix,&attname[6]);
         }
         ext = getExtByName(value);
-        if (ext == 255) {
+        if (ext == (SmlPcdataExtension_t)255) {
           smlLibFree(nsprefix); /* doesn't harm, even when empty */
           smlLibFree(attname);
           smlLibFree(value);

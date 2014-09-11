@@ -1976,7 +1976,9 @@ bool TBinfileImplDS::implProcessItem(
       case sop_add :
         // add record
         if ((sta=createItem(aItemP,newid,receiveOnly))!=LOCERR_OK) {
-          PDEBUGPRINTFX(DBG_ERROR,("cannot create record in database (sta=%hd)",sta));
+          if (sta != LOCERR_AGAIN) {
+            PDEBUGPRINTFX(DBG_ERROR,("cannot create record in database (sta=%hd)",sta));
+          }
           // check special "needs merge" case
           if (sta==DB_Conflict) {
             // DB has detected item conflicts with data already stored in the database and
@@ -2029,7 +2031,9 @@ bool TBinfileImplDS::implProcessItem(
       case sop_replace :
         // change record
         if ((sta=updateItemByID(localid,aItemP))!=LOCERR_OK) {
-          PDEBUGPRINTFX(DBG_ERROR,("cannot update record in database (sta=%hd)",sta));
+          if (sta != LOCERR_AGAIN) {
+            PDEBUGPRINTFX(DBG_ERROR,("cannot update record in database (sta=%hd)",sta));
+          }
           statuscode=sta;
           goto error; // check errors
         }
@@ -2039,7 +2043,9 @@ bool TBinfileImplDS::implProcessItem(
       case sop_delete :
         // delete record
         if ((sta=deleteItemByID(localid))!=LOCERR_OK) {
-          PDEBUGPRINTFX(DBG_ERROR,("cannot delete record in database (sta=%hd)",sta));
+          if (sta != LOCERR_AGAIN) {
+            PDEBUGPRINTFX(DBG_ERROR,("cannot delete record in database (sta=%hd)",sta));
+          }
           statuscode=sta; // not found
           goto error; // check errors
         }
@@ -2220,7 +2226,9 @@ bool TBinfileImplDS::implProcessItem(
 error:
   // report OS specific error codes as item text back to the originator
   ok=false;
-  PDEBUGPRINTFX(DBG_ERROR,("Database Error --> SyncML status %ld%s",(long)statuscode,lastDBErrorText().c_str()));
+  if (statuscode != LOCERR_AGAIN) {
+    PDEBUGPRINTFX(DBG_ERROR,("Database Error --> SyncML status %ld%s",(long)statuscode,lastDBErrorText().c_str()));
+  }
   //aStatusCommand.addItemString(lastDBErrorDbgText().c_str());
 done:
   delete augmentedItemP;

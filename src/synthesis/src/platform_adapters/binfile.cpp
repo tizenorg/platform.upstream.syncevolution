@@ -20,12 +20,15 @@
 #include "win32_utils.h"
 #endif
 
+#include <string.h>
+
 namespace sysync {
 
 
 // @brief constructor
 TBinFile::TBinFile() :
-  fCBinFile(NULL)
+  fCBinFile(NULL),
+  fPos(0)
 {
 } // TBinFile
 
@@ -43,10 +46,25 @@ bool TBinFile::platformFileIsOpen(void)
   return fCBinFile!=NULL;
 } // TBinFile::platformFileIsOpen
 
+// A special FILE * pointer never returned by fopen().
+#define TBINFILE_MEM_FILE stdin
+#define TBINFILE_MEM_FILE_PERFIX "/dev/null/"
+
+static bool IsNullFile(cAppCharP aFilePath)
+{
+  return !strncmp(aFilePath, TBINFILE_MEM_FILE_PERFIX, strlen(TBINFILE_MEM_FILE_PERFIX));
+}
+
 
 /// @brief Open a platform file
 bool TBinFile::platformOpenFile(cAppCharP aFilePath, TFileOpenModes aMode)
 {
+  if (IsNullFile(aFilePath)) {
+    fCBinFile = TBINFILE_MEM_FILE;
+    fPos = 0;
+    return true;
+  }
+
   switch (aMode) {
     case fopm_update :
       fCBinFile = fopen(aFilePath,"r+b");
@@ -62,7 +80,8 @@ bool TBinFile::platformOpenFile(cAppCharP aFilePath, TFileOpenModes aMode)
 /// @brief close file
 bool TBinFile::platformCloseFile(void)
 {
-  fclose(fCBinFile);
+  if (fCBinFile && fCBinFile != TBINFILE_MEM_FILE)
+    fclose(fCBinFile);
   fCBinFile=NULL;
   return true;
 } // TBinFile::platformCloseFile
@@ -71,6 +90,18 @@ bool TBinFile::platformCloseFile(void)
 /// @brief seek in file
 bool TBinFile::platformSeekFile(uInt32 aPos, bool aFromEnd)
 {
+  if (fCBinFile == TBINFILE_MEM_FILE) {
+    if (aFromEnd) {
+      if (aPos > fContent.size()) {
+        return false;
+      }
+      fPos = fContent.size() - aPos;
+    } else {
+      fPos = aPos;
+    }
+    return true;
+  }
+
   return fseek(fCBinFile,aPos,aFromEnd ? SEEK_END : SEEK_SET) == 0;
 } // TBinFile::platformSeekFile
 
@@ -78,6 +109,15 @@ bool TBinFile::platformSeekFile(uInt32 aPos, bool aFromEnd)
 /// @brief read from file
 bool TBinFile::platformReadFile(void *aBuffer, uInt32 aMaxRead)
 {
+  if (fCBinFile == TBINFILE_MEM_FILE) {
+    if (fPos + aMaxRead <= fContent.size()) {
+      memcpy(aBuffer, fContent.c_str() + fPos, aMaxRead);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   return fread(aBuffer,aMaxRead,1,fCBinFile) == 1;
 } // TBinFile::platformReadFile
 
@@ -85,6 +125,22 @@ bool TBinFile::platformReadFile(void *aBuffer, uInt32 aMaxRead)
 /// @brief write to file
 bool TBinFile::platformWriteFile(const void *aBuffer, uInt32 aBytes)
 {
+  if (fCBinFile == TBINFILE_MEM_FILE) {
+    if (fPos < fContent.size()) {
+      size_t partial = fContent.size() - fPos;
+      if (partial > aBytes) {
+        partial = aBytes;
+      }
+      fContent.replace(fPos, partial, (const char *)aBuffer, partial);
+      fContent.append((const char *)aBuffer + partial, aBytes - partial);
+    } else {
+      fContent.resize(fPos);
+      fContent.append((const char *)aBuffer, aBytes);
+    }
+    fPos += aBytes;
+    return true;
+  }
+
   return fwrite(aBuffer,aBytes,1,fCBinFile) == 1;
 } // TBinFile::platformWriteFile
 
@@ -92,6 +148,10 @@ bool TBinFile::platformWriteFile(const void *aBuffer, uInt32 aBytes)
 /// @brief flush all buffers
 bool TBinFile::platformFlushFile(void)
 {
+  if (fCBinFile == TBINFILE_MEM_FILE) {
+    return true;
+  }
+
   return fflush(fCBinFile)==0;
 } // TBinFile::platformFlushFile
 
@@ -99,6 +159,11 @@ bool TBinFile::platformFlushFile(void)
 /// @brief truncate file to a specific length
 bool TBinFile::platformTruncateFile(uInt32 aNewSize)
 {
+  if (fCBinFile == TBINFILE_MEM_FILE) {
+    fContent.resize(aNewSize);
+    return true;
+  }
+
   #if defined(LINUX) || defined(MACOSX)
     fflush(fCBinFile); // unbuffer everything
     int fd = fileno(fCBinFile); // get file descriptor
@@ -126,6 +191,12 @@ bool TBinFile::platformTruncateFile(uInt32 aNewSize)
 /// @delete file entirely
 bool TBinFile::platformDeleteFile(cAppCharP aFilePath)
 {
+  if (IsNullFile(aFilePath)) {
+    fPos = 0;
+    fContent.clear();
+    return true;
+  }
+
   #if defined(LINUX) || defined(MACOSX)
     unlink(aFilePath);
   #elif defined(WINCE)

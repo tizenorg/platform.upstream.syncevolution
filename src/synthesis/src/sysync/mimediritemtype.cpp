@@ -23,30 +23,6 @@ using namespace sysync;
 
 namespace sysync {
 
-// mime-DIR mode names
-const char * const mimeModeNames[numMimeModes] = {
-  "old",
-  "standard"
-};
-
-
-// enumeration modes
-const char * const EnumModeNames[numEnumModes] = {
-  "translate",        // translation from value to name and vice versa
-  "prefix",           // translation of prefix while copying rest of string
-  "defaultname",      // default name when translating from value to name
-  "defaultvalue",     // default value when translating from name to value
-  "ignore"            // ignore value or name
-};
-
-
-// profile modes
-const char * const ProfileModeNames[numProfileModes] = {
-  "custom",        // custom profile
-  "vtimezones",    // VTIMEZONE profile(s), expands to a VTIMEZONE for every time zone referenced by convmode TZID fields
-};
-
-
 // Config
 // ======
 

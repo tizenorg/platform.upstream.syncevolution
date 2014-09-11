@@ -1570,7 +1570,7 @@ const char *quoteString(const char *aIn, string &aOut, TQuotingModes aQuoteMode)
 //void sysync::quoteStringAppend(const char *aIn, string &aOut, TQuotingModes aQuoteMode)
 void quoteStringAppend(const char *aIn, string &aOut, TQuotingModes aQuoteMode)
 {
-  if (!aQuoteMode!=qm_none) aOut.append(aIn);
+  if ((!aQuoteMode)!=qm_none) aOut.append(aIn);
   else {
     sInt16 n=strlen(aIn);
     aOut.reserve(n+2);

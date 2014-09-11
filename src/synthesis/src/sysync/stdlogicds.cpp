@@ -42,7 +42,7 @@ TStdLogicDS::TStdLogicDS(
 ) :
   TLocalEngineDS(aDSConfigP, aSessionP, aName, aCommonSyncCapMask)
   #ifdef MULTI_THREAD_DATASTORE
-  ,fMultiThread(NULL)
+  ,fMultiThread(false)
   ,fStartSyncStatus(aSessionP) // a thread-private status command to store status ocurring during threaded startDataAccessForServer()
   #endif
 {
@@ -1275,6 +1275,7 @@ bool TStdLogicDS::logicProcessRemoteItem(
         aux->fShouldBeVisible = shouldbevisible;
         aux->fVisibleInSyncset = aVisibleInSyncset;
         aux->fSyncItemP = syncitemP;
+        // cppcheck-suppress uninitvar
         aux->fOp = op;
         aStatusCommand.setStatusCode(LOCERR_AGAIN);
         return false;

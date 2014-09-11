@@ -674,7 +674,6 @@ private:
   // Vars
   TODBCApiDS *fODBCdsP; // datastore which can be asked to retrieve data
   TODBCFieldMapItem *fFieldMapP; // field map item config (contains SQL needed to fetch BLOB field)
-  bool fIsStringBLOB; // if set, the blob must be treated as a string (applying DB charset conversions)
   string fMasterKey; // key of master (main) record containing the field to be retrieved
   string fDetailKey; // optional key of detail record, available only when "keyfield" attribute is present in <map>
   bool fFetched; // already fetched (if value is empty, fBlobBuffer may still be NULL)

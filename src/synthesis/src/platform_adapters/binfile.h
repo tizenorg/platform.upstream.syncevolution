@@ -53,6 +53,12 @@ protected:
   virtual bool platformDeleteFile(cAppCharP aFilePath);
 private:
   FILE *fCBinFile;
+
+  // When using aFilePath == "/dev/null/...", the content is never actually
+  // written to disk. Instead it is kept in memory as part of the TBinFile
+  // instance.
+  std::string fContent;
+  size_t fPos;
 }; // TBinFile
 
 } // namespace sysync

@@ -801,7 +801,7 @@ bool TStringField::merge(TItemField &aItemField, const char aSep)
 // Note: Both fields must be assigned. NO TEST IS DONE HERE!
 sInt16 TStringField::compareWith(TItemField &aItemField, bool aCaseInsensitive)
 {
-  sInt16 result;
+  int result;
   PULLFROMPROXY;
   if (aItemField.isBasedOn(fty_string)) {
     TStringField *sfP = static_cast<TStringField *>(&aItemField);
@@ -812,7 +812,7 @@ sInt16 TStringField::compareWith(TItemField &aItemField, bool aCaseInsensitive)
     if (aCaseInsensitive)
       result=strucmp(fString.c_str(),sfP->fString.c_str());
     else
-      result=strcmp(fString.c_str(),sfP->fString.c_str());
+      result=fString.compare(sfP->fString);
   }
   else {
     // convert other field to string
@@ -821,7 +821,7 @@ sInt16 TStringField::compareWith(TItemField &aItemField, bool aCaseInsensitive)
     if (aCaseInsensitive)
       result=strucmp(fString.c_str(),s.c_str());
     else
-      result=strcmp(fString.c_str(),s.c_str());
+      result=fString.compare(s);
   }
   return result >0 ? 1 : (result<0 ? -1 : 0);
 } // TStringField::compareWith
