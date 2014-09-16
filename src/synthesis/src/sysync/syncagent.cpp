@@ -2475,7 +2475,7 @@ void TSyncAgent::getBufferedAnswer(MemPtr_t &aAnswer, MemSize_t &aAnswerSize)
   aAnswerSize=fBufferedAnswerSize;
   PDEBUGPRINTFX(DBG_HOT,(
     "Buffered answer read from session: %ld bytes",
-    fBufferedAnswerSize
+    (long)fBufferedAnswerSize
   ));
 } // TSyncAgent::getBufferedAnswer
 

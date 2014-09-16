@@ -830,9 +830,9 @@ SmlItemPtr_t TSyncItemType::newSmlItem(
             #ifdef SYDEBUG
             POBJDEBUGPRINTFX(fSessionP,DBG_DATA,(
               "zippedbindata item statistics: raw=%ld, compressed=%ld, compressed down to %ld%%",
-              expandedSize,
-              smlitemP->data->length,
-              smlitemP->data->length*100/expandedSize
+              (long)expandedSize,
+              (long)smlitemP->data->length,
+              (long)smlitemP->data->length*100/expandedSize
             ));
             fRawDataBytes+=expandedSize;
             fZippedDataBytes+=smlitemP->data->length;

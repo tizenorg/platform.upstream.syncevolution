@@ -2,7 +2,7 @@ dnl Invoke autogen.sh to produce a configure script.
 
 # four digit upstream version, one additional digit for
 # Linux/SyncEvolution specific extensions:
-AC_INIT([synthesis], [3.4.0.47.3])
+AC_INIT([synthesis], [3.4.0.47.4])
 AM_INIT_AUTOMAKE(subdir-objects)
 AC_CONFIG_MACRO_DIR([m4])
 AM_CONFIG_HEADER(config.h)

@@ -150,6 +150,7 @@ void SyncContext::init()
     m_serverAlerted = false;
     m_configNeeded = true;
     m_firstSourceAccess = true;
+    m_quitSync = false;
     m_remoteInitiated = false;
     m_sourceListPtr = NULL;
     m_syncFreeze = SYNC_FREEZE_NONE;
@@ -1407,7 +1408,7 @@ public:
             m_doLogging &&
             (m_client.getDumpData() || m_client.getPrintChanges())) {
             // dump initial databases
-            SE_LOG_INFO(NULL, "creating complete data backup of source %s before sync (%s)",
+            SE_LOG_INFO(NULL, "creating complete data backup of datastore %s before sync (%s)",
                         sourceName.c_str(),
                         (m_client.getDumpData() && m_client.getPrintChanges()) ? "enabled with dumpData and needed for printChanges" :
                         m_client.getDumpData() ? "because it was enabled with dumpData" :
@@ -1961,6 +1962,7 @@ bool SyncContext::displaySourceProgress(SyncSource &source,
             SE_LOG_INFO(NULL, "%s: sent %d",
                         source.getDisplayName().c_str(), event.m_extra1);
         }
+        source.recordTotalNumItemsSent(event.m_extra1);
         break;
     // Not reached, see above.
     case sysync::PEV_ITEMPROCESSED:
@@ -2224,12 +2226,12 @@ void SyncContext::initSources(SourceList &sourceList)
                         = getSyncSourceConfig(source);
                     if (!source_config || !source_config->exists()) {
                         Exception::throwError(SE_HERE,
-                                              StringPrintf("Virtual data source \"%s\" references a nonexistent datasource \"%s\".", name.c_str(), source.c_str()));
+                                              StringPrintf("Virtual datastore \"%s\" references a nonexistent datasource \"%s\".", name.c_str(), source.c_str()));
                     }
                     pair< map<string, string>::iterator, bool > res = subSources.insert(make_pair(source, name));
                     if (!res.second) {
                         Exception::throwError(SE_HERE,
-                                              StringPrintf("Data source \"%s\" included in the virtual sources \"%s\" and \"%s\". It can only be included in one virtual source at a time.",
+                                              StringPrintf("Datastore \"%s\" included in the virtual datastores \"%s\" and \"%s\". It can only be included in one virtual datastore at a time.",
                                                            source.c_str(), res.first->second.c_str(), name.c_str()));
                     }
 
@@ -2295,7 +2297,7 @@ void SyncContext::initSources(SourceList &sourceList)
     }
 }
 
-void SyncContext::startSourceAccess(SyncSource *source)
+SyncMLStatus SyncContext::startSourceAccess(SyncSource *source)
 {
     if(m_firstSourceAccess) {
         syncSuccessStart();
@@ -2315,6 +2317,8 @@ void SyncContext::startSourceAccess(SyncSource *source)
     }
     // database dumping is delayed in both client and server
     m_sourceListPtr->syncPrepare(source->getName());
+
+    return STATUS_OK;
 }
 
 // XML configuration converted to C string constants
@@ -2505,7 +2509,7 @@ void SyncContext::getConfigTemplateXML(const string &mode,
     }
 }
 
-void SyncContext::getConfigXML(string &xml, string &configname)
+void SyncContext::getConfigXML(bool isSync, string &xml, string &configname)
 {
     string rules;
     getConfigTemplateXML(m_serverMode ? "server" : "client",
@@ -2865,13 +2869,13 @@ void SyncContext::getConfigXML(string &xml, string &configname)
                     sourceType.m_format != subType.m_format ||
                     sourceType.m_forceFormat != subType.m_forceFormat)) {
                     SE_LOG_WARNING(NULL, 
-                                   "Virtual data source \"%s\" and sub data source \"%s\" have different data format. Will use the format in virtual data source.",
+                                   "Virtual datastore \"%s\" and sub datastore \"%s\" have different data format. Will use the format in virtual datastore.",
                                    vSource->getDisplayName().c_str(), source.c_str());
                 }
             }
 
             if (mappedSources.size() !=2) {
-                vSource->throwError(SE_HERE, "virtual data source currently only supports events+tasks combinations");
+                vSource->throwError(SE_HERE, "virtual datastore currently only supports events+tasks combinations");
             } 
 
             string name = vSource->getName();
@@ -2941,8 +2945,8 @@ void SyncContext::getConfigXML(string &xml, string &configname)
     // abuse (?) the firmware version to store the SyncEvolution version number
     substTag(xml, "firmwareversion", getSwv());
     substTag(xml, "devicetype", getDevType());
-    substTag(xml, "maxmsgsize", std::max(getMaxMsgSize().get(), 10000ul));
-    substTag(xml, "maxobjsize", std::max(getMaxObjSize().get(), 1024u));
+    substTag(xml, "maxmsgsize", getMaxMsgSize().get());
+    substTag(xml, "maxobjsize", getMaxObjSize().get());
     if (m_serverMode) {
         UserIdentity id = getSyncUser();
         Credentials cred = IdentityProviderCredentials(id, getSyncPassword());
@@ -2975,13 +2979,18 @@ void SyncContext::getConfigXML(string &xml, string &configname)
         substTag(xml, "defaultauth", getClientAuthType());
     }
 
-    // if the hash code is changed, that means the content of the
-    // config has changed, save the new hash and regen the configdate
-    hash = Hash(xml.c_str());
-    if (getHashCode() != hash) {
-        setConfigDate();
-        setHashCode(hash);
-        flush();
+    if (isSync ||
+        !getConfigDate().wasSet()) {
+        // If the hash code of the main sync XML config is changed, that
+        // means the content of the config has changed. Save the new hash
+        // and regen the configdate. Also necessary when no config data
+        // has ever been set.
+        hash = Hash(xml.c_str());
+        if (getHashCode() != hash) {
+            setConfigDate();
+            setHashCode(hash);
+            flush();
+        }
     }
     substTag(xml, "configdate", getConfigDate().c_str());
 }
@@ -3085,10 +3094,10 @@ SyncContext::analyzeSyncMLMessage(const char *data, size_t len,
     return info;
 }
 
-void SyncContext::initEngine(bool logXML)
+void SyncContext::initEngine(bool isSync)
 {
     string xml, configname;
-    getConfigXML(xml, configname);
+    getConfigXML(isSync, xml, configname);
     try {
         m_engine.InitEngineXML(xml.c_str());
     } catch (const BadSynthesisResult &ex) {
@@ -3100,7 +3109,7 @@ void SyncContext::initEngine(bool logXML)
                      xml.c_str());
         throw;
     }
-    if (logXML &&
+    if (isSync &&
         getLogLevel() >= 5) {
         SE_LOG_DEV(NULL, "Full XML configuration:\n%s", xml.c_str());
     }
@@ -3379,7 +3388,7 @@ SyncMLStatus SyncContext::sync(SyncReport *report)
             // instantiate backends, but do not open them yet
             initSources(sourceList);
             if (sourceList.empty()) {
-                Exception::throwError(SE_HERE, "no sources active, check configuration");
+                Exception::throwError(SE_HERE, "no datastores active, check configuration");
             }
 
             // request all config properties once: throwing exceptions
@@ -3555,7 +3564,7 @@ bool SyncContext::sendSAN(uint16_t version)
             mode = SA_TWO_WAY;
         }
         if (mode < SA_FIRST || mode > SA_LAST) {
-            SE_LOG_DEV(NULL, "Ignoring data source %s with an invalid sync mode", name.c_str());
+            SE_LOG_DEV(NULL, "Ignoring datastore %s with an invalid sync mode", name.c_str());
             continue;
         }
         syncMode = mode;
@@ -3576,7 +3585,7 @@ bool SyncContext::sendSAN(uint16_t version)
                 contentTypeB = 0;
                 SE_LOG_DEBUG(NULL, "Unknown datasource mimetype, use 0 as default");
             }
-            SE_LOG_DEBUG(NULL, "SAN source %s uri %s type %u mode %d",
+            SE_LOG_DEBUG(NULL, "SAN datastore %s uri %s type %u mode %d",
                          name.c_str(),
                          uri.c_str(),
                          contentTypeB,
@@ -3586,7 +3595,7 @@ bool SyncContext::sendSAN(uint16_t version)
             };
         } else {
             string mimetype = GetLegacyMIMEType(sourceType.m_format, sourceType.m_forceFormat);
-            SE_LOG_DEBUG(NULL, "SAN source %s uri %s type %s",
+            SE_LOG_DEBUG(NULL, "SAN datastore %s uri %s type %s",
                          name.c_str(),
                          uri.c_str(),
                          mimetype.c_str());
@@ -3595,7 +3604,7 @@ bool SyncContext::sendSAN(uint16_t version)
     }
 
     if (!hasSource) {
-        SE_THROW ("No source enabled for server alerted sync!");
+        SE_THROW ("No datastore enabled for server alerted sync!");
     }
 
     /* Generate the SAN Package */
@@ -3709,7 +3718,7 @@ bool SyncContext::setFreeze(bool freeze)
         }
         if (m_sourceListPtr) {
             BOOST_FOREACH (SyncSource *source, *m_sourceListPtr) {
-                SE_LOG_DEBUG(NULL, "SyncContext::setFreeze(): source %s", source->getDisplayName().c_str());
+                SE_LOG_DEBUG(NULL, "SyncContext::setFreeze(): datastore %s", source->getDisplayName().c_str());
                 source->setFreeze(freeze);
             }
         }
@@ -3717,6 +3726,22 @@ bool SyncContext::setFreeze(bool freeze)
         return true;
     }
 }
+
+SyncMLStatus SyncContext::preSaveAdminData(SyncSource &source)
+{
+    if (!source.getTotalNumItemsReceived() &&
+        !source.getTotalNumItemsSent() &&
+        source.getFinalSyncMode() == SYNC_TWO_WAY &&
+        !source.isFirstSync()) {
+        SE_LOG_DEBUG(NULL, "requesting end of two-way sync with one source early because nothing changed");
+        m_quitSync = true;
+        return STATUS_SYNC_END_SHORTCUT;
+    } else {
+        return STATUS_OK;
+    }
+}
+
+SharedSession *keepSession;
 
 SyncMLStatus SyncContext::doSync()
 {
@@ -3941,6 +3966,22 @@ SyncMLStatus SyncContext::doSync()
         // (not needed for OBEX)
     }
 
+    // Special case local sync when nothing changed: we can be sure
+    // that we can do another sync from exactly the same state (nonce,
+    // source change tracking meta data, etc.) and be successful
+    // again. In such a case we can avoid unnecessary updates of the
+    // .ini and .bfi files.
+    //
+    // To detect this, the server side hooks into the SaveAdminData
+    // operation and replaces it with just returning an "aborted by
+    // user" error.
+    if (m_serverMode &&
+        m_localSync &&
+        m_sourceListPtr->size() == 1) {
+        SyncSource *source = *(*m_sourceListPtr).begin();
+        source->getOperations().m_saveAdminData.getPreSignal().connect(boost::bind(&SyncContext::preSaveAdminData, this, _1));
+    }
+
     // Sync main loop: runs until SessionStep() signals end or error.
     // Exceptions are caught and lead to a call of SessionStep() with
     // parameter STEPCMD_ABORT -> abort session as soon as possible.
@@ -3950,8 +3991,19 @@ SyncMLStatus SyncContext::doSync()
     int requestNum = 0;
     sysync::uInt16 previousStepCmd = stepCmd;
     std::vector<int> numItemsReceived; // source->getTotalNumItemsReceived() for each source, see STEPCMD_SENDDATA
+    m_quitSync = false;
     do {
         try {
+            if (m_quitSync &&
+                !m_serverMode) {
+                SE_LOG_DEBUG(NULL, "ending sync early as requested");
+                // Intentionally prevent destructing the Synthesis
+                // engine and session destruction by keeping a
+                // reference to it around forever, because destroying
+                // the session would cause undesired disk writes.
+                keepSession = new SharedSession(session);
+                break;
+            }
             // check for suspend, if so, modify step command for next step
             // Since the suspend will actually be committed until it is
             // sending out a message, we can safely delay the suspend to
@@ -4054,7 +4106,7 @@ SyncMLStatus SyncContext::doSync()
                 if (!explanation.empty()) {
                     string sourceparam = boost::join(sources, " ");
                     SE_LOG_ERROR(NULL,
-                                 "Aborting because of unexpected slow sync for source(s): %s",
+                                 "Aborting because of unexpected slow sync for datastore(s): %s",
                                  sourceparam.c_str());
                     SE_LOG_INFO(NULL, "%s", explanation.c_str());
                 } else {
@@ -4192,7 +4244,15 @@ SyncMLStatus SyncContext::doSync()
                 // sent or have it copied into caller's buffer using
                 // ReadSyncMLBuffer(), then send it to the server
                 sendBuffer = m_engine.GetSyncMLBuffer(session, true);
-                m_agent->send(sendBuffer.get(), sendBuffer.size());
+                if (m_serverMode && m_quitSync) {
+                    // When aborting prematurely, skip the server's
+                    // last reply message and instead tell the client
+                    // to quit.
+                    m_agent->setContentType("quitsync");
+                    m_agent->send(NULL, 0);
+                } else {
+                    m_agent->send(sendBuffer.get(), sendBuffer.size());
+                }
                 stepCmd = sysync::STEPCMD_SENTDATA; // we have sent the data
                 break;
             }
@@ -4262,6 +4322,18 @@ SyncMLStatus SyncContext::doSync()
                                                  contentType);
                         }
                         stepCmd = sysync::STEPCMD_GOTDATA; // we have received response data
+                        break;
+                    } else if (contentType == "quitsync") {
+                        SE_LOG_DEBUG(NULL, "server is asking us to quit the sync session");
+                        // Fake "done" events for each active source.
+                        BOOST_FOREACH(SyncSource *source, *m_sourceListPtr) {
+                            if (source->getFinalSyncMode() != SYNC_NONE) {
+                                displaySourceProgress(*source,
+                                                      SyncSourceEvent(sysync::PEV_SYNCEND, 0, 0, 0),
+                                                      true);
+                            }
+                        }
+                        m_quitSync = true;
                         break;
                     } else {
                         SE_LOG_DEBUG(NULL, "unexpected content type '%s' in reply, %d bytes:\n%.*s",
@@ -4404,7 +4476,9 @@ SyncMLStatus SyncContext::doSync()
     SE_LOG_DEBUG(NULL, "closing session");
     // setFreeze() no longer has an effect and returns false from now on.
     m_syncFreeze = SYNC_FREEZE_NONE;
+    m_initialMessage.reset();
     sessionSentinel.reset();
+    sendBuffer.reset();
     session.reset();
     SE_LOG_DEBUG(NULL, "session closed");
 

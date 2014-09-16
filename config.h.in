@@ -300,6 +300,9 @@
 /* activate gsso */
 #undef STATIC_GSSO
 
+/* activate OAuth2 based on refresh token */
+#undef STATIC_OAUTH2
+
 /* activate gsso */
 #undef STATIC_SIGNON
 

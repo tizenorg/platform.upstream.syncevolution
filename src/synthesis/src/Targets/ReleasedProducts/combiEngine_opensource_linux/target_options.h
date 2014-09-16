@@ -28,6 +28,9 @@
 #define CONSOLEINFO
 #define CONSOLEINFO_LIBC
 
+// enable replacing SMLTK memory functions by setting global variables
+#define SML_LIB_MEMORY_FUNCTION_POINTERS
+
 // Eval limit options
 // ==================
 

@@ -51,6 +51,9 @@ except ImportError:
          pass
 
 parser = OptionParser()
+parser.add_option("", "--peer",
+                  default=None,
+                  help="Set the peer name. Derived from --bt-mac if unset.")
 parser.add_option("-b", "--bt-mac", dest="mac",
                   default=None,
                   help="Set the Bluetooth MAC address and thus UID of the phone peer.",
@@ -68,8 +71,11 @@ parser.add_option("-m", "--mode",
                   action="store", default='',
                   help="Override default PBAP sync mode. One of 'all', 'text', 'incremental' (default).")
 parser.add_option("", "--sync-flags",
-                  action="store", default='',
-                  help="Additionall SyncPeerWithFlags() flags in JSON notation. For example: { 'pbap-chunk-transfer-time': 20, 'pbap-chunk-time-lambda': 0.5, 'pbap-chunk-max-count-photo': 100 }")
+                  action="store", default='{}',
+                  help="""Additionall SyncPeerWithFlags() flags in JSON notation. For example: '--sync-flags={ "pbap-chunk-transfer-time": 20, "pbap-chunk-time-lambda": 0.5, "pbap-chunk-max-count-photo": 100 }'""")
+parser.add_option("", "--peer-config",
+                  action="store", default='{}',
+                  help="""ConfigurePeer() properties in JSON notation. Not needed when --bt-mac is set, the default configuration then will be for PBAP with that phone. Can be used to sync via CardDAV: '--peer-config={"protocol": "CardDAV", "address": "google", "username": "goa:john.doe@gmail.com", "syncmode": "two-way"}'""")
 parser.add_option("-f", "--progress-frequency",
                   action="store", type="float", default=0.0,
                   help="Override default progress event frequency.")
@@ -84,12 +90,13 @@ parser.add_option("-r", "--remove",
                   help="Remove peer configuration and data.")
 (options, args) = parser.parse_args()
 if options.configure or options.sync or options.remove:
-    if not options.mac:
-        sys.exit('--bt-mac parameter must be given')
+    peername = options.peer or options.mac
+    if not peername:
+        sys.exit('--peer or --bt-mac parameter must be given')
 
-    # Use MAC address as UID of peer, but with underscores instead of colons
+    # Use MAC address as UID of peer, but without colons
     # and all in lower case. See https://bugs.freedesktop.org/show_bug.cgi?id=56436
-    peername = options.mac.replace(':', '').lower()
+    peername = peername.replace(':', '').lower()
 
 DBusGMainLoop(set_as_default=True)
 bus = dbus.SessionBus()
@@ -203,10 +210,37 @@ def done(*args):
         result = args[0]
     elif len(args) > 1:
         result = args
-def run():
+def run(syncing=False):
     global result
     result = None
-    loop.run()
+    if syncing:
+        print 'Running a sync, press CTRL-C to control it interactively.'
+        while result is None and error is None:
+            try:
+                loop.run()
+            except KeyboardInterrupt:
+                while True:
+                    print '[a]bort, [s]uspend, [r]esume, continue? ',
+                    response = sys.stdin.readline()
+                    try:
+                        if response == 'a\n':
+                            manager.StopSync(peername)
+                            break
+                        elif response == 's\n':
+                            manager.SuspendSync(peername)
+                            break
+                        elif response == 'r\n':
+                            manager.ResumeSync(peername)
+                            break
+                        elif response == '\n':
+                            break
+                        else:
+                            print 'Unknown response, try again.'
+                    except dbus.exceptions.DBusException, ex:
+                        print 'operation %s failed: %s' % (response, ex)
+    else:
+        loop.run()
+
     if error:
         print
         print error
@@ -224,8 +258,12 @@ print 'peers: %s' % peers
 print 'available databases: %s' % ([''] + ['peer-' + uid for uid in peers.keys()])
 
 if not error and options.configure:
-    peer = {'protocol': 'PBAP',
-            'address': options.mac}
+    peer = json.loads(options.peer_config)
+    if options.mac:
+        if not 'protocol' in peer:
+            peer['protocol'] = 'PBAP'
+        if not 'address' in peer:
+            peer['address'] = options.mac
     print 'adding peer config %s = %s' % (peername, peer)
     manager.SetPeer(peername, peer, **async_args)
     run()
@@ -259,7 +297,7 @@ if not error and options.sync:
         timeout.attach(loop.get_context())
 
     # Wait for completion of sync.
-    run()
+    run(syncing=True)
 
     # Stop polling, in case that we remove the peer.
     if timeout:

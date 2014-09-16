@@ -121,6 +121,9 @@ class SyncContext : public SyncConfig {
      */
     SharedSession m_session;
 
+    /** Set to true in displaySourceProgress() when doSync() is expected to stop the sync early. */
+    bool m_quitSync;
+
     /**
      * installs session in SyncContext and removes it again
      * when going out of scope
@@ -533,10 +536,11 @@ class SyncContext : public SyncConfig {
      * Calls getConfigTemplateXML(), then fills in
      * sync source XML fragments if necessary.
      *
+     * @param isSync       the XML config will be used for the final engine used for syncing, not just logging
      * @retval xml         is filled with complete Synthesis client config
      * @retval configname  a string describing where the config came from
      */
-    virtual void getConfigXML(string &xml, string &configname);
+    virtual void getConfigXML(bool isSync, string &xml, string &configname);
 
     /**
      * Callback for derived classes: called after initializing the
@@ -646,8 +650,10 @@ class SyncContext : public SyncConfig {
 
     /**
      * generate XML configuration and (re)initialize engine with it
+     *
+     * @param isSync       the XML config will be used for the final engine used for syncing, not just logging
      */
-    void initEngine(bool logXML);
+    void initEngine(bool isSync);
 
     /**
      * the code common to init() and status():
@@ -662,9 +668,14 @@ class SyncContext : public SyncConfig {
     void initLocalSync(const string &config);
 
     /**
+     * called via pre-signal of m_saveAdminData
+     */
+    SyncMLStatus preSaveAdminData(SyncSource &source);
+
+    /**
      * called via pre-signal of m_startDataRead
      */
-    void startSourceAccess(SyncSource *source);
+    SyncMLStatus startSourceAccess(SyncSource *source);
 
     /**
      * utility function for status() and getChanges():

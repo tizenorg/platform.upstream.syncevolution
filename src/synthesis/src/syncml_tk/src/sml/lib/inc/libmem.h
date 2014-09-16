@@ -73,7 +73,15 @@
  *************************************************************************/
 
 
-#ifdef __PALM_OS__  /* we use #define to reduce heap usage */
+#ifdef SML_LIB_MEMORY_FUNCTION_POINTERS
+extern void  *(*smlLibRealloc)(void *pObject, MemSize_t size);
+extern void  (*smlLibFree)(void *pObject);
+extern void  *(*smlLibMemset)(void *pObject, int value, MemSize_t count);
+extern void  *(*smlLibMemcpy)(void *pTarget, const void *pSource, MemSize_t count);
+extern void  *(*smlLibMemmove)(void *pTarget, const void *pSource, MemSize_t count);
+extern int   (*smlLibMemcmp)(const void *pTarget, const void *pSource, MemSize_t count);
+extern void  *(*smlLibMalloc)(MemSize_t size);
+#elif defined __PALM_OS__  /* we use #define to reduce heap usage */
  void *smlLibRealloc (VoidPtr_t objectP, MemSize_t constSize) LIB_FUNC;
  void smlLibFree (void* objectP) LIB_FUNC;
  #define  smlLibMemset(pObject,value,count)   ((void)MemSet((VoidPtr_t)pObject,(MemSize_t)count,(int)value))

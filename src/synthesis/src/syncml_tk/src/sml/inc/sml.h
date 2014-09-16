@@ -299,11 +299,6 @@ SML_API_DEF void smlFreePcdata(SmlPcdataPtr_t pPcdata);
 #endif
 
 #ifndef __PALM_OS__  /* these API calls are NOT exported in the Palm OS version */
-SML_API_DEF void  *smlLibMemset(void *pObject, int value, MemSize_t count);
-SML_API_DEF void  *smlLibMemcpy(void *pTarget, const void *pSource, MemSize_t count);
-SML_API_DEF int   smlLibMemcmp(const void *pTarget, const void *pSource, MemSize_t count);
-//SML_API_DEF void  *smlLibMalloc(MemSize_t size);
-SML_API_DEF void  smlLibFree(void *pObject);
 SML_API_DEF MemSize_t smlLibMemsize(const void *pObject);
 
 SML_API_DEF String_t  smlLibStrdup (const char *constStringP);
@@ -316,8 +311,6 @@ SML_API_DEF String_t  smlLibStrcat(const char *pTarget, const char *pSource);
 SML_API_DEF String_t  smlLibStrchr(const char *pString, char character);
 #ifndef __SML_LITE__  /* these API calls are NOT included in the Toolkit lite version */
   SML_API_DEF void  smlLibPrint(const char *text, ...);
-  SML_API_DEF void  *smlLibMemmove(void *pTarget, const void *pSource, MemSize_t count);
-  SML_API_DEF void  *smlLibRealloc(void *pObject, MemSize_t size);
   SML_API_DEF String_t  smlLibStrncat(const char *pTarget, const char *pSource, int count);
   SML_API_DEF String_t  smlLibStrstr(const char *pString, const char *pSubString);
 #endif

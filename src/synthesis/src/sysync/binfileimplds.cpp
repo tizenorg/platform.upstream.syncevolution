@@ -741,9 +741,9 @@ localstatus TBinfileImplDS::changeLogPreflight(bool &aValidChangelog)
     lsd.c_str()
   ));
   #endif
-  // - save header
-  err = fChangeLog.flushHeader();
-  if (err!=BFE_OK) goto done;
+  // - force saving of header only if some entry changes
+  bool modified=false;
+  string origentries;
   // - we don't need the changelog to be updated when all we do is refresh from server
   if (isRefreshOnly()) goto done; // done ok
   // - load entire existing changelog into memory
@@ -751,10 +751,12 @@ localstatus TBinfileImplDS::changeLogPreflight(bool &aValidChangelog)
   PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI,("changeLogPreflight: at start, changelog has %ld entries",(long)numexistinglogentries));
   if (numexistinglogentries>0) {
     // - allocate array for all existing entries (use sysync_malloc because e.g. on PalmOS this uses special funcs to allow > 64k)
-    existingentries = (TChangeLogEntry *)sysync_malloc(sizeof(TChangeLogEntry)*numexistinglogentries);
+    size_t entriessize = sizeof(TChangeLogEntry)*numexistinglogentries;
+    existingentries = (TChangeLogEntry *)sysync_malloc(entriessize);
     if (!existingentries) { err=BFE_MEMORY; goto done; } // not enough memory
     // - read all entries
     fChangeLog.readRecord(0,existingentries,numexistinglogentries);
+    origentries.assign((char *)existingentries, entriessize);
     // Mark all not-yet-deleted in the log as delete candidate
     // (those that still exist will be get the candidate mark removed below)
     for (logindex=0;logindex<numexistinglogentries;logindex++) {
@@ -952,6 +954,7 @@ localstatus TBinfileImplDS::changeLogPreflight(bool &aValidChangelog)
       // create if entry is new
       if (!chgentryexists) {
         // this is a new, additional entry (and not a resurrected deleted one)
+        modified=true;
         fChangeLog.newRecord(currentEntryP);
         PDEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI,("- item was newly added (no entry existed in changelog before)"));
       }
@@ -1033,7 +1036,18 @@ localstatus TBinfileImplDS::changeLogPreflight(bool &aValidChangelog)
   }
   #endif
   // - write back all existing entries
-  fChangeLog.updateRecord(0,existingentries,numexistinglogentries);
+  if (existingentries &&
+      memcmp(existingentries, origentries.c_str(), origentries.size())) {
+    fChangeLog.updateRecord(0,existingentries,numexistinglogentries);
+    modified=true;
+  }
+
+  // Also write updated header if (and only if) something changed.
+  if (modified) {
+    err = fChangeLog.flushHeader();
+    if (err!=BFE_OK) goto done;
+  }
+
   // - now we can confirm we have a valid changelog
   aValidChangelog=true;
   DEBUGPRINTFX(DBG_ADMIN+DBG_DBAPI+DBG_EXOTIC,("changeLogPreflight: seen=%ld, fNumberOfLocalChanges=%ld",(long)seen,(long)fNumberOfLocalChanges));

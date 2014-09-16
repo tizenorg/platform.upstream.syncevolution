@@ -2838,8 +2838,12 @@ bool TSyncSession::tryDelayedExecutionCommands()
             syncEndAfterSyncPackageEnd=true; // remember that we had at least one
         }
         // execution finished, can be deleted
-        PDEBUGPRINTFX(DBG_SESSION,("%s: command finished execution -> deleting",cmdP->getName()));
-        delete cmdP;
+        if (fIncompleteDataCommandP == cmdP) {
+          PDEBUGPRINTFX(DBG_SESSION,("%s: command incomplete -> keeping it for next message",cmdP->getName()));
+        } else {
+          PDEBUGPRINTFX(DBG_SESSION,("%s: command finished execution -> deleting",cmdP->getName()));
+          delete cmdP;
+        }
         // delete from queue
         fDelayedExecutionCommands.pop_front();
       }
@@ -4061,15 +4065,22 @@ bool TSyncSession::processSyncOpItem(
 // generate challenge for session
 SmlChalPtr_t TSyncSession::newSessionChallenge(void)
 {
+  sysync::TAuthTypes auth = requestedAuthType();
+
+  // Avoid misleading debug output (there is no challenge)
+  // and more importantly, creating a new nonce that is not
+  // going to be used. That causes unnecessary disk writes.
+  if (auth == sysync::auth_none) return NULL;
+
   string nonce;
   getNextNonce(fRemoteURI.c_str(),nonce);
   PDEBUGPRINTFX(DBG_PROTO,(
     "Challenge for next auth: AuthType=%s, Nonce='%s', binary %sallowed",
-    authTypeSyncMLNames[requestedAuthType()],
+    authTypeSyncMLNames[auth],
     nonce.c_str(),
     getEncoding()==SML_WBXML ? "" : "NOT "
   ));
-  return newChallenge(requestedAuthType(),nonce,getEncoding()==SML_WBXML);
+  return newChallenge(auth,nonce,getEncoding()==SML_WBXML);
 } // TSyncSession::newSessionChallenge
 
 

@@ -64,6 +64,10 @@
  */
 #include "define.h"
 
+#ifdef HAVE_STDINT_H
+# include <stdint.h>
+#endif
+
 
 /*
  * ===================================
@@ -95,11 +99,16 @@ typedef Byte_t        Boolean_t;    /**< a boolean */
 
 
 typedef Short_t       Ret_t;        /**< Return Type of API Commands */
-typedef Long_t        Length_t;     /**< System dependent string length */
 typedef Short_t       MemHandle_t;  /**< Memory object Handle  */
 typedef unsigned char *MemPtr_t;    /**< Memory object Pointer */
 typedef void          *VoidPtr_t;   /**< Void Pointer */
+#ifdef HAVE_STDINT_H
+typedef uintptr_t     Length_t;     /**< System dependent string length */
+typedef uintptr_t     MemSize_t;    /**< System dependent memory object size */
+#else
+typedef Long_t        Length_t;     /**< System dependent string length */
 typedef Long_t        MemSize_t;    /**< System dependent memory object size */
+#endif
 typedef unsigned char MemByte_t;    /**< Memory element */
 typedef unsigned int  Flag_t;       /**< A generic flag type. This type is
                                      * used to declare variables in structures

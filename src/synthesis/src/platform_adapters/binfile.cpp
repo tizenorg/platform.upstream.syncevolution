@@ -21,6 +21,7 @@
 #endif
 
 #include <string.h>
+#include <vector>
 
 namespace sysync {
 
@@ -141,7 +142,20 @@ bool TBinFile::platformWriteFile(const void *aBuffer, uInt32 aBytes)
     return true;
   }
 
-  return fwrite(aBuffer,aBytes,1,fCBinFile) == 1;
+  // Don't overwrite content which is already exactly what we want it
+  // to be.
+  std::vector<char> buffer(aBytes);
+  char *addr = &buffer.front();
+  long offset = ftell(fCBinFile);
+  if (offset == -1)
+    return false;
+  if (fread(addr,aBytes,1,fCBinFile) != 1 ||
+      memcmp(addr,aBuffer,aBytes)) {
+    return fseek(fCBinFile,offset,SEEK_SET) == 0 &&
+      fwrite(aBuffer,aBytes,1,fCBinFile) == 1;
+  } else {
+    return true;
+  }
 } // TBinFile::platformWriteFile
 
 
@@ -167,7 +181,10 @@ bool TBinFile::platformTruncateFile(uInt32 aNewSize)
   #if defined(LINUX) || defined(MACOSX)
     fflush(fCBinFile); // unbuffer everything
     int fd = fileno(fCBinFile); // get file descriptor
-    if (ftruncate(fd,aNewSize)) {
+    struct stat buffer;
+    if (fstat(fd, &buffer) ||
+        buffer.st_size == (off_t)aNewSize || // avoid modifying file if it already has the right size
+        ftruncate(fd,aNewSize)) {
       ; // error ignored
     }
   #elif defined(WIN32)

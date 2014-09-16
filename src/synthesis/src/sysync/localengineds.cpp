@@ -4794,7 +4794,7 @@ TSyncOpCommand *TLocalEngineDS::newSyncOpCommand(
   if (itemP && fSessionP->fMaxOutgoingObjSize) {
     if (itemP->data && itemP->data->content && itemP->data->length) {
       // there is data, check if size is ok
-      if (itemP->data->length > fSessionP->fMaxOutgoingObjSize) {
+      if (itemP->data->length > (MemSize_t)fSessionP->fMaxOutgoingObjSize) {
         // too large, suppress it
         PDEBUGPRINTFX(DBG_ERROR,(
           "WARNING: outgoing item is larger (%ld) than MaxObjSize (%ld) of remote -> suppress now/mark for resend",

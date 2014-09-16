@@ -1992,7 +1992,7 @@ TSmlCommand *TSyncOpCommand::splitCommand(sInt32 aReduceByBytes)
       canSplit() && // remote can handle large objects (that is: chunked transfers)
       dataP && // there is data
       dataP->contentType!=SML_PCDATA_EXTENSION && // it's not an extension
-      dataP->length > aReduceByBytes+MIN_SPLIT_DATA // remaining length of first part is large enough to make splitting worth doing now
+      dataP->length > (MemSize_t)aReduceByBytes+MIN_SPLIT_DATA // remaining length of first part is large enough to make splitting worth doing now
     ) {
       // split within this item
       // Prepare original item
@@ -2244,7 +2244,7 @@ localstatus TSyncOpCommand::AddNextChunk(SmlItemPtr_t aNextChunkItem, TSyncOpCom
       return 424; // bad size string: size mismatch
     }
     // - check for size match
-    if (incompleteitem->data->length != expectedSize) {
+    if (incompleteitem->data->length != (MemSize_t)expectedSize) {
       // check if size mismatch could be due to duplicate transmit of unconfirmed data
       if (fUnconfirmedSize == uInt32(incompleteitem->data->length - expectedSize)) {
         // size mismatch is exactly what could be caused by duplicate transmit

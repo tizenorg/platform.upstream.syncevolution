@@ -56,6 +56,18 @@
 #include "MemoryMgr.h"
 #endif
 
+#ifdef SML_LIB_MEMORY_FUNCTION_POINTERS
+
+void  *(*smlLibRealloc)(void *pObject, MemSize_t size) = realloc;
+void  (*smlLibFree)(void *pObject) = free;
+void  *(*smlLibMemset)(void *pObject, int value, MemSize_t count) = memset;
+void  *(*smlLibMemcpy)(void *pTarget, const void *pSource, MemSize_t count) = memcpy;
+void  *(*smlLibMemmove)(void *pTarget, const void *pSource, MemSize_t count) = memmove;
+int   (*smlLibMemcmp)(const void *pTarget, const void *pSource, MemSize_t count) = memcmp;
+void  *(*smlLibMalloc)(MemSize_t size) = malloc;
+
+#else /* SML_LIB_MEMORY_FUNCTION_POINTERS */
+
 #ifdef MEMORY_PROFILING
   // %%% luz 2002-10-02
   #include "profiling.h"
@@ -185,3 +197,4 @@ SML_API void *smlLibMalloc(MemSize_t size) {
 
 
 
+#endif /* SML_LIB_MEMORY_FUNCTION_POINTERS */
