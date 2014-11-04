@@ -1381,10 +1381,15 @@ void TMultiFieldItem::mergeWith(TSyncItem &aItem, bool &aChangedThis, bool &aCha
 // returns update status of this and other item. Note that changes of non-relevant fields are
 // not reported here.
 void TMultiFieldItem::standardMergeWith(TMultiFieldItem &aItem, bool &aChangedThis, bool &aChangedOther,
-                                        int mode)
+                                        int mode,
+                                        const std::set<std::string> &aIgnoreFields)
 {
   // same type of multifield, try to merge
   for (sInt16 i=0; i<fFieldDefinitionsP->numFields(); i++) {
+    // Ignore fields if told so by optional MERGEFIELDS() parameter.
+    if (aIgnoreFields.find(fFieldDefinitionsP->fFields[i].fieldname) != aIgnoreFields.end()) {
+      continue;
+    }
     // get merge mode
     sInt16 sep=fFieldDefinitionsP->fFields[i].mergeMode;
     // possible merging is only relevant (=to be reported) for fields that are not eqm_none

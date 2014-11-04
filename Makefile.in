@@ -171,7 +171,7 @@ DIST_COMMON = README $(am__configure_deps) \
 	INSTALL NEWS compile config.guess config.sub depcomp \
 	install-sh ltmain.sh missing mkinstalldirs
 test_PROGRAMS = $(am__EXEEXT_9)
-bin_PROGRAMS = $(am__EXEEXT_4) $(am__append_84) $(am__append_88)
+bin_PROGRAMS = $(am__EXEEXT_4) $(am__append_85) $(am__append_89)
 libexec_PROGRAMS = src/syncevo-local-sync$(EXEEXT) $(am__EXEEXT_5)
 noinst_PROGRAMS = $(am__EXEEXT_6) $(am__EXEEXT_7) $(am__EXEEXT_8)
 EXTRA_PROGRAMS = $(am__EXEEXT_1) $(am__EXEEXT_2) $(am__EXEEXT_3) \
@@ -407,16 +407,21 @@ TESTS =
 @COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@am__append_79 = \
 @COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@  src/dbus/server/pim/org._01.pim.contacts.service.in
 
-@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@@ENABLE_TESTING_TRUE@am__append_80 = \
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@am__append_80 = \
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@	src/dbus/server/pim/examples/search.py \
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@	src/dbus/server/pim/examples/sync.py \
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@	$(NOP)
+
+@COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@@ENABLE_TESTING_TRUE@am__append_81 = \
 @COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@@ENABLE_TESTING_TRUE@	src/dbus/server/pim/testpim.py \
 @COND_DBUS_PIM_TRUE@@COND_DBUS_TRUE@@ENABLE_TESTING_TRUE@	$(NOP)
 
-@COND_DBUS_TRUE@am__append_81 = \
+@COND_DBUS_TRUE@am__append_82 = \
 @COND_DBUS_TRUE@  $(src_dbus_server_service_files_in) \
 @COND_DBUS_TRUE@  $(src_dbus_server_script_in) \
 @COND_DBUS_TRUE@  $(src_dbus_server_desktop_in)
 
-@COND_GTK2_TRUE@@COND_GUI_TRUE@am__append_82 = src/gtk-ui/README \
+@COND_GTK2_TRUE@@COND_GUI_TRUE@am__append_83 = src/gtk-ui/README \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@	$(src_gtk_ui_applications_in_files)
 
 # sync-ui: default GUI, could be plain GTK or Moblin UX
@@ -424,17 +429,17 @@ TESTS =
 # sync-ui-moblin: Moblin UX
 #
 # The later two are built when --enable-gui=all was used.
-@COND_GTK2_TRUE@@COND_GUI_TRUE@am__append_83 = \
+@COND_GTK2_TRUE@@COND_GUI_TRUE@am__append_84 = \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@  src/gtk-ui/sync-ui \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@  src/gtk-ui/sync-ui-gtk \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@  src/gtk-ui/sync-ui-moblin
 
-@COND_GTK2_TRUE@@COND_GUI_TRUE@am__append_84 = @GUI_PROGRAMS@
-@COND_GTK2_TRUE@@COND_GUI_TRUE@am__append_85 = \
+@COND_GTK2_TRUE@@COND_GUI_TRUE@am__append_85 = @GUI_PROGRAMS@
+@COND_GTK2_TRUE@@COND_GUI_TRUE@am__append_86 = \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@  src/gtk-ui/sync-moblin.desktop \
 @COND_GTK2_TRUE@@COND_GUI_TRUE@  $(src_gtk_ui_applications_generated)
 
-@COND_GTK2_FALSE@@COND_GUI_TRUE@am__append_86 = src/gtk3-ui/README \
+@COND_GTK2_FALSE@@COND_GUI_TRUE@am__append_87 = src/gtk3-ui/README \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@	$(src_gtk3_ui_applications_in_files)
 
 # sync-ui: default GUI, could be plain GTK or Moblin UX
@@ -442,20 +447,20 @@ TESTS =
 # sync-ui-moblin: Moblin UX
 #
 # The later two are built when --enable-gui=all was used.
-@COND_GTK2_FALSE@@COND_GUI_TRUE@am__append_87 = \
+@COND_GTK2_FALSE@@COND_GUI_TRUE@am__append_88 = \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@  src/gtk3-ui/sync-ui \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@  src/gtk3-ui/sync-ui-gtk \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@  src/gtk3-ui/sync-ui-moblin
 
-@COND_GTK2_FALSE@@COND_GUI_TRUE@am__append_88 = @GUI_PROGRAMS@
-@COND_GTK2_FALSE@@COND_GUI_TRUE@am__append_89 = \
+@COND_GTK2_FALSE@@COND_GUI_TRUE@am__append_89 = @GUI_PROGRAMS@
+@COND_GTK2_FALSE@@COND_GUI_TRUE@am__append_90 = \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@  src/gtk3-ui/sync-moblin.desktop \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@  $(src_gtk3_ui_applications_generated)
 
-@COND_DBUS_TRUE@am__append_90 = src/syncevo-http-server
+@COND_DBUS_TRUE@am__append_91 = src/syncevo-http-server
 # SYNCEVOLUTION_LDADD is defined in configure script.
-@ENABLE_MODULES_FALSE@am__append_91 = @SYNCSOURCES@
 @ENABLE_MODULES_FALSE@am__append_92 = @SYNCSOURCES@
+@ENABLE_MODULES_FALSE@am__append_93 = @SYNCSOURCES@
 
 # The files which register backends have to be compiled into
 # "client-test" and "syncevolution" in order to pull in the
@@ -466,36 +471,36 @@ TESTS =
 # When using modules the registration is done inside the
 # module and the register file is unnecessary. However, they
 # still need to be included in "make dist".
-@ENABLE_MODULES_TRUE@am__append_93 = $(BACKEND_REGISTRIES)
-@ENABLE_MODULES_FALSE@am__append_94 = $(BACKEND_REGISTRIES)
+@ENABLE_MODULES_TRUE@am__append_94 = $(BACKEND_REGISTRIES)
+@ENABLE_MODULES_FALSE@am__append_95 = $(BACKEND_REGISTRIES)
 
 # Force inclusion of our own icaltz-util.o into binaries even though
 # we do not call the icaltzutil_fetch_timezone directly ourself.
 # That way it is there if or when libical needs it.
-@ENABLE_ICALTZ_UTIL_TRUE@am__append_95 = -Wl,-usyncevo_fetch_timezone
-@COND_DBUS_TRUE@am__append_96 = $(gdbus_build_dir)/libgdbussyncevo.la
+@ENABLE_ICALTZ_UTIL_TRUE@am__append_96 = -Wl,-usyncevo_fetch_timezone
 @COND_DBUS_TRUE@am__append_97 = $(gdbus_build_dir)/libgdbussyncevo.la
+@COND_DBUS_TRUE@am__append_98 = $(gdbus_build_dir)/libgdbussyncevo.la
 
 # Do the linking here, as with all SyncEvolution executables.
 # Sources are compiled in dbus/server.
 # DBus Server
 
 # syncevo-dbus-server's helper binary
-@COND_DBUS_TRUE@am__append_98 = src/syncevo-dbus-server \
+@COND_DBUS_TRUE@am__append_99 = src/syncevo-dbus-server \
 @COND_DBUS_TRUE@	src/syncevo-dbus-helper
-@COND_DBUS_TRUE@am__append_99 = src/dbus/server/libsyncevodbushelper.la src/dbus/server/libsyncevodbusserver.la
-@ENABLE_EVOLUTION_COMPATIBILITY_FALSE@am__append_100 = $(LIBICAL_LIBS)
+@COND_DBUS_TRUE@am__append_100 = src/dbus/server/libsyncevodbushelper.la src/dbus/server/libsyncevodbusserver.la
+@ENABLE_EVOLUTION_COMPATIBILITY_FALSE@am__append_101 = $(LIBICAL_LIBS)
 
 # distribute test system?
 # yes: install client-test and test files in testdir
-@ENABLE_TESTING_TRUE@am__append_101 = src/client-test
+@ENABLE_TESTING_TRUE@am__append_102 = src/client-test
 # The "all" dependency causes a rebuild even if the actual input files
 # haven't changed. If client-test is part of the regular targets built
 # by "all", then it must not depend on all!
-@ENABLE_TESTING_FALSE@am__append_102 = src/client-test
-@ENABLE_TESTING_FALSE@am__append_103 = $(CLIENT_LIB_TEST_FILES)
-@ENABLE_TESTING_FALSE@am__append_104 = all
-@COND_CORE_TRUE@am__append_105 = test/abort-redirect.cpp \
+@ENABLE_TESTING_FALSE@am__append_103 = src/client-test
+@ENABLE_TESTING_FALSE@am__append_104 = $(CLIENT_LIB_TEST_FILES)
+@ENABLE_TESTING_FALSE@am__append_105 = all
+@COND_CORE_TRUE@am__append_106 = test/abort-redirect.cpp \
 @COND_CORE_TRUE@	test/ClientTest.h test/ClientTestAssert.h \
 @COND_CORE_TRUE@	test/ClientTest.cpp test/client-test-main.cpp \
 @COND_CORE_TRUE@	test/test.h test/test.cpp $(test_testcases) \
@@ -505,9 +510,9 @@ TESTS =
 @COND_CORE_TRUE@	$(wildcard test/testcases/*.patch)
 
 # generic D-Bus client/server tests
-@COND_CORE_TRUE@@COND_DBUS_TRUE@am__append_106 = test/dbus-client-server
-@COND_CORE_TRUE@@COND_DBUS_TRUE@@ENABLE_UNIT_TESTS_TRUE@am__append_107 = test/test.cpp
-@COND_CORE_TRUE@@ENABLE_TESTING_TRUE@am__append_108 = \
+@COND_CORE_TRUE@@COND_DBUS_TRUE@am__append_107 = test/dbus-client-server
+@COND_CORE_TRUE@@COND_DBUS_TRUE@@ENABLE_UNIT_TESTS_TRUE@am__append_108 = test/test.cpp
+@COND_CORE_TRUE@@ENABLE_TESTING_TRUE@am__append_109 = \
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@	test/__init__.py \
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@	test/test-dbus.py \
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@	test/testdbus.py \
@@ -518,13 +523,13 @@ TESTS =
 # uses the right SyncEvolution without depending on the PATH.
 # client-test should have been installed in testdir already as
 # normal executable, see src.am.
-@COND_CORE_TRUE@@ENABLE_TESTING_TRUE@am__append_109 = install-test-files
-@COND_CORE_TRUE@@ENABLE_TESTING_TRUE@am__append_110 = uninstall-test-files
-@COND_CORE_TRUE@@ENABLE_TESTING_TRUE@am__append_111 = \
+@COND_CORE_TRUE@@ENABLE_TESTING_TRUE@am__append_110 = install-test-files
+@COND_CORE_TRUE@@ENABLE_TESTING_TRUE@am__append_111 = uninstall-test-files
+@COND_CORE_TRUE@@ENABLE_TESTING_TRUE@am__append_112 = \
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@	test/Makefile \
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@	$(NOP)
 
-@COND_CORE_TRUE@@ENABLE_TESTING_TRUE@am__append_112 = \
+@COND_CORE_TRUE@@ENABLE_TESTING_TRUE@am__append_113 = \
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@	$(test_testcases) \
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@	test/test-dbus/templates/templates/clients/phone/nokia/S40/7210c.ini \
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@	test/test-dbus/templates/templates/clients/SyncEvolution.ini \
@@ -571,14 +576,14 @@ TESTS =
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@	test/test-dbus/reports/cache/syncevolution/dummy__test-2009-11-18-12-56/status.ini \
 @COND_CORE_TRUE@@ENABLE_TESTING_TRUE@	$(NOP)
 
-@COND_CORE_TRUE@am__append_113 = po
-@COND_CORE_TRUE@am__append_114 = README NEWS COPYING $(TEST_README_FILES) test/syncevo-http-server-logging.conf
-@COND_CORE_TRUE@am__append_115 = $(disted_docs)
+@COND_CORE_TRUE@am__append_114 = po
+@COND_CORE_TRUE@am__append_115 = README NEWS COPYING $(TEST_README_FILES) test/syncevo-http-server-logging.conf
 @COND_CORE_TRUE@am__append_116 = $(disted_docs)
-@COND_CORE_TRUE@@COND_HTML_README_TRUE@am__append_117 = README.html
-# do not distribute in tarball.
+@COND_CORE_TRUE@am__append_117 = $(disted_docs)
 @COND_CORE_TRUE@@COND_HTML_README_TRUE@am__append_118 = README.html
-@COND_CORE_TRUE@@COND_MAN_PAGES_TRUE@am__append_119 = syncevolution.1
+# do not distribute in tarball.
+@COND_CORE_TRUE@@COND_HTML_README_TRUE@am__append_119 = README.html
+@COND_CORE_TRUE@@COND_MAN_PAGES_TRUE@am__append_120 = syncevolution.1
 
 # check .so (relevant for modular builds) and main syncevolution binary
 # (relevant in that case and for static builds) for dependencies on
@@ -587,13 +592,13 @@ TESTS =
 # Exclude *-[0-9].so, these are EXTRA_BACKENDS for which other rules apply.
 #
 # ical_strdup is an exception because it is in SyncEvolution.
-@ENABLE_EVOLUTION_COMPATIBILITY_TRUE@am__append_120 = toplevel_so_check
+@ENABLE_EVOLUTION_COMPATIBILITY_TRUE@am__append_121 = toplevel_so_check
 # libneon is intentionally not linked against, to choose between
 # GNUTLS and OpenSSL at runtime.
 # Allow undefined references to libstdcxx. This happens when
 # adding backends compiled on more recent Linux distros into
 # the release archive.
-@NEON_COMPATIBILITY_TRUE@am__append_121 = -e 'symbol ne_.*syncdav.so' \
+@NEON_COMPATIBILITY_TRUE@am__append_122 = -e 'symbol ne_.*syncdav.so' \
 @NEON_COMPATIBILITY_TRUE@	-e '@GLIBCXX_[^ ]* used by'
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -2578,7 +2583,7 @@ STABLE_VERSION = @STABLE_VERSION@
 STRIP = @STRIP@
 SYNCEVOLUTION_CFLAGS = @SYNCEVOLUTION_CFLAGS@
 SYNCEVOLUTION_CXXFLAGS = @SYNCEVOLUTION_CXXFLAGS@
-SYNCEVOLUTION_LDADD = @SYNCEVOLUTION_LDADD@ $(am__append_91)
+SYNCEVOLUTION_LDADD = @SYNCEVOLUTION_LDADD@ $(am__append_92)
 SYNCEVOLUTION_LIBS = @SYNCEVOLUTION_LIBS@
 SYNCEVOLUTION_LOCALEDIR = @SYNCEVOLUTION_LOCALEDIR@
 SYNCEVO_DBUS_SERVER_ARGS = @SYNCEVO_DBUS_SERVER_ARGS@
@@ -2670,8 +2675,8 @@ top_srcdir = @top_srcdir@
 # clean variables
 CLEANFILES = $(am__append_28) $(src_dbus_interfaces_built_sources) \
 	src/dbus/interfaces/.stamp $(NONE) $(am__append_59) \
-	$(am__append_64) $(am__append_77) $(am__append_85) \
-	$(am__append_89) src/libstdc++.a src/client-test \
+	$(am__append_64) $(am__append_77) $(am__append_86) \
+	$(am__append_90) src/libstdc++.a src/client-test \
 	$(CLIENT_LIB_TEST_FILES) src/syncevo-http-server \
 	src/syncevo-phone-config src/synclog2html \
 	src/ClientTest.cpp.html src/abort-redirect.log \
@@ -2691,13 +2696,13 @@ pkgconfig_DATA = $(am__append_26) $(am__append_56) $(am__append_67)
 testparentdir = $(libdir)/syncevolution
 # Must end in "/test" so that we can use nobase_testparent_DATA=test/...
 testdir = $(testparentdir)/test
-test_DATA = $(am__append_111)
+test_DATA = $(am__append_112)
 nobase_test_DATA = 
-test_SCRIPTS = $(am__append_80) $(am__append_108)
-nobase_testparent_DATA = $(am__append_112)
+test_SCRIPTS = $(am__append_80) $(am__append_81) $(am__append_109)
+nobase_testparent_DATA = $(am__append_113)
 
 # standard variables with standard prefixes
-dist_doc_DATA = $(am__append_116)
+dist_doc_DATA = $(am__append_117)
 dist_noinst_DATA = $(am__append_8) $(am__append_13) \
 	src/dbus/interfaces/spec-strip-docs.xsl \
 	src/dbus/interfaces/spec-to-docbook.xsl \
@@ -2705,13 +2710,13 @@ dist_noinst_DATA = $(am__append_8) $(am__append_13) \
 	src/dbus/interfaces/syncevo-server-full.xml \
 	src/dbus/interfaces/syncevo-session-full.xml \
 	src/dbus/interfaces/README $(am__append_55) $(am__append_66) \
-	$(am__append_81) $(am__append_82) $(am__append_86) \
+	$(am__append_82) $(am__append_83) $(am__append_87) \
 	src/shlibs.local src/synthesis-includes/Makefile.am \
-	src/synthesis-includes/Makefile.in $(am__append_93) \
-	$(am__append_105) HACKING LICENSE.txt LICENSE.LGPL-21 \
+	src/synthesis-includes/Makefile.in $(am__append_94) \
+	$(am__append_106) HACKING LICENSE.txt LICENSE.LGPL-21 \
 	README.rst description autogen.sh Doxyfile po/LINGUAS.README
 dist_pkgdata_DATA = $(am__append_69)
-doc_DATA = $(am__append_52) $(am__append_118)
+doc_DATA = $(am__append_52) $(am__append_119)
 
 # generate syntax-highlighted version of ClientTest.cpp for HTML
 # version of .log test results
@@ -2726,7 +2731,7 @@ bin_SCRIPTS = $(am__append_47) src/synclog2html
 dist_noinst_SCRIPTS = build/gen-git-version.sh build/source2html.py \
 	$(am__append_32)
 libexec_SCRIPTS = $(am__append_78)
-nodist_bin_SCRIPTS = $(am__append_90) src/syncevo-phone-config
+nodist_bin_SCRIPTS = $(am__append_91) src/syncevo-phone-config
 
 # other
 
@@ -2739,8 +2744,8 @@ nodist_bin_SCRIPTS = $(am__append_90) src/syncevo-phone-config
 # found in a parent directory. However, these files are needed
 # later on during the recursive libsynthesis configure+make.
 all_dist_hooks = src_dist_hook dot_dist_hook
-all_install_exec_hooks = $(am__append_109)
-all_uninstall_hooks = $(am__append_110)
+all_install_exec_hooks = $(am__append_110)
+all_uninstall_hooks = $(am__append_111)
 
 # Check that no executable or shared object depends on symbols in
 # libraries that it does not link against. Unnecessarily linking
@@ -2748,7 +2753,7 @@ all_uninstall_hooks = $(am__append_110)
 # -Wl,--as-needed. Depends on dpkg-shlibdeps, skipped if that is
 # not available.
 all_local_installchecks = $(am__append_33) $(am__append_48) \
-	$(am__append_120) toplevel_link_check
+	$(am__append_121) toplevel_link_check
 
 # These dependencies are intentionally a bit too broad:
 # they ensure that all files are in place to *run* client-test.
@@ -2808,7 +2813,7 @@ EXTRA_DIST = build/export-foreign-git.sh build/export-gdbus.sh \
 	src/dbus/server/pim/test-dbus/simple-sort/config/syncevolution/pim-manager.ini \
 	src/dbus/server/pim/test-dbus/first-last-sort/config/syncevolution/pim-manager.ini \
 	$(am__append_76) src/gtk-ui/ui.xml src/gtk3-ui/ui.xml
-SUBDIRS = $(am__append_1) $(am__append_2) . $(am__append_113)
+SUBDIRS = $(am__append_1) $(am__append_2) . $(am__append_114)
 AUTOMAKE_OPTIONS = subdir-objects
 ACLOCAL_AMFLAGS = -I m4 -I m4-repo ${ACLOCAL_FLAGS}
 @COND_GIO_GDBUS_FALSE@gdbus_dir = $(top_srcdir)/src/gdbus
@@ -2817,9 +2822,9 @@ ACLOCAL_AMFLAGS = -I m4 -I m4-repo ${ACLOCAL_FLAGS}
 @COND_GIO_GDBUS_TRUE@gdbus_dir = $(top_srcdir)/src/gdbusxx
 @COND_GIO_GDBUS_FALSE@gdbus_build_dir = src/gdbus
 @COND_GIO_GDBUS_TRUE@gdbus_build_dir = src/gdbusxx
-disted_docs = $(am__append_114)
-distbin_docs = $(am__append_115) $(am__append_117)
-man_MANS = $(am__append_119)
+disted_docs = $(am__append_115)
+distbin_docs = $(am__append_116) $(am__append_118)
+man_MANS = $(am__append_120)
 src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_7) \
 	$(am__append_12) $(am__append_34) $(am__append_51) \
 	-I$(top_srcdir)/src/dbus -I$(top_srcdir)/test -I$(top_srcdir) \
@@ -3705,14 +3710,14 @@ src_cppflags = -I$(top_srcdir)/src $(am__append_3) $(am__append_7) \
 @COND_GTK2_FALSE@@COND_GUI_TRUE@src_gtk3_ui_sync_ui_moblin_LDADD = $(src_gtk3_ui_sync_ui_LDADD)
 @COND_GTK2_FALSE@@COND_GUI_TRUE@src_gtk3_ui_sync_ui_moblin_CFLAGS = $(src_gtk3_ui_sync_ui_CFLAGS)
 @COND_GTK2_FALSE@@COND_GUI_TRUE@src_gtk3_ui_sync_ui_moblin_CPPFLAGS = $(src_gtk3_ui_sync_ui_CPPFLAGS) -DUSE_MOBLIN_UX
-SYNCEVOLUTION_DEP = $(am__append_92)
-CORE_SOURCES = $(am__append_94)
+SYNCEVOLUTION_DEP = $(am__append_93)
+CORE_SOURCES = $(am__append_95)
 CORE_CXXFLAGS = $(SYNTHESIS_CFLAGS) $(CPPUNIT_CXXFLAGS)
 CORE_LDADD = $(SYNCEVOLUTION_LDADD) src/syncevo/libsyncevolution.la $(GLIB_LIBS) $(GTHREAD_LIBS) $(GOBJECT_LIBS) $(LIBS)
 CORE_DEP = $(SYNCEVOLUTION_DEP) src/syncevo/libsyncevolution.la $(SYNTHESIS_DEP)
 CORE_LD_FLAGS = -Wl,-uSyncEvolution_Module_Version \
 	-Wl,--export-dynamic $(CPPUNIT_LDFLAGS) $(ADDITIONAL_LDFLAGS) \
-	$(am__append_95)
+	$(am__append_96)
 src_syncevolution_SOURCES = \
   src/syncevolution.cpp \
   $(CORE_SOURCES)
@@ -3722,9 +3727,9 @@ src_syncevolution_SOURCES = \
 # SYNCEVOLUTION_LDADD will be replaced with libsyncebook.la/libsyncecal.la/libsyncsqlite.la
 # if linking statically against them, empty otherwise;
 # either way this does not lead to a dependency on those libs - done explicitly
-src_syncevolution_LDADD = $(CORE_LDADD) $(am__append_96)
+src_syncevolution_LDADD = $(CORE_LDADD) $(am__append_97)
 src_syncevolution_DEPENDENCIES = $(EXTRA_LTLIBRARIES) $(CORE_DEP) \
-	$(am__append_97)
+	$(am__append_98)
 src_syncevolution_LDFLAGS = $(PCRECPP_LIBS) $(CORE_LD_FLAGS) $(DBUS_LIBS)
 src_syncevolution_CXXFLAGS = $(PCRECPP_CFLAGS) $(SYNCEVOLUTION_CXXFLAGS) $(CORE_CXXFLAGS) $(DBUS_CFLAGS) $(SYNCEVO_WFLAGS)
 src_syncevolution_CPPFLAGS = $(src_cppflags) -I$(gdbus_dir)
@@ -3770,7 +3775,7 @@ src_client_test_SOURCES = \
   test/client-test-main.cpp \
   $(CORE_SOURCES)
 
-nodist_src_client_test_SOURCES = test/test.cpp $(am__append_103)
+nodist_src_client_test_SOURCES = test/test.cpp $(am__append_104)
 
 # List of test files which get copied verbatim from
 # $(top_srcdir)/test/testcases/ to src/testcases below. test/test.am
@@ -3800,7 +3805,7 @@ TEST_FILES_PATCHED = $(wildcard src/testcases/*.tem)
 # To pull in those object files, LDFLAGS must contain undef statements
 # for the C symbols exported by the macro.
 src_client_test_libs = src/syncevo/libsyncevolution.la \
-	$(am__append_99)
+	$(am__append_100)
 
 # src/syncevo/libsyncevolution.la -> src/syncevo/.libs/libsyncevolution.a -> -Wl,-u...
 src_client_test_undef = $(shell nm $(patsubst %.la,%.a,$(subst /lib,/.libs/lib,$(src_client_test_libs))) | grep funambolAutoRegisterRegistry | sed -e 's/.* /-Wl,-u/' )
@@ -3809,7 +3814,7 @@ src_client_test_CXXFLAGS = $(filter-out -O2, @CPPUNIT_CXXFLAGS@ $(PCRECPP_CFLAGS
 src_client_test_LDFLAGS = @CPPUNIT_LDFLAGS@  $(src_client_test_undef) $(CORE_LD_FLAGS) $(QT_LDFLAGS)
 src_client_test_LDADD = $(src_client_test_libs) $(CORE_LDADD) \
 	$(PCRECPP_LIBS) $(SYNTHESIS_ENGINE) $(QT_LIBS) \
-	$(am__append_100)
+	$(am__append_101)
 
 # The binary does not really depend on the test cases, only running it does.
 # Listing the dependencies here is done to ensure that one doesn't accidentally
@@ -3817,7 +3822,7 @@ src_client_test_LDADD = $(src_client_test_libs) $(CORE_LDADD) \
 src_client_test_DEPENDENCIES = $(EXTRA_LTLIBRARIES) \
 	$(src_client_test_libs) $(CORE_DEP) $(CLIENT_LIB_TEST_FILES) \
 	testcase2patch src/synccompare src/synclog2html src/templates \
-	$(am__append_104)
+	$(am__append_105)
 @ENABLE_TESTING_TRUE@src_testcasesdir = $(testdir)/testcases
 @ENABLE_TESTING_TRUE@dist_src_testcases_DATA = $(TEST_FILES_GENERATED)
 @ENABLE_TESTING_TRUE@src_testcases_lcsdir = $(testdir)/testcases/lcs
@@ -3884,7 +3889,7 @@ src_abort_redirect_DEPENDENCIES = all
 
 @COND_CORE_TRUE@@COND_DBUS_TRUE@test_dbus_client_server_SOURCES =  \
 @COND_CORE_TRUE@@COND_DBUS_TRUE@	test/dbus-client-server.cpp \
-@COND_CORE_TRUE@@COND_DBUS_TRUE@	$(am__append_107)
+@COND_CORE_TRUE@@COND_DBUS_TRUE@	$(am__append_108)
 @COND_CORE_TRUE@@COND_DBUS_TRUE@test_dbus_client_server_CPPFLAGS = -I$(gdbus_dir) -I$(top_srcdir)/src
 @COND_CORE_TRUE@@COND_DBUS_TRUE@test_dbus_client_server_CXXFLAGS = $(CPPUNIT_CXXFLAGS) $(SYNCEVOLUTION_CXXFLAGS) $(BACKEND_CPPFLAGS) $(DBUS_CFLAGS) $(GLIB_CFLAGS) $(GOBJECT_CFLAGS) $(PCRECPP_CFLAGS)
 @COND_CORE_TRUE@@COND_DBUS_TRUE@test_dbus_client_server_LDFLAGS = $(CPPUNIT_LDFLAGS)
@@ -3965,7 +3970,7 @@ SYNCEVOLUTION_evolution_DEB_REQUIRES = \
 # Some exceptions for the link check above (= symbol may be used without linking).
 # SySync_ConsolePrintf is expected by libsmltk and has to be provided by caller.
 LINK_CHECK_ALLOWED = -e xxxxxxxx -e \
-	'SySync_ConsolePrintf.*libsmltk.so' $(am__append_121)
+	'SySync_ConsolePrintf.*libsmltk.so' $(am__append_122)
 @COND_CROSS_COMPILING_FALSE@RUN_SYNCEVOLUTION_CHECK = die if $$?; return $$buffer;
 
 # Be strict about running 'syncevolution' only when not doing

@@ -20,7 +20,7 @@
 #include "configelement.h"
 #include "syncappbase.h"
 
-
+#include <set>
 
 using namespace sysync;
 
@@ -327,7 +327,7 @@ public:
   // Note that changes of non-relevant fields are not reported here.
   virtual void mergeWith(TSyncItem &aItem, bool &aChangedThis, bool &aChangedOther, TLocalEngineDS *aDatastoreP, int mode = MERGE_OPTION_FROM_CONFIG);
   // standard merge (subset of mergeWith, used if no merge script is defined)
-  void standardMergeWith(TMultiFieldItem &aItem, bool &aChangedThis, bool &aChangedOther, int mode = MERGE_OPTION_FROM_CONFIG);
+  void standardMergeWith(TMultiFieldItem &aItem, bool &aChangedThis, bool &aChangedOther, int mode = MERGE_OPTION_FROM_CONFIG, const std::set<std::string> &aIgnoreFields = std::set<std::string>());
   // compare: returns 0 if equal, 1 if this > aItem, -1 if this < aItem
   // SYSYNC_NOT_COMPARABLE if not equal and no ordering known
   virtual sInt16 compareWith(
