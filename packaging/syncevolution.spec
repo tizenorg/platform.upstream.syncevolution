@@ -6,6 +6,7 @@ Group:      Social & Content/Service
 License:    LGPL-2.1+
 URL:        http://syncevolution.org
 Source0:    %{name}-%{version}.tar.gz
+Source1:    syncevolution.manifest
 Requires:   ca-certificates
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig

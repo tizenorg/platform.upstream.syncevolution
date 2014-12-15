@@ -1,3 +1,6 @@
+* Mon Dec 15 2014 Patrick Ohly <patrick.ohly@intel.com> submit/tizen_mobile/20141120.000000-1-g2b3a813
+- add standard Smack manifest
+
 * Tue Nov 04 2014 Patrick Ohly <patrick.ohly@intel.com> upstream/1.5-12-g0c37416
 - update to SyncEvolution 1.5.
 
